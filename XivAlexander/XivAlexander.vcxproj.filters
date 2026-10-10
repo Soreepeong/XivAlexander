@@ -60,6 +60,12 @@
     <ClCompile Include="MainApp\Windows\MainWindow.cpp">
       <Filter>MainApp\Windows</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\Windows\GridView.cpp">
+      <Filter>MainApp\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\Windows\SettingsView.cpp">
+      <Filter>MainApp\Windows</Filter>
+    </ClCompile>
     <ClCompile Include="Misc\Hooks.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
@@ -240,6 +246,12 @@
       <Filter>MainApp\Windows</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\Windows\MainWindow.h">
+      <Filter>MainApp\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\Windows\GridView.h">
+      <Filter>MainApp\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\Windows\SettingsView.h">
       <Filter>MainApp\Windows</Filter>
     </ClInclude>
     <ClInclude Include="Misc\Hooks.h">

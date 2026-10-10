@@ -20,6 +20,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		auto name = original;
 		std::string replacedFrom;
 		for (const auto& rule : m_config->Runtime.Modding.PathReplacements.Value()) {
+			if (!rule.Enabled || rule.From.empty())
+				continue;
 			auto replaced = srell::regex_replace(name, rule.Regex(), rule.To);
 			if (replaced == name)
 				continue;

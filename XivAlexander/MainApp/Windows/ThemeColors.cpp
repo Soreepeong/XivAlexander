@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "MainApp/Windows/ThemeColors.h"
 
+#include "Utils/Win32/LoadedModule.h"
+
 #include "Config.h"
 
 namespace {
@@ -87,6 +89,145 @@ bool XivAlexander::Apps::MainApp::Window::IsSystemDarkModeEnabled() {
 		reinterpret_cast<LPBYTE>(&value), &size);
 	RegCloseKey(hKey);
 	return !value;
+}
+
+bool XivAlexander::Apps::MainApp::Window::IsDarkModeEnabled(ThemeMode mode) {
+	switch (mode) {
+		case ThemeMode::Dark:
+			return true;
+		case ThemeMode::Light:
+			return false;
+		default:
+			return IsSystemDarkModeEnabled();
+	}
+}
+
+namespace {
+	const Utils::Win32::LoadedModule& UxTheme() {
+		static const Utils::Win32::LoadedModule uxTheme(GetModuleHandleW(L"uxtheme.dll"), false);
+		return uxTheme;
+	}
+
+	void AllowDarkModeForWindow(HWND hWnd, bool dark) {
+		if (static const auto pAllowDarkModeForWindow = UxTheme().GetProcAddress<bool (WINAPI*)(HWND, bool)>(133, false))
+			pAllowDarkModeForWindow(hWnd, dark);
+	}
+}
+
+void XivAlexander::Apps::MainApp::Window::ApplyDarkModeToWindow(HWND hWnd, bool dark) {
+	const BOOL darkBool = dark ? TRUE : FALSE;
+	if (FAILED(DwmSetWindowAttribute(hWnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkBool, sizeof(darkBool))))
+		(void)DwmSetWindowAttribute(hWnd, 19, &darkBool, sizeof(darkBool));
+
+	if (static const auto pSetPreferredAppMode = UxTheme().GetProcAddress<DWORD (WINAPI*)(DWORD)>(135, false))
+		pSetPreferredAppMode(dark ? 1 : 0);
+
+	AllowDarkModeForWindow(hWnd, dark);
+	(void)SetWindowTheme(hWnd, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+
+	if (static const auto pFlushMenuThemes = UxTheme().GetProcAddress<void (WINAPI*)()>(136, false))
+		pFlushMenuThemes();
+}
+
+void XivAlexander::Apps::MainApp::Window::ApplyDarkModeToControl(HWND hControl, bool dark) {
+	AllowDarkModeForWindow(hControl, dark);
+
+	wchar_t className[64]{};
+	GetClassNameW(hControl, className, static_cast<int>(std::size(className)));
+	if (_wcsicmp(className, WC_COMBOBOXW) == 0 || _wcsicmp(className, WC_EDITW) == 0) {
+		(void)SetWindowTheme(hControl, dark ? L"DarkMode_CFD" : nullptr, nullptr);
+	} else if (_wcsicmp(className, WC_TREEVIEWW) == 0) {
+		(void)SetWindowTheme(hControl, dark ? L"DarkMode_Explorer" : L"Explorer", nullptr);
+	} else if (_wcsicmp(className, WC_BUTTONW) == 0) {
+		if (dark && (GetWindowLongPtrW(hControl, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX && GetWindowTextLengthW(hControl) > 0)
+			(void)SetWindowTheme(hControl, L"", L"");
+		else
+			(void)SetWindowTheme(hControl, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+	} else {
+		(void)SetWindowTheme(hControl, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+	}
+	SendMessageW(hControl, WM_THEMECHANGED, 0, 0);
+}
+
+std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton(const NMCUSTOMDRAW& nmcd) {
+	if (nmcd.dwDrawStage != CDDS_PREPAINT)
+		return std::nullopt;
+
+	const auto hButton = nmcd.hdr.hwndFrom;
+	wchar_t className[16]{};
+	GetClassNameW(hButton, className, static_cast<int>(std::size(className)));
+	if (_wcsicmp(className, WC_BUTTONW) != 0)
+		return std::nullopt;
+
+	int part;
+	switch (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_TYPEMASK) {
+		case BS_CHECKBOX:
+		case BS_AUTOCHECKBOX:
+		case BS_3STATE:
+		case BS_AUTO3STATE:
+			part = BP_CHECKBOX;
+			break;
+		case BS_RADIOBUTTON:
+		case BS_AUTORADIOBUTTON:
+			part = BP_RADIOBUTTON;
+			break;
+		default:
+			return std::nullopt;
+	}
+
+	std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hButton)) + 1, L'\0');
+	text.resize(GetWindowTextW(hButton, text.data(), static_cast<int>(text.size())));
+	if (text.empty())
+		return std::nullopt;
+
+	const auto hTheme = OpenThemeData(hButton, L"Button");
+	if (!hTheme)
+		return std::nullopt;
+
+	// The states go unchecked, checked, and for checkboxes mixed, each normal, hot, pressed, and disabled.
+	const auto check = Button_GetCheck(hButton);
+	const auto enabled = IsWindowEnabled(hButton);
+	const auto stateOffset = !enabled ? 3 : (nmcd.uItemState & CDIS_SELECTED) ? 2 : (nmcd.uItemState & CDIS_HOT) ? 1 : 0;
+	const auto state = 1 + (check == BST_CHECKED ? 4 : check == BST_INDETERMINATE && part == BP_CHECKBOX ? 8 : 0) + stateOffset;
+
+	const auto hdc = nmcd.hdc;
+	RECT rc = nmcd.rc;
+	if (const auto hBrush = reinterpret_cast<HBRUSH>(SendMessageW(GetParent(hButton), WM_CTLCOLORBTN, reinterpret_cast<WPARAM>(hdc), reinterpret_cast<LPARAM>(hButton))))
+		FillRect(hdc, &rc, hBrush);
+
+	const auto uiState = static_cast<DWORD>(SendMessageW(hButton, WM_QUERYUISTATE, 0, 0));
+	const auto hPrevFont = SelectObject(hdc, reinterpret_cast<HFONT>(SendMessageW(hButton, WM_GETFONT, 0, 0)));
+	TEXTMETRICW tm{};
+	GetTextMetricsW(hdc, &tm);
+
+	// Text of more than one line starts at the top, a line left above it for the focus, with the glyph by its first line.
+	const auto multiline = (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_MULTILINE) != 0;
+	SIZE glyph{};
+	GetThemePartSize(hTheme, hdc, part, state, nullptr, TS_DRAW, &glyph);
+	const auto glyphTop = multiline ? rc.top + 1 + (static_cast<int>(tm.tmHeight) - glyph.cy) / 2 : rc.top + (rc.bottom - rc.top - glyph.cy) / 2;
+	RECT rcGlyph{rc.left, glyphTop, rc.left + glyph.cx, glyphTop + glyph.cy};
+	DrawThemeBackground(hTheme, hdc, part, state, &rcGlyph, nullptr);
+	CloseThemeData(hTheme);
+
+	const auto& colors = GetThemeColors(true);
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, enabled ? colors.GetForeground() : colors.ForegroundWeak);
+	RECT rcText{rcGlyph.right + glyph.cx / 3, rc.top, rc.right, rc.bottom};
+	if (multiline)
+		InflateRect(&rcText, -1, -1);
+	const auto format = (multiline ? DT_WORDBREAK | DT_EDITCONTROL : DT_SINGLELINE | DT_VCENTER) | DT_LEFT | ((uiState & UISF_HIDEACCEL) ? DT_HIDEPREFIX : 0);
+	DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, format);
+
+	if ((nmcd.uItemState & CDIS_FOCUS) && !(uiState & UISF_HIDEFOCUS)) {
+		RECT rcFocus = rcText;
+		DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcFocus, format | DT_CALCRECT);
+		if (!multiline)
+			OffsetRect(&rcFocus, 0, (rcText.bottom - rcText.top - (rcFocus.bottom - rcFocus.top)) / 2);
+		InflateRect(&rcFocus, 1, 1);
+		DrawFocusRect(hdc, &rcFocus);
+	}
+	SelectObject(hdc, hPrevFont);
+	return CDRF_SKIPDEFAULT;
 }
 
 std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::HandleDarkModeWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

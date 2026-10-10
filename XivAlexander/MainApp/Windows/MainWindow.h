@@ -11,6 +11,7 @@ namespace XivAlexander::Apps::MainApp {
 
 namespace XivAlexander::Apps::MainApp::Window {
 	class ConfigWindow;
+	class SettingsView;
 	class ProgressPopupWindow;
 
 	class MainWindow : public BaseWindow {
@@ -18,8 +19,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 		const std::function<void()> m_triggerUnload;
 		const uint32_t m_uTaskbarRestartMessage;
 
-		ConfigWindow* m_runtimeConfigEditor{ nullptr };
-		ConfigWindow* m_gameConfigEditor{ nullptr };
+		std::unique_ptr<ConfigWindow> m_runtimeConfigEditor;
+		std::unique_ptr<ConfigWindow> m_gameConfigEditor;
+		std::unique_ptr<SettingsView> m_settingsView;
 
 		std::filesystem::path m_path;
 		Misc::GameInstallationDetector::GameReleaseInfo m_gameReleaseInfo;
@@ -37,10 +39,10 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		Utils::Win32::Thread m_backgroundWorkerThread;
 		std::shared_ptr<ProgressPopupWindow> m_backgroundWorkerProgressWindow;
+		std::atomic<bool> m_ttmpRescanPending = false;  // Asked for while the worker was busy; done when it's done.
 
 		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 
-		bool m_sqpacksLoaded = false;
 
 		xivres::util::on_dtor::multi m_cleanup;
 		xivres::util::on_dtor m_cleanupFramerateLockDialog;
@@ -51,23 +53,25 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		void ShowContextMenu(const BaseWindow* parent = nullptr) const;
 
+		[[nodiscard]] bool IsDialogLike() const override;
+
 	protected:
 		void ApplyLanguage(WORD languageId) final;
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+		void OnLayout(double zoom, double width, double height, int resizeType) override;
 		void OnDestroy() override;
 		void OnThemeChanged() override;
+
+		void PaintStatus(HDC hdc, const RECT& rect) const;
 		
 		void RepopulateMenu();
 		UINT_PTR RepopulateMenu_AllocateMenuId(std::function<void()>);
 		static std::wstring RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId);
-		void RepopulateMenu_Ttmp(HMENU hInnerTtmpMenu, HMENU hOuterTtmpMenu);
-		void RepopulateMenu_TtmpChoicesProfiles(HMENU hTtmpMenu);
-		void RepopulateMenu_TtmpEnable(HMENU hParentMenu, Features::Modding::NestedTtmp& nestedTtmp, const std::wstring& label);
-		void RepopulateMenu_GameFix(HMENU hParentMenu);
-		void RepopulateMenu_LoginSessions(HMENU hMenu);
-		void RepopulateMenu_AudioResampler(HMENU hMenu);
-		void RepopulateMenu_DirectoryChoices(HMENU hMenu, UINT commandId, const std::vector<std::filesystem::path>& dirs);
+		[[nodiscard]] std::pair<bool, bool> GetRestartChoiceState(UINT commandId) const;
+		bool ChooseForRestart(UINT commandId);
+		std::vector<std::filesystem::path> ResolveDirectories(const std::vector<std::filesystem::path>& configured) const;
+		std::filesystem::path ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const;
 		void SetMenuStates() const;
 		void RegisterTrayIcon();
 		void RemoveTrayIcon();

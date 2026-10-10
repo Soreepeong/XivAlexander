@@ -170,7 +170,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SAMPLINGRATE));
 		if (runtime.Audio.SoxrResampler.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SOXR));
-		if (runtime.Audio.UseAltCodecMusicSupport)
+		if (runtime.Modding.UseAltCodecMusicSupport)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_ALTCODEC));
 		if (runtime.GameWindow.UseImeModeIndicator)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
@@ -316,12 +316,12 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 
 		{
 			const auto updateAltCodecMusicSupport = [this] {
-				if (Config->Runtime.Audio.UseAltCodecMusicSupport && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AltCodecMusic, "Alternate codecs for musics"))
+				if (Config->Runtime.Modding.UseAltCodecMusicSupport && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AltCodecMusic, "Alternate codecs for musics"))
 					AltCodecMusicSupport->Enable();
 				else
 					AltCodecMusicSupport->Disable();
 			};
-			Cleanup += Config->Runtime.Audio.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
+			Cleanup += Config->Runtime.Modding.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateAltCodecMusicSupport);
 		}
 
@@ -661,6 +661,14 @@ XivAlexander::Apps::MainApp::App::~App() {
 void XivAlexander::Apps::MainApp::App::CustomMessageLoopBody() {
 	const auto activationContextCleanup = Dll::ActivationContext().With();
 
+	// The windows' file dialogs need a single-threaded apartment; without one, this thread is in the game's
+	// multithreaded one, where they hang.
+	const auto comInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
+	const auto comCleanup = xivres::util::on_dtor([comInitialized] {
+		if (comInitialized)
+			CoUninitialize();
+	});
+
 	m_pImpl->LoadAfterThisConstruct();
 
 	m_pImpl->Logger->Log(LogCategory::General, m_pImpl->Config->Runtime.GetLangId(), IDS_LOG_XIVALEXANDER_INITIALIZED);
@@ -701,7 +709,7 @@ void XivAlexander::Apps::MainApp::App::CustomMessageLoopBody() {
 				}
 			}
 
-			if (pWindow->IsDialogLike() && ((processed = IsDialogMessageW(msg.hwnd, &msg))))
+			if (pWindow->IsDialogLike() && ((processed = IsDialogMessageW(hWnd, &msg))))
 				break;
 		}
 

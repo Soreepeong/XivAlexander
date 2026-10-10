@@ -10,6 +10,28 @@
 #include "Utils/Win32/Resource.h"
 
 namespace {
+	void CopyTextToClipboard(HWND hWnd, const std::wstring& text) {
+		const auto bytes = (text.size() + 1) * sizeof(wchar_t);
+		const auto hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+		if (!hMem)
+			return;
+		if (const auto p = GlobalLock(hMem)) {
+			memcpy(p, text.c_str(), bytes);
+			GlobalUnlock(hMem);
+		} else {
+			GlobalFree(hMem);
+			return;
+		}
+		if (!OpenClipboard(hWnd)) {
+			GlobalFree(hMem);
+			return;
+		}
+		EmptyClipboard();
+		if (!SetClipboardData(CF_UNICODETEXT, hMem))
+			GlobalFree(hMem);
+		CloseClipboard();
+	}
+
 	const std::wstring_view PossibleCrashMessageBoxTitle[]{
 		L"ファイナルファンタジーXIV", // Japanese
 		L"FINAL FANTASY XIV", // English, German, French, and Korean
@@ -486,7 +508,9 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 				.pszFooter = config->Runtime.GetStringRes(IDS_TITLE_UNRECOVERABLEERROR_FOOTER),
 				.pfCallback = [](HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) -> HRESULT {
 					if (msg == TDN_BUTTON_CLICKED && wParam == 1001) {
-						Logger::Acquire()->AskAndExportLogs(hWnd, xivres::util::unicode::convert<std::string>(*reinterpret_cast<std::wstring*>(lpRefData)));
+						// The path, quoted if it has to be, to paste into a report.
+						if (const auto path = Logger::Acquire()->AskAndExportLogs(hWnd, xivres::util::unicode::convert<std::string>(*reinterpret_cast<std::wstring*>(lpRefData))))
+							CopyTextToClipboard(hWnd, Utils::Win32::ReverseCommandLineToArgv(path->wstring()));
 						return S_FALSE;
 					} else if (msg == TDN_HYPERLINK_CLICKED) {
 						const auto target = std::wstring_view(reinterpret_cast<wchar_t*>(lParam));

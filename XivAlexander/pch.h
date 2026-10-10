@@ -14,20 +14,32 @@
 
 // C++ standard library
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <bit>
 #include <cassert>
 #include <chrono>
+#include <cinttypes>
+#include <concepts>
+#include <condition_variable>
+#include <cstdint>
+#include <cstring>
 #include <cwctype>
+#include <deque>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <iterator>
+#include <limits>
 #include <locale>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <new>
 #include <numeric>
+#include <optional>
 #include <queue>
 #include <ranges>
 #include <regex>
@@ -36,7 +48,11 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <variant>
 #include <vector>
 
 // NOLINTNEXTLINE(clang-diagnostic-reserved-macro-identifier)
@@ -50,10 +66,13 @@
 // Windows API, part 2
 #include <audioclient.h>
 #include <bcrypt.h>
+#include <CommCtrl.h>
 #include <DbgHelp.h>
 #include <dwmapi.h>
+#include <imm.h>
 #include <iphlpapi.h>
 #include <mmdeviceapi.h>
+#include <mmreg.h>
 #include <mstcpip.h>
 #include <PathCch.h>
 #include <propkey.h>
@@ -67,11 +86,13 @@
 #include <ShObjIdl.h>
 #include <TlHelp32.h>
 #include <uxtheme.h>
+#include <vssym32.h>
+#include <wincred.h>
 #include <wincrypt.h>
 #include <windowsx.h>
-#include <WinTrust.h>
 #include <winhttp.h>
 #include <WinSock2.h>
+#include <WinTrust.h>
 #include <WS2tcpip.h>
 
 // Windows API, part 3

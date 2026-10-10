@@ -43,7 +43,7 @@ void Presets::Combine(Faces& into, const Faces& from) {
 		into.insert_or_assign(name, face);
 }
 
-Presets::Faces Presets::OnlyFamily(const Faces& faces, std::string_view family) {
+Presets::Faces Presets::FacesOfFamily(const Faces& faces, std::string_view family) {
 	Faces res;
 	for (const auto& [name, face] : faces) {
 		if (EqualsIgnoringCase(GameFontNames::FamilyOf(name), family))

@@ -30,7 +30,7 @@ struct XivAlexander::Misc::OpcodeGuesser::Implementation {
 		}
 	}
 
-	void Apply(const Game::Resolved::IpcTypeCandidates& detected) {
+	void Apply(const Game::Resolved::OpcodeGuesserCandidates& detected) {
 		auto& game = Config->Game;
 		ApplyOne("S2C_ActionEffect01", game.S2C_ActionEffects[0], detected.S2C_ActionEffects[0]);
 		ApplyOne("S2C_ActionEffect08", game.S2C_ActionEffects[1], detected.S2C_ActionEffects[1]);
@@ -45,8 +45,8 @@ struct XivAlexander::Misc::OpcodeGuesser::Implementation {
 	}
 
 	void Run() {
-		Game::Resolved::IpcTypeCandidates detected;
-		if (const auto status = Game::Resolved::IpcTypes.Resolve(detected); status != Game::Signatures::ResolveError::Ok)
+		Game::Resolved::OpcodeGuesserCandidates detected;
+		if (const auto status = Game::Resolved::OpcodeGuesser.Resolve(detected); status != Game::Signatures::ResolveError::Ok)
 			throw std::runtime_error(status.Detail);
 
 		for (size_t i = 0; i < detected.PayloadWriters.size(); ++i) {

@@ -150,10 +150,9 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	std::vector<std::filesystem::path> PackSources::CollectReplacementRoots() const {
 		std::vector<std::filesystem::path> roots;
-		roots.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
-		for (const auto& dir : m_config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.Value()) {
+		for (const auto& dir : m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value()) {
 			if (!dir.empty())
-				roots.emplace_back(Config::TranslatePath(dir));
+				roots.emplace_back(m_config->TranslateDirectoryPath(dir));
 		}
 
 		const auto configured = roots.size();

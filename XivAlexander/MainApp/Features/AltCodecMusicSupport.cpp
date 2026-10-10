@@ -124,8 +124,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 				return;
 			}
 
-			Game::Resolved::MssAsiFunctions fns;
-			if (Game::Resolved::MssAsiStream.Resolve(fns) != Game::Signatures::ResolveError::Ok) {
+			Game::Resolved::AltCodecMusicSupportFunctions fns;
+			if (Game::Resolved::AltCodecMusicSupport.Resolve(fns) != Game::Signatures::ResolveError::Ok) {
 				logger->Format<LogLevel::Error>(LogCategory::AltCodecMusic, "stream functions not found; alternative codecs unavailable");
 				return;
 			}

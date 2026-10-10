@@ -33,10 +33,27 @@ namespace {
 	}
 }
 
+XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(std::wstring title, std::filesystem::path path)
+	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
+	, m_pRepository(nullptr)
+	, m_path(std::move(path))
+	, m_title(std::move(title))
+	, m_nTitleStringResourceId(0) {
+	Initialize();
+}
+
 XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStringResourceId, BaseConfigRepository* pRepository)
 	: BaseWindow(WindowClass(), nullptr, WS_OVERLAPPEDWINDOW, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, nullptr, nullptr)
 	, m_pRepository(pRepository)
 	, m_nTitleStringResourceId(nTitleStringResourceId) {
+	Initialize();
+}
+
+std::filesystem::path XivAlexander::Apps::MainApp::Window::ConfigWindow::GetPath() const {
+	return m_pRepository ? m_pRepository->GetConfigPath() : m_path;
+}
+
+void XivAlexander::Apps::MainApp::Window::ConfigWindow::Initialize() {
 
 	m_hScintilla = CreateWindowExW(0, L"Scintilla", L"", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
 		0, 0, 0, 0, m_hWnd, nullptr, Dll::Module(), nullptr);
@@ -77,10 +94,11 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::OnNotify(const LPNMHD
 }
 
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::Revert() {
-	m_pRepository->Save();
+	if (m_pRepository)
+		m_pRepository->Save();
 	auto j = nlohmann::json::object();
 	try {
-		j = Utils::ParseJsonFromFile(m_pRepository->GetConfigPath());
+		j = Utils::ParseJsonFromFile(GetPath());
 	} catch (const std::exception& e) {
 		m_logger->Format(LogCategory::General, m_config->Runtime.GetLangId(), IDS_ERROR_CONFIGURATION_LOAD, e.what());
 	}
@@ -94,7 +112,7 @@ bool XivAlexander::Apps::MainApp::Window::ConfigWindow::TrySave() {
 		m_direct(m_directPtr, SCI_GETTEXT, buf.length(), reinterpret_cast<sptr_t>(buf.data()));
 		buf.resize(buf.length() - 1);
 		auto buf2 = nlohmann::json::parse(buf).dump(1, '\t');
-		Utils::SaveToFile(m_pRepository->GetConfigPath(), buf2);
+		Utils::SaveToFile(GetPath(), buf2);
 		const auto firstVisibleLine = m_direct(m_directPtr, SCI_GETFIRSTVISIBLELINE, 0, 0);
 		std::vector<std::pair<size_t, size_t>> selections(m_direct(m_directPtr, SCI_GETSELECTIONS, 0, 0));
 		for (size_t i = 0; i < selections.size(); ++i) {
@@ -107,7 +125,8 @@ bool XivAlexander::Apps::MainApp::Window::ConfigWindow::TrySave() {
 			m_direct(m_directPtr, SCI_ADDSELECTION, selections[i].first, selections[i].second);
 		m_direct(m_directPtr, SCI_SETFIRSTVISIBLELINE, firstVisibleLine, 0);
 		m_originalConfig = std::move(buf2);
-		m_pRepository->Reload();
+		if (m_pRepository)
+			m_pRepository->Reload();
 	} catch (nlohmann::json::exception& e) {
 		Dll::MessageBoxF(m_hWnd, MB_ICONERROR, m_config->Runtime.FormatStringRes(IDS_ERROR_CONFIGURATION_SAVE, e.what()));
 		return false;
@@ -118,7 +137,7 @@ bool XivAlexander::Apps::MainApp::Window::ConfigWindow::TrySave() {
 
 void XivAlexander::Apps::MainApp::Window::ConfigWindow::ApplyLanguage(WORD languageId) {
 	m_hAcceleratorWindow = {Dll::Module(), RT_ACCELERATOR, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_ACCELERATOR), languageId};
-	SetWindowTextW(m_hWnd, m_config->Runtime.GetStringRes(m_nTitleStringResourceId));
+	SetWindowTextW(m_hWnd, m_nTitleStringResourceId ? m_config->Runtime.GetStringRes(m_nTitleStringResourceId) : m_title.c_str());
 	Utils::Win32::Menu(Dll::Module(), RT_MENU, MAKEINTRESOURCE(IDR_CONFIG_EDITOR_MENU), languageId).AttachAndSwap(m_hWnd);
 }
 

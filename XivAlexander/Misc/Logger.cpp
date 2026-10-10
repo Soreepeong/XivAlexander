@@ -207,12 +207,14 @@ void XivAlexander::Misc::Logger::Clear() {
 	m_pImpl->m_pendingItems.clear();
 }
 
-void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
+std::optional<std::filesystem::path> XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::string_view heading, std::string_view preformatted) {
 	static const COMDLG_FILTERSPEC saveFileTypes[] = {
 		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_LOGFILES) + 1, .pszSpec = L"*.log"},
 		{.pszName = FindStringResourceEx(Dll::Module(), IDS_FILTERSPEC_ALLFILES) + 1, .pszSpec = L"*.*"},
 	};
 
+	// Where the logs were saved, even if opening them afterwards fails.
+	std::optional<std::filesystem::path> saved;
 	try {
 		IFileSaveDialogPtr pDialog;
 		DWORD dwFlags;
@@ -377,6 +379,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 			else
 				of << preformatted;
 		}
+		saved = newFileName;
 		if (Dll::MessageBoxF(hwndDialogParent, MB_YESNO | MB_ICONINFORMATION, IDS_LOG_SAVED, newFileName.wstring()) == IDYES) {
 			SHELLEXECUTEINFOW shex{
 				.cbSize = sizeof shex,
@@ -394,6 +397,7 @@ void XivAlexander::Misc::Logger::AskAndExportLogs(HWND hwndDialogParent, std::st
 	} catch (const std::exception& e) {
 		Dll::MessageBoxF(hwndDialogParent, MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
 	}
+	return saved;
 }
 
 void XivAlexander::Misc::Logger::WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const {

@@ -21,6 +21,7 @@
 #include "MainApp/Modding/ResourceOverrider.h"
 #include "MainApp/Modding/VirtualSqPacks.h"
 #include "MainApp/Windows/ConfigWindow.h"
+#include "MainApp/Windows/SettingsView.h"
 #include "MainApp/Windows/ProgressPopupWindow.h"
 #include "MainApp/Windows/Dialog/FramerateLockingDialog.h"
 #include "Misc/GameInstallationDetector.h"
@@ -39,6 +40,108 @@ namespace {
 	constexpr int TimerIdReregisterTrayIcon = 100;
 	constexpr int TimerIdRepaint = 101;
 	constexpr int TimerIdClearCopiedLaunchCommandLine = 102;
+
+	/// Deletes the submenu that has the command among its items.
+	bool DeleteSubMenuHolding(HMENU hMenu, UINT commandId) {
+		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
+			const auto hSub = GetSubMenu(hMenu, i);
+			if (!hSub)
+				continue;
+			for (int j = 0, count = GetMenuItemCount(hSub); j < count; ++j) {
+				if (GetMenuItemID(hSub, j) == commandId) {
+					DeleteMenu(hMenu, i, MF_BYPOSITION);
+					return true;
+				}
+			}
+			if (DeleteSubMenuHolding(hSub, commandId))
+				return true;
+		}
+		return false;
+	}
+
+	/// Deletes the submenus left with nothing but separators.
+	void DeleteEmptySubMenus(HMENU hMenu) {
+		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
+			const auto hSub = GetSubMenu(hMenu, i);
+			if (!hSub)
+				continue;
+			DeleteEmptySubMenus(hSub);
+			auto empty = true;
+			for (int j = 0, count = GetMenuItemCount(hSub); empty && j < count; ++j) {
+				MENUITEMINFOW mii{.cbSize = sizeof mii, .fMask = MIIM_FTYPE};
+				empty = GetMenuItemInfoW(hSub, j, TRUE, &mii) && (mii.fType & MFT_SEPARATOR);
+			}
+			if (empty)
+				DeleteMenu(hMenu, i, MF_BYPOSITION);
+		}
+	}
+
+	/// Deletes the separators that separate nothing: first, last, or after another.
+	void TidySeparators(HMENU hMenu) {
+		const auto isSeparator = [hMenu](int i) {
+			MENUITEMINFOW mii{.cbSize = sizeof mii, .fMask = MIIM_FTYPE};
+			return GetMenuItemInfoW(hMenu, i, TRUE, &mii) && (mii.fType & MFT_SEPARATOR);
+		};
+		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
+			if (const auto hSub = GetSubMenu(hMenu, i))
+				TidySeparators(hSub);
+			else if (isSeparator(i) && (i == 0 || i == GetMenuItemCount(hMenu) - 1 || isSeparator(i - 1)))
+				DeleteMenu(hMenu, i, MF_BYPOSITION);
+		}
+		if (const auto count = GetMenuItemCount(hMenu); count > 0 && isSeparator(0))
+			DeleteMenu(hMenu, 0, MF_BYPOSITION);
+	}
+
+	/// Takes out of the menus what is set on the settings pages in the window; their commands and shortcuts still work.
+	void TrimMenu(HMENU hMenu) {
+		for (const UINT commandId : {
+			ID_CONFIGURE_SETTINGS,
+			ID_CONFIGURE_EDITOPCODECONFIGURATION,
+			ID_CONFIGURE_CHECKFORUPDATEDOPCODES,
+			ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP,
+			ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING,
+			ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE,
+			ID_NETWORK_USEIPCTYPEFINDER,
+			ID_NETWORK_USEALLIPCMESSAGELOGGER,
+			ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY,
+			ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW,
+			ID_MODDING_TTMP_SHOWDEDICATEDMENU,
+			ID_MODDING_TTMP_OPENDIRECTORY,
+			ID_MODDING_USEALTCODECMUSICSUPPORT,
+			ID_MODDING_LOGALLFILEACCESS,
+			ID_MODDING_ENABLE,
+			ID_NETWORK_REDUCEPACKETDELAY,
+			ID_NETWORK_RELEASEALLCONNECTIONS,
+			ID_NETWORK_RESETALLCONNECTIONS,
+			ID_VIEW_ALWAYSONTOP,
+			ID_VIEW_ALWAYSONTOPGAME,
+			ID_VIEW_HIDEONMINIMIZE,
+		}) {
+			while (DeleteMenu(hMenu, commandId, MF_BYCOMMAND)) {}
+		}
+
+		// Restart, Modding (whose TexTools ModPacks is the TTMP menu by now), Configure, and Help; and the game fixes, the
+		// language, the theme, the window title, the network troubleshooting, the latency and timing helper, the
+		// framerate control, and the voice muting.
+		for (const UINT commandId : {
+			ID_RESTART_RESTART,
+			ID_MODDING_TTMP_REFRESH,
+			ID_CONFIGURE_RELOAD,
+			ID_HELP_OPENHOMEPAGE,
+			ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE,
+			ID_CONFIGURE_USEMORECPUTIME,
+			ID_MODDING_MUTEVOICE_BATTLE,
+			ID_CONFIGURE_GAMEFIX_OPENDIRECTORY,
+			ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT,
+			ID_CONFIGURE_THEME_SYSTEM,
+			ID_CONFIGURE_WINDOWTITLE_PID_NONE,
+			ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS,
+		})
+			DeleteSubMenuHolding(hMenu, commandId);
+
+		DeleteEmptySubMenus(hMenu);
+		TidySeparators(hMenu);
+	}
 
 	WNDCLASSEXW WindowClass() {
 		const auto hIcon = Utils::Win32::Icon(LoadIconW(Dll::Module(), MAKEINTRESOURCEW(IDI_TRAY_ICON)),
@@ -199,7 +302,16 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 
 	RegisterTrayIcon();
 
-	SetWindowPos(m_hWnd, nullptr, 0, 0, static_cast<int>(480 * GetZoom()), static_cast<int>(160 * GetZoom()), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+	m_settingsView = std::make_unique<SettingsView>(m_app, m_hWnd, m_hWnd,
+		[this] { return GetZoom(); },
+		[this] { return IsDarkModeEnabled(); },
+		[this](HDC hdc, const RECT& rect) { PaintStatus(hdc, rect); },
+		SettingsView::RestartChoices{
+			.GetState = [this](UINT commandId) { return GetRestartChoiceState(commandId); },
+			.Choose = [this](UINT commandId) { ChooseForRestart(commandId); },
+		},
+		[this](Features::Modding::NestedTtmp& folder, UINT commandId) { BatchTtmpOperation(folder, static_cast<int>(commandId)); });
+	SetWindowPos(m_hWnd, nullptr, 0, 0, static_cast<int>(800 * GetZoom()), static_cast<int>(560 * GetZoom()), SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
 	// Try to restore tray icon every 5 seconds in case things go wrong
 	SetTimer(m_hWnd, TimerIdReregisterTrayIcon, 5000, nullptr);
@@ -219,56 +331,30 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 		ShowWindow(m_hWnd, SW_SHOW);
 		SetWindowPos(m_hWnd, m_config->Runtime.Ui.MainWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
-	m_cleanup += m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.Opcodes.EnabledPatchCodes.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->PatchCode.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
 	if (auto& loginSessions = m_app.GetLoginSessions()) {
 		m_cleanup += loginSessions->OnChange([this] {
 			PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 			});
 	}
-	m_cleanup += m_config->Runtime.Audio.OutputSamplingRate.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	m_cleanup += m_config->Runtime.Audio.SoxrResampler.Enabled.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
 	m_cleanup += m_config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 	m_cleanup += m_config->Runtime.Launch.UseLoginSessionSwitching.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.Ttmp.SearchDirectories.OnChange([this] {
+		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
+		PostMessageW(m_hWnd, WM_COMMAND, ID_MODDING_TTMP_REFRESH, 0);
+		});
+	m_cleanup += m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
-		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
-		});
-	if (!m_sqpacksLoaded) {
-		if (auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
-			m_cleanup += sqpacks->OnTtmpSetsChanged([this] { RepopulateMenu(); });
-			m_sqpacksLoaded = true;
-		}
-	}
 
 	m_cleanup += m_app.GetSocketHook().OnSocketFound([this](auto&) {
-		InvalidateRect(m_hWnd, nullptr, false);
+		RunOnUiThread([this] { if (m_settingsView) m_settingsView->InvalidateStatus(); });
 		});
 	m_cleanup += m_app.GetSocketHook().OnSocketGone([this](auto&) {
-		InvalidateRect(m_hWnd, nullptr, false);
+		RunOnUiThread([this] { if (m_settingsView) m_settingsView->InvalidateStatus(); });
 		});
 	ApplyLanguage(m_config->Runtime.GetLangId());
 
@@ -326,7 +412,66 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::ApplyLanguage(WORD languag
 	const auto title = std::format(L"{}: {}, {}, {}",
 		Dll::GetGenericMessageBoxTitle(), GetCurrentProcessId(), m_gameReleaseInfo.CountryCode, m_gameReleaseInfo.GameVersion);
 	SetWindowTextW(m_hWnd, title.c_str());
-	InvalidateRect(m_hWnd, nullptr, FALSE);
+	if (m_settingsView)
+		m_settingsView->ApplyLanguage();
+}
+
+bool XivAlexander::Apps::MainApp::Window::MainWindow::IsDialogLike() const {
+	// For Tab and Enter in the settings.
+	return true;
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::OnLayout(double zoom, double width, double height, int resizeType) {
+	if (m_settingsView)
+		SetWindowPos(m_settingsView->Handle(), nullptr, 0, 0, static_cast<int>(width), static_cast<int>(height), SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void XivAlexander::Apps::MainApp::Window::MainWindow::PaintStatus(HDC hdc, const RECT& rect) const {
+	NONCLIENTMETRICSW ncm{.cbSize = sizeof ncm};
+	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+	const auto hFont = CreateFontIndirectW(&ncm.lfMessageFont);
+	const auto hPrevFont = SelectObject(hdc, hFont);
+	GetThemeColors(IsDarkModeEnabled()).ApplyToHDC(hdc);
+
+	std::wstring str;
+	try {
+		const auto window = Utils::QpcUs() - 1000000;
+		uint64_t msgPumpMean{}, msgPumpDev{};
+		double msgPumpCount{};
+		if (auto& handler = m_app.GetMainThreadTimingHelper()) {
+			std::tie(msgPumpMean, msgPumpDev) = handler->GetMessagePumpIntervalTrackerUs().MeanAndDeviation(window);
+			msgPumpCount = handler->GetMessagePumpIntervalTrackerUs().CountFractional(window);
+		}
+		// The profile whose choices are used, as the library picks it: the active one, or else the first.
+		std::wstring ttmpProfile;
+		if (m_app.GetResourceOverrider().IsActive()) {
+			const auto& profiles = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
+			auto it = std::ranges::find_if(profiles, [](const auto& profile) { return profile.Active && !profile.FileName.empty(); });
+			if (it == profiles.end())
+				it = std::ranges::find_if(profiles, [](const auto& profile) { return !profile.FileName.empty(); });
+			if (it != profiles.end())
+				ttmpProfile = m_config->Runtime.FormatStringRes(IDS_STATUS_TTMPPROFILE, xivres::util::unicode::convert<std::wstring>(it->Name.empty() ? it->FileName : it->Name));
+		}
+		str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
+			msgPumpMean, msgPumpDev, msgPumpCount,
+			ttmpProfile,
+			m_app.GetSocketHook().Describe());
+		if (m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily())
+			str = std::format(L"{}\n{}", m_config->Runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART), str);
+	} catch (...) {
+		// pass
+	}
+
+	const auto pad = static_cast<int>(8 * GetZoom());
+	RECT rct = {
+		.left = rect.left + pad,
+		.top = rect.top + pad,
+		.right = rect.right - pad,
+		.bottom = rect.bottom - pad,
+	};
+	DrawTextW(hdc, str.data(), -1, &rct, DT_TOP | DT_LEFT | DT_NOCLIP | DT_EDITCONTROL | DT_WORDBREAK);
+
+	DeleteObject(SelectObject(hdc, hPrevFont));
 }
 
 LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -376,6 +521,15 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 		loginSessions->Reload(wParam == 1);
 		return 1;
 
+	} else if (uMsg == WM_COMMAND && (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)) {
+		// From the dialog keys: Enter applies what is being typed in the settings.
+		if (LOWORD(wParam) == IDOK && m_settingsView)
+			m_settingsView->CommitTypedText();
+		return 0;
+	} else if (uMsg == WM_GETMINMAXINFO) {
+		const auto zoom = GetZoom();
+		reinterpret_cast<MINMAXINFO*>(lParam)->ptMinTrackSize = {static_cast<LONG>(480 * zoom), static_cast<LONG>(320 * zoom)};
+		return 0;
 	} else if (uMsg == WM_COMMAND) {
 		if (!lParam) {
 			try {
@@ -417,69 +571,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 		if (wParam == TimerIdReregisterTrayIcon) {
 			RegisterTrayIcon();
 		} else if (wParam == TimerIdRepaint) {
-			InvalidateRect(m_hWnd, nullptr, false);
+			m_settingsView->InvalidateStatus();
 		} else if (wParam == TimerIdClearCopiedLaunchCommandLine) {
 			ClearCopiedLaunchCommandLine();
 		}
-	} else if (uMsg == WM_PAINT) {
-		PAINTSTRUCT ps{};
-		RECT rect{};
-		const auto hdc = BeginPaint(m_hWnd, &ps);
-
-		const auto zoom = GetZoom();
-		NONCLIENTMETRICSW ncm{.cbSize = sizeof ncm};
-		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
-
-		GetClientRect(m_hWnd, &rect);
-		const auto backdc = CreateCompatibleDC(hdc);
-
-		std::vector<HGDIOBJ> gdiRestoreStack;
-		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top)));
-		gdiRestoreStack.emplace_back(SelectObject(backdc, CreateFontIndirectW(&ncm.lfMessageFont)));
-
-		const auto& colors = GetThemeColors(IsDarkModeEnabled());
-		FillRect(backdc, &rect, colors.CreateBackgroundBrush());
-		colors.ApplyToHDC(backdc);
-		std::wstring str;
-		try {
-			const auto window = Utils::QpcUs() - 1000000;
-			uint64_t msgPumpMean{}, msgPumpDev{};
-			double msgPumpCount{};
-			if (auto& handler = m_app.GetMainThreadTimingHelper()) {
-				std::tie(msgPumpMean, msgPumpDev) = handler->GetMessagePumpIntervalTrackerUs().MeanAndDeviation(window);
-				msgPumpCount = handler->GetMessagePumpIntervalTrackerUs().CountFractional(window);
-			}
-			str = m_config->Runtime.FormatStringRes(IDS_MAIN_TEXT,
-				GetCurrentProcessId(),
-				m_path, 
-				m_startupArgumentsForDisplay,
-				m_gameReleaseInfo.GameVersion, m_gameReleaseInfo.CountryCode,
-				msgPumpMean, msgPumpDev, msgPumpCount,
-				m_app.GetSocketHook().Describe());
-			if (m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily())
-				str = std::format(L"{}\n{}", m_config->Runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART), str);
-		} catch (...) {
-			// pass
-		}
-		const auto pad = static_cast<int>(8 * zoom);
-		RECT rct = {
-			.left = pad,
-			.top = pad,
-			.right = rect.right - pad,
-			.bottom = rect.bottom - pad,
-		};
-		DrawTextW(backdc, str.data(), -1, &rct, DT_TOP | DT_LEFT | DT_NOCLIP | DT_EDITCONTROL | DT_WORDBREAK);
-
-		BitBlt(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top, backdc, 0, 0, SRCCOPY);
-
-		while (!gdiRestoreStack.empty()) {
-			DeleteObject(SelectObject(backdc, gdiRestoreStack.back()));
-			gdiRestoreStack.pop_back();
-		}
-		DeleteDC(backdc);
-
-		EndPaint(m_hWnd, &ps);
-		return 0;
 	} else if (uMsg == WM_SIZE) {
 		if (wParam == SIZE_MINIMIZED && m_config->Runtime.Ui.MainWindow.HideOnMinimize) {
 			m_config->Runtime.Ui.MainWindow.Show = false;
@@ -498,12 +593,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnDestroy() {
 	if (const auto replaceMusicsThread = decltype(m_backgroundWorkerThread)(m_backgroundWorkerThread))
 		replaceMusicsThread.Wait();
 
-	if (m_runtimeConfigEditor)
-		delete m_runtimeConfigEditor;
-	m_runtimeConfigEditor = nullptr;
-	if (m_gameConfigEditor)
-		delete m_gameConfigEditor;
-	m_gameConfigEditor = nullptr;
+	m_runtimeConfigEditor.reset();
+	m_gameConfigEditor.reset();
+	m_settingsView.reset();
 	RemoveTrayIcon();
 	BaseWindow::OnDestroy();
 	PostQuitMessage(0);
@@ -511,7 +603,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnDestroy() {
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::OnThemeChanged() {
 	BaseWindow::OnThemeChanged();
-	InvalidateRect(m_hWnd, nullptr, TRUE);
+	if (m_settingsView)
+		m_settingsView->ApplyTheme();
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
@@ -538,60 +631,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 	}
 
 	m_menuIdCallbacks.clear();
-	{
-		RepopulateMenu_GameFix(GetSubMenu(GetSubMenu(menu, 5), 5));
 
-		// note: ttmp top-level menu gets deleted so top menu index changes
-
-		const auto hModMenu = GetSubMenu(menu, 3);
-		const auto hOuterTtmpMenu = GetSubMenu(menu, 4);
-		const auto hInnerTtmpMenu = GetSubMenu(hModMenu, 2);
-
-		if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
-			while (GetMenuItemCount(hOuterTtmpMenu))
-				DeleteMenu(hOuterTtmpMenu, 0, MF_BYPOSITION);
-			for (int index = 0; index < GetMenuItemCount(hInnerTtmpMenu); ++index) {
-				MENUITEMINFOW mii = {
-					.cbSize = sizeof mii,
-					.fMask = MIIM_TYPE,
-				};
-				GetMenuItemInfoW(hInnerTtmpMenu, index, TRUE, &mii);
-				if (mii.fType & MFT_SEPARATOR) {
-					DeleteMenu(hInnerTtmpMenu, index, MF_BYPOSITION);
-					break;
-				}
-			}
-		} else {
-			DeleteMenu(menu, 4, MF_BYPOSITION);
-		}
-
-		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
-		RepopulateMenu_TtmpChoicesProfiles(m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu ? hOuterTtmpMenu : hInnerTtmpMenu);
-
-		{
-			std::vector<std::filesystem::path> ttmpDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods"};
-			if (const auto& additional = m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.Value(); !additional.empty()) {
-				if (const auto inGame = m_path.parent_path() / "sqpack" / "TexToolsMods"; is_directory(inGame))
-					ttmpDirs.emplace_back(inGame);
-				for (const auto& dir : additional) {
-					if (!dir.empty())
-						ttmpDirs.emplace_back(Config::TranslatePath(dir));
-				}
-			}
-			RepopulateMenu_DirectoryChoices(menu, ID_MODDING_TTMP_OPENDIRECTORY, ttmpDirs);
-
-			std::vector<std::filesystem::path> replacementDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries"};
-			for (const auto& dir : m_config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.Value()) {
-				if (!dir.empty())
-					replacementDirs.emplace_back(Config::TranslatePath(dir));
-			}
-			RepopulateMenu_DirectoryChoices(menu, ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY, replacementDirs);
-		}
-		// last: everything above finds its menus by index, and these add a Configure menu item and a top-level menu
-		RepopulateMenu_AudioResampler(menu);
-		RepopulateMenu_LoginSessions(menu);
-	}
-
+	TrimMenu(menu);
 	menu.AttachAndSwap(m_hWnd);
 }
 
@@ -617,503 +658,20 @@ std::wstring XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Get
 }
 
 
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_TtmpEnable(HMENU hParentMenu, Features::Modding::NestedTtmp& nestedTtmp, const std::wstring& label) {
-	auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks();
-	if (!sqpacks)
-		return;
-
-	// One profile is active at a time, so this toggles that profile's marker, and clears the unsuffixed
-	// one as well when turning a pack back on.
-	AppendMenuW(hParentMenu, MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0),
-		RepopulateMenu_AllocateMenuId([this, &nestedTtmp, &sqpacks] {
-			try {
-				{
-					const auto lock = sqpacks->LockTtmps();
-					nestedTtmp.Enabled = !nestedTtmp.Enabled;
-				}
-				sqpacks->ApplyTtmpChanges(nestedTtmp);
-			} catch (const std::exception& e) {
-				Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-			}
-			}), label.c_str());
+std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Window::MainWindow::ResolveDirectories(const std::vector<std::filesystem::path>& configured) const {
+	std::vector<std::filesystem::path> dirs;
+	for (const auto& dir : configured) {
+		if (!dir.empty())
+			dirs.emplace_back(m_config->TranslateDirectoryPath(dir, m_path.parent_path() / L"sqpack"));
+	}
+	return dirs;
 }
 
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_TtmpChoicesProfiles(HMENU hTtmpMenu) {
-	const auto profiles = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
-	if (profiles.size() < 2)
-		return;
-
-	// Exactly one is active: the first marked so, or the first entry when a hand-edited config marks none.
-	auto activeIndex = profiles.size();
-	for (size_t i = 0; i < profiles.size(); i++) {
-		if (profiles[i].Active) {
-			activeIndex = i;
-			break;
-		}
-	}
-	if (activeIndex == profiles.size())
-		activeIndex = 0;
-
-	const auto hProfileMenu = CreatePopupMenu();
-	for (size_t i = 0; i < profiles.size(); i++) {
-		AppendMenuW(hProfileMenu, MF_STRING | (i == activeIndex ? MF_CHECKED : 0),
-			RepopulateMenu_AllocateMenuId([this, i] {
-				auto updated = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
-				if (i >= updated.size())
-					return;
-				for (size_t j = 0; j < updated.size(); j++)
-					updated[j].Active = j == i;
-				m_config->Runtime.Modding.Ttmp.ChoicesFiles = updated;
-				}), xivres::util::unicode::convert<std::wstring>(profiles[i].Name).c_str());
-	}
-
-	InsertMenuW(hTtmpMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hProfileMenu),
-		m_config->Runtime.GetStringRes(IDS_MENU_TTMP_PROFILE));
-	InsertMenuW(hTtmpMenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, nullptr);
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU hInnerTtmpMenu, HMENU hOuterTtmpMenu) {
-	const auto hTemplateEntryMenu = GetSubMenu(hInnerTtmpMenu, 0);
-	RemoveMenu(hInnerTtmpMenu, 0, MF_BYPOSITION);
-	const auto deleteTemplateMenu = xivres::util::on_dtor([hTemplateEntryMenu] { DestroyMenu(hTemplateEntryMenu); });
-
-	auto count = 0;
-	auto ready = false;
-
-	if (auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
-		ready = true;
-		if (!m_sqpacksLoaded) {
-			m_cleanup += sqpacks->OnTtmpSetsChanged([this] { RepopulateMenu(); });
-			m_sqpacksLoaded = true;
-		}
-
-		struct MenuStack {
-			HMENU Menu{};
-			Features::Modding::NestedTtmp* Item{};
-			int InsertionIndex{};
-			bool HideInner{};
-		};
-		std::vector<MenuStack> menuStack;
-		sqpacks->GetTtmps()->Traverse(false, [&](Features::Modding::NestedTtmp& nestedTtmp) {
-			if (!nestedTtmp.Parent) {
-				if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
-					menuStack.emplace_back(MenuStack{.Menu = hOuterTtmpMenu, .Item = &nestedTtmp});
-				} else {
-					menuStack.emplace_back(MenuStack{.Menu = hInnerTtmpMenu, .Item = &nestedTtmp});
-				}
-				return;
-			}
-
-			while (menuStack.size() > 1 && nestedTtmp.Parent.get() != menuStack.back().Item)
-				menuStack.pop_back();
-
-			if (nestedTtmp.IsGroup()) {
-				if (m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay) {
-					std::wstring menuName;
-					menuName.resize(3 * (menuStack.size() - 1), L' ');
-					menuName += nestedTtmp.Path.filename().wstring();
-
-					const auto skipMenu = menuStack.back().HideInner;
-
-					menuStack.emplace_back(MenuStack{.Item = &nestedTtmp, .HideInner = menuStack.back().HideInner || !nestedTtmp.Enabled});
-
-					if (!skipMenu)
-						InsertMenuW(menuStack.front().Menu,
-							menuStack.front().InsertionIndex++,
-							MF_BYPOSITION | MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0) | (m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView ? 0 : MF_DISABLED),
-							RepopulateMenu_AllocateMenuId([this, &nestedTtmp, &sqpacks] {
-								try {
-									{
-										const auto lock = sqpacks->LockTtmps();
-										nestedTtmp.Enabled = !nestedTtmp.Enabled;
-									}
-									sqpacks->ApplyTtmpChanges(nestedTtmp);
-								} catch (const std::exception& e) {
-									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-								}
-								}),
-							menuName.c_str());
-				} else {
-					const auto hSubMenu = CreatePopupMenu();
-					RepopulateMenu_TtmpEnable(hSubMenu, nestedTtmp, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE));
-
-					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-					AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-
-					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp] {
-						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_ENABLEALL);
-						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_ENABLEALL).c_str());
-					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp] {
-						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_DISABLEALL);
-						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_DISABLEALL).c_str());
-					AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &nestedTtmp] {
-						BatchTtmpOperation(nestedTtmp, ID_MODDING_TTMP_REMOVEALL);
-						}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_REMOVEALL).c_str());
-
-					InsertMenuW(menuStack.back().Menu,
-						menuStack.back().InsertionIndex++,
-						MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
-						reinterpret_cast<UINT_PTR>(hSubMenu),
-						nestedTtmp.Path.filename().wstring().c_str());
-					menuStack.emplace_back(MenuStack{.Menu = hSubMenu, .Item = &nestedTtmp, .InsertionIndex = 2});
-				}
-				return;
-			}
-
-			count++;
-			if (menuStack.back().HideInner)
-				return;
-
-			auto& ttmpSet = *nestedTtmp.Ttmp;
-
-			const auto hSubMenu = CreatePopupMenu();
-			RepopulateMenu_TtmpEnable(hSubMenu, nestedTtmp, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_ENABLE));
-
-			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet, &sqpacks] {
-				try {
-					if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2,
-						L"Delete \"{}\" at \"{}\"?", ttmpSet.List.Name, ttmpSet.ListPath.wstring()) == IDYES)
-						sqpacks->DeleteTtmp(ttmpSet.ListPath);
-				} catch (const std::exception& e) {
-					Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-				}
-				}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_DELETE).c_str());
-
-			AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-			AppendMenuW(hSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &ttmpSet] {
-				Utils::Win32::TaskDialog::Builder()
-					.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
-					.WithParentWindow(m_hWnd)
-					.WithInstance(Dll::Module())
-					.WithAllowDialogCancellation()
-					.WithCanBeMinimized()
-					.WithHyperlinkHandler(L"homepage", [&ttmpSet](auto& dialog) {
-						try {
-							Utils::Win32::ShellExecutePathOrThrow(xivres::util::unicode::convert<std::wstring>(ttmpSet.List.Url), dialog.GetHwnd());
-						} catch (const std::exception& e) {
-							Dll::MessageBoxF(dialog.GetHwnd(), MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-						}
-						return Utils::Win32::TaskDialog::HyperlinkHandleResult::HandledKeepDialog;
-						})
-					.WithMainIcon(IDI_TRAY_ICON)
-					.WithMainInstruction(ttmpSet.List.Name)
-					.WithContent(std::format(L"{} - {}{}",
-						ttmpSet.List.Version.empty() ? "0.0" : ttmpSet.List.Version,
-						ttmpSet.List.Author.empty() ? "Anonymous" : ttmpSet.List.Author,
-						ttmpSet.List.Description.empty() ? "" : std::format("\n\n{}", ttmpSet.List.Description)
-					))
-					.WithFooter(ttmpSet.List.Url.empty() ? L"" : std::format(
-						L"<a href=\"homepage\">{}</a>",
-						ttmpSet.List.Url
-					))
-					.Build()
-					.Show();
-				}), std::format(L"{} - {} ({})",
-					ttmpSet.List.Name.empty() ? "Unnamed" : ttmpSet.List.Name,
-					ttmpSet.List.Author.empty() ? "Anonymous" : ttmpSet.List.Author,
-					ttmpSet.List.Version.empty() ? "0.0" : ttmpSet.List.Version
-				).c_str());
-			if (!ttmpSet.Allocated) {
-				AppendMenuW(hSubMenu, MF_STRING | MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_REQUIRESRESTART).c_str());
-			}
-
-			if (!ttmpSet.List.ModPackPages.empty()) {
-				AppendMenuW(hSubMenu, MF_SEPARATOR, 0, nullptr);
-			}
-
-			for (size_t pageObjectIndex = 0; pageObjectIndex < ttmpSet.List.ModPackPages.size(); ++pageObjectIndex) {
-				const auto& modGroups = ttmpSet.List.ModPackPages[pageObjectIndex].ModGroups;
-				if (modGroups.empty())
-					continue;
-				const auto& pageConf = ttmpSet.Choices.at(pageObjectIndex);
-
-				for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
-					const auto& modGroup = modGroups[modGroupIndex];
-					if (modGroup.OptionList.empty())
-						continue;
-
-					const auto isMulti = modGroup.SelectionType == "Multi";
-					const auto optionIndices = pageConf.at(modGroupIndex).get<std::set<size_t>>();
-
-					const auto hModSubMenu = CreatePopupMenu();
-
-					if (std::ranges::any_of(modGroup.OptionList, [](const auto& e) { return !e.Description.empty(); })) {
-						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, &modGroup] {
-							std::string description;
-							for (const auto& option : modGroup.OptionList) {
-								if (!description.empty())
-									description += "\n";
-								description += std::format("* {}: {}", option.Name, option.Description.empty() ? "-" : option.Description);
-							}
-							void(Utils::Win32::Thread(L"MsgBoxThread", [description, &groupName = modGroup.GroupName] {
-								MessageBoxW(nullptr, xivres::util::unicode::convert<std::wstring>(description).c_str(), xivres::util::unicode::convert<std::wstring>(groupName).c_str(), MB_OK);
-							}));
-							}), RepopulateMenu_GetMenuTextById(hTemplateEntryMenu, ID_MODDING_TTMP_ENTRY_SHOWDESCRIPTION).c_str());
-						AppendMenuW(hModSubMenu, MF_SEPARATOR, 0, nullptr);
-					}
-
-					for (size_t optionIndex = 0; optionIndex < modGroup.OptionList.size(); ++optionIndex) {
-						const auto& modEntry = modGroup.OptionList[optionIndex];
-
-						std::string description = modEntry.Name.empty() ? "-" : modEntry.Name;
-						if (!modEntry.GroupName.empty() && modEntry.GroupName != modGroup.GroupName)
-							description += std::format(" ({})", modEntry.GroupName);
-
-						AppendMenuW(hModSubMenu, MF_STRING | (optionIndices.contains(optionIndex) ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId(
-							[this, isMulti, pageObjectIndex, modGroupIndex, optionIndices = optionIndices, optionIndex, &ttmpSet, &nestedTtmp, &sqpacks]() mutable {
-								try {
-									{
-										const auto lock = sqpacks->LockTtmps();
-										auto& page = ttmpSet.Choices.at(pageObjectIndex);
-
-										if (isMulti || (GetKeyState(VK_CONTROL) & 0x8000U)) {
-											if (optionIndices.contains(optionIndex))
-												optionIndices.erase(optionIndex);
-											else
-												optionIndices.insert(optionIndex);
-											page[modGroupIndex] = optionIndices;
-										} else
-											page[modGroupIndex] = nlohmann::json::array({ optionIndex });
-									}
-
-									sqpacks->ApplyTtmpChanges(nestedTtmp);
-
-								} catch (const std::exception& e) {
-									Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-								}
-							}), xivres::util::unicode::convert<std::wstring>(description).c_str());
-					}
-
-					if (isMulti) {
-						AppendMenuW(hModSubMenu, MF_SEPARATOR, 0, nullptr);
-						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, pageObjectIndex, modGroupIndex, &modGroup, &ttmpSet, &nestedTtmp, &sqpacks] {
-							try {
-								{
-									const auto lock = sqpacks->LockTtmps();
-									auto& page = ttmpSet.Choices.at(pageObjectIndex);
-									auto newOptions = nlohmann::json::array();
-									for (size_t i = 0; i < modGroup.OptionList.size(); ++i)
-										newOptions.push_back(i);
-									page[modGroupIndex] = std::move(newOptions);
-								}
-								sqpacks->ApplyTtmpChanges(nestedTtmp);
-							} catch (const std::exception& e) {
-								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-							}
-							}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_ENABLEALL).c_str());
-						AppendMenuW(hModSubMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, pageObjectIndex, modGroupIndex, &ttmpSet, &nestedTtmp, &sqpacks] {
-							try {
-								{
-									const auto lock = sqpacks->LockTtmps();
-									auto& page = ttmpSet.Choices.at(pageObjectIndex);
-									page[modGroupIndex] = nlohmann::json::array();
-								}
-								sqpacks->ApplyTtmpChanges(nestedTtmp);
-							} catch (const std::exception& e) {
-								Dll::MessageBoxF(m_hWnd, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, e.what());
-							}
-							}), RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_DISABLEALL).c_str());
-					}
-
-					AppendMenuW(hSubMenu, MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hModSubMenu), xivres::util::unicode::convert<std::wstring>(modGroup.GroupName).c_str());
-				}
-			}
-
-			if (m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay) {
-				std::wstring menuName;
-				menuName.resize(3 * (menuStack.size() - 1), L' ');
-				menuName += nestedTtmp.Path.filename().wstring();
-
-				InsertMenuW(menuStack.front().Menu,
-					menuStack.front().InsertionIndex++,
-					MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
-					reinterpret_cast<UINT_PTR>(hSubMenu),
-					menuName.c_str());
-			} else {
-				InsertMenuW(menuStack.back().Menu,
-					menuStack.back().InsertionIndex++,
-					MF_BYPOSITION | MF_STRING | MF_POPUP | (nestedTtmp.Enabled ? MF_CHECKED : 0),
-					reinterpret_cast<UINT_PTR>(hSubMenu),
-					nestedTtmp.Path.filename().wstring().c_str());
-			}
-			});
-	}
-	if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
-		if (!ready)
-			AppendMenuW(hOuterTtmpMenu, MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY).c_str());
-		DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
-
-		if (!count && ready)
-			AppendMenuW(hOuterTtmpMenu, MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY).c_str());
-		DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
-	} else {
-		if (ready)
-			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
-		if (count || !ready)
-			DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOENTRY, MF_BYCOMMAND);
-	}
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HMENU hParentMenu) {
-	const auto entries = m_config->PatchCode.GetEntries();
-	if (entries->empty())
-		return;
-
-	const auto& digestsVector = m_config->Runtime.Opcodes.EnabledPatchCodes.Value();
-	const std::set digests(digestsVector.begin(), digestsVector.end());
-
-	DeleteMenu(hParentMenu, ID_CONFIGURE_GAMEFIX_EMPTY, MF_BYCOMMAND);
-	const auto mark = m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
-	UINT position = 0;
-	for (const auto& entry : *entries) {
-		const auto active = digests.contains(entry.Digest);
-
-		InsertMenuW(hParentMenu, position++, MF_BYPOSITION | MF_STRING | (active ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, digest = entry.Digest] {
-			auto pcs{ m_config->Runtime.Opcodes.EnabledPatchCodes.Value() };
-			if (const auto it = std::ranges::find(pcs, digest); it == pcs.end())
-				pcs.emplace_back(digest);
-			else
-				pcs.erase(it);
-			m_config->Runtime.Opcodes.EnabledPatchCodes = pcs;
-			}), std::format(L"{}{} ({})", mark, xivres::util::unicode::convert<std::wstring>(entry.Patch.Name), entry.Path.filename().wstring()).c_str());
-	}
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_LoginSessions(HMENU hMenu) {
-	if (!m_config->Runtime.Launch.UseLoginSessionSwitching)
-		return;
-	const auto& loginSessions = m_app.GetLoginSessions();
-	if (!loginSessions)
-		return;
-	const auto sessions = loginSessions->GetSessions();
-	if (sessions.size() < 2)
-		return;
-	const auto selected = loginSessions->GetSelectedIndex();
-
-	// by name; the unnamed launch session sorts first
-	std::vector<std::pair<std::wstring, size_t>> order;
-	for (size_t k = 0; k < sessions.size(); k++)
-		order.emplace_back(xivres::util::unicode::convert<std::wstring>(sessions[k].Alias), k);
-	std::ranges::sort(order, [](const auto& l, const auto& r) {
-		return CompareStringEx(LOCALE_NAME_USER_DEFAULT, NORM_IGNORECASE | SORT_DIGITSASNUMBERS, l.first.c_str(), -1, r.first.c_str(), -1, nullptr, nullptr, 0) == CSTR_LESS_THAN;
-	});
-
-	const auto hSessionMenu = CreatePopupMenu();
-	for (const auto& [alias, k] : order) {
-		std::wstring label;
-		if (alias.empty()) {
-			label = m_config->Runtime.GetStringRes(IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS);
-		} else {
-			for (const auto c : alias) {
-				if (c == L'&')
-					label += L'&';
-				label += c;
-			}
-		}
-		if (sessions[k].Expired)
-			label = m_config->Runtime.FormatStringRes(IDS_MENU_LOGINSESSION_EXPIRED, label);
-		AppendMenuW(hSessionMenu, MF_STRING | (k == selected ? MF_CHECKED : 0) | (sessions[k].Expired ? MF_GRAYED : 0), RepopulateMenu_AllocateMenuId([this, index = k] {
-			if (auto& loginSessions = m_app.GetLoginSessions())
-				loginSessions->Select(index);
-			AskRestartGame(true);
-			}), label.c_str());
-	}
-
-	// a top-level menu right after the one with "Copy Launch Command Line", wherever that ended up
-	for (int i = 0, count = GetMenuItemCount(hMenu); i < count; i++) {
-		if (const auto hSub = GetSubMenu(hMenu, i); hSub && GetMenuState(hSub, ID_RESTART_COPYLAUNCHCOMMANDLINE, MF_BYCOMMAND) != static_cast<UINT>(-1)) {
-			const auto label = std::format(L"{}{}", m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"", m_config->Runtime.GetStringRes(IDS_MENU_LOGINSESSION));
-			InsertMenuW(hMenu, i + 1, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hSessionMenu), label.c_str());
-			return;
-		}
-	}
-	DestroyMenu(hSessionMenu);
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResampler(HMENU hMenu) {
-	// goes right after the framerate submenu, wherever the menu that holds it ended up
-	HMENU hParent{};
-	int index = -1;
-	for (int i = 0, count = GetMenuItemCount(hMenu); i < count && !hParent; i++) {
-		const auto hSub = GetSubMenu(hMenu, i);
-		if (!hSub)
-			continue;
-		for (int j = 0, subCount = GetMenuItemCount(hSub); j < subCount; j++) {
-			if (const auto hFramerate = GetSubMenu(hSub, j); hFramerate && GetMenuState(hFramerate, ID_CONFIGURE_SYNCHRONIZEPROCESSING, MF_BYCOMMAND) != static_cast<UINT>(-1)) {
-				hParent = hSub;
-				index = j + 1;
-				break;
-			}
-		}
-	}
-	if (!hParent)
-		return;
-
-	const auto currentRate = m_config->Runtime.Audio.OutputSamplingRate.Value();
-	const auto useSoxr = m_config->Runtime.Audio.SoxrResampler.Enabled.Value();
-	const auto hRateMenu = CreatePopupMenu();
-
-	// the device is &0, and the rates &1 onwards in order
-	const auto deviceRate = Features::AudioResampler::DefaultDeviceRate();
-	const auto matchLabel = deviceRate
-		? m_config->Runtime.FormatStringRes(IDS_MENU_SAMPLINGRATE_MATCHDEVICE, deviceRate)
-		: std::wstring(m_config->Runtime.GetStringRes(IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN));
-	AppendMenuW(hRateMenu, MF_STRING | (currentRate == Features::AudioResampler::MatchDefaultDevice ? MF_CHECKED : 0),
-		RepopulateMenu_AllocateMenuId([this] { m_config->Runtime.Audio.OutputSamplingRate = Features::AudioResampler::MatchDefaultDevice; }),
-		matchLabel.c_str());
-	for (size_t i = 0; i < std::size(Features::AudioResampler::Choices); i++) {
-		const auto rate = Features::AudioResampler::Choices[i];
-		const auto label = m_config->Runtime.FormatStringRes(
-			rate == Features::AudioResampler::GameDefault ? IDS_MENU_SAMPLINGRATE_RATE_DEFAULT : IDS_MENU_SAMPLINGRATE_RATE,
-			rate, i + 1);
-		AppendMenuW(hRateMenu, MF_STRING | (rate == currentRate ? MF_CHECKED : 0),
-			RepopulateMenu_AllocateMenuId([this, rate] { m_config->Runtime.Audio.OutputSamplingRate = rate; }),
-			label.c_str());
-	}
-
-	const auto mark = m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
-	AppendMenuW(hRateMenu, MF_SEPARATOR, 0, nullptr);
-	AppendMenuW(hRateMenu, MF_STRING | (useSoxr ? MF_CHECKED : 0),
-		RepopulateMenu_AllocateMenuId([this] { m_config->Runtime.Audio.SoxrResampler.Enabled.Toggle(); }),
-		std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_USESOXRRESAMPLER)).c_str());
-
-	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP,
-		reinterpret_cast<UINT_PTR>(hRateMenu), std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_MODDING_SAMPLINGRATE)).c_str());
-}
-
-void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_DirectoryChoices(HMENU hMenu, UINT commandId, const std::vector<std::filesystem::path>& dirs) {
-	if (dirs.size() < 2)
-		return;
-
-	const std::function<std::pair<HMENU, int>(HMENU)> find = [&](HMENU hParent) -> std::pair<HMENU, int> {
-		for (int i = 0, count = GetMenuItemCount(hParent); i < count; i++) {
-			if (const auto hSub = GetSubMenu(hParent, i)) {
-				if (const auto found = find(hSub); found.first)
-					return found;
-			} else if (GetMenuItemID(hParent, i) == commandId) {
-				return {hParent, i};
-			}
-		}
-		return {};
-	};
-	const auto [hParent, index] = find(hMenu);
-	if (!hParent)
-		return;
-
-	const auto hDirMenu = CreatePopupMenu();
-	for (const auto& dir : dirs) {
-		std::wstring label;
-		for (const auto c : dir.wstring()) {
-			if (c == L'&')
-				label += L'&';
-			label += c;
-		}
-		AppendMenuW(hDirMenu, MF_STRING, RepopulateMenu_AllocateMenuId([this, dir] { EnsureAndOpenDirectory(dir); }), label.c_str());
-	}
-
-	const auto label = RepopulateMenu_GetMenuTextById(hParent, commandId);
-	DeleteMenu(hParent, index, MF_BYPOSITION);
-	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP, reinterpret_cast<UINT_PTR>(hDirMenu), label.c_str());
+std::filesystem::path XivAlexander::Apps::MainApp::Window::MainWindow::ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const {
+	// The first listed, where new files go; the default, even if not listed, if none is.
+	if (const auto dirs = ResolveDirectories(configured); !dirs.empty())
+		return dirs.front();
+	return m_config->Init.ResolveConfigStorageDirectoryPath() / defaultName;
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
@@ -1126,28 +684,6 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	{
 		SetMenuState(hMenu, ID_FILE_SHOWCONTROLWINDOW, config.Ui.MainWindow.Show, true);
 		SetMenuState(hMenu, ID_FILE_SHOWLOGGINGWINDOW, config.Ui.LogWindow.Show, true);
-	}
-
-	// Game
-	{
-		SetMenuState(hMenu, ID_RESTART_RESTART, false, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_COPYLAUNCHCOMMANDLINE, false, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_USEXIVALEXANDER, m_bUseXivAlexander, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
-		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
-		const auto languageRegionModifiable = Dll::IsLanguageRegionModifiable();
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_REMEMBER, languageRegionModifiable && m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_ENGLISH, m_gameLanguage == xivres::game_language::English, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_GERMAN, m_gameLanguage == xivres::game_language::German, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_FRENCH, m_gameLanguage == xivres::game_language::French, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_JAPANESE, m_gameLanguage == xivres::game_language::Japanese, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == xivres::game_language::ChineseSimplified, false);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_KOREAN, m_gameLanguage == xivres::game_language::Korean, false);
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_CHINESETRADITIONAL, m_gameLanguage == xivres::game_language::TraditionalChinese, false);
-		SetMenuState(hMenu, ID_RESTART_REGION_REMEMBER, languageRegionModifiable && m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_REGION_JAPAN, m_gameRegion == xivres::game_publisher::SquareEnixJapan, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_REGION_NORTH_AMERICA, m_gameRegion == xivres::game_publisher::SquareEnixAmerica, languageRegionModifiable);
-		SetMenuState(hMenu, ID_RESTART_REGION_EUROPE, m_gameRegion == xivres::game_publisher::SquareEnixEurope, languageRegionModifiable);
 	}
 
 	// Network
@@ -1170,17 +706,14 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 	// Modding
 	{
 		SetMenuState(hMenu, ID_MODDING_ENABLE, config.Modding.Enabled, true);
-		SetMenuState(hMenu, ID_MODDING_USEALTCODECMUSICSUPPORT, config.Audio.UseAltCodecMusicSupport, true);
+		SetMenuState(hMenu, ID_MODDING_USEALTCODECMUSICSUPPORT, config.Modding.UseAltCodecMusicSupport, true);
 		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.Modding.Logging.AllDataFileRead, true);
 
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.Audio.MuteVoice.Battle, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.Audio.MuteVoice.Cm, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.Audio.MuteVoice.Emote, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.Audio.MuteVoice.Line, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.Modding.MuteVoice.Battle, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.Modding.MuteVoice.Cm, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.Modding.MuteVoice.Emote, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.Modding.MuteVoice.Line, true);
 
-		SetMenuState(hMenu, ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY, config.Modding.Ttmp.FlattenSubdirectoryDisplay, true);
-		SetMenuState(hMenu, ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW, config.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView, config.Modding.Ttmp.FlattenSubdirectoryDisplay);
-		SetMenuState(hMenu, ID_MODDING_TTMP_SHOWDEDICATEDMENU, config.Modding.Ttmp.ShowDedicatedMenu, true);
 	}
 
 	// Configure
@@ -1453,104 +986,125 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Restart(int
 			CopyLaunchCommandLine();
 			return;
 
+		default:
+			if (ChooseForRestart(menuId))
+				AskRestartGame(true);
+			return;
+	}
+}
+
+bool XivAlexander::Apps::MainApp::Window::MainWindow::ChooseForRestart(UINT commandId) {
+	// Whether the launch changed, rather than what is remembered of it.
+	switch (commandId) {
 		case ID_RESTART_USEXIVALEXANDER:
 			m_bUseXivAlexander = !m_bUseXivAlexander;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_USEPARAMETEROBFUSCATION:
 			m_bUseParameterObfuscation = !m_bUseParameterObfuscation;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_USEELEVATION:
 			m_bUseElevation = !m_bUseElevation;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_REMEMBER:
 			if (m_config->Runtime.Launch.RememberedLanguage == xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			else
 				m_config->Runtime.Launch.RememberedLanguage = xivres::game_language::Unspecified;
-			return;
+			return false;
 
 		case ID_RESTART_LANGUAGE_ENGLISH:
 			m_gameLanguage = xivres::game_language::English;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_GERMAN:
 			m_gameLanguage = xivres::game_language::German;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_FRENCH:
 			m_gameLanguage = xivres::game_language::French;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_JAPANESE:
 			m_gameLanguage = xivres::game_language::Japanese;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE:
 			m_gameLanguage = xivres::game_language::ChineseSimplified;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_KOREAN:
 			m_gameLanguage = xivres::game_language::Korean;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_LANGUAGE_CHINESETRADITIONAL:
 			m_gameLanguage = xivres::game_language::TraditionalChinese;
 			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
 				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_REGION_REMEMBER:
 			if (m_config->Runtime.Launch.RememberedRegion == xivres::game_publisher::Unspecified)
 				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
 			else
 				m_config->Runtime.Launch.RememberedRegion = xivres::game_publisher::Unspecified;
-			return;
+			return false;
 
 		case ID_RESTART_REGION_JAPAN:
 			m_gameRegion = xivres::game_publisher::SquareEnixJapan;
 			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
 				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_REGION_NORTH_AMERICA:
 			m_gameRegion = xivres::game_publisher::SquareEnixAmerica;
 			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
 				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
-			AskRestartGame(true);
-			return;
+			return true;
 
 		case ID_RESTART_REGION_EUROPE:
 			m_gameRegion = xivres::game_publisher::SquareEnixEurope;
 			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
 				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
-			AskRestartGame(true);
-			return;
+			return true;
+	}
+	return false;
+}
+
+std::pair<bool, bool> XivAlexander::Apps::MainApp::Window::MainWindow::GetRestartChoiceState(UINT commandId) const {
+	// Whether it is chosen, and whether it can be changed.
+	const auto languageRegionModifiable = Dll::IsLanguageRegionModifiable();
+	switch (commandId) {
+		case ID_RESTART_USEXIVALEXANDER: return {m_bUseXivAlexander, !m_launchParameters.empty()};
+		case ID_RESTART_USEPARAMETEROBFUSCATION: return {m_bUseParameterObfuscation, !m_launchParameters.empty()};
+		case ID_RESTART_USEELEVATION: return {m_bUseElevation, !m_launchParameters.empty()};
+		case ID_RESTART_LANGUAGE_REMEMBER: return {languageRegionModifiable && m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified, languageRegionModifiable};
+		case ID_RESTART_LANGUAGE_ENGLISH: return {m_gameLanguage == xivres::game_language::English, languageRegionModifiable};
+		case ID_RESTART_LANGUAGE_GERMAN: return {m_gameLanguage == xivres::game_language::German, languageRegionModifiable};
+		case ID_RESTART_LANGUAGE_FRENCH: return {m_gameLanguage == xivres::game_language::French, languageRegionModifiable};
+		case ID_RESTART_LANGUAGE_JAPANESE: return {m_gameLanguage == xivres::game_language::Japanese, languageRegionModifiable};
+		case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE: return {m_gameLanguage == xivres::game_language::ChineseSimplified, false};
+		case ID_RESTART_LANGUAGE_KOREAN: return {m_gameLanguage == xivres::game_language::Korean, false};
+		case ID_RESTART_LANGUAGE_CHINESETRADITIONAL: return {m_gameLanguage == xivres::game_language::TraditionalChinese, false};
+		case ID_RESTART_REGION_REMEMBER: return {languageRegionModifiable && m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified, languageRegionModifiable};
+		case ID_RESTART_REGION_JAPAN: return {m_gameRegion == xivres::game_publisher::SquareEnixJapan, languageRegionModifiable};
+		case ID_RESTART_REGION_NORTH_AMERICA: return {m_gameRegion == xivres::game_publisher::SquareEnixAmerica, languageRegionModifiable};
+		case ID_RESTART_REGION_EUROPE: return {m_gameRegion == xivres::game_publisher::SquareEnixEurope, languageRegionModifiable};
+		default: return {false, false};
 	}
 }
 
@@ -1629,7 +1183,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 			return;
 
 		case ID_MODDING_USEALTCODECMUSICSUPPORT:
-			config.Audio.UseAltCodecMusicSupport.Toggle();
+			config.Modding.UseAltCodecMusicSupport.Toggle();
 			return;
 
 		case ID_MODDING_LOGALLFILEACCESS:
@@ -1637,31 +1191,19 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 			return;
 
 		case ID_MODDING_MUTEVOICE_BATTLE:
-			config.Audio.MuteVoice.Battle.Toggle();
+			config.Modding.MuteVoice.Battle.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_CM:
-			config.Audio.MuteVoice.Cm.Toggle();
+			config.Modding.MuteVoice.Cm.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_EMOTE:
-			config.Audio.MuteVoice.Emote.Toggle();
+			config.Modding.MuteVoice.Emote.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_LINE:
-			config.Audio.MuteVoice.Line.Toggle();
-			return;
-
-		case ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY:
-			m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay.Toggle();
-			return;
-
-		case ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW:
-			m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView.Toggle();
-			return;
-
-		case ID_MODDING_TTMP_SHOWDEDICATEDMENU:
-			m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu.Toggle();
+			config.Modding.MuteVoice.Line.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_IMPORT: {
@@ -1715,10 +1257,14 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 		}
 
 		case ID_MODDING_TTMP_OPENDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
+			EnsureAndOpenDirectory(ResolvePrimaryDirectory(m_config->Runtime.Modding.Ttmp.SearchDirectories.Value(), L"TexToolsMods"));
 			return;
 
 		case ID_MODDING_TTMP_REFRESH: {
+			if (m_backgroundWorkerThread) {
+				m_ttmpRescanPending = true;
+				return;
+			}
 			if (auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks()) {
 				m_backgroundWorkerThread = Utils::Win32::Thread(L"RescanTtmpOnOtherThread", [this, &sqpacks]{
 					m_backgroundWorkerProgressWindow = std::make_shared<ProgressPopupWindow>(nullptr);
@@ -1734,13 +1280,15 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 					workerThread.Wait();
 					m_backgroundWorkerThread = nullptr;
 					m_backgroundWorkerProgressWindow = nullptr;
+					if (m_ttmpRescanPending.exchange(false))
+						PostMessageW(m_hWnd, WM_COMMAND, ID_MODDING_TTMP_REFRESH, 0);
 					});
 			}
 			return;
 		}
 
 		case ID_MODDING_OPENREPLACEMENTFILEENTRIESDIRECTORY:
-			EnsureAndOpenDirectory(m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries");
+			EnsureAndOpenDirectory(ResolvePrimaryDirectory(m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value(), L"ReplacementFileEntries"));
 			return;
 
 		case ID_MODDING_EXPORTTOTTMP: {
@@ -1794,7 +1342,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 				const std::wstring * pLastStartedTargetFile = nullptr;
 
 				const auto workerThread = Utils::Win32::Thread(L"TtmpExporter", [&] {
-					const auto targetBasePath = m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries";
+					const auto targetBasePath = ResolvePrimaryDirectory(m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value(), L"ReplacementFileEntries");
 					try {
 						for (const auto& target : std::filesystem::recursive_directory_iterator(targetBasePath))
 							if (target.is_regular_file()) {
@@ -1860,6 +1408,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 				workerThread.Wait();
 				m_backgroundWorkerThread = nullptr;
 				m_backgroundWorkerProgressWindow = nullptr;
+				if (m_ttmpRescanPending.exchange(false))
+					PostMessageW(m_hWnd, WM_COMMAND, ID_MODDING_TTMP_REFRESH, 0);
 				});
 			return;
 		}
@@ -1870,13 +1420,18 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 	auto& config = m_config->Runtime;
 
 	switch (menuId) {
+		case ID_CONFIGURE_SETTINGS:
+			// The settings are in this window.
+			m_config->Runtime.Ui.MainWindow.Show = true;
+			SetForegroundWindow(m_hWnd);
+			return;
+
 		case ID_CONFIGURE_EDITRUNTIMECONFIGURATION:
 			if (m_runtimeConfigEditor && !m_runtimeConfigEditor->IsDestroyed())
 				SetForegroundWindow(m_runtimeConfigEditor->Handle());
 			else {
-				if (m_runtimeConfigEditor)
-					delete m_runtimeConfigEditor;
-				m_runtimeConfigEditor = new ConfigWindow(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
+				m_runtimeConfigEditor.reset();
+				m_runtimeConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_RUNTIME_CONFIG_EDITOR, &m_config->Runtime);
 			}
 			return;
 
@@ -1884,9 +1439,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 			if (m_gameConfigEditor && !m_gameConfigEditor->IsDestroyed())
 				SetForegroundWindow(m_gameConfigEditor->Handle());
 			else {
-				if (m_gameConfigEditor)
-					delete m_gameConfigEditor;
-				m_gameConfigEditor = new ConfigWindow(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
+				m_gameConfigEditor.reset();
+				m_gameConfigEditor = std::make_unique<ConfigWindow>(IDS_WINDOW_OPCODE_CONFIG_EDITOR, &m_config->Game);
 			}
 			return;
 
@@ -2046,7 +1600,7 @@ std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Window::MainWind
 }
 
 std::string XivAlexander::Apps::MainApp::Window::MainWindow::InstallTTMP(const std::filesystem::path& path, ProgressPopupWindow& progressWindow) {
-	const auto targetDirectory = m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods";
+	const auto targetDirectory = ResolvePrimaryDirectory(m_config->Runtime.Modding.Ttmp.SearchDirectories.Value(), L"TexToolsMods");
 	if (path.empty())
 		return "";
 
@@ -2388,6 +1942,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::BatchTtmpOperation(Feature
 					workerThread.Wait();
 					m_backgroundWorkerThread = nullptr;
 					m_backgroundWorkerProgressWindow = nullptr;
+					if (m_ttmpRescanPending.exchange(false))
+						PostMessageW(m_hWnd, WM_COMMAND, ID_MODDING_TTMP_REFRESH, 0);
 					});
 			}
 		}

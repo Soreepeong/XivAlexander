@@ -8,6 +8,7 @@
 
 namespace XivAlexander {
 	struct PathReplacementRule {
+		bool Enabled = true;
 		std::string From;
 		std::string To;
 		bool Stop = true;
@@ -25,6 +26,7 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, PathReplacementRule&);
 
 	struct LogPathFilter {
+		bool Enabled = true;
 		std::string Pattern;
 		bool Include = true;
 
@@ -39,4 +41,17 @@ namespace XivAlexander {
 
 	void to_json(nlohmann::json&, const LogPathFilter&);
 	void from_json(const nlohmann::json&, LogPathFilter&);
+
+	/// The language of the voice lines of a speaker of cutscene dialogue, by name; an empty name stands for anyone unnamed.
+	/// The language is the voice files' suffix (ja, en, ...).
+	struct ForcedCharacterLanguage {
+		bool Enabled = true;
+		std::string Name;
+		std::string Language;
+
+		bool operator==(const ForcedCharacterLanguage&) const = default;
+	};
+
+	void to_json(nlohmann::json&, const ForcedCharacterLanguage&);
+	void from_json(const nlohmann::json&, ForcedCharacterLanguage&);
 }

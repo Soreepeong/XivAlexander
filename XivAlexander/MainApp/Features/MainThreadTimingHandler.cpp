@@ -41,10 +41,10 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		, Logger(Misc::Logger::Acquire()) {
 
 		try {
-			Game::Resolved::MessageLoopFn messageLoop;
-			if (const auto status = Game::Resolved::MessageLoopFunction.Resolve(messageLoop); status != Game::Signatures::ResolveError::Ok)
+			Game::Resolved::MainThreadTimingHandlerFunctions functions;
+			if (const auto status = Game::Resolved::MainThreadTimingHandler.Resolve(functions); status != Game::Signatures::ResolveError::Ok)
 				throw std::runtime_error(status.Detail);
-			SingleMessageLoop.emplace("SingleMessageLoop", messageLoop);
+			SingleMessageLoop.emplace("SingleMessageLoop", functions.SingleMessageLoop);
 			Cleanup += SingleMessageLoop->SetHook([this]() { BeforePeekMessage(); return SingleMessageLoop->bridge(); });
 
 		} catch (const std::exception& e) {
@@ -121,20 +121,11 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 						rt.FramerateControl.Lock.MaximumRenderIntervalDeviation
 					));
 					if (frameInterval && LastLockedFramerateRenderIntervalUs && LastLockedFramerateRenderIntervalUs != frameInterval) {
-						const auto prevRenderTimestamp = nowUs / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs + frameInterval;
-						int64_t minDiff = UINT64_MAX;
-						int64_t minDriftUs = 0;
-						for (int64_t i = 0; i < frameInterval; ++i) {
-							const auto nextRenderTimestamp = (1 + (nowUs - i) / frameInterval) * frameInterval + i;
-							if (nextRenderTimestamp < prevRenderTimestamp)
-								continue;
-							const auto diff = nextRenderTimestamp - prevRenderTimestamp;
-							if (diff < minDiff) {
-								minDiff = diff;
-								minDriftUs = i;
-							}
-						}
-						LastLockedFramerateRenderDriftUs = minDriftUs;
+						// The frames go on: the first on the new interval comes one new interval after the last one on the old (as
+						// the wait below puts frames), or as soon as it can if that has passed. The wait below then lands on it.
+						const auto lastRenderUs = (nowUs - LastLockedFramerateRenderDriftUs) / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs;
+						const auto nextRenderUs = std::max(lastRenderUs + frameInterval, nowUs + 1);
+						LastLockedFramerateRenderDriftUs = nextRenderUs % frameInterval;
 					}
 					waitForUs = LastLockedFramerateRenderIntervalUs = frameInterval;
 					waitForDrift = LastLockedFramerateRenderDriftUs;

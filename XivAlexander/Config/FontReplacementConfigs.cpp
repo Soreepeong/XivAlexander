@@ -27,6 +27,21 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilyFont&
 	Read(j, "Style", v.Style);
 }
 
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource& v) {
+	j = nlohmann::json::object({{"Enabled", v.Enabled}});
+	if (v.IsPreset())
+		j["Preset"] = v.Preset;
+	else
+		j["Font"] = v.Font;
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySource& v) {
+	v = {};
+	Read(j, "Enabled", v.Enabled);
+	Read(j, "Preset", v.Preset);
+	Read(j, "Font", v.Font);
+}
+
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementEdgeConfig& v) {
 	j = nlohmann::json::object({
 		{"Scale", v.Scale},

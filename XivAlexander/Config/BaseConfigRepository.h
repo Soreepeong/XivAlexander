@@ -47,6 +47,9 @@ namespace XivAlexander {
 		ConfigNode(const ConfigNode&) = delete;
 		ConfigNode& operator=(const ConfigNode&) = delete;
 		virtual ~ConfigNode() = default;
+
+		/// The items and groups declared in this node, in declaration order.
+		[[nodiscard]] const std::vector<ConfigItemBase*>& Items() const { return m_items; }
 	};
 
 	class ConfigItemBase {

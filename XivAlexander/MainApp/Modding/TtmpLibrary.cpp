@@ -57,6 +57,104 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				reservations.emplace_back(entry.FullPath, static_cast<uint32_t>(entry.ModSize));
 			});
 		}
+
+		// Something else still having a file open when a directory is renamed is usually brief: a read that was already
+		// past the gate, an antivirus scan, or Explorer generating a thumbnail.
+		constexpr auto RenameRetryTimeout = std::chrono::seconds(3);
+		constexpr DWORD RenameRetryIntervalMs = 50;
+
+		std::string ToUtf8(const std::filesystem::path& path) {
+			return xivres::util::unicode::convert<std::string>(path.wstring());
+		}
+
+		void ValidateName(const std::wstring& name) {
+			if (name.empty())
+				throw std::invalid_argument("The name cannot be empty.");
+			if (name == L"." || name == L"..")
+				throw std::invalid_argument("\".\" and \"..\" cannot be used as a name.");
+			if (name.size() > 255)
+				throw std::invalid_argument("The name is too long.");
+			if (std::ranges::any_of(name, [](wchar_t c) { return c < 32 || std::wstring_view(L"<>:\"/\\|?*").find(c) != std::wstring_view::npos; }))
+				throw std::invalid_argument("The name cannot contain any of < > : \" / \\ | ? * or control characters.");
+
+			// Windows would silently drop these, so the directory would end up with a name different from what was asked.
+			if (name.back() == L' ' || name.back() == L'.')
+				throw std::invalid_argument("The name cannot end with a space or a period.");
+
+			auto stem = name.substr(0, name.find(L'.'));
+			while (!stem.empty() && stem.back() == L' ')
+				stem.pop_back();
+			std::ranges::transform(stem, stem.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
+			if (stem == L"CON" || stem == L"PRN" || stem == L"AUX" || stem == L"NUL"
+				|| (stem.size() == 4 && (stem.starts_with(L"COM") || stem.starts_with(L"LPT")) && stem[3] >= L'1' && stem[3] <= L'9'))
+				throw std::invalid_argument("The name is reserved by Windows.");
+		}
+
+		/// \returns Where path ends up when the directory from, which contains it, is moved to to.
+		std::filesystem::path Rebase(const std::filesystem::path& path, const std::filesystem::path& from, const std::filesystem::path& to) {
+			const auto relative = path.lexically_relative(from);
+			if (relative.empty() || relative == L".")
+				return to;
+			return to / relative;
+		}
+
+		/// Releases the data files of the packs, so that their directories can be renamed.
+		void ReleaseDataStreams(const std::vector<NestedTtmp*>& packs) {
+			for (const auto pack : packs) {
+				if (const auto stream = dynamic_cast<const xivres::oplocking_file_stream*>(pack->Ttmp->DataStream.get()))
+					stream->release();
+			}
+		}
+
+		/// Renames a directory, retrying for a while if a file inside is still open.
+		/// \param beforeEachTry Called before every attempt, to let go of the files again in case something opened them.
+		void RenameDirectory(const std::filesystem::path& from, const std::filesystem::path& to, const std::function<void()>& beforeEachTry) {
+			const auto until = std::chrono::steady_clock::now() + RenameRetryTimeout;
+			while (true) {
+				beforeEachTry();
+				if (MoveFileExW(from.c_str(), to.c_str(), 0))
+					return;
+
+				const auto error = GetLastError();
+				if (error == ERROR_NOT_SAME_DEVICE)
+					throw std::runtime_error("Folders cannot be moved to a different drive.");
+				if ((error != ERROR_ACCESS_DENIED && error != ERROR_SHARING_VIOLATION && error != ERROR_LOCK_VIOLATION)
+					|| std::chrono::steady_clock::now() >= until)
+					throw Utils::Win32::Error(error, std::format("Failed to move {} to {}", ToUtf8(from), ToUtf8(to)));
+				Sleep(RenameRetryIntervalMs);
+			}
+		}
+
+		/// \returns Contents of order.json in dir: names of the directories in it, mapped to where each goes among its
+		/// siblings, lower first. An empty object if there is no such file.
+		nlohmann::json LoadOrderFile(const std::filesystem::path& dir) {
+			const auto path = dir / "order.json";
+			if (!exists(path))
+				return nlohmann::json::object();
+			auto order = Utils::ParseJsonFromFile(path);
+			if (!order.is_object())
+				throw std::runtime_error("not a JSON object");
+			return order;
+		}
+
+		/// Renames or removes a name in order.json of dir, if it is there.
+		void UpdateOrderFile(const std::filesystem::path& dir, const std::filesystem::path& oldName, const std::optional<std::filesystem::path>& newName, const std::shared_ptr<Misc::Logger>& logger) {
+			try {
+				auto order = LoadOrderFile(dir);
+				const auto it = order.find(ToUtf8(oldName));
+				if (it == order.end())
+					return;
+
+				auto index = *it;
+				order.erase(it);
+				if (newName)
+					order[ToUtf8(*newName)] = std::move(index);
+				Utils::SaveJsonToFile(dir / "order.json", order);
+			} catch (const std::exception& e) {
+				logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Failed to update {}: {}", (dir / "order.json").wstring(), e.what());
+			}
+		}
 	}
 
 	TtmpLibrary::TtmpLibrary(std::filesystem::path sqpackPath)
@@ -108,7 +206,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	NestedTtmp* TtmpLibrary::Add(const std::filesystem::path& ttmplPath, Window::ProgressPopupWindow& progressWindow) {
 		auto folder = FindContainer(ttmplPath, true);
-		if (!folder || folder->Find(ttmplPath))  // already exists
+		if (!folder || folder->Find(ttmplPath.parent_path()))  // already exists
 			return nullptr;
 
 		std::shared_ptr<NestedTtmp> added;
@@ -128,7 +226,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		auto folder = FindContainer(ttmplPath, false);
 		if (!folder)
 			return;
-		auto ttmp = folder->Find(ttmplPath);
+		auto ttmp = folder->Find(ttmplPath.parent_path());
 		if (!ttmp || !ttmp->Ttmp)
 			return;
 		remove(ttmp->Ttmp->ListPath);
@@ -136,64 +234,17 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	void TtmpLibrary::ReconcileFiles() {
-		m_root->Traverse(false, [this](NestedTtmp& nestedTtmp) { ReconcileFiles(nestedTtmp); });
+		// A pack whose list is gone was deleted. This runs once what it replaced is known to be put back, so its data
+		// file can go too; the node goes as well, as its data stream is no more.
+		m_root->TraverseInterruptible(false, [](NestedTtmp& nestedTtmp) {
+			if (!nestedTtmp.Ttmp || exists(nestedTtmp.Ttmp->ListPath))
+				return NestedTtmp::Continue;
+
+			nestedTtmp.Ttmp->TryCleanupUnusedFiles();
+			nestedTtmp.Parent = nullptr;
+			return NestedTtmp::Delete;
+		});
 		m_root->RemoveEmptyChildren();
-	}
-
-	void TtmpLibrary::ReconcileFiles(NestedTtmp& nestedTtmp) {
-		if (!nestedTtmp.Ttmp)
-			return;
-		TtmpSet& ttmp = *nestedTtmp.Ttmp;
-
-		if (!exists(ttmp.ListPath)) {
-			ttmp.TryCleanupUnusedFiles();
-			return;
-		}
-		if (!nestedTtmp.RenameTo)
-			return;
-
-		try {
-			create_directories(*nestedTtmp.RenameTo);
-
-			const auto renameToDirHandle = Utils::Win32::Handle::FromCreateFile(*nestedTtmp.RenameTo, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
-
-			const auto newListPath = (*nestedTtmp.RenameTo / L"TTMPL.mpl").wstring();
-			std::vector<char> renameInfoBuffer;
-			renameInfoBuffer.resize(sizeof(FILE_RENAME_INFO) + newListPath.size());
-			auto renameInfo = *reinterpret_cast<FILE_RENAME_INFO*>(&renameInfoBuffer[0]);
-			wcsncpy_s(renameInfo.FileName, static_cast<DWORD>(newListPath.size()), newListPath.data(), newListPath.size());
-			ttmp.DataStream.reset();
-			{
-				const auto dataFile = Utils::Win32::Handle::FromCreateFile(ttmp.DataPath, GENERIC_READ | DELETE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
-				SetFileInformationByHandle(dataFile, FileRenameInfo, &renameInfoBuffer[0], static_cast<DWORD>(renameInfoBuffer.size()));
-			}
-
-			std::vector<std::string> sidecars{"TTMPD.mpd", "compression"};
-			std::ranges::copy(TtmpSet::DisableMarkerNames(), std::back_inserter(sidecars));
-			for (const auto& profile : m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value()) {
-				if (profile.FileName.empty())
-					continue;
-				sidecars.emplace_back(profile.FileName);
-				std::ranges::copy(TtmpSet::DisableMarkerNames(profile.FileName), std::back_inserter(sidecars));
-			}
-			for (const auto& path : sidecars) {
-				const auto oldPath = ttmp.ListPath.parent_path() / path;
-				if (exists(oldPath))
-					std::filesystem::rename(oldPath, *nestedTtmp.RenameTo / path);
-			}
-			try {
-				remove(ttmp.ListPath.parent_path());
-			} catch (...) {
-				// pass
-			}
-			ttmp.ListPath = newListPath;
-			nestedTtmp.RenameTo.reset();
-		} catch (const std::exception& e) {
-			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
-				"Failed to move {} to {}: {}",
-				ttmp.ListPath.wstring(), nestedTtmp.RenameTo->wstring(), e.what());
-			nestedTtmp.RenameTo.reset();
-		}
 	}
 
 	void TtmpLibrary::SaveChoices(NestedTtmp& ttmp) const {
@@ -237,14 +288,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	std::vector<std::filesystem::path> TtmpLibrary::GetPossibleTtmpDirs() const {
 		std::vector<std::filesystem::path> dirs;
-		dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
-		dirs.emplace_back(m_sqpackPath / "TexToolsMods");
-
-		for (const auto& dir : m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.Value())
-			dirs.emplace_back(Config::TranslatePath(dir));
+		for (const auto& dir : m_config->Runtime.Modding.Ttmp.SearchDirectories.Value()) {
+			if (!dir.empty())
+				dirs.emplace_back(m_config->TranslateDirectoryPath(dir, m_sqpackPath));
+		}
 
 		for (auto it = dirs.begin(); it != dirs.end();) {
-			if (!exists(*it) || !is_directory(*it) || it->empty())
+			if (it->empty() || !is_directory(*it))
 				it = dirs.erase(it);
 			else
 				++it;
@@ -345,7 +395,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			auto dataStream = std::make_shared<xivres::oplocking_file_stream>(ttmpdPath, false);
 			if (dataStream->done())
 				throw std::runtime_error(std::format("failed to open {}", ttmpdPath.string()));
-			dataStream->emplace_tag<ModpackNameTag>(list.Name);
+			dataStream->emplace_tag<ModpackNameTag>(list.Name.empty() ? xivres::util::unicode::convert<std::string>(ttmpDir.filename().wstring()) : list.Name);
 
 			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
 				.Path = ttmpDir,
@@ -377,49 +427,303 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::shared_ptr<NestedTtmp> TtmpLibrary::FindContainer(const std::filesystem::path& ttmpl, bool create) {
-		std::vector<std::filesystem::path> dirStack;
-		auto rooted = false;
-		for (const auto& dir : GetPossibleTtmpDirs()) {
-			dirStack.clear();
-			auto ttmpRoot{ttmpl};
-			while (ttmpRoot != ttmpRoot.parent_path()) {
-				ttmpRoot = ttmpRoot.parent_path();
-
-				std::error_code ec;
-				if (equivalent(dir, ttmpRoot, ec) && !ec) {
-					rooted = true;
-					break;
-				}
-				dirStack.emplace_back(ttmpRoot);
-			}
-			if (rooted)
-				break;
-		}
-
-		if (!rooted) {
-			dirStack.clear();
+		// The folder holding the directory holding TTMPL.mpl.
+		const auto folderDir = ttmpl.parent_path().parent_path();
+		if (!ResolveFolderChain(folderDir)) {
 			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
 				"{} is not in one of ttmp root folders.", ttmpl.wstring());
 			return nullptr;
 		}
+		return FindFolder(folderDir, create);
+	}
+
+	std::shared_ptr<NestedTtmp> TtmpLibrary::FindFolder(const std::filesystem::path& dir, bool create) {
+		const auto chain = ResolveFolderChain(dir);
+		if (!chain)
+			return nullptr;
 
 		std::shared_ptr folder{m_root};
-		while (!dirStack.empty()) {
-			auto subfolder = folder->Find(dirStack.back());
+		for (const auto& subdir : std::ranges::reverse_view(chain->Dirs)) {
+			auto subfolder = folder->Find(subdir);
 			if (!subfolder) {
-				if (!create)
+				if (!create || exists(subdir / "TTMPL.mpl"))
 					return nullptr;
 				subfolder = folder->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
-					.Path = dirStack.back(),
+					.Index = LookupOrderIndex(*folder, subdir.filename()),
+					.Path = subdir,
 					.Parent = folder,
+					.Enabled = !IsDisabled(subdir),
 					.Children = std::vector<std::shared_ptr<NestedTtmp>>{},
 				}));
 				folder->Sort();
 			}
-			folder = subfolder;
-			dirStack.pop_back();
+			if (!subfolder->IsGroup())
+				return nullptr;
+			folder = std::move(subfolder);
 		}
 
 		return folder;
+	}
+
+	std::optional<TtmpLibrary::FolderChain> TtmpLibrary::ResolveFolderChain(const std::filesystem::path& dir) const {
+		for (const auto& root : GetPossibleTtmpDirs()) {
+			FolderChain chain{.Root = root};
+			for (auto current = dir;; current = current.parent_path()) {
+				if (std::error_code ec; equivalent(root, current, ec) && !ec)
+					return chain;
+				if (current == current.parent_path())
+					break;
+				chain.Dirs.emplace_back(current);
+			}
+		}
+		return std::nullopt;
+	}
+
+	bool TtmpLibrary::Contains(const NestedTtmp& item) const {
+		for (auto current = &item; current != m_root.get();) {
+			const auto parent = current->Parent.get();
+			if (!parent || !parent->Children || std::ranges::none_of(*parent->Children, [current](const auto& c) { return c.get() == current; }))
+				return false;
+			current = parent;
+		}
+		return true;
+	}
+
+	uint64_t TtmpLibrary::LookupOrderIndex(const NestedTtmp& folder, const std::filesystem::path& name) const {
+		// Same as RescanTree: order.json of every search directory applies to the whole top level, later ones winning.
+		auto index = UINT64_MAX;
+		for (const auto& dir : &folder == m_root.get() ? GetPossibleTtmpDirs() : std::vector{folder.Path}) {
+			try {
+				const auto order = LoadOrderFile(dir);
+				if (const auto it = order.find(ToUtf8(name)); it != order.end())
+					index = it->get<uint64_t>();
+			} catch (const std::exception&) {
+				// RescanTree reports these.
+			}
+		}
+		return index;
+	}
+
+	void TtmpLibrary::ValidateRename(const NestedTtmp& item, const std::wstring& newName) const {
+		if (&item == m_root.get() || !Contains(item))
+			throw std::invalid_argument("The item is no longer in the library. Rescan and try again.");
+		ValidateName(newName);
+
+		const auto newPath = item.Path.parent_path() / newName;
+		if (std::error_code ec; exists(newPath) && !(equivalent(newPath, item.Path, ec) && !ec))
+			throw std::invalid_argument(std::format("There already is something named \"{}\" in that folder.", ToUtf8(newName)));
+	}
+
+	bool TtmpLibrary::Rename(const std::shared_ptr<NestedTtmp>& item, const std::wstring& newName) {
+		ValidateRename(*item, newName);
+
+		const auto oldPath = item->Path;
+		if (oldPath.filename() == newName)
+			return false;
+
+		const auto newPath = oldPath.parent_path() / newName;
+		try {
+			Relocate(*item, newPath);
+		} catch (const std::exception& e) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to rename {} to {}: {}", oldPath.wstring(), newName, e.what());
+			throw;
+		}
+		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+			"Renamed {} to {}", oldPath.wstring(), newName);
+
+		UpdateOrderFile(oldPath.parent_path(), oldPath.filename(), newPath.filename(), m_logger);
+		item->Parent->Sort();
+		return true;
+	}
+
+	void TtmpLibrary::ValidateMove(const NestedTtmp& item, const std::filesystem::path& folderDir) const {
+		if (&item == m_root.get() || !Contains(item))
+			throw std::invalid_argument("The item is no longer in the library. Rescan and try again.");
+		if (!is_directory(folderDir))
+			throw std::invalid_argument("The destination folder does not exist.");
+
+		const auto chain = ResolveFolderChain(folderDir);
+		if (!chain)
+			throw std::invalid_argument("The destination is not in any of the folders TexTools ModPacks are looked for in.");
+		for (const auto& dir : chain->Dirs) {
+			if (std::error_code ec; equivalent(dir, item.Path, ec) && !ec)
+				throw std::invalid_argument("A folder cannot be moved into itself or into a folder inside it.");
+			if (exists(dir / "TTMPL.mpl"))
+				throw std::invalid_argument("Things cannot be moved into a ModPack.");
+		}
+
+		if (std::error_code ec; equivalent(folderDir, item.Path.parent_path(), ec) && !ec)
+			return;
+		if (exists(folderDir / item.Path.filename()))
+			throw std::invalid_argument(std::format("There already is something named \"{}\" in the destination folder.", ToUtf8(item.Path.filename())));
+	}
+
+	bool TtmpLibrary::Move(const std::shared_ptr<NestedTtmp>& item, const std::filesystem::path& folderDir) {
+		ValidateMove(*item, folderDir);
+		if (std::error_code ec; equivalent(folderDir, item->Path.parent_path(), ec) && !ec)
+			return false;
+
+		const auto oldPath = item->Path;
+		const auto name = oldPath.filename();
+		const auto folder = FindFolder(folderDir, true);
+		try {
+			if (!folder)
+				throw std::runtime_error("The destination folder could not be found.");
+
+			// Spelled the way the scanner would have it, so that paths in the tree keep sharing their prefixes.
+			Relocate(*item, (folder == m_root ? ResolveFolderChain(folderDir)->Root : folder->Path) / name);
+		} catch (const std::exception& e) {
+			// Drop the folders FindFolder may have just added for the destination.
+			m_root->RemoveEmptyChildren();
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to move {} into {}: {}", oldPath.wstring(), folderDir.wstring(), e.what());
+			throw;
+		}
+		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+			"Moved {} to {}", oldPath.wstring(), item->Path.wstring());
+
+		UpdateOrderFile(oldPath.parent_path(), name, std::nullopt, m_logger);
+
+		auto& oldSiblings = *item->Parent->Children;
+		oldSiblings.erase(std::ranges::find(oldSiblings, item));
+		item->Parent = folder;
+		item->Index = LookupOrderIndex(*folder, name);
+		folder->Children->emplace_back(item);
+		folder->Sort();
+		return true;
+	}
+
+	std::filesystem::path TtmpLibrary::CreateFolder(const std::filesystem::path& parentDir, const std::wstring& name) const {
+		ValidateName(name);
+		if (!is_directory(parentDir))
+			throw std::invalid_argument("The parent folder does not exist.");
+
+		const auto chain = ResolveFolderChain(parentDir);
+		if (!chain)
+			throw std::invalid_argument("The parent folder is not in any of the folders TexTools ModPacks are looked for in.");
+		if (std::ranges::any_of(chain->Dirs, [](const auto& dir) { return exists(dir / "TTMPL.mpl"); }))
+			throw std::invalid_argument("Folders cannot be created inside a ModPack.");
+
+		const auto path = parentDir / name;
+		if (exists(path))
+			throw std::invalid_argument(std::format("There already is something named \"{}\" in that folder.", ToUtf8(name)));
+		if (std::error_code ec; !create_directory(path, ec)) {
+			m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+				"Failed to create folder {}: {}", path.wstring(), ec.message());
+			throw std::runtime_error(std::format("Failed to create folder {}: {}", ToUtf8(path), ec.message()));
+		}
+
+		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks, "Created folder {}", path.wstring());
+		return path;
+	}
+
+	void TtmpLibrary::ValidateOrder(const NestedTtmp& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) const {
+		if (!folder.IsGroup() || !Contains(folder))
+			throw std::invalid_argument("The folder is no longer in the library. Rescan and try again.");
+
+		std::set<const NestedTtmp*> remaining;
+		for (const auto& child : *folder.Children)
+			remaining.insert(child.get());
+		for (const auto& child : children) {
+			if (!remaining.erase(child.get()))
+				throw std::invalid_argument("The new order must list every item in the folder exactly once.");
+		}
+		if (!remaining.empty())
+			throw std::invalid_argument("The new order must list every item in the folder exactly once.");
+	}
+
+	void TtmpLibrary::SetOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) {
+		ValidateOrder(*folder, children);
+
+		// The top level gathers several search directories, each with its own order.json; every child goes into the
+		// one of the directory it is in, with its position counted across the whole top level.
+		std::map<std::filesystem::path, std::vector<std::pair<std::filesystem::path, uint64_t>>> entriesByDir;
+		for (size_t i = 0; i < children.size(); ++i)
+			entriesByDir[children[i]->Path.parent_path()].emplace_back(children[i]->Path.filename(), i);
+
+		for (const auto& [dir, entries] : entriesByDir) {
+			const auto orderPath = dir / "order.json";
+			try {
+				auto order = nlohmann::json::object();
+				try {
+					order = LoadOrderFile(dir);
+				} catch (const std::exception& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+						"Replacing unreadable {}: {}", orderPath.wstring(), e.what());
+				}
+
+				// Keep the places of directories not in the tree, such as packs that failed to load, but forget those
+				// of directories that are gone, so that whatever gets that name later does not inherit the place.
+				for (auto it = order.begin(); it != order.end();) {
+					if (is_directory(dir / xivres::util::unicode::convert<std::wstring>(it.key())))
+						++it;
+					else
+						it = order.erase(it);
+				}
+				for (const auto& [name, index] : entries)
+					order[ToUtf8(name)] = index;
+				Utils::SaveJsonToFile(orderPath, order);
+			} catch (const std::exception& e) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"Failed to save {}: {}", orderPath.wstring(), e.what());
+				throw std::runtime_error(std::format("Failed to save {}: {}", ToUtf8(orderPath), e.what()));
+			}
+		}
+
+		for (size_t i = 0; i < children.size(); ++i)
+			children[i]->Index = i;
+		folder->Sort();
+		m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+			"Saved the order of {} items in {}", children.size(), folder->Path.empty() ? std::wstring(L"the top level") : folder->Path.wstring());
+	}
+
+	void TtmpLibrary::Relocate(NestedTtmp& item, const std::filesystem::path& newPath) {
+		const auto oldPath = item.Path;
+
+		std::vector<NestedTtmp*> packs;
+		item.Traverse(false, [&packs](NestedTtmp& t) {
+			if (t.Ttmp && t.Ttmp->DataStream)
+				packs.emplace_back(&t);
+		});
+
+		// No directory with an open file inside can be renamed. Reads are stopped by the caller, so once released,
+		// the data files stay closed; the old streams, if ever read again, find nothing and read zeroes.
+		RenameDirectory(oldPath, newPath, [&packs] { ReleaseDataStreams(packs); });
+
+		// Open the data files at their new place before touching the tree, so that if one fails, moving the directory
+		// back leaves everything as it was.
+		std::vector<std::shared_ptr<xivres::stream>> streams;
+		try {
+			for (const auto pack : packs) {
+				const auto dataPath = Rebase(pack->Ttmp->DataPath, oldPath, newPath);
+				auto stream = std::make_shared<xivres::oplocking_file_stream>(dataPath, false);
+				if (stream->done())
+					throw std::runtime_error(std::format("Failed to open {}", ToUtf8(dataPath)));
+				stream->emplace_tag<ModpackNameTag>(pack->Ttmp->List.Name.empty() ? ToUtf8(dataPath.parent_path().filename()) : pack->Ttmp->List.Name);
+				streams.emplace_back(std::move(stream));
+			}
+		} catch (const std::exception& e) {
+			// The new streams hold the files open.
+			streams.clear();
+			try {
+				RenameDirectory(newPath, oldPath, [] {});
+			} catch (const std::exception& e2) {
+				m_logger->Format<LogLevel::Error>(LogCategory::VirtualSqPacks,
+					"Failed to move {} back to {}: {}", newPath.wstring(), oldPath.wstring(), e2.what());
+				throw std::runtime_error(std::format("{}; moving it back failed too ({}). Rescan TexTools ModPacks.", e.what(), e2.what()));
+			}
+			throw;
+		}
+
+		item.Traverse(false, [&](NestedTtmp& t) {
+			t.Path = Rebase(t.Path, oldPath, newPath);
+		});
+		for (size_t i = 0; i < packs.size(); ++i) {
+			auto& ttmp = *packs[i]->Ttmp;
+			ttmp.ListPath = Rebase(ttmp.ListPath, oldPath, newPath);
+			ttmp.DataPath = Rebase(ttmp.DataPath, oldPath, newPath);
+			ttmp.DataStream = std::move(streams[i]);
+		}
 	}
 }

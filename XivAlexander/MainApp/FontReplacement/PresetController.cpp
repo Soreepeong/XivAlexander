@@ -152,8 +152,7 @@ void FontReplacement::PresetController::ThreadBody() {
 void FontReplacement::PresetController::Load(bool keepOnFailure) {
 	const auto& settings = m_config->Runtime.FontReplacement.Faces;
 	const auto folder = settings.PresetFolder.Value();
-	const auto families = settings.FamilyPresets.Value();
-	const auto fonts = settings.FamilyFonts.Value();
+	const auto families = settings.FamilySources.Value();
 	const bool monospacedDigits = settings.MonospacedDigits;
 	const bool systemFallback = settings.SystemFallback;
 
@@ -173,23 +172,25 @@ void FontReplacement::PresetController::Load(bool keepOnFailure) {
 		}
 	};
 
+	// Each family's sources in order, the later over the earlier; of a preset, only the family's faces.
 	Presets::Faces preset;
-	for (const auto& [family, selected] : families) {
-		Presets::Faces combined;
-		for (const auto& relative : selected) {
-			if (const auto& faces = read(relative))
-				Presets::Combine(combined, *faces);
-		}
-		Presets::Combine(preset, Presets::OnlyFamily(combined, family));
-	}
-
-	// The families' system fonts, over their presets.
 	auto fontFamilies = 0;
-	for (const auto& [family, font] : fonts) {
-		if (const auto generated = MakeFaces(family, font, monospacedDigits, failures)) {
-			Presets::Combine(preset, *generated);
-			fontFamilies++;
+	for (const auto& [family, sources] : families) {
+		Presets::Faces combined;
+		auto usesFont = false;
+		for (const auto& source : sources) {
+			if (!source.Enabled)
+				continue;
+			if (source.IsPreset()) {
+				if (const auto& faces = read(source.Preset))
+					Presets::Combine(combined, Presets::FacesOfFamily(*faces, family));
+			} else if (const auto generated = MakeFaces(family, source.Font, monospacedDigits, failures)) {
+				Presets::Combine(combined, *generated);
+				usesFont = true;
+			}
 		}
+		Presets::Combine(preset, combined);
+		fontFamilies += usesFont ? 1 : 0;
 	}
 
 	std::string failureText;

@@ -17,7 +17,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		std::optional<std::vector<std::shared_ptr<NestedTtmp>>> Children;
 		std::optional<TtmpSet> Ttmp;
-		std::optional<std::filesystem::path> RenameTo;
 
 		bool IsGroup() const {
 			return Children.has_value();

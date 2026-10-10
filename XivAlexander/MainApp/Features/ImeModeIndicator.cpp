@@ -27,7 +27,7 @@ namespace {
 struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 	const std::shared_ptr<Misc::Logger> Logger;
 
-	Game::Resolved::ImeModeGetter Getter;
+	Game::Resolved::ImeModeIndicatorFunctions Getter;
 	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::ImeModeGetterFn>> GetImeMode;
 	Misc::Hooks::ImportedFunction<BOOL, HIMC, DWORD, DWORD> ImmSetConversionStatus{"imm32!ImmSetConversionStatus", "imm32.dll", "ImmSetConversionStatus"};
 
@@ -40,12 +40,12 @@ struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 		else
 			Logger->Log(LogCategory::General, "IME conversion modes the game sets are left as is: ImmSetConversionStatus is not imported");
 
-		if (const auto status = Game::Resolved::ImeModeGetterFunction.Resolve(Getter); status != Game::Signatures::ResolveError::Ok) {
+		if (const auto status = Game::Resolved::ImeModeIndicator.Resolve(Getter); status != Game::Signatures::ResolveError::Ok) {
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "IME mode indicator is left as is: {}", status.Detail);
 			return;
 		}
 
-		GetImeMode.emplace("TextService::GetImeMode", Getter.Function);
+		GetImeMode.emplace("TextService::GetImeMode", Getter.GetImeMode);
 		Cleanup += GetImeMode->SetHook([this](void* textService) { return GetImeModeDetour(textService); });
 	}
 

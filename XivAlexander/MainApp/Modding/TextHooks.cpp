@@ -25,8 +25,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			: Config(Config::Acquire())
 			, Logger(Misc::Logger::Acquire()) {
 
-			if (Game::Resolved::CutSceneLanguageGetterFn getter; Game::Resolved::CutSceneLanguageGetterFunction.Resolve(getter) == Game::Signatures::ResolveError::Ok) {
-				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", getter);
+			// Never fails as a whole: the getter is optional, and there may be no resolvers.
+			Game::Resolved::TextHooksFunctions functions;
+			if (Game::Resolved::TextHooks.Resolve(functions) != Game::Signatures::ResolveError::Ok)
+				functions = {};
+
+			if (functions.CutSceneLanguageGetter) {
+				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", *functions.CutSceneLanguageGetter);
 				Cleanup += CutSceneLanguageGetter->SetHook([this](void* p) -> int {
 					if (const auto forced = Config->Runtime.Modding.Languages.ForcedCharacterLipSync.Value(); forced != -1)
 						return forced;
@@ -34,11 +39,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				});
 			}
 
-			std::vector<Game::Resolved::StringIndirectionResolverFn> resolvers;
-			if (Game::Resolved::StringIndirectionResolverFunctions.Resolve(resolvers) != Game::Signatures::ResolveError::Ok)
-				resolvers.clear();
-
-			for (const auto ptr : resolvers) {
+			for (const auto ptr : functions.StringIndirectionResolvers) {
 				auto& hook = FoundStringIndirectionResolverFunctions.emplace_back("FFXIV::StringIndirectionResolverFunctions", ptr);
 				Cleanup += hook.SetHook([this, ptr, self = &hook](const char8_t* s) {
 					auto error = true;

@@ -18,7 +18,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Presets {
 	void Combine(Faces& into, const Faces& from);
 
 	// Gets the faces of a family only.
-	[[nodiscard]] Faces OnlyFamily(const Faces& faces, std::string_view family);
+	[[nodiscard]] Faces FacesOfFamily(const Faces& faces, std::string_view family);
 
 	// Gets the folders of glyph images the faces read (to watch them for changes).
 	[[nodiscard]] std::vector<std::filesystem::path> GlyphImageFolders(const Faces& faces);

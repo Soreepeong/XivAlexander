@@ -281,6 +281,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\Windows\ConfigWindow.cpp" />
     <ClCompile Include="MainApp\Windows\LogWindow.cpp" />
     <ClCompile Include="MainApp\Windows\MainWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\GridView.cpp" />
+    <ClCompile Include="MainApp\Windows\SettingsView.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -391,6 +393,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\Windows\ConfigWindow.h" />
     <ClInclude Include="MainApp\Windows\LogWindow.h" />
     <ClInclude Include="MainApp\Windows\MainWindow.h" />
+    <ClInclude Include="MainApp\Windows\GridView.h" />
+    <ClInclude Include="MainApp\Windows\SettingsView.h" />
     <ClInclude Include="Game\Oodle.h" />
     <ClInclude Include="Utils\RingBuffer.h" />
     <ClInclude Include="Game\Signatures.h" />

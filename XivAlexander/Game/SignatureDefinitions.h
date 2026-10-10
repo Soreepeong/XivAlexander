@@ -12,16 +12,25 @@ namespace XivAlexander::Game {
 	struct AtkValue;
 }
 
+// One signature per feature, named after it, resolving everything that feature uses. A part that its feature can do
+// without is optional in the feature's struct: when it is not found, the failure is logged and the rest still resolves.
 namespace XivAlexander::Game::Resolved {
-	struct MssAsiFunctions {
-		AsiStreamAttributeFn Attribute{};
-		AsiStreamResetFn Reset{};
-		AsiStreamOpenFn Open{};
-		AsiStreamSetUpDecoderFn SetUpDecoder{};
-		AsiStreamProcessFn Process{};
+	using SqPackIndexLookupFn = bool(*)(void* sqpackManager, const char* path, uint32_t* outOffset, uint32_t* outDatIndex);
+
+	struct SqpackLookupHooksFunctions {
+		// Both index lookups that LoadSqPack sets, one for each kind of index.
+		std::vector<SqPackIndexLookupFn> IndexLookups;
 	};
 
-	struct IpcTypeCandidates {
+	using StringIndirectionResolverFn = const char8_t*(*)(const char8_t* str);
+	using CutSceneLanguageGetterFn = int(*)(void* p);
+
+	struct TextHooksFunctions {
+		std::optional<CutSceneLanguageGetterFn> CutSceneLanguageGetter;
+		std::vector<StringIndirectionResolverFn> StringIndirectionResolvers;  // empty when none is found
+	};
+
+	struct OpcodeGuesserCandidates {
 		struct PayloadWriter {
 			size_t Offset;
 			uint32_t PayloadSize;
@@ -37,15 +46,70 @@ namespace XivAlexander::Game::Resolved {
 		std::optional<uint16_t> C2S_ActionRequestGroundTargeted;
 	};
 
+	struct AudioResamplerFunctions {
+		uint32_t* MixRateSetup{};  // the immediate of the mix rate the sound engine is set up with
+		SoundVoiceRenderInfo Render;
+		// What the voices are resampled with; the mix rate can still be changed without them.
+		std::optional<SoundVoiceFunctions> Voice;
+		std::optional<SoundBufferEndInfo> BufferEnd;
+	};
+
+	struct AltCodecMusicSupportFunctions {
+		AsiStreamAttributeFn Attribute{};
+		AsiStreamResetFn Reset{};
+		AsiStreamOpenFn Open{};
+		AsiStreamSetUpDecoderFn SetUpDecoder{};
+		AsiStreamProcessFn Process{};
+	};
+
+	using MessageLoopFn = bool(*)();
+
+	struct MainThreadTimingHandlerFunctions {
+		MessageLoopFn SingleMessageLoop{};
+	};
+
+	// Starts a lobby login; sessionId is AgentLobby's Utf8String holding DEV.TestSID, and is only copied from.
+	using LobbyLoginFn = bool(*)(void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8);
+	// AgentLobby's handler for OK on a lobby error dialog; result is an AtkValue whose low 16 bits are the error code.
+	using LobbyErrorDialogFn = uint64_t(*)(void* self, void* arg2, AtkValue& result);
+
+	// Switching sessions and telling expired sessions apart work without each other.
+	struct LoginSessionsFunctions {
+		std::optional<LobbyLoginFn> LobbyLogin;
+		std::optional<LobbyErrorDialogFn> LobbyErrorDialog;
+	};
+
 	// TextService's IME mode for the indicator in the chat input: 0 when closed, otherwise the indicator shows U+E01F + mode.
 	using ImeModeGetterFn = uint32_t(*)(void* textService);
 
-	struct ImeModeGetter {
-		ImeModeGetterFn Function{};
+	struct ImeModeIndicatorFunctions {
+		ImeModeGetterFn GetImeMode{};
 		// The HIMC the game keeps for its window, which the getter queries.
 		void* const* InputContext{};
 	};
 
+	[[nodiscard]] std::string to_string(const SqpackLookupHooksFunctions& value);
+	[[nodiscard]] std::string to_string(const TextHooksFunctions& value);
+	[[nodiscard]] std::string to_string(const OpcodeGuesserCandidates& value);
+	[[nodiscard]] std::string to_string(const AudioResamplerFunctions& value);
+	[[nodiscard]] std::string to_string(const AltCodecMusicSupportFunctions& value);
+	[[nodiscard]] std::string to_string(const MainThreadTimingHandlerFunctions& value);
+	[[nodiscard]] std::string to_string(const LoginSessionsFunctions& value);
+	[[nodiscard]] std::string to_string(const ImeModeIndicatorFunctions& value);
+
+	extern const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks;
+	extern const Signatures::ComplexSignature<TextHooksFunctions> TextHooks;
+	extern const Signatures::ComplexSignature<Oodle::OodleNetworkFunctions> OodleNetwork;
+	extern const Signatures::ComplexSignature<OpcodeGuesserCandidates> OpcodeGuesser;
+	extern const Signatures::ComplexSignature<AudioResamplerFunctions> AudioResampler;
+	extern const Signatures::ComplexSignature<AltCodecMusicSupportFunctions> AltCodecMusicSupport;
+	extern const Signatures::ComplexSignature<MainThreadTimingHandlerFunctions> MainThreadTimingHandler;
+	extern const Signatures::ComplexSignature<LoginSessionsFunctions> LoginSessions;
+	extern const Signatures::ComplexSignature<ImeModeIndicatorFunctions> ImeModeIndicator;
+}
+
+// Every CrowdFix fix is a feature of its own, which keeps working when what another fix needs is not found.
+namespace XivAlexander::Game::Resolved::CrowdFix {
 	// Runs every root task of the frame on the main thread, from Framework::Tick.
 	using TaskManagerExecuteAllTasksFn = void(*)(void* taskManager, float* deltaTime);
 	// Wakes every sleeping worker of TaskManager::JobPool.
@@ -74,14 +138,65 @@ namespace XivAlexander::Game::Resolved {
 		ConstantBufferFlags,  // the u32 at -0x14 has 0x4000
 	};
 
+	// Where TaskManager::JobPool and its InnerThreads keep what the wake-all reads, as read by the wake-all itself.
+	struct JobPoolLayout {
+		size_t TaskManagerJobPool{};  // the JobPool inside TaskManager
+		size_t Threads{};  // InnerThread**
+		size_t ThreadCount{};  // int32_t
+		size_t ThreadSkip{};  // uint8_t: the wake-all leaves the thread alone when set
+		size_t ThreadWakeCount{};  // int32_t: 0 when asleep
+		size_t ThreadEvent{};  // HANDLE
+	};
+
+	// Graphics::SmallObjectAllocator, as its Free reads it: the slab chunk table and the backing allocator.
+	struct GraphicsAllocatorLayout {
+		size_t Lock{};  // CRITICAL_SECTION
+		size_t ChunkTable{};  // pointer to the chunk entries
+		size_t ChunkCount{};  // uint32_t
+		size_t ChunkStride{};  // size of a chunk entry
+		size_t ChunkBase{};  // the chunk's memory, in a chunk entry
+		size_t ChunkSpan{};  // bytes of a chunk
+		uint64_t PageMask{};  // block & ~PageMask is the page header of a slab block
+		size_t PageIndex{};  // uint32_t chunk index, in the page header
+		size_t Backing{};  // the backing allocator
+		size_t BackingFreeSlot{};  // vtable slot of the backing allocator's free
+	};
+
+	// Where a skeleton keeps its partial skeletons, as the pose sync walk reads them.
+	struct PartialSkeletonLayout {
+		size_t Count{};  // uint16_t, in the skeleton
+		size_t Array{};  // pointer to the partial skeletons, in the skeleton
+		size_t Stride{};  // size of a partial skeleton
+		size_t Pose{};  // hkaPose*, in a partial skeleton
+	};
+
+	// Kernel::Device's per-context command lists, as the gather reads them.
+	struct CommandListLayout {
+		size_t ContextArray{};  // pointer to the contexts, in the device
+		size_t ContextCount{};  // uint32_t, in the device
+		size_t ContextSize{};  // sizeof(Kernel::Context)
+		size_t Lists{};  // the first list, in a context
+		size_t ListSize{};  // per list: first block, write pointer, u32 free slots, u32 blocks
+		size_t ListFreeSlots{};  // uint32_t, in a list
+		size_t ListBlocks{};  // uint32_t, in a list
+		size_t BlockSize{};
+		size_t NextBlock{};  // the link entry in the last slot of a full block
+		size_t EntrySize{};  // u32 sort key, 4 bytes, command pointer
+	};
+
 	struct NotifierCallbackTest {
 		const void* Function{};
 		NotifierWorkTest Test{};
 	};
 
+	// Where the fixes are toggled and updated from; without it, every fix stays off.
+	struct FixDriverFunctions {
+		TaskManagerExecuteAllTasksFn ExecuteAllTasks{};
+	};
+
 	// The list every Kernel::Notifier is linked into, and the two walks over it in DeviceDX11::PostTick, which call
 	// vtable+0x10 on every notifier before Present and vtable+0x08 after kicking the render thread.
-	struct GraphicsNotifiers {
+	struct SkipIdleNotifiersFunctions {
 		CRITICAL_SECTION* Lock{};
 		void* const* Head{};  // linked through +0x10
 		NotifierLinkFn Link{};
@@ -93,36 +208,59 @@ namespace XivAlexander::Game::Resolved {
 		std::vector<NotifierCallbackTest> CallbackTests;
 	};
 
-	struct JobPoolWake {
+	struct ChainWorkerWakeupsFunctions {
 		const uint32_t* QueueIndices{};  // write index, then read index
 		JobPoolWakeAllFn WakeAll{};
+		JobPoolLayout Layout;
 	};
 
-	struct CullingVisibilityClear {
+	struct DedupeSkeletonSyncsFunctions {
+		SkeletonPoseSyncWalkFn SyncWalk{};
+	};
+
+	struct TrimCullingClearFunctions {
 		uint32_t* ClearCount{};  // the immediate of the loop that clears the visibility table 16 bytes at a time
+		size_t TableOffset{};  // the visibility table inside the culling manager
 		void* const* CullingManager{};
 	};
 
+	struct ShortenAllocatorLockFunctions {
+		GraphicsAllocatorFreeFn Free{};
+		GraphicsAllocatorLayout Layout;
+	};
+
+	struct PoolStagingBlocksFunctions {
+		void* const* AllocatorManager{};
+		size_t AllocatorOffset{};  // the graphics allocator that dynamic buffer writes use, inside the manager
+	};
+
+	struct FreezeHiddenMinionsFunctions {
+		CompanionFollowFn Follow{};
+		size_t RenderFlagsOffset{};  // the u64 render flags of the game object, as Companion::Update tests them
+	};
+
 	// Both JobList::Prepare variants call WaitForSingleObject a second time on an event only they reset.
-	struct JobListPrepareWaits {
+	struct SkipPrepareWaitFunctions {
 		uint8_t* ArrayList{};  // call [WaitForSingleObject], 6 bytes
 		uint8_t* SingleItemList{};
 	};
 
-	struct BgInstancingPrep {
+	struct InlineBgPrepFunctions {
 		JobListKickFn Kick{};
 		void* const* RenderManager{};
 		size_t PrepListOffset{};  // the single-item job list inside Render::Manager that RenderView kicks
+		size_t FrameworkTaskManagerOffset{};  // the TaskManager inside Framework that RenderView kicks it on
 	};
 
-	// The hotbar update's prepare of every slot of a hidden bar: lea rcx, [intermediate], ..., call Prepare; then inc esi.
-	struct HiddenHotbarPrepares {
+	// The hotbar update's prepare of every slot of a hidden bar: lea rcx, [intermediate], ..., call Prepare; then the
+	// increment of the slot index.
+	struct SkipHiddenHotbarsFunctions {
 		uint8_t* Bar{};
 		uint8_t* CrossBar{};
-		size_t Length{};  // up to the inc esi
+		size_t Length{};  // up to the increment, the same at both sites
 	};
 
-	struct AnimationTail {
+	struct ParallelAnimTailFunctions {
 		AnimationUpdateFn Update{};
 		AnimationTailFn Tail{};
 		int32_t* EntryCount{};
@@ -133,9 +271,15 @@ namespace XivAlexander::Game::Resolved {
 		ParallelForHelpFn HelpPerItem{};
 		ParallelForHelpFn HelpBlocks{};
 		AnimationTailAppendFn Append{};
+		size_t AppendTlsSlot{};  // the thread's parallel-for writer, in the game's TLS block
+		PartialSkeletonLayout Partials;
 	};
 
-	struct CullingParallelFors {
+	struct SplitCharacterCullingFunctions {
+		CameraCullJobFn CullJob{};
+	};
+
+	struct PerItemCullingClaimsFunctions {
 		void* const* CullingManager{};
 		size_t CellGroupOffset{};
 		ParallelForHelpFn CellHelpPerItem{};
@@ -145,69 +289,42 @@ namespace XivAlexander::Game::Resolved {
 		ParallelForHelpFn SetupHelpBlocks{};
 	};
 
-	struct CommandListGather {
+	struct GatherUsedCommandsFunctions {
 		CommandListGatherFn Gather{};
 		CommandListSortFn Sort{};
+		CommandListLayout Layout;
 	};
 
-	[[nodiscard]] std::string to_string(const MssAsiFunctions& value);
-	[[nodiscard]] std::string to_string(const IpcTypeCandidates& value);
-	[[nodiscard]] std::string to_string(const ImeModeGetter& value);
-	[[nodiscard]] std::string to_string(const GraphicsNotifiers& value);
-	[[nodiscard]] std::string to_string(const JobPoolWake& value);
-	[[nodiscard]] std::string to_string(const CullingVisibilityClear& value);
-	[[nodiscard]] std::string to_string(const JobListPrepareWaits& value);
-	[[nodiscard]] std::string to_string(const BgInstancingPrep& value);
-	[[nodiscard]] std::string to_string(const HiddenHotbarPrepares& value);
-	[[nodiscard]] std::string to_string(const AnimationTail& value);
-	[[nodiscard]] std::string to_string(const CullingParallelFors& value);
-	[[nodiscard]] std::string to_string(const CommandListGather& value);
+	[[nodiscard]] std::string to_string(const PartialSkeletonLayout& value);
+	[[nodiscard]] std::string to_string(const FixDriverFunctions& value);
+	[[nodiscard]] std::string to_string(const SkipIdleNotifiersFunctions& value);
+	[[nodiscard]] std::string to_string(const ChainWorkerWakeupsFunctions& value);
+	[[nodiscard]] std::string to_string(const DedupeSkeletonSyncsFunctions& value);
+	[[nodiscard]] std::string to_string(const TrimCullingClearFunctions& value);
+	[[nodiscard]] std::string to_string(const ShortenAllocatorLockFunctions& value);
+	[[nodiscard]] std::string to_string(const PoolStagingBlocksFunctions& value);
+	[[nodiscard]] std::string to_string(const FreezeHiddenMinionsFunctions& value);
+	[[nodiscard]] std::string to_string(const SkipPrepareWaitFunctions& value);
+	[[nodiscard]] std::string to_string(const InlineBgPrepFunctions& value);
+	[[nodiscard]] std::string to_string(const SkipHiddenHotbarsFunctions& value);
+	[[nodiscard]] std::string to_string(const ParallelAnimTailFunctions& value);
+	[[nodiscard]] std::string to_string(const SplitCharacterCullingFunctions& value);
+	[[nodiscard]] std::string to_string(const PerItemCullingClaimsFunctions& value);
+	[[nodiscard]] std::string to_string(const GatherUsedCommandsFunctions& value);
 
-	using SqPackIndexLookupFn = bool(*)(void* sqpackManager, const char* path, uint32_t* outOffset, uint32_t* outDatIndex);
-	using StringIndirectionResolverFn = const char8_t*(*)(const char8_t* str);
-	using CutSceneLanguageGetterFn = int(*)(void* p);
-	using MessageLoopFn = bool(*)();
-	// Starts a lobby login; sessionId is AgentLobby's Utf8String holding DEV.TestSID, and is only copied from.
-	using LobbyLoginFn = bool(*)(void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8);
-	// AgentLobby's handler for OK on a lobby error dialog; result is an AtkValue whose low 16 bits are the error code.
-	using LobbyErrorDialogFn = uint64_t(*)(void* self, void* arg2, AtkValue& result);
-
-	extern const Signatures::ComplexSignature<std::vector<SqPackIndexLookupFn>> SqPackIndexLookupFunctions;
-	extern const Signatures::ComplexSignature<std::vector<StringIndirectionResolverFn>> StringIndirectionResolverFunctions;
-	extern const Signatures::ComplexSignature<CutSceneLanguageGetterFn> CutSceneLanguageGetterFunction;
-
-	extern const Signatures::ComplexSignature<Oodle::OodleNetworkFunctions> OodleNetwork;
-
-	extern const Signatures::ComplexSignature<IpcTypeCandidates> IpcTypes;
-
-	extern const Signatures::ComplexSignature<uint32_t*> MixRateSetup;
-	extern const Signatures::ComplexSignature<SoundVoiceRenderInfo> VoiceRender;
-	extern const Signatures::ComplexSignature<SoundVoiceFunctions> VoiceFunctions;
-	extern const Signatures::ComplexSignature<SoundBufferEndInfo> BufferEndHandler;
-
-	extern const Signatures::ComplexSignature<MssAsiFunctions> MssAsiStream;
-
-	extern const Signatures::ComplexSignature<MessageLoopFn> MessageLoopFunction;
-
-	extern const Signatures::ComplexSignature<LobbyLoginFn> LobbyLoginFunction;
-	extern const Signatures::ComplexSignature<LobbyErrorDialogFn> LobbyErrorDialogFunction;
-
-	extern const Signatures::ComplexSignature<ImeModeGetter> ImeModeGetterFunction;
-
-	extern const Signatures::ComplexSignature<TaskManagerExecuteAllTasksFn> TaskManagerExecuteAllTasksFunction;
-	extern const Signatures::ComplexSignature<void* const*> CullingManagerInstance;
-	extern const Signatures::ComplexSignature<GraphicsNotifiers> GraphicsNotifierList;
-	extern const Signatures::ComplexSignature<JobPoolWake> JobPoolWakeFunctions;
-	extern const Signatures::ComplexSignature<SkeletonPoseSyncWalkFn> SkeletonPoseSyncWalkFunction;
-	extern const Signatures::ComplexSignature<CullingVisibilityClear> CullingVisibilityClearLoop;
-	extern const Signatures::ComplexSignature<GraphicsAllocatorFreeFn> GraphicsAllocatorFreeFunction;
-	extern const Signatures::ComplexSignature<void* const*> GraphicsAllocatorManagerInstance;
-	extern const Signatures::ComplexSignature<CompanionFollowFn> CompanionFollowFunction;
-	extern const Signatures::ComplexSignature<JobListPrepareWaits> JobListPrepareWaitCalls;
-	extern const Signatures::ComplexSignature<BgInstancingPrep> BgInstancingPrepJob;
-	extern const Signatures::ComplexSignature<HiddenHotbarPrepares> HiddenHotbarPrepareCalls;
-	extern const Signatures::ComplexSignature<AnimationTail> AnimationTailFunctions;
-	extern const Signatures::ComplexSignature<CameraCullJobFn> CameraCullJobFunction;
-	extern const Signatures::ComplexSignature<CullingParallelFors> CullingParallelForGroups;
-	extern const Signatures::ComplexSignature<CommandListGather> CommandListGatherFunctions;
+	extern const Signatures::ComplexSignature<FixDriverFunctions> FixDriver;
+	extern const Signatures::ComplexSignature<SkipIdleNotifiersFunctions> SkipIdleNotifiers;
+	extern const Signatures::ComplexSignature<ChainWorkerWakeupsFunctions> ChainWorkerWakeups;
+	extern const Signatures::ComplexSignature<DedupeSkeletonSyncsFunctions> DedupeSkeletonSyncs;
+	extern const Signatures::ComplexSignature<TrimCullingClearFunctions> TrimCullingClear;
+	extern const Signatures::ComplexSignature<ShortenAllocatorLockFunctions> ShortenAllocatorLock;
+	extern const Signatures::ComplexSignature<PoolStagingBlocksFunctions> PoolStagingBlocks;
+	extern const Signatures::ComplexSignature<FreezeHiddenMinionsFunctions> FreezeHiddenMinions;
+	extern const Signatures::ComplexSignature<SkipPrepareWaitFunctions> SkipPrepareWait;
+	extern const Signatures::ComplexSignature<InlineBgPrepFunctions> InlineBgPrep;
+	extern const Signatures::ComplexSignature<SkipHiddenHotbarsFunctions> SkipHiddenHotbars;
+	extern const Signatures::ComplexSignature<ParallelAnimTailFunctions> ParallelAnimTail;
+	extern const Signatures::ComplexSignature<SplitCharacterCullingFunctions> SplitCharacterCulling;
+	extern const Signatures::ComplexSignature<PerItemCullingClaimsFunctions> PerItemCullingClaims;
+	extern const Signatures::ComplexSignature<GatherUsedCommandsFunctions> GatherUsedCommands;
 }

@@ -164,7 +164,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "コントロールウィンドウの表示(&C)\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "ログウィンドウの表示(&L)\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "ログウィンドウの表示(&L)\tCtrl+Shift+L", ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "新規アップデートをチェック(&P)\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
         MENUITEM "XivAlexanderを終了(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -175,9 +175,9 @@ BEGIN
         MENUITEM "以下の設定で再起動(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "起動コマンドラインをコピー(&M)",           ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "XivAlexanderを使用(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "コマンドラインの難読化を使用(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "管理者として実行(&E)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "XivAlexanderを使用(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "コマンドラインの難読化を使用(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "管理者として実行(&E)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "言語：日本語(&J)",                  ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "言語：英語(&E)",                   ID_RESTART_LANGUAGE_ENGLISH
@@ -198,7 +198,7 @@ BEGIN
     BEGIN
         POPUP "遅延とタイミングの処理(&H)"
         BEGIN
-            MENUITEM "有効化(&E)\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "有効化(&E)\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "モード&1：次のアクションの使用可能時刻からレイテンシを繰り上げる", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "モード&2：サーバからの応答にかかる時間を{}usに固定", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -208,18 +208,18 @@ BEGIN
             MENUITEM "作動のシミュレーション(ログに記録)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "IPCタイプファインダーを使用(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "すべてのIPCメッセージをログに記録(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "IPCタイプファインダーを使用(&F)\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "すべてのIPCメッセージをログに記録(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "パケット遅延の軽減(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "すべての接続の処理を解除する(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "すべての接続を強制に終了する(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "パケット遅延の軽減(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "すべての接続の処理を解除する(&E)\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "すべての接続を強制に終了する(&S)\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "トラブルシューティング(&T)"
         BEGIN
-            MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "すべてのアドレスを処理(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "すべてのポートを処理(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "すべてのアドレスを処理(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "すべてのポートを処理(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "MOD(&M)"
@@ -273,8 +273,10 @@ BEGIN
     END
     POPUP "設定(&C)"
     BEGIN
-        MENUITEM "環境（ランタイム）設定(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "Opcodeの設定(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM "詳細設定(&S)…", ID_CONFIGURE_SETTINGS
+        MENUITEM SEPARATOR
+        MENUITEM "環境（ランタイム）設定(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Opcodeの設定(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "Opcodeのアップデートを確認する(&U)",      ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "軌道のときに自動でOpcodeのアップデートを確認(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -314,7 +316,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "設定のフォルダーを開ける(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "設定の再読み込み(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "設定の再読み込み(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "表示(&V)"
     BEGIN
@@ -406,7 +408,7 @@ BEGIN
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
                             "XivAlexanderの使用：{}\nコマンドラインの難読化の使用：{}\n管理者権限で実行：{}\n言語：{}\n地域：{}"
-    IDS_MAIN_TEXT           "PID: {}\nゲームのインストール先: {}\nコマンドライン：{}\nゲームのバージョン: {} ({})\nメッセジーループ：{}+{:06}us (毎秒{:.02f}回)\n\n{}"
+    IDS_MAIN_TEXT           "メッセジーループ：{}+{:06}us (毎秒{:.02f}回){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "環境設定"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcodeの設定"
@@ -630,6 +632,152 @@ BEGIN
     IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
 END
 
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "参照…"
+    IDS_SETTINGS_ADD        "追加…"
+    IDS_SETTINGS_REMOVE     "削除"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "環境（ランタイム）設定で編集できます。"
+    IDS_SETTINGS_OPENEDITOR "エディターを開く"
+    IDS_SETTINGS_GROUP_UI   "インターフェース"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "コントロールウィンドウ"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "ログウィンドウ"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "設定エディター"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "ゲームウィンドウ"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "遅延とタイミングの処理"
+    IDS_SETTINGS_GROUP_SOCKET "接続"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "フレームレート制御"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPSの固定"
+    IDS_SETTINGS_GROUP_OPCODES "Opcode"
+    IDS_SETTINGS_GROUP_LAUNCH "起動"
+    IDS_SETTINGS_GROUP_CHAINLOAD "チェーンロード"
+    IDS_SETTINGS_GROUP_MODDING "MOD"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "言語"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools MODパック"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "ログ"
+    IDS_SETTINGS_GROUP_AUDIO "オーディオ"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "声のミュート"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxrリサンプラー"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "フィルター"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "修正項目"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "フォント置き換え"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "フォント"
+    IDS_SETTINGS_BACKGROUNDLIMIT "バックグラウンド時のフレームレート制限 (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "描画間隔（µs、0で無効）"
+    IDS_SETTINGS_LOCK_AUTOMATIC "間隔を自動で決める"
+    IDS_SETTINGS_LOCK_RANGEFROM "目標フレームレートの下限 (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "目標フレームレートの上限 (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "描画間隔の最大偏差 (µs)"
+    IDS_SETTINGS_LOCK_GCD   "グローバルクールダウン (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFixを使用"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "周囲のオブジェクトの数に応じて増えるフレームごとの処理を減らします。変更は次のフレームから反映されます。"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "処理のないGPUリソース通知をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "毎フレームすべてのGPUリソースを2回巡回する代わりに、処理が必要なリソースだけを巡回します。"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "ワーカースレッドの起床を連鎖させる"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "ジョブを投入するたびに全ワーカーを起こす代わりに1つだけ起こし、起きたワーカーが次のワーカーを起こします。"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "スケルトンのポーズ同期をフレームごとに1回にする"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "描画するビューごとに繰り返される全スケルトンのポーズ同期を、フレームの最初の1回以降はスキップします。"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "使用済みのカリングスロットだけをクリア"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "フレームごとに数回40,960スロットすべてをクリアする代わりに、これまで使われた最も高いオブジェクトスロットまでだけ可視性テーブルをクリアします。"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "グラフィックアロケーターのロック外で大きなブロックを解放"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "大きなブロックの解放中も小さな割り当てが進むようにします。主にメインスレッドがワーカーを待つCPUで効果があります。"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "描画用ステージングブロックを再利用"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "解放されたステージングブロックをサイズ別にためて再利用し、ほとんどの割り当てがアロケーターのグローバルロックを通らないようにします。"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "非表示のミニオンの追従AIを止める"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "モデルが非表示のミニオンの、衝突判定を伴う追従AIをスキップします。離れすぎた場合は今まで通り主人のそばにワープします。"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "不要なジョブリストの待機をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "すでにシグナル状態のイベントをもう一度待つ処理を省きます。フレームあたり約75回のシステムコールが減ります。"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "背景インスタンシングの準備をメインスレッドで実行"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "ビューごとのごく小さな背景インスタンシングのジョブを、ワーカーに渡して待つ代わりにその場で実行します。"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "非表示のホットバーの準備をスキップ"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "毎フレーム非表示のホットバーのスロットを準備する処理をスキップします。表示されたホットバーはそのフレームで準備されます。"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "アニメーションの仕上げを並列化"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "スケルトンの仕上げ処理をメインスレッドで1つずつ行う代わりに、接続の深さごとにワーカーで処理します。"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "キャラクターのカリングを複数スレッドに分ける"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "ゲームはすべてのキャラクターを1つのジョブでカリングしますが、自分の分を終えたスレッドがそれを手伝うようにします。"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "カリング処理を1項目ずつ配る"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "一部のスレッドしか受け取らない最大8項目単位の代わりに1項目ずつ配り、セルのカリングをより多くのスレッドに分散します。"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "コマンドリストの使用中の項目だけを集める"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "各コマンドリストの使用中の項目だけをコピーし、すでに並んでいれば並べ替えを省きます。結果はゲームと同じです。"
+    IDS_SETTINGS_PAGE_PATCHCODES "ゲームのバグのフィックス"
+    IDS_SETTINGS_PATCHCODE_NEW "新規作成…"
+    IDS_SETTINGS_PATCHCODE_EDIT "編集…"
+    IDS_SETTINGS_PATCHCODE_DELETE "削除"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "{}を削除しますか？"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "ゲームのバグのフィックス：{}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "Opcodeの設定"
+    IDS_SETTINGS_PAGE_STATUS "状態"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "ゲームの動作"
+    IDS_SETTINGS_PAGE_CONFIGURATION "設定"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPSの固定ダイアログを開く…"
+    IDS_SETTINGS_LOCK_MODE  "モード"
+    IDS_SETTINGS_LOCK_MODE_OFF "使用しない"
+    IDS_SETTINGS_LOCK_MODE_FIXED "固定FPS"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "自動設定"
+    IDS_SETTINGS_LOCK_FRAMERATE "FPS"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "GCDが遅くられないようにするFPSを探す"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "予想される実際のGCD (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "使用中の描画間隔 (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "測定されたGCD (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "最近使ったGCDの測定"
+    IDS_SETTINGS_LOCK_RESET "空にする"
+    IDS_SETTINGS_GRID_ENABLED "有効"
+    IDS_SETTINGS_GRID_NAME  "名前"
+    IDS_SETTINGS_GRID_LANGUAGE "言語"
+    IDS_SETTINGS_GRID_FILENAME "ファイル名"
+    IDS_SETTINGS_GRID_ADD   "追加"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "置き換え元（正規表現）"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "置き換え先"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "停止"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "上から順に適用され、停止が有効な規則に一致するとそこで終わります。"
+    IDS_SETTINGS_PATHFILTER_PATTERN "パターン（正規表現）"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "記録"
+    IDS_SETTINGS_PATHFILTER_DESC "最初に一致したフィルターがパスを記録するかを決め、どれにも一致しないパスは上の設定に従います。"
+    IDS_SETTINGS_FALLBACK_DESC "ドラッグで並べ替え：選んだ言語のファイルがない場合、上の言語から使われます。"
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "（名前のない全員）"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "話者の最初の有効な項目が適用され、空の名前は名前のない全員を表します。"
+    IDS_SETTINGS_CHOICES_ACTIVE "使用中"
+    IDS_SETTINGS_CHOICES_DESC "使用中の項目がない場合、ファイル名がある最初のプロフィールが使われます。ファイル名を変えても、MODにすでにあるファイルの名前は変わりません。"
+    IDS_SETTINGS_FONT_SOURCE_TYPE "種類"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "プリセット"
+    IDS_SETTINGS_FONT_SOURCE_FONT "システムフォント"
+    IDS_SETTINGS_FONT_WEIGHT "太さ"
+    IDS_SETTINGS_FONT_STRETCH "幅"
+    IDS_SETTINGS_FONT_STYLE "スタイル"
+    IDS_SETTINGS_FONT_ADDPRESET "プリセットを追加"
+    IDS_SETTINGS_FONT_ADDFONT "システムフォントを追加"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "他のファミリーにコピー"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "他のすべてのファミリーのソースを{}のもので置き換えますか？"
+    IDS_SETTINGS_FONT_SOURCES_DESC "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
+    IDS_SETTINGS_FONT_NOPRESETS "プリセットフォルダーにプリセットがありません。"
+    IDS_SETTINGS_EDGE_SCALE "文字サイズ1ピクセルあたりの縁の太さ"
+    IDS_SETTINGS_EDGE_MIN   "縁の最小の太さ (px)"
+    IDS_SETTINGS_EDGE_MAX   "縁の最大の太さ (px)"
+    IDS_SETTINGS_DIRS_FOLDER "フォルダー"
+    IDS_SETTINGS_DIRS_LOCATION "場所"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(既定のパスを追加)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (見つかりません)"
+    IDS_SETTINGS_DIRS_ADD "フォルダーを追加…"
+    IDS_SETTINGS_SHOWINEXPLORER "エクスプローラーで表示"
+    IDS_SETTINGS_DIRS_DESC "ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
+    IDS_SETTINGS_TTMP_NOFOLDER "(フォルダーなし)"
+    IDS_SETTINGS_TTMP_AUTHOR "作者"
+    IDS_SETTINGS_TTMP_VERSION "バージョン"
+    IDS_SETTINGS_TTMP_STATUS "状態"
+    IDS_SETTINGS_TTMP_FILTER "絞り込み"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE "「{}」を削除しますか?\n\n{}"
+    IDS_SETTINGS_TTMP_NOMATCH "(該当するモッドパックはありません)"
+    IDS_SETTINGS_TTMP_RENAME "名前を変更"
+    IDS_SETTINGS_TTMP_MOVETO "移動…"
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "新しいフォルダーへ移動"
+    IDS_SETTINGS_TTMP_NEWFOLDER "新しいフォルダー"
+    IDS_SETTINGS_TTMP_TOPLEVEL "最上位: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "ドラッグで並べ替えられます。複数のモッドパックが同じファイルを変更する場合、下にあるものが優先されます。"
+    IDS_STATUS_TTMPPROFILE "\nモッドパックのプロファイル: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "変更はゲームを再起動すると反映されます。"
+END
+
 #endif    // Japanese (Japan) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -740,7 +888,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "관리 창 보이기(&C)\tCtrl+(Alt+)W",  ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "로그 창 보이기(&L)\t(Ctrl+Alt+)L",  ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "로그 창 보이기(&L)\tCtrl+Shift+L",  ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "업데이트 확인(&P)\tCtrl+(Alt+)U",   ID_FILE_CHECKFORUPDATES
         MENUITEM "XivAlexander 종료(&U)\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -751,9 +899,9 @@ BEGIN
         MENUITEM "아래 설정을 반영해 재시작하기(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "실행 명령줄 복사(&M)",               ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "XivAlexander 사용(&X)\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "명령줄 난독화 사용(&P)\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "관리자 권한으로 실행(&A)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "XivAlexander 사용(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "명령줄 난독화 사용(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "관리자 권한으로 실행(&A)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "언어: 일본어(&J)",                 ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "언어: 영어(&E)",                  ID_RESTART_LANGUAGE_ENGLISH
@@ -774,7 +922,7 @@ BEGIN
     BEGIN
         POPUP "지연 및 타이밍 도우미(&H)"
         BEGIN
-            MENUITEM "사용(&E)\t(Ctrl+Shift+)H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "사용(&E)\tCtrl+Shift+H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "모드 &1: 지연 시간만큼 다음 기술 시전 가능 시각 앞당기기", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "모드 &2: 서버 응답 시간을 {}us로 고정",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -784,18 +932,18 @@ BEGIN
             MENUITEM "모의 작동 (로그에서 미리 보기)(&P)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "IPC 검색 도우미 사용(&F)\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "모든 IPC 메시지 로그 사용(&I)\t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "IPC 검색 도우미 사용(&F)\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "모든 IPC 메시지 로그 사용(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "패킷 딜레이 감소(&R)\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "모든 연결 처리 해제하기(&E)\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "모든 접속 강제 해제하기(&S)\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "패킷 딜레이 감소(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "모든 연결 처리 해제하기(&E)\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "모든 접속 강제 해제하기(&S)\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "문제 해결(&T)"
         BEGIN
-            MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "모든 주소 처리(&A) (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "모든 포트 처리(&O)\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "모든 주소 처리(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "모든 포트 처리(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "모딩(&M)"
@@ -849,8 +997,10 @@ BEGIN
     END
     POPUP "설정(&C)"
     BEGIN
-        MENUITEM "런타임(프로그램) 설정 변경(&R)\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "옵코드 설정 변경(&O)\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM "상세 설정(&S)...", ID_CONFIGURE_SETTINGS
+        MENUITEM SEPARATOR
+        MENUITEM "런타임(프로그램) 설정 변경(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "옵코드 설정 변경(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "옵코드 업데이트 확인하기(&U)",           ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "프로그램 시작 시 자동으로 옵코드 업데이트 확인(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -891,7 +1041,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "설정값 저장 폴더 열기(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "설정 다시 불러오기(&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "설정 다시 불러오기(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "보기(&V)"
     BEGIN
@@ -1044,7 +1194,7 @@ BEGIN
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
                             "XivAlexander 사용: {}\n명령줄 난독화 사용: {}\n관리자 권한으로 실행: {}\n언어: {}\n지역: {}"
-    IDS_MAIN_TEXT           "PID: {}\n게임 경로: {}\n인자: {}\n게임 버전: {} ({})\n메시지 루프: {}+{:06}us (초당 {:.02f}회)\n\n{}"
+    IDS_MAIN_TEXT           "메시지 루프: {}+{:06}us (초당 {:.02f}회){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "프로그램 설정 편집"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "옵코드 설정 편집"
@@ -1274,6 +1424,152 @@ BEGIN
     IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
 END
 
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "찾아보기..."
+    IDS_SETTINGS_ADD        "추가..."
+    IDS_SETTINGS_REMOVE     "제거"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "런타임 설정 편집기에서 변경할 수 있습니다."
+    IDS_SETTINGS_OPENEDITOR "편집기 열기"
+    IDS_SETTINGS_GROUP_UI   "인터페이스"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "컨트롤 창"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "로그 창"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "설정 편집기"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "게임 창"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "지연 및 타이밍 도우미"
+    IDS_SETTINGS_GROUP_SOCKET "연결"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "프레임 레이트 제어"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPS 고정"
+    IDS_SETTINGS_GROUP_OPCODES "옵코드"
+    IDS_SETTINGS_GROUP_LAUNCH "실행"
+    IDS_SETTINGS_GROUP_CHAINLOAD "체인 로딩"
+    IDS_SETTINGS_GROUP_MODDING "모딩"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "언어"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools 모드팩"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "로그"
+    IDS_SETTINGS_GROUP_AUDIO "오디오"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "목소리 분류 음소거"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxr 리샘플러"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "필터"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "수정 항목"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "글꼴 바꾸기"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "글꼴"
+    IDS_SETTINGS_BACKGROUNDLIMIT "백그라운드 시 프레임 레이트 제한 (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "렌더링 간격 (µs, 0이면 사용 안 함)"
+    IDS_SETTINGS_LOCK_AUTOMATIC "간격 자동으로 정하기"
+    IDS_SETTINGS_LOCK_RANGEFROM "목표 프레임 레이트 최솟값 (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "목표 프레임 레이트 최댓값 (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "렌더링 간격 최대 편차 (µs)"
+    IDS_SETTINGS_LOCK_GCD   "글로벌 쿨다운 (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFix 사용"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "주변 오브젝트 수에 따라 늘어나는 프레임당 작업을 줄입니다. 변경 사항은 다음 프레임부터 적용됩니다."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "작업 없는 GPU 리소스 알림 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "프레임마다 모든 GPU 리소스를 두 번씩 순회하는 대신, 실제로 할 일이 있는 리소스만 순회합니다."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "작업 스레드 깨우기를 연쇄로 처리"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "작업을 넣을 때마다 모든 작업 스레드를 깨우는 대신 하나만 깨우고, 깨어난 스레드가 다음 스레드를 깨웁니다."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "스켈레톤 포즈 동기화를 프레임당 한 번만 하기"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "렌더링하는 뷰마다 반복되는 모든 스켈레톤의 포즈 동기화를, 프레임의 첫 번째 이후로는 건너뜁니다."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "사용한 컬링 슬롯만 지우기"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "프레임마다 여러 번 40,960개 슬롯 전체를 지우는 대신, 지금까지 사용된 가장 높은 오브젝트 슬롯까지만 가시성 테이블을 지웁니다."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "그래픽 할당자 잠금 밖에서 큰 블록 해제하기"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "큰 블록을 해제하는 동안에도 작은 할당이 진행되게 합니다. 주로 메인 스레드가 작업 스레드를 기다리는 CPU에서 효과가 있습니다."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "그리기용 스테이징 블록 재사용하기"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "해제된 스테이징 블록을 크기별로 모아 다시 내주어, 대부분의 할당이 할당자의 전역 잠금을 거치지 않게 합니다."
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "숨겨진 미니언의 따라가기 AI 멈추기"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "모델이 숨겨진 미니언의 충돌 검사를 포함한 따라가기 AI를 건너뜁니다. 너무 멀어지면 여전히 주인 곁으로 순간이동합니다."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "불필요한 작업 목록 대기 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "이미 신호 상태인 이벤트를 한 번 더 기다리는 부분을 없앱니다. 프레임당 약 75번의 시스템 호출이 줄어듭니다."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "배경 인스턴싱 준비를 메인 스레드에서 실행하기"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "뷰마다 있는 아주 작은 배경 인스턴싱 작업을, 작업 스레드에 넘기고 기다리는 대신 바로 실행합니다."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "숨겨진 단축바 준비 건너뛰기"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "프레임마다 숨겨진 단축바의 슬롯을 준비하는 작업을 건너뜁니다. 보이게 된 단축바는 그 프레임에 바로 준비됩니다."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "애니메이션 마무리를 병렬로 처리하기"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "스켈레톤 마무리 작업을 메인 스레드에서 하나씩 하는 대신, 연결 깊이별로 작업 스레드에서 처리합니다."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "캐릭터 컬링을 여러 스레드로 나누기"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "게임은 모든 캐릭터를 한 작업에서 컬링하는데, 자기 몫을 끝낸 스레드가 이를 돕게 합니다."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "컬링 작업을 한 항목씩 나눠주기"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "몇몇 스레드만 받는 최대 8개 단위 대신, 한 항목씩 나눠 주어 셀 컬링을 더 많은 스레드에 분산합니다."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "명령 목록의 사용된 항목만 모으기"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "각 명령 목록에서 사용된 항목만 복사하고, 이미 정렬되어 있으면 정렬을 건너뜁니다. 결과는 게임과 같습니다."
+    IDS_SETTINGS_PAGE_PATCHCODES "게임 버그 수정"
+    IDS_SETTINGS_PATCHCODE_NEW "새로 만들기..."
+    IDS_SETTINGS_PATCHCODE_EDIT "편집..."
+    IDS_SETTINGS_PATCHCODE_DELETE "삭제"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "{}을(를) 삭제하시겠습니까?"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "게임 버그 수정: {}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "옵코드 설정"
+    IDS_SETTINGS_PAGE_STATUS "상태"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "게임 동작"
+    IDS_SETTINGS_PAGE_CONFIGURATION "설정"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPS 고정 대화 상자 열기..."
+    IDS_SETTINGS_LOCK_MODE  "모드"
+    IDS_SETTINGS_LOCK_MODE_OFF "사용 안 함"
+    IDS_SETTINGS_LOCK_MODE_FIXED "고정 FPS"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "자동 설정"
+    IDS_SETTINGS_LOCK_FRAMERATE "FPS"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "글쿨이 밀리지 않도록 FPS 설정"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "예상되는 실제 글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "사용 중인 렌더링 간격 (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "측정된 글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "최근 사용한 글쿨 측정"
+    IDS_SETTINGS_LOCK_RESET "비우기"
+    IDS_SETTINGS_GRID_ENABLED "사용"
+    IDS_SETTINGS_GRID_NAME  "이름"
+    IDS_SETTINGS_GRID_LANGUAGE "언어"
+    IDS_SETTINGS_GRID_FILENAME "파일 이름"
+    IDS_SETTINGS_GRID_ADD   "추가"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "원래 경로 (정규식)"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "바꿀 경로"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "중단"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "위에서부터 차례로 적용되며, 중단이 켜진 규칙과 일치하면 거기서 끝납니다."
+    IDS_SETTINGS_PATHFILTER_PATTERN "패턴 (정규식)"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "기록"
+    IDS_SETTINGS_PATHFILTER_DESC "처음으로 일치하는 필터가 경로를 기록할지 정하며, 어느 필터와도 일치하지 않는 경로는 위의 설정을 따릅니다."
+    IDS_SETTINGS_FALLBACK_DESC "끌어서 순서 변경: 선택한 언어의 파일이 없으면 위에 있는 언어부터 사용합니다."
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(이름 없는 모든 인물)"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "말하는 인물의 첫 번째로 켜진 항목이 적용되며, 빈 이름은 이름 없는 모든 인물을 뜻합니다."
+    IDS_SETTINGS_CHOICES_ACTIVE "사용 중"
+    IDS_SETTINGS_CHOICES_DESC "사용 중인 항목이 없으면 파일 이름이 있는 첫 번째 프로필을 사용합니다. 파일 이름을 바꿔도 모드에 이미 있는 파일의 이름은 바뀌지 않습니다."
+    IDS_SETTINGS_FONT_SOURCE_TYPE "종류"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "프리셋"
+    IDS_SETTINGS_FONT_SOURCE_FONT "시스템 글꼴"
+    IDS_SETTINGS_FONT_WEIGHT "굵기"
+    IDS_SETTINGS_FONT_STRETCH "너비"
+    IDS_SETTINGS_FONT_STYLE "스타일"
+    IDS_SETTINGS_FONT_ADDPRESET "프리셋 추가"
+    IDS_SETTINGS_FONT_ADDFONT "시스템 글꼴 추가"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "다른 글꼴 패밀리에 복사"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "다른 모든 글꼴 패밀리의 소스를 {}의 것으로 바꾸시겠습니까?"
+    IDS_SETTINGS_FONT_SOURCES_DESC "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
+    IDS_SETTINGS_FONT_NOPRESETS "프리셋 폴더에 프리셋이 없습니다."
+    IDS_SETTINGS_EDGE_SCALE "글자 크기 1픽셀당 테두리 두께"
+    IDS_SETTINGS_EDGE_MIN   "최소 테두리 두께 (px)"
+    IDS_SETTINGS_EDGE_MAX   "최대 테두리 두께 (px)"
+    IDS_SETTINGS_DIRS_FOLDER "폴더"
+    IDS_SETTINGS_DIRS_LOCATION "위치"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(기본 경로 추가)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (찾을 수 없음)"
+    IDS_SETTINGS_DIRS_ADD "폴더 추가..."
+    IDS_SETTINGS_SHOWINEXPLORER "탐색기에서 보기"
+    IDS_SETTINGS_DIRS_DESC "끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
+    IDS_SETTINGS_TTMP_NOFOLDER "(폴더 없음)"
+    IDS_SETTINGS_TTMP_AUTHOR "제작자"
+    IDS_SETTINGS_TTMP_VERSION "버전"
+    IDS_SETTINGS_TTMP_STATUS "상태"
+    IDS_SETTINGS_TTMP_FILTER "필터"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE """{}""을(를) 삭제할까요?\n\n{}"
+    IDS_SETTINGS_TTMP_NOMATCH "(일치하는 모드팩이 없습니다)"
+    IDS_SETTINGS_TTMP_RENAME "이름 바꾸기"
+    IDS_SETTINGS_TTMP_MOVETO "이동..."
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "새 폴더로 이동"
+    IDS_SETTINGS_TTMP_NEWFOLDER "새 폴더"
+    IDS_SETTINGS_TTMP_TOPLEVEL "최상위: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "끌어서 순서를 바꿀 수 있습니다. 여러 모드팩이 같은 파일을 바꾸면 아래에 있는 것이 우선합니다."
+    IDS_STATUS_TTMPPROFILE "\n모드팩 프로필: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "변경 사항은 게임을 재시작하면 적용됩니다."
+END
+
 #endif    // Korean (Korea) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -1384,7 +1680,7 @@ BEGIN
         MENUITEM "(Current Process Information)", ID_FILE_CURRENTINFO
         MENUITEM SEPARATOR
         MENUITEM "Show &Control Window\tCtrl+(Alt+)W", ID_FILE_SHOWCONTROLWINDOW
-        MENUITEM "Show &Logging Window\t(Ctrl+Alt+)L", ID_FILE_SHOWLOGGINGWINDOW
+        MENUITEM "Show &Logging Window\tCtrl+Shift+L", ID_FILE_SHOWLOGGINGWINDOW
         MENUITEM "Check for U&pdates\tCtrl+(Alt+)U", ID_FILE_CHECKFORUPDATES
         MENUITEM "&Unload XivAlexander\tCtrl+(Alt+)Q", ID_FILE_UNLOADXIVALEXANDER
         MENUITEM SEPARATOR
@@ -1395,9 +1691,9 @@ BEGIN
         MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
         MENUITEM "Copy Launch Co&mmand Line",   ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
-        MENUITEM "Use &XivAlexander\t(Ctrl+Shift+)X", ID_RESTART_USEXIVALEXANDER
-        MENUITEM "Use &Parameter Obfuscation\t(Ctrl+Shift+)P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "Use Elevation (Run as &Administrator)\t(Ctrl+Shift+)A", ID_RESTART_USEELEVATION
+        MENUITEM "Use &XivAlexander\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
+        MENUITEM "Use &Parameter Obfuscation\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
+        MENUITEM "Use Elevation (Run as &Administrator)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "Language: &Japanese",         ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "Language: &English",          ID_RESTART_LANGUAGE_ENGLISH
@@ -1418,7 +1714,7 @@ BEGIN
     BEGIN
         POPUP "Latency and Timing &Helper"
         BEGIN
-            MENUITEM "&Enable\t(Ctrl+Shift+)H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "&Enable\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "Mode &1: Subtract Latency",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "Mode &2: Simulate RTT ({}us)", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -1428,18 +1724,18 @@ BEGIN
             MENUITEM "&Preview Mode (Dry Run)\tCtrl+(Alt+)P", ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE
         END
         MENUITEM SEPARATOR
-        MENUITEM "Use IPC Type &Finder\t(Ctrl+Shift+)F", ID_NETWORK_USEIPCTYPEFINDER
-        MENUITEM "Log All &IPC Message \t(Ctrl+Shift+)M", ID_NETWORK_USEALLIPCMESSAGELOGGER
+        MENUITEM "Use IPC Type &Finder\tCtrl+Shift+F", ID_NETWORK_USEIPCTYPEFINDER
+        MENUITEM "Log All &IPC Message \tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
-        MENUITEM "&Reduce Packet Delay\t(Ctrl+Shift+)F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "R&elease All Connections\t(Ctrl+Shift+)F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "Re&set All Connections\t(Ctrl+Shift+)F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "&Reduce Packet Delay\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
+        MENUITEM "R&elease All Connections\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
+        MENUITEM "Re&set All Connections\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "&Troubleshooting"
         BEGIN
-            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\t(Ctrl+Shift+)1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\t(Ctrl+Shift+)2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
-            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\t(Ctrl+Shift+)3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "Take Over All P&orts\t(Ctrl+Shift+)4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
+            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Take Over &All Addresses (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
+            MENUITEM "Take Over All P&orts\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "&Modding"
@@ -1493,8 +1789,10 @@ BEGIN
     END
     POPUP "&Configure"
     BEGIN
-        MENUITEM "Edit &Runtime Configuration\t(Ctrl+Alt+)R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "Edit &Opcode Configuration\t(Ctrl+Alt+)O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM "&Settings...", ID_CONFIGURE_SETTINGS
+        MENUITEM SEPARATOR
+        MENUITEM "Edit &Runtime Configuration\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Edit &Opcode Configuration\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "Check for Opcode &Updates",   ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "Check for Opcode Updates on S&tartup", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -1535,7 +1833,7 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "Open Configuration &Directory", ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "Reload (&Z)\t(Ctrl+Shift+)F5", ID_CONFIGURE_RELOAD
+        MENUITEM "Reload (&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "&View"
     BEGIN
@@ -1684,29 +1982,11 @@ END
 
 IDR_TRAY_ACCELERATOR ACCELERATORS
 BEGIN
-    "O",            ID_CONFIGURE_EDITOPCODECONFIGURATION, VIRTKEY, NOINVERT
-    "R",            ID_CONFIGURE_EDITRUNTIMECONFIGURATION, VIRTKEY, NOINVERT
-    VK_F5,          ID_CONFIGURE_RELOAD,    VIRTKEY, NOINVERT
     "U",            ID_FILE_CHECKFORUPDATES, VIRTKEY, CONTROL, NOINVERT
     "W",            ID_FILE_SHOWCONTROLWINDOW, VIRTKEY, CONTROL, NOINVERT
-    "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, NOINVERT
-    "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, NOINVERT
     "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, NOINVERT
-    "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, NOINVERT
     "L",            ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, NOINVERT
-    "E",            ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, VIRTKEY, NOINVERT
-    VK_F1,          ID_NETWORK_REDUCEPACKETDELAY, VIRTKEY, NOINVERT
-    VK_F2,          ID_NETWORK_RELEASEALLCONNECTIONS, VIRTKEY, NOINVERT
-    "3",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, VIRTKEY, NOINVERT
-    "4",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, VIRTKEY, NOINVERT
-    "1",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, NOINVERT
-    "2",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, VIRTKEY, NOINVERT
-    "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, NOINVERT
-    "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, NOINVERT
-    "A",            ID_RESTART_USEELEVATION, VIRTKEY, NOINVERT
-    "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, NOINVERT
-    "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOP,    VIRTKEY, CONTROL, NOINVERT
 END
 
@@ -1721,23 +2001,7 @@ BEGIN
     "L",            ID_FILE_SHOWLOGGINGWINDOW, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "Q",            ID_FILE_UNLOADXIVALEXANDER, VIRTKEY, CONTROL, ALT, NOINVERT
     VK_F1,          ID_GLOBAL_SHOW_TRAYMENU, VIRTKEY, NOINVERT
-    "H",            ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "P",            ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, VIRTKEY, CONTROL, ALT, NOINVERT
-    "E",            ID_NETWORK_HIGHLATENCYMITIGATION_USEEARLYPENALTY, VIRTKEY, CONTROL, ALT, NOINVERT
-    "L",            ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, VIRTKEY, CONTROL, ALT, NOINVERT
-    "E",            ID_NETWORK_LOGEFFECTAPPLICATIONDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_F1,          ID_NETWORK_REDUCEPACKETDELAY, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    VK_F2,          ID_NETWORK_RELEASEALLCONNECTIONS, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "3",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "4",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "1",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "2",            ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "M",            ID_NETWORK_USEALLIPCMESSAGELOGGER, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "F",            ID_NETWORK_USEIPCTYPEFINDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "R",            ID_RESTART_RESTART,     VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "A",            ID_RESTART_USEELEVATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "P",            ID_RESTART_USEPARAMETEROBFUSCATION, VIRTKEY, SHIFT, CONTROL, NOINVERT
-    "X",            ID_RESTART_USEXIVALEXANDER, VIRTKEY, SHIFT, CONTROL, NOINVERT
     "T",            ID_VIEW_ALWAYSONTOPGAME, VIRTKEY, SHIFT, CONTROL, NOINVERT
 END
 
@@ -1824,7 +2088,7 @@ BEGIN
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
                             "Use XivAlexander: {}\nUse Parameter Obfuscation: {}\nUse Elevation (Run as Administrator): {}\nGame Language: {}\nRegion: {}"
-    IDS_MAIN_TEXT           "Process ID: {}\nGame Path: {}\nArguments: {}\nGame Release: {} ({})\nMessage Pump: {}+{:06}us ({:.02f}/s)\n\n{}"
+    IDS_MAIN_TEXT           "Message Pump: {}+{:06}us ({:.02f}/s){}\n\n{}"
     IDS_APP_NAME            "XivAlexander"
     IDS_WINDOW_RUNTIME_CONFIG_EDITOR "Runtime Configuration Editor"
     IDS_WINDOW_OPCODE_CONFIG_EDITOR "Opcode Configuration Editor"
@@ -2069,6 +2333,152 @@ BEGIN
     IDS_SOCKETHOOK_SOCKET_RESET "{:x}: Force shutdown => {}"
     IDS_MENU_TTMP_PROFILE   "Profile"
     IDS_MENU_MODDING_SAMPLINGRATE "Audio &Sampling Rate"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_BROWSE     "Browse..."
+    IDS_SETTINGS_ADD        "Add..."
+    IDS_SETTINGS_REMOVE     "Remove"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "Edit this in the runtime configuration editor."
+    IDS_SETTINGS_OPENEDITOR "Open Editor"
+    IDS_SETTINGS_GROUP_UI   "Interface"
+    IDS_SETTINGS_GROUP_UI_MAINWINDOW "Control Window"
+    IDS_SETTINGS_GROUP_UI_LOGWINDOW "Logging Window"
+    IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "Configuration Editor"
+    IDS_SETTINGS_GROUP_GAMEWINDOW "Game Window"
+    IDS_SETTINGS_GROUP_NETWORKTIMING "Latency and Timing Helper"
+    IDS_SETTINGS_GROUP_SOCKET "Connections"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "Framerate Control"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "Lock Framerate"
+    IDS_SETTINGS_GROUP_OPCODES "Opcodes"
+    IDS_SETTINGS_GROUP_LAUNCH "Launch"
+    IDS_SETTINGS_GROUP_CHAINLOAD "Chain Loading"
+    IDS_SETTINGS_GROUP_MODDING "Modding"
+    IDS_SETTINGS_GROUP_MODDING_LANGUAGES "Languages"
+    IDS_SETTINGS_GROUP_MODDING_TTMP "TexTools ModPacks"
+    IDS_SETTINGS_GROUP_MODDING_LOGGING "Logging"
+    IDS_SETTINGS_GROUP_AUDIO "Audio"
+    IDS_SETTINGS_GROUP_AUDIO_MUTEVOICE "Mute Voice"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR "soxr Resampler"
+    IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "Filter"
+    IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
+    IDS_SETTINGS_GROUP_CROWDFIX_FIXES "Fixes"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT "Font Replacement"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "Faces"
+    IDS_SETTINGS_BACKGROUNDLIMIT "Background framerate limit (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "Render interval (µs; 0 to disable)"
+    IDS_SETTINGS_LOCK_AUTOMATIC "Choose the interval automatically"
+    IDS_SETTINGS_LOCK_RANGEFROM "Lowest target framerate (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "Highest target framerate (fps)"
+    IDS_SETTINGS_LOCK_MAXDEVIATION "Maximum render interval deviation (µs)"
+    IDS_SETTINGS_LOCK_GCD   "Global cooldown (s)"
+    IDS_SETTINGS_CROWDFIX_ENABLED "Enable CrowdFix"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "Reduces per-frame work that grows with the number of objects around. Changes apply from the next frame."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "Skip idle GPU resource notifiers"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "Walks only the GPU resources that do per-frame work, instead of every resource twice per frame."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "Chain job worker wake-ups"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "Wakes one sleeping worker per job submit, and lets each woken worker wake the next, instead of waking every worker from the submitting thread."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "Sync skeleton poses once per frame"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "Skips the pose syncs of every skeleton that repeat for each rendered view after the first one in a frame."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "Clear only the used culling slots"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "Clears the visibility table only up to the highest object slot ever used, instead of all 40,960 slots several times per frame."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "Free large graphics blocks outside the allocator lock"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "Lets small allocations proceed while large blocks are being freed. Mostly helps on CPUs where the main thread waits for the job workers."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "Pool draw staging blocks"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "Reuses freed staging blocks by size, so most allocations skip the allocator's global locks."
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "Freeze the follow AI of hidden minions"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "Skips the follow AI, with its collision sweeps, of minions whose model is hidden. They still warp back to their owner when left behind."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "Skip the redundant job list wait"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "Removes a second wait on an event that is always already signaled: about 75 system calls per frame."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "Run background instancing prep on the main thread"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "Runs the tiny per-view background instancing job right away, instead of handing it to a worker and waiting for it."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "Skip preparing hidden hotbars"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "Skips preparing the slots of hidden hotbars every frame. A bar that becomes visible is prepared in that same frame."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "Finish animations in parallel"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "Finishes the skeletons of each attach depth on the job workers, instead of one by one on the main thread."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "Split character culling across threads"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "The game culls all characters in a single job; this lets every thread that finishes its own culling work help with it."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "Hand out culling work one item at a time"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "Spreads cell culling over more threads, instead of handing out blocks of up to 8 items that only a few threads get."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "Gather only the used command list entries"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "Copies only the used entries of each command list, and skips sorting them when they are already in order. The result is the same as the game's."
+    IDS_SETTINGS_PAGE_PATCHCODES "Game Fixes"
+    IDS_SETTINGS_PATCHCODE_NEW "New..."
+    IDS_SETTINGS_PATCHCODE_EDIT "Edit..."
+    IDS_SETTINGS_PATCHCODE_DELETE "Delete"
+    IDS_SETTINGS_PATCHCODE_CONFIRMDELETE "Delete {}?"
+    IDS_SETTINGS_PATCHCODE_EDITORTITLE "Game Fix: {}"
+    IDS_SETTINGS_HEADING_OPCODECONFIG "Opcode Configuration"
+    IDS_SETTINGS_PAGE_STATUS "Status"
+    IDS_SETTINGS_PAGE_GAMEBEHAVIOR "Game Behavior"
+    IDS_SETTINGS_PAGE_CONFIGURATION "Configuration"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "Open Framerate Locking..."
+    IDS_SETTINGS_LOCK_MODE  "Mode"
+    IDS_SETTINGS_LOCK_MODE_OFF "Disabled"
+    IDS_SETTINGS_LOCK_MODE_FIXED "Fixed framerate"
+    IDS_SETTINGS_LOCK_MODE_AUTOMATIC "Automatic"
+    IDS_SETTINGS_LOCK_FRAMERATE "Framerate (fps)"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "Adjust Framerate to Minimize Cooldown Clipping"
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "Estimated actual global cooldown (s)"
+    IDS_SETTINGS_LOCK_INTERVALINUSE "Render interval in use (µs)"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "Measured global cooldown (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "Latest global cooldowns"
+    IDS_SETTINGS_LOCK_RESET "Reset"
+    IDS_SETTINGS_GRID_ENABLED "Enabled"
+    IDS_SETTINGS_GRID_NAME  "Name"
+    IDS_SETTINGS_GRID_LANGUAGE "Language"
+    IDS_SETTINGS_GRID_FILENAME "File name"
+    IDS_SETTINGS_GRID_ADD   "Add"
+    IDS_SETTINGS_PATHREPLACEMENT_FROM "From (regular expression)"
+    IDS_SETTINGS_PATHREPLACEMENT_TO "To"
+    IDS_SETTINGS_PATHREPLACEMENT_STOP "Stop"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC "Applied from the top; a matching rule with Stop ends the replacement."
+    IDS_SETTINGS_PATHFILTER_PATTERN "Pattern (regular expression)"
+    IDS_SETTINGS_PATHFILTER_INCLUDE "Log"
+    IDS_SETTINGS_PATHFILTER_DESC "The first matching filter decides whether a path is logged; paths none match follow the options above."
+    IDS_SETTINGS_FALLBACK_DESC "Drag to reorder: when a file isn't in the language chosen, languages higher up are used first."
+    IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(Anyone unnamed)"
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC "The first enabled entry of a speaker applies; an empty name stands for anyone unnamed."
+    IDS_SETTINGS_CHOICES_ACTIVE "Active"
+    IDS_SETTINGS_CHOICES_DESC "When none is active, the first profile with a file name is used. Changing a file name doesn't rename the files mods already have."
+    IDS_SETTINGS_FONT_SOURCE_TYPE "Type"
+    IDS_SETTINGS_FONT_SOURCE_PRESET "Preset"
+    IDS_SETTINGS_FONT_SOURCE_FONT "System font"
+    IDS_SETTINGS_FONT_WEIGHT "Weight"
+    IDS_SETTINGS_FONT_STRETCH "Stretch"
+    IDS_SETTINGS_FONT_STYLE "Style"
+    IDS_SETTINGS_FONT_ADDPRESET "Add Preset"
+    IDS_SETTINGS_FONT_ADDFONT "Add System Font"
+    IDS_SETTINGS_FONT_COPYTOOTHERS "Copy to Other Families"
+    IDS_SETTINGS_FONT_CONFIRMCOPY "Replace the sources of every other family with those of {}?"
+    IDS_SETTINGS_FONT_SOURCES_DESC "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
+    IDS_SETTINGS_FONT_NOPRESETS "No presets were found in the preset folder."
+    IDS_SETTINGS_EDGE_SCALE "Edge width per pixel of text size"
+    IDS_SETTINGS_EDGE_MIN   "Minimum edge width (px)"
+    IDS_SETTINGS_EDGE_MAX   "Maximum edge width (px)"
+    IDS_SETTINGS_DIRS_FOLDER "Folder"
+    IDS_SETTINGS_DIRS_LOCATION "Location"
+    IDS_SETTINGS_DIRS_ADDDEFAULT "(add default path)"
+    IDS_SETTINGS_DIRS_NOTFOUND "{} (not found)"
+    IDS_SETTINGS_DIRS_ADD "Add Folder..."
+    IDS_SETTINGS_SHOWINEXPLORER "Show in Explorer"
+    IDS_SETTINGS_DIRS_DESC "Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
+    IDS_SETTINGS_TTMP_NOFOLDER "(No folder)"
+    IDS_SETTINGS_TTMP_AUTHOR "Author"
+    IDS_SETTINGS_TTMP_VERSION "Version"
+    IDS_SETTINGS_TTMP_STATUS "Status"
+    IDS_SETTINGS_TTMP_FILTER "Filter"
+    IDS_SETTINGS_TTMP_CONFIRMDELETE "Delete ""{}""?\n\n{}"
+    IDS_SETTINGS_TTMP_NOMATCH "(No matching ModPacks)"
+    IDS_SETTINGS_TTMP_RENAME "Rename"
+    IDS_SETTINGS_TTMP_MOVETO "Move To..."
+    IDS_SETTINGS_TTMP_MOVETONEWFOLDER "Move to New Folder"
+    IDS_SETTINGS_TTMP_NEWFOLDER "New Folder"
+    IDS_SETTINGS_TTMP_TOPLEVEL "Top level: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC "Drag to reorder. Where ModPacks change the same file, the one further down wins."
+    IDS_STATUS_TTMPPROFILE "\nModPack profile: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC "Changing this takes effect after restarting the game."
 END
 
 #endif    // English (United States) resources

@@ -130,17 +130,33 @@ void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) cons
 		{"ChainLoadPath_dxgi", &ChainLoad.Dxgi},
 		{"ChainLoadPath_dinput8", &ChainLoad.Dinput8},
 		{"UseModding", &Modding.Enabled},
-		{"AdditionalGameResourceFileEntryRootDirectories", &Modding.AdditionalGameResourceFileEntryRootDirectories},
-		{"TtmpFlattenSubdirectoryDisplay", &Modding.Ttmp.FlattenSubdirectoryDisplay},
-		{"", &Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView},  // saved under an empty key by mistake
-		{"TtmpShowDedicatedMenu", &Modding.Ttmp.ShowDedicatedMenu},
-		{"AdditionalTexToolsModPackSearchDirectories", &Modding.Ttmp.AdditionalSearchDirectories},
+		{"AdditionalGameResourceFileEntryRootDirectories", &Modding.GameResourceFileEntryRootDirectories},
+		{"AdditionalTexToolsModPackSearchDirectories", &Modding.Ttmp.SearchDirectories},
 		{"LogAllDataFileRead", &Modding.Logging.AllDataFileRead},
-		{"MuteVoice_Battle", &Audio.MuteVoice.Battle},
-		{"MuteVoice_Cm", &Audio.MuteVoice.Cm},
-		{"MuteVoice_Emote", &Audio.MuteVoice.Emote},
-		{"MuteVoice_Line", &Audio.MuteVoice.Line},
+		{"MuteVoice_Battle", &Modding.MuteVoice.Battle},
+		{"MuteVoice_Cm", &Modding.MuteVoice.Cm},
+		{"MuteVoice_Emote", &Modding.MuteVoice.Emote},
+		{"MuteVoice_Line", &Modding.MuteVoice.Line},
 	};
+
+	// These were looked in besides the default directories, which are now listed too, so that they can be removed.
+	const std::pair<const char*, std::vector<std::filesystem::path>> listedDefaults[]{
+		{"AdditionalGameResourceFileEntryRootDirectories", ModdingGroup::DefaultGameResourceFileEntryRootDirectories()},
+		{"AdditionalTexToolsModPackSearchDirectories", ModdingGroup::DefaultTtmpSearchDirectories()},
+	};
+	if (config.is_object()) {
+		for (const auto& [from, defaults] : listedDefaults) {
+			if (const auto it = config.find(from); it != config.end() && it->is_array()) {
+				auto value = nlohmann::json::array();
+				for (const auto& dir : defaults)
+					value.emplace_back(xivres::util::unicode::convert<std::string>(dir.wstring()));
+				for (auto& dir : *it)
+					value.emplace_back(std::move(dir));
+				*it = std::move(value);
+			}
+		}
+	}
+
 	for (const auto& [from, item] : moved)
 		MoveKey(config, from, *item);
 }
@@ -232,7 +248,7 @@ void XivAlexander::RuntimeConfigRepository::DecideVersionSensitiveFeatures(Versi
 			Launch.UseLoginSessionSwitching = false;
 			Modding.Enabled = false;
 			Opcodes.EnabledPatchCodes = std::vector<std::string>();
-			Audio.UseAltCodecMusicSupport = false;
+			Modding.UseAltCodecMusicSupport = false;
 			GameWindow.UseImeModeIndicator = false;
 			CrowdFix.Enabled = false;
 			Audio.OutputSamplingRate = 48000U;
@@ -287,28 +303,65 @@ std::vector<std::pair<WORD, std::string>> XivAlexander::RuntimeConfigRepository:
 	return res;
 }
 
-uint64_t XivAlexander::RuntimeConfigRepository::CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t renderIntervalDeviation) {
-	static double prevFromFps{}, prevToFps{};
-	static uint64_t prevGcdUs{}, prevRenderIntervalDeviation{};
-	static uint64_t prevResult{};
-	if (prevFromFps == fromFps && prevToFps == toFps && prevGcdUs == gcdUs && prevRenderIntervalDeviation == renderIntervalDeviation) {
-		return prevResult;
-	}
+namespace {
+	// Of intervals whose delay is less than this much longer than the least, the shortest: the higher framerate is worth
+	// more than a millisecond of a cooldown of a few seconds.
+	constexpr uint64_t PreferHigherFramerateWithinUs = 1000;
 
+	// The slack of a render interval i, for a cooldown: how long after it ends the frame that sees it comes, i - cooldown % i,
+	// 1 to i. The game ends a cooldown on the first frame whose elapsed time, a sum of each frame's measured time, has
+	// reached it; that sum comes out a little short (it leaves out the time between the two times Framework.Tick reads the
+	// counter, and adds rounding and jitter), so a frame that lands right on the end misses it, and an exact multiple
+	// counts as a whole frame. A frame may come up to the deviation early, so with less slack than that, a miss costs
+	// another frame: the delay is the slack, plus the interval if the slack is less than the deviation.
+	uint64_t LockedCooldownDelayUs(uint64_t slackUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation) {
+		return slackUs < maximumRenderIntervalDeviation ? slackUs + intervalUs : slackUs;
+	}
+}
+
+uint64_t XivAlexander::RuntimeConfigRepository::CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t renderIntervalDeviation) {
 	fromFps = std::min(1000000., std::max(1., fromFps));
 	toFps = std::min(1000000., std::max(1., toFps));
-	auto minInterval = static_cast<uint64_t>(1000000. / toFps);
-	for (auto i = minInterval + 1, i_ = static_cast<uint64_t>(1000000. / fromFps); i <= i_; ++i) {
-		if (i - gcdUs % i < minInterval - gcdUs % minInterval && i - gcdUs % i >= renderIntervalDeviation) {
-			minInterval = i;
+	const auto first = static_cast<uint64_t>(1000000. / toFps);
+	const auto last = std::max(first, static_cast<uint64_t>(1000000. / fromFps));
+
+	// Intervals with the same number of whole ones in a cooldown, frames = gcd / i, have the slack k * i - gcd with
+	// k = frames + 1: it grows with i, and so does the delay, but for where the slack reaches the deviation, where the delay
+	// drops by an interval. So of each such block, only its shortest interval and the shortest with enough slack can have
+	// its least delay, or be its shortest interval with less than some delay. There are at most about 2 * sqrt(gcd) blocks,
+	// and as many as the frame counts the range gives, usually a few dozen.
+	const auto findInBlocks = [&](auto&& fn) -> std::optional<uint64_t> {
+		for (auto lo = first; lo <= last;) {
+			const auto frames = gcdUs / lo;
+			const auto hi = frames ? std::min(last, gcdUs / frames) : last;
+			const auto k = frames + 1;
+			const auto delay = [&](uint64_t i) { return LockedCooldownDelayUs(k * i - gcdUs, i, renderIntervalDeviation); };
+			if (const auto found = fn(lo, delay(lo)))
+				return found;
+			if (const auto enough = std::max(lo, (gcdUs + renderIntervalDeviation + k - 1) / k); enough <= hi) {
+				if (const auto found = fn(enough, delay(enough)))
+					return found;
+			}
+			lo = hi + 1;
 		}
-	}
-	prevFromFps = fromFps;
-	prevToFps = toFps;
-	prevGcdUs = gcdUs;
-	prevRenderIntervalDeviation = renderIntervalDeviation;
-	prevResult = minInterval;
-	return minInterval;
+		return std::nullopt;
+	};
+
+	auto least = UINT64_MAX;
+	findInBlocks([&least](uint64_t, uint64_t delay) {
+		least = std::min(least, delay);
+		return std::optional<uint64_t>();
+	});
+	return findInBlocks([least](uint64_t i, uint64_t delay) {
+		return delay < least + PreferHigherFramerateWithinUs ? std::optional(i) : std::nullopt;
+	}).value_or(first);
+}
+
+std::pair<uint64_t, uint64_t> XivAlexander::RuntimeConfigRepository::EstimateLockedCooldownUs(uint64_t cooldownUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation) {
+	// The frames stay on their grid, so a deviation doesn't add up over the frames: at worst, the frame that should see the
+	// end misses it, and the next one does.
+	const auto shortest = cooldownUs + (intervalUs - cooldownUs % intervalUs);
+	return {shortest, cooldownUs + LockedCooldownDelayUs(shortest - cooldownUs, intervalUs, maximumRenderIntervalDeviation)};
 }
 
 [[nodiscard]] const std::map<std::string, std::string>& XivAlexander::RuntimeConfigRepository::GetMusicDirectoryPurchaseWebsites(std::string name) const {

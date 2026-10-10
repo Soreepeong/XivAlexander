@@ -1,8 +1,5 @@
 #pragma once
 
-#include <filesystem>
-#include <map>
-
 #include <nlohmann/json.hpp>
 
 #include "BaseConfigRepository.h"
@@ -17,6 +14,22 @@ namespace XivAlexander {
 		int Style = 0;
 
 		bool operator==(const FontReplacementFamilyFont&) const = default;
+	};
+
+	/// A source of a game font family's faces: a preset of FFXIV-FontChanger's, or a system font made into faces as its
+	/// FaceFromFont makes them.
+	struct FontReplacementFamilySource {
+		bool Enabled = true;
+
+		/// The preset, as a path relative to the preset folder; empty for a system font.
+		std::string Preset;
+
+		/// The system font, if there is no preset.
+		FontReplacementFamilyFont Font;
+
+		[[nodiscard]] bool IsPreset() const { return !Preset.empty(); }
+
+		bool operator==(const FontReplacementFamilySource&) const = default;
 	};
 
 	/// The edge outline's width at a text size px: clamp(Scale * px, Min, Max) pixels. The defaults are the game's own edge,
@@ -72,15 +85,10 @@ namespace XivAlexander {
 			/// The folder presets are chosen from.
 			ConfigItem<std::filesystem::path> PresetFolder{this, "PresetFolder"};
 
-			/// The presets in use per game font family (AXIS, JupiterN, ...), as paths relative to the preset folder, in the
-			/// order they were selected: of the family's faces, only those are used, and of a face in several, the last one's.
-			/// A family without any (and a face its presets lack) uses the game's glyphs, with SystemFallback for the
-			/// characters they lack.
-			ConfigItem<std::map<std::string, std::vector<std::string>>> FamilyPresets{this, "FamilyPresets"};
-
-			/// The system font per game font family to draw its faces with, made as FFXIV-FontChanger's FaceFromFont makes
-			/// them; over the family's presets.
-			ConfigItem<std::map<std::string, FontReplacementFamilyFont>> FamilyFonts{this, "FamilyFonts"};
+			/// The sources per game font family (AXIS, JupiterN, ...), in order: of a preset, only the family's faces are
+			/// used, and of a face several give, the last one's. A family without any (and a face its sources lack) uses the
+			/// game's glyphs, with SystemFallback for the characters they lack.
+			ConfigItem<std::map<std::string, std::vector<FontReplacementFamilySource>>> FamilySources{this, "FamilySources"};
 
 			/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by
 			/// putting each in a cell as wide as its 0.
@@ -96,6 +104,8 @@ namespace XivAlexander {
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
 	void from_json(const nlohmann::json&, FontReplacementFamilyFont&);
+	void to_json(nlohmann::json&, const FontReplacementFamilySource&);
+	void from_json(const nlohmann::json&, FontReplacementFamilySource&);
 	void to_json(nlohmann::json&, const FontReplacementEdgeConfig&);
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
 }

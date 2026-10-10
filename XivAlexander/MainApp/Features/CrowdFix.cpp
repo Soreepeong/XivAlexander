@@ -19,25 +19,15 @@
 
 namespace XivAlexander::Apps::MainApp::Features {
 	namespace {
-		namespace Resolved = Game::Resolved;
+		namespace Resolved = Game::Resolved::CrowdFix;
 		using Game::Signatures::ComplexSignature;
 		using Game::Signatures::ResolveError;
 		using Misc::Hooks::PointerFunctionOf;
 
-		// Layouts from FFXIVClientStructs.
-		constexpr size_t TaskManagerJobPoolOffset = 0x08;
+		// Layouts from FFXIVClientStructs. Most others are read from the game code that uses them; see the signatures.
 		constexpr size_t TaskManagerPoolContextOffset = 0x40;  // what workers pass to tasks: JobPool + 0x38
 		constexpr size_t JobPoolInitializedOffset = 0x00;
-		constexpr size_t JobPoolThreadsOffset = 0x08;
-		constexpr size_t JobPoolThreadCountOffset = 0x10;
-		constexpr size_t InnerThreadSkipOffset = 0x35;
-		constexpr size_t InnerThreadWakeCountOffset = 0x38;
-		constexpr size_t InnerThreadEventOffset = 0x40;
-		constexpr size_t GameObjectRenderFlagsOffset = 0x118;
 		constexpr uint64_t VisibilityFlagsModel = 1 << 1;
-		constexpr size_t SkeletonPartialSkeletonCountOffset = 0x50;
-		constexpr size_t SkeletonPartialSkeletonsOffset = 0x68;
-		constexpr size_t PartialSkeletonSize = 0x230;
 
 		template<typename T>
 		T& At(void* base, ptrdiff_t offset) {
@@ -143,7 +133,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static constexpr size_t CallCodeLength = 24;
 
 			const std::shared_ptr<Misc::Logger> m_logger;
-			Resolved::GraphicsNotifiers m_list;
+			Resolved::SkipIdleNotifiersFunctions m_list;
 			std::optional<PointerFunctionOf<Resolved::NotifierLinkFn>> m_link;
 			std::optional<PointerFunctionOf<Resolved::NotifierLinkFn>> m_unlink;
 
@@ -161,7 +151,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		public:
 			explicit IdleNotifierFilter(std::shared_ptr<Misc::Logger> logger)
 				: m_logger(std::move(logger)) {
-				if (!Resolve(Resolved::GraphicsNotifierList, m_list))
+				if (!Resolve(Resolved::SkipIdleNotifiers, m_list))
 					return;
 
 				if (m_list.PrePresentLoopLength < CallCodeLength || m_list.PostKickLoopLength < CallCodeLength) {
@@ -361,9 +351,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// Every job submit calls the pool's wake-all, which SetEvents every sleeping worker from the submitting thread:
 		/// up to 15 syscalls per submit, ~100 submits per frame on the main thread.
 		/// Here the submitter wakes one sleeping worker, and each worker that wakes while the queue still has work wakes
-		/// the next one. Same counters as the game (InnerThread +0x35 skip, +0x38 wake count, +0x40 event).
+		/// the next one. Same counters as the game (InnerThread skip flag, wake count and event, where the stock
+		/// wake-all reads them).
 		class JobWakeChain final : public FixBase {
-			Resolved::JobPoolWake m_functions;
+			Resolved::ChainWorkerWakeupsFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::JobPoolWakeAllFn>> m_wakeAll;
 			Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD> m_wait{"kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject"};
 
@@ -375,7 +366,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			JobWakeChain() {
-				if (!Resolve(Resolved::JobPoolWakeFunctions, m_functions))
+				if (!Resolve(Resolved::ChainWorkerWakeups, m_functions))
 					return;
 
 				if (!m_wait) {
@@ -405,7 +396,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 				}
 
-				const auto pool = frame.TaskManager ? static_cast<uint8_t*>(frame.TaskManager) + TaskManagerJobPoolOffset : nullptr;
+				const auto& layout = m_functions.Layout;
+				const auto pool = frame.TaskManager ? static_cast<uint8_t*>(frame.TaskManager) + layout.TaskManagerJobPool : nullptr;
 				if (!pool || !At<bool>(pool, JobPoolInitializedOffset)) {
 					m_waiting = true;
 					SetStatus("Waiting for the job pool");
@@ -413,29 +405,30 @@ namespace XivAlexander::Apps::MainApp::Features {
 				}
 
 				if (m_workerEvents.empty()) {
-					const auto threads = At<uint8_t**>(pool, JobPoolThreadsOffset);
-					for (int32_t i = 0, count = At<int32_t>(pool, JobPoolThreadCountOffset); i < count; i++)
-						m_workerEvents.push_back(At<HANDLE>(threads[i], InnerThreadEventOffset));
+					const auto threads = At<uint8_t**>(pool, layout.Threads);
+					for (int32_t i = 0, count = At<int32_t>(pool, layout.ThreadCount); i < count; i++)
+						m_workerEvents.push_back(At<HANDLE>(threads[i], layout.ThreadEvent));
 				}
 
 				m_pool = pool;
 				m_hooks += m_wait.SetHook([this](HANDLE handle, DWORD milliseconds) { return WaitDetour(handle, milliseconds); });
-				m_hooks += m_wakeAll->SetHook([](void* jobPool) { WakeOne(jobPool, true); });
+				m_hooks += m_wakeAll->SetHook([this](void* jobPool) { WakeOne(jobPool, true); });
 				SetStatus(std::format("On, {} workers", m_workerEvents.size()));
 			}
 
 		private:
 			/// Wakes at most one sleeping worker. With bumpAwake, running workers also get another pass like the stock code.
-			static int WakeOne(void* jobPool, bool bumpAwake) {
-				const auto threads = At<uint8_t**>(jobPool, JobPoolThreadsOffset);
+			int WakeOne(void* jobPool, bool bumpAwake) const {
+				const auto& layout = m_functions.Layout;
+				const auto threads = At<uint8_t**>(jobPool, layout.Threads);
 				int woken = 0;
 
-				for (int32_t i = 0, count = At<int32_t>(jobPool, JobPoolThreadCountOffset); i < count; i++) {
+				for (int32_t i = 0, count = At<int32_t>(jobPool, layout.ThreadCount); i < count; i++) {
 					const auto worker = threads[i];
-					if (worker[InnerThreadSkipOffset])
+					if (worker[layout.ThreadSkip])
 						continue;
 
-					const auto wakeCount = std::atomic_ref(At<int32_t>(worker, InnerThreadWakeCountOffset));
+					const auto wakeCount = std::atomic_ref(At<int32_t>(worker, layout.ThreadWakeCount));
 					const auto current = wakeCount.load();
 					if (current >= 2)
 						continue;
@@ -445,7 +438,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 						continue;
 
 					if (wakeCount.fetch_add(1) == 0) {
-						SetEvent(At<HANDLE>(worker, InnerThreadEventOffset));
+						SetEvent(At<HANDLE>(worker, layout.ThreadEvent));
 						woken++;
 					}
 				}
@@ -479,11 +472,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			SkeletonSyncDedupe() {
-				Resolved::SkeletonPoseSyncWalkFn syncWalk;
-				if (!Resolve(Resolved::SkeletonPoseSyncWalkFunction, syncWalk))
+				Resolved::DedupeSkeletonSyncsFunctions functions;
+				if (!Resolve(Resolved::DedupeSkeletonSyncs, functions))
 					return;
 
-				m_syncWalk.emplace("Render::SkeletonPoseSyncWalk", syncWalk);
+				m_syncWalk.emplace("Render::SkeletonPoseSyncWalk", functions.SyncWalk);
 				m_available = true;
 			}
 
@@ -522,20 +515,28 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// CullingManager+0x18) are cleared. Slots above that mark have never been written, so they are still zero.
 		class CullingClearTrim final : public FixBase {
 			static constexpr uint32_t FullCount = 0xA000;
-			static constexpr int MaskWords = 0x500;
 			static constexpr int ObjectsPerWord = 32;
+			static constexpr int MaskWords = FullCount / ObjectsPerWord;
+			// The object bitmask comes right before the visibility table; only known for this layout.
+			static constexpr size_t TableOffset = 0x20;
+			static constexpr size_t MaskOffset = 0x18;
 
-			Resolved::CullingVisibilityClear m_clear;
+			Resolved::TrimCullingClearFunctions m_clear;
 			int m_highestWord = -1;
 			bool m_enabled = false;
 
 		public:
 			CullingClearTrim() {
-				if (!Resolve(Resolved::CullingVisibilityClearLoop, m_clear))
+				if (!Resolve(Resolved::TrimCullingClear, m_clear))
 					return;
 
 				if (*m_clear.ClearCount != FullCount) {
 					SetStatus("Unavailable: unexpected clear count");
+					return;
+				}
+
+				if (m_clear.TableOffset != TableOffset) {
+					SetStatus(std::format("Unavailable: the visibility table moved to +0x{:X}", m_clear.TableOffset));
 					return;
 				}
 
@@ -564,7 +565,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!cullingManager)
 					return;
 
-				const auto mask = At<const uint32_t*>(cullingManager, 0x18);
+				const auto mask = At<const uint32_t*>(cullingManager, MaskOffset);
 				if (!mask)
 					return;
 
@@ -592,12 +593,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// still go through the original Free.
 		/// Mostly relieves the job workers, so it matters on CPUs where the main thread ends up waiting for them.
 		class AllocatorFreeLock final : public FixBase {
-			static constexpr size_t BackingOffset = 0x108;
-			static constexpr size_t ChunkTableOffset = 0x110;
-			static constexpr size_t ChunkCountOffset = 0x130;
-			static constexpr size_t LockOffset = 0x158;
-			static constexpr size_t BackingFreeSlot = 4;
-
+			// Everything the detour reads is taken from the original Free, which also checks it all fits together: a
+			// layout guessed wrong would hand slab blocks to the backing allocator and corrupt the heap.
+			Resolved::GraphicsAllocatorLayout m_layout;
 			std::optional<PointerFunctionOf<Resolved::GraphicsAllocatorFreeFn>> m_free;
 
 			xivres::util::on_dtor::multi m_hooks;
@@ -605,11 +603,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			AllocatorFreeLock() {
-				Resolved::GraphicsAllocatorFreeFn free;
-				if (!Resolve(Resolved::GraphicsAllocatorFreeFunction, free))
+				Resolved::ShortenAllocatorLockFunctions functions;
+				if (!Resolve(Resolved::ShortenAllocatorLock, functions))
 					return;
 
-				m_free.emplace("Graphics::SmallObjectAllocator::Free", free);
+				m_layout = functions.Layout;
+				m_free.emplace("Graphics::SmallObjectAllocator::Free", functions.Free);
 				m_available = true;
 			}
 
@@ -633,7 +632,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!block)
 					return;
 
-				const auto criticalSection = &At<CRITICAL_SECTION>(allocator, LockOffset);
+				const auto criticalSection = &At<CRITICAL_SECTION>(allocator, m_layout.Lock);
 				EnterCriticalSection(criticalSection);
 				if (IsSlabBlock(allocator, block)) {
 					// takes the (recursive) lock again
@@ -643,20 +642,20 @@ namespace XivAlexander::Apps::MainApp::Features {
 				}
 
 				LeaveCriticalSection(criticalSection);
-				const auto backing = At<void*>(allocator, BackingOffset);
-				VirtualFunction<void(*)(void*, void*)>(backing, BackingFreeSlot)(backing, block);
+				const auto backing = At<void*>(allocator, m_layout.Backing);
+				VirtualFunction<void(*)(void*, void*)>(backing, m_layout.BackingFreeSlot)(backing, block);
 			}
 
-			/// The original's membership test (page header at block & ~0x3FF). Only valid under the allocator lock, since
+			/// The original's membership test (page header at block & ~0x3FF in 7.x). Only valid under the allocator lock, since
 			/// the chunk table is reallocated when it grows.
-			static bool IsSlabBlock(void* allocator, void* block) {
-				const auto page = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(block) & ~static_cast<uintptr_t>(0x3FF));
-				const auto index = At<uint32_t>(page, 0x1C);
-				if (index >= At<uint32_t>(allocator, ChunkCountOffset))
+			[[nodiscard]] bool IsSlabBlock(void* allocator, void* block) const {
+				const auto page = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(block) & ~static_cast<uintptr_t>(m_layout.PageMask));
+				const auto index = At<uint32_t>(page, m_layout.PageIndex);
+				if (index >= At<uint32_t>(allocator, m_layout.ChunkCount))
 					return false;
 
-				const auto chunk = At<uint8_t*>(At<uint8_t*>(allocator, ChunkTableOffset), 0x10 + index * 0x30);
-				return chunk && static_cast<uint64_t>(static_cast<uint8_t*>(block) - chunk) < 0x4000;
+				const auto chunk = At<uint8_t*>(At<uint8_t*>(allocator, m_layout.ChunkTable), m_layout.ChunkBase + index * m_layout.ChunkStride);
+				return chunk && static_cast<uint64_t>(static_cast<uint8_t*>(block) - chunk) < m_layout.ChunkSpan;
 			}
 		};
 
@@ -730,7 +729,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			// The vtable slots are plain function pointers; there is one instance at a time.
 			static inline std::atomic<StagingPool*> s_instance;
 
-			void* const* m_allocatorManager{};
+			Resolved::PoolStagingBlocksFunctions m_allocatorManager;
 			std::vector<std::unique_ptr<Bucket>> m_buckets;
 
 			void** m_vtable{};
@@ -745,7 +744,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				for (auto i = MinClassShift; i <= MaxClassShift; i++)
 					m_buckets.emplace_back(std::make_unique<Bucket>(std::max<size_t>(16, ClassBudgetBytes >> i)));
 
-				if (!Resolve(Resolved::GraphicsAllocatorManagerInstance, m_allocatorManager))
+				if (!Resolve(Resolved::PoolStagingBlocks, m_allocatorManager))
 					return;
 
 				s_instance = this;
@@ -771,8 +770,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 				}
 
-				const auto manager = *m_allocatorManager;
-				const auto allocator = manager ? At<void*>(manager, 0x10) : nullptr;
+				const auto manager = *m_allocatorManager.AllocatorManager;
+				const auto allocator = manager ? At<void*>(manager, m_allocatorManager.AllocatorOffset) : nullptr;
 				if (!allocator) {
 					m_waiting = true;
 					SetStatus("Waiting for the graphics allocator");
@@ -896,6 +895,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// pays for all of it. This skips the follow AI for minions whose model is hidden; Companion::Update still warps
 		/// them back to their owner when they fall too far behind.
 		class HiddenMinionFreeze final : public FixBase {
+			// where Companion::Update reads the render flags: +0x118, but +0x108 in 7.20 to 7.25h3
+			size_t m_renderFlagsOffset{};
 			std::optional<PointerFunctionOf<Resolved::CompanionFollowFn>> m_follow;
 
 			xivres::util::on_dtor::multi m_hooks;
@@ -903,11 +904,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			HiddenMinionFreeze() {
-				Resolved::CompanionFollowFn follow;
-				if (!Resolve(Resolved::CompanionFollowFunction, follow))
+				Resolved::FreezeHiddenMinionsFunctions follow;
+				if (!Resolve(Resolved::FreezeHiddenMinions, follow))
 					return;
 
-				m_follow.emplace("Companion::Follow", follow);
+				m_renderFlagsOffset = follow.RenderFlagsOffset;
+				m_follow.emplace("Companion::Follow", follow.Follow);
 				m_available = true;
 			}
 
@@ -928,7 +930,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		private:
 			void FollowDetour(void* companion) {
-				if (At<uint64_t>(companion, GameObjectRenderFlagsOffset) & VisibilityFlagsModel)
+				if (At<uint64_t>(companion, m_renderFlagsOffset) & VisibilityFlagsModel)
 					return;
 
 				m_follow->bridge(companion);
@@ -943,12 +945,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static constexpr uint16_t CallIndirect = 0x15FF;  // FF 15
 			static constexpr uint16_t JumpOver = 0x04EB;  // EB 04: skips the rest of the 6 byte call
 
-			Resolved::JobListPrepareWaits m_sites;
+			Resolved::SkipPrepareWaitFunctions m_sites;
 			bool m_enabled = false;
 
 		public:
 			PrepareWaitSkip() {
-				m_available = Resolve(Resolved::JobListPrepareWaitCalls, m_sites);
+				m_available = Resolve(Resolved::SkipPrepareWait, m_sites);
 			}
 
 			[[nodiscard]] bool Enabled() const override { return m_enabled; }
@@ -980,7 +982,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			using ClaimFn = void*(*)(void* owner, void* state, void*** argument, int32_t* remaining);
 
-			Resolved::BgInstancingPrep m_prep;
+			Resolved::InlineBgPrepFunctions m_prep;
 			std::optional<PointerFunctionOf<Resolved::JobListKickFn>> m_kick;
 
 			void* m_prepList{};
@@ -991,7 +993,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			BgPrepInline() {
-				if (!Resolve(Resolved::BgInstancingPrepJob, m_prep))
+				if (!Resolve(Resolved::InlineBgPrep, m_prep))
 					return;
 
 				m_kick.emplace("TaskManager::KickJobList", m_prep.Kick);
@@ -1070,14 +1072,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// a bar that becomes visible gets a full prepare that same frame. This jumps over the intermediate setup and the
 		/// prepare call at both hidden-bar sites; the number array clears and the item reload call before them still run.
 		class HiddenHotbarSkip final : public FixBase {
-			Resolved::HiddenHotbarPrepares m_sites;
+			Resolved::SkipHiddenHotbarsFunctions m_sites;
 			uint16_t m_barOriginal{};
 			uint16_t m_crossBarOriginal{};
 			bool m_enabled = false;
 
 		public:
 			HiddenHotbarSkip() {
-				if (!Resolve(Resolved::HiddenHotbarPrepareCalls, m_sites))
+				if (!Resolve(Resolved::SkipHiddenHotbars, m_sites))
 					return;
 
 				if (m_sites.Length < 2 || m_sites.Length - 2 > 0x7F) {
@@ -1097,7 +1099,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!m_available || enabled == m_enabled)
 					return;
 
-				// jmp rel8 to the inc esi after the prepare call
+				// jmp rel8 to the slot index increment after the prepare call
 				const auto jump = static_cast<uint16_t>(0xEB | (m_sites.Length - 2) << 8);
 				m_enabled = enabled;
 				WriteCodeAtomically(m_sites.Bar, enabled ? jump : m_barOriginal);
@@ -1116,6 +1118,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static constexpr int32_t MinParallel = 16;  // smaller depth levels run serially
 			static constexpr int32_t MaxSkeletons = 4096;  // group capacity: 16 chunks x 32 blocks x 8 items
 			static constexpr size_t WriterSize = 40;
+			// Pending animation control removals of a partial skeleton. Only known for the partial skeleton layout of
+			// 7.20 and later (pose at +0x148, 0x230 bytes each), which the pose sync walk confirms.
+			static constexpr size_t PartialPendingRemovalsOffset = 0x1C0;
+			static constexpr size_t KnownPartialPoseOffset = 0x148;
+			static constexpr size_t KnownPartialSize = 0x230;
 
 			struct Entry {
 				void* Skeleton;
@@ -1128,7 +1135,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static inline thread_local bool s_inUpdate;
 			static inline thread_local int s_tailCalls;
 
-			Resolved::AnimationTail m_functions;
+			Resolved::ParallelAnimTailFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::AnimationUpdateFn>> m_update;
 			std::optional<PointerFunctionOf<Resolved::AnimationTailFn>> m_tail;
 			std::vector<void*> m_mainOnly = std::vector<void*>(MaxSkeletons);
@@ -1138,8 +1145,13 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			AnimTailParallel() {
-				if (!Resolve(Resolved::AnimationTailFunctions, m_functions))
+				if (!Resolve(Resolved::ParallelAnimTail, m_functions))
 					return;
+
+				if (m_functions.Partials.Pose != KnownPartialPoseOffset || m_functions.Partials.Stride != KnownPartialSize) {
+					SetStatus(std::format("Unavailable: unknown partial skeleton layout ({} bytes, pose at +0x{:X})", m_functions.Partials.Stride, m_functions.Partials.Pose));
+					return;
+				}
 
 				m_update.emplace("Animation::Update", m_functions.Update);
 				m_tail.emplace("Animation::FinishSkeleton", m_functions.Tail);
@@ -1285,15 +1297,16 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			/// Ground ray casts (BG collision) and animation control removals are only done on the main thread.
-			static bool NeedsMainThread(void* skeleton) {
+			[[nodiscard]] bool NeedsMainThread(void* skeleton) const {
 				if (const auto ground = At<void*>(skeleton, 0x80);
 					ground && (At<uint8_t>(ground, 0x10) & 1) && At<void*>(ground, 0x18) && At<void*>(ground, 0x20))
 					return true;
 
-				const auto partials = At<uint8_t*>(skeleton, SkeletonPartialSkeletonsOffset);
-				for (size_t i = 0, count = At<uint16_t>(skeleton, SkeletonPartialSkeletonCountOffset); i < count; i++) {
+				const auto& layout = m_functions.Partials;
+				const auto partials = At<uint8_t*>(skeleton, layout.Array);
+				for (size_t i = 0, count = At<uint16_t>(skeleton, layout.Count); i < count; i++) {
 					// pose, pending removals
-					if (const auto partial = partials + i * PartialSkeletonSize; At<void*>(partial, 0x148) && At<uint64_t>(partial, 0x1C0))
+					if (const auto partial = partials + i * layout.Stride; At<void*>(partial, layout.Pose) && At<uint64_t>(partial, PartialPendingRemovalsOffset))
 						return true;
 				}
 
@@ -1335,11 +1348,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			CharacterCullSplit() {
-				Resolved::CameraCullJobFn cullJob;
-				if (!Resolve(Resolved::CameraCullJobFunction, cullJob))
+				Resolved::SplitCharacterCullingFunctions functions;
+				if (!Resolve(Resolved::SplitCharacterCulling, functions))
 					return;
 
-				m_cullJob.emplace("CameraCulling::Job", cullJob);
+				m_cullJob.emplace("CameraCulling::Job", functions.CullJob);
 				m_available = true;
 			}
 
@@ -1403,7 +1416,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// already have the engine's per-item claim variant (one item at a time from a flat counter); this routes their
 		/// block help function to it, on workers and the main thread alike.
 		class CullPerItemClaim final : public FixBase {
-			Resolved::CullingParallelFors m_groups;
+			Resolved::PerItemCullingClaimsFunctions m_groups;
 			std::optional<PointerFunctionOf<Resolved::ParallelForHelpFn>> m_cellHelp;
 			std::optional<PointerFunctionOf<Resolved::ParallelForHelpFn>> m_setupHelp;
 
@@ -1412,7 +1425,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			CullPerItemClaim() {
-				if (!Resolve(Resolved::CullingParallelForGroups, m_groups))
+				if (!Resolve(Resolved::PerItemCullingClaims, m_groups))
 					return;
 
 				m_cellHelp.emplace("CullingManager::CellGroup::HelpBlocks", m_groups.CellHelpBlocks);
@@ -1454,17 +1467,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// so it would leave them unchanged), and otherwise calls the game's merge sort over the whole range, which splits
 		/// and merges exactly like the gather's inlined top level. The result is byte for byte what the game produces.
 		class GatherUsedBytes final : public FixBase {
-			static constexpr size_t ContextArrayOffset = 0x08;  // Device::ContextArray
-			static constexpr size_t ContextCountOffset = 0x6C;
-			static constexpr size_t ContextSize = 0x2F78;  // sizeof(Kernel::Context)
-			static constexpr size_t ListsOffset = 0x18;  // per list: first block, write pointer, u32 free slots, u32 blocks
-			static constexpr size_t ListSize = 24;
-			static constexpr size_t BlockSize = 0x4000;
-			static constexpr uint32_t EntriesPerBlock = 1024;
-			static constexpr size_t NextBlockOffset = 0x3FF0;  // link entry in the last slot of a full block
-			static constexpr size_t EntrySize = 16;  // u32 sort key, 4 bytes, command pointer
-
-			Resolved::CommandListGather m_functions;
+			// The whole layout, the context size above all (0x22C8 before 7.20, 0x2C78 before 7.50, then 0x2F78), is
+			// taken from the gather itself.
+			Resolved::GatherUsedCommandsFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::CommandListGatherFn>> m_gather;
 
 			xivres::util::on_dtor::multi m_hooks;
@@ -1472,7 +1477,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		public:
 			GatherUsedBytes() {
-				if (!Resolve(Resolved::CommandListGatherFunctions, m_functions))
+				if (!Resolve(Resolved::GatherUsedCommands, m_functions))
 					return;
 
 				m_gather.emplace("DeviceDX11::GatherCommandList", m_functions.Gather);
@@ -1504,51 +1509,55 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!*cursor)
 					return m_gather->bridge(device, list, cursor, remaining, results, counts, total);
 
-				const auto contexts = At<uint32_t>(device, ContextCountOffset);
-				const auto contextArray = At<uint8_t*>(device, ContextArrayOffset);
+				const auto& layout = m_functions.Layout;
+				const auto entriesPerBlock = static_cast<uint32_t>(layout.BlockSize / layout.EntrySize);
+				const auto contexts = At<uint32_t>(device, layout.ContextCount);
+				const auto contextArray = At<uint8_t*>(device, layout.ContextArray);
 				*total = 0;
 				for (uint32_t i = 0; i < contexts; i++) {
-					const auto descriptor = contextArray + i * ContextSize + ListsOffset + list * ListSize;
-					const auto blocks = At<uint32_t>(descriptor, 0x14);
+					// first block, write pointer, free slots, blocks
+					const auto descriptor = contextArray + i * layout.ContextSize + layout.Lists + list * layout.ListSize;
+					const auto blocks = At<uint32_t>(descriptor, layout.ListBlocks);
 					counts[i] = 0;
 					if (!blocks) {
 						results[i] = nullptr;
 						continue;
 					}
 
-					const auto count = blocks * EntriesPerBlock - At<uint32_t>(descriptor, 0x10);
+					const auto count = blocks * entriesPerBlock - At<uint32_t>(descriptor, layout.ListFreeSlots);
 					const auto destination = *cursor;
 					auto block = At<uint8_t*>(descriptor, 0);
 					auto output = destination;
 					for (uint32_t b = 1; b < blocks; b++) {
-						std::memcpy(output, block, BlockSize);
-						block = At<uint8_t*>(block, NextBlockOffset);
-						output += BlockSize;
+						std::memcpy(output, block, layout.BlockSize);
+						block = At<uint8_t*>(block, layout.NextBlock);
+						output += layout.BlockSize;
 					}
 
-					std::memcpy(output, block, count * EntrySize - static_cast<size_t>(output - destination));
+					std::memcpy(output, block, count * layout.EntrySize - static_cast<size_t>(output - destination));
 
 					if (!IsSorted(destination, count)) {
 						// the same scratch area the stock gather uses, right after this context's reserved blocks
-						const auto scratch = destination + static_cast<size_t>(blocks) * BlockSize;
-						std::memcpy(scratch, destination, count * EntrySize);
+						const auto scratch = destination + static_cast<size_t>(blocks) * layout.BlockSize;
+						std::memcpy(scratch, destination, count * layout.EntrySize);
 						m_functions.Sort(destination, scratch, 0, static_cast<int32_t>(count) - 1);
 					}
 
 					counts[i] = count;
 					results[i] = destination;
 					*total += count;
-					*cursor = destination + count * EntrySize;
-					*remaining -= static_cast<uint32_t>(count * EntrySize);
+					*cursor = destination + count * layout.EntrySize;
+					*remaining -= static_cast<uint32_t>(count * layout.EntrySize);
 				}
 
 				return contexts;
 			}
 
-			static bool IsSorted(const uint8_t* entries, uint32_t count) {
+			[[nodiscard]] bool IsSorted(const uint8_t* entries, uint32_t count) const {
+				const auto entrySize = m_functions.Layout.EntrySize;
 				auto previous = At<uint32_t>(entries, 0);
 				for (uint32_t i = 1; i < count; i++) {
-					const auto key = At<uint32_t>(entries, i * EntrySize);
+					const auto key = At<uint32_t>(entries, i * entrySize);
 					if (key < previous)
 						return false;
 
@@ -1584,7 +1593,7 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 	const std::shared_ptr<Misc::Logger> Logger;
 
 	std::array<std::unique_ptr<FixBase>, FixCount> Fixes;
-	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::TaskManagerExecuteAllTasksFn>> ExecuteAllTasks;
+	std::optional<Misc::Hooks::PointerFunctionOf<Resolved::TaskManagerExecuteAllTasksFn>> ExecuteAllTasks;
 	std::string Unusable;
 
 	mutable std::mutex DesiredMtx;
@@ -1621,14 +1630,14 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 
 		// Fixes are toggled and updated from here, like CrowdFix does from Framework.Update: on the main thread, before
 		// the frame's tasks, and so outside DeviceDX11::PostTick, which some of them patch.
-		Game::Resolved::TaskManagerExecuteAllTasksFn executeAllTasks;
-		if (const auto status = Game::Resolved::TaskManagerExecuteAllTasksFunction.Resolve(executeAllTasks); status != Game::Signatures::ResolveError::Ok) {
+		Resolved::FixDriverFunctions driver;
+		if (const auto status = Resolved::FixDriver.Resolve(driver); status != ResolveError::Ok) {
 			Unusable = std::format("Unavailable: {}", status.Detail);
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix fixes are left off: {}", status.Detail);
 			return;
 		}
 
-		ExecuteAllTasks.emplace("TaskManager::ExecuteAllTasks", executeAllTasks);
+		ExecuteAllTasks.emplace("TaskManager::ExecuteAllTasks", driver.ExecuteAllTasks);
 		Cleanup += ExecuteAllTasks->SetHook([this](void* taskManager, float* deltaTime) { OnFrame(taskManager, deltaTime); });
 	}
 

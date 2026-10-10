@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "MainApp/Modding/TtmpSet.h"
 
+#include <xivres/stream.oplocking.h>
+
 #include "Config.h"
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
@@ -50,7 +52,16 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		List.for_each(cb, choiceOnly ? Choices : nlohmann::json{});
 	}
 
+	std::string TtmpSet::DisplayName() const {
+		if (!List.Name.empty())
+			return List.Name;
+		return xivres::util::unicode::convert<std::string>(ListPath.parent_path().filename().wstring());
+	}
+
 	void TtmpSet::TryCleanupUnusedFiles() {
+		// The built sqpacks may still refer to the stream until they are reapplied, which would keep the file open.
+		if (const auto stream = dynamic_cast<const xivres::oplocking_file_stream*>(DataStream.get()))
+			stream->release();
 		DataStream.reset();
 		std::vector paths{
 			ListPath.parent_path() / "TTMPD.mpd",

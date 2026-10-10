@@ -33,6 +33,23 @@ std::filesystem::path XivAlexander::Config::TranslatePath(const std::filesystem:
 	return Utils::Win32::TranslatePath(path, relativeTo.empty() ? Dll::Module().PathOf().parent_path() : relativeTo);
 }
 
+std::filesystem::path XivAlexander::Config::TranslateDirectoryPath(const std::filesystem::path& path, const std::filesystem::path& sqpackPath) {
+	const auto str = path.wstring();
+	const auto startsWith = [&str](std::wstring_view token) {
+		return str.size() >= token.size() && _wcsnicmp(str.c_str(), token.data(), token.size()) == 0;
+	};
+	const auto rest = [&str](std::wstring_view token) {
+		return std::filesystem::path(std::wstring_view(str).substr(token.size())).relative_path();
+	};
+	if (startsWith(ConfigDirectoryToken))
+		return (Init.ResolveConfigStorageDirectoryPath() / rest(ConfigDirectoryToken)).lexically_normal();
+	if (startsWith(SqpackDirectoryToken)) {
+		const auto base = sqpackPath.empty() ? Utils::Win32::Process::Current().PathOf().parent_path() / L"sqpack" : sqpackPath;
+		return (base / rest(SqpackDirectoryToken)).lexically_normal();
+	}
+	return TranslatePath(path);
+}
+
 XivAlexander::Config::Config(std::filesystem::path initializationConfigPath)
 	: Init(this, std::move(initializationConfigPath), "")
 	, Runtime(this, Init.ResolveRuntimeConfigPath(), xivres::util::unicode::convert<std::string>(Utils::Win32::Process::Current().PathOf().wstring()))

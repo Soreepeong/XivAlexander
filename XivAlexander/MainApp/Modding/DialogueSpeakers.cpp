@@ -88,16 +88,22 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 							"Dialogue character name={} path={}", speaker, path);
 					}
 
+					// The first enabled entry of the speaker, or else for anyone unnamed; names as typed, in any case.
 					const auto& forced = m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value();
-					auto it = forced.find(speaker);
+					const auto find = [&forced](const std::string& name) {
+						return std::ranges::find_if(forced, [&name](const ForcedCharacterLanguage& entry) {
+							return entry.Enabled && xivres::util::unicode::convert<std::string>(entry.Name, &xivres::util::unicode::lower) == name;
+						});
+					};
+					auto it = find(speaker);
 					if (it == forced.end())
-						it = forced.find("");  // anyone unnamed
-					if (it == forced.end() || it->second.empty())
+						it = find("");
+					if (it == forced.end() || it->Language.empty())
 						return {};
 
 					const auto scdName = std::string(pathSpec.parts().back());
 					return std::format("{}/{}{}.scd",
-						pathSpec.parent_path().text(), scdName.substr(0, scdName.rfind('_') + 1), it->second);
+						pathSpec.parent_path().text(), scdName.substr(0, scdName.rfind('_') + 1), it->Language);
 				}
 			}
 		} catch (const std::exception& e) {

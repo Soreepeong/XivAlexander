@@ -156,16 +156,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 		}
 
 		void ResolveMixRate() {
-			Game::SoundVoiceRenderInfo render;
-			const auto setupStatus = Game::Resolved::MixRateSetup.Resolve(Immediate);
-			const auto renderStatus = Game::Resolved::VoiceRender.Resolve(render);
-			if (setupStatus != Game::Signatures::ResolveError::Ok || renderStatus != Game::Signatures::ResolveError::Ok) {
+			Game::Resolved::AudioResamplerFunctions functions;
+			if (Game::Resolved::AudioResampler.Resolve(functions) != Game::Signatures::ResolveError::Ok) {
 				Logger->Format<LogLevel::Warning>(LogCategory::AudioResampler, "mix rate not found; the game's own rate stays");
 				Immediate = nullptr;
 				Global = nullptr;
 				return;
 			}
-			Global = render.MixRate;
+			Immediate = functions.MixRateSetup;
+			Global = functions.Render.MixRate;
 			NativeRate = *Immediate;
 			NativeGlobal = *Global;
 		}
@@ -366,13 +365,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (HooksFailed)
 				return false;
 
+			// The mix rate was found, or there would be no Global, so only the voice parts can be missing.
+			Game::Resolved::AudioResamplerFunctions functions;
 			if (!Global
-				|| Game::Resolved::VoiceFunctions.Resolve(Functions) != Game::Signatures::ResolveError::Ok
-				|| Game::Resolved::BufferEndHandler.Resolve(BufferEnd) != Game::Signatures::ResolveError::Ok) {
+				|| Game::Resolved::AudioResampler.Resolve(functions) != Game::Signatures::ResolveError::Ok
+				|| !functions.Voice
+				|| !functions.BufferEnd) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler, "voice functions not found; voices cannot be resampled");
 				HooksFailed = true;
 				return false;
 			}
+			Functions = *functions.Voice;
+			BufferEnd = *functions.BufferEnd;
 
 			try {
 				InitHook.emplace("AudioResampler::Init", Functions.Init);

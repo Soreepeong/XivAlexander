@@ -34,6 +34,7 @@ namespace XivAlexander {
 				ConfigItem<bool> Show{this, "Show", true};
 				ConfigItem<bool> AlwaysOnTop{this, "AlwaysOnTop", true};
 				ConfigItem<bool> HideOnMinimize{this, "HideOnMinimize", false};
+				ConfigItem<int> SettingsTreeWidth{this, "SettingsTreeWidth", 220, [](const int& v) { return std::clamp(v, 80, 2000); }};  // In pixels at 96 DPI.
 			} MainWindow{this, "MainWindow"};
 
 			class LogWindowGroup : public ConfigGroup {
@@ -172,10 +173,15 @@ namespace XivAlexander {
 		public:
 			using ConfigGroup::ConfigGroup;
 
+			// The directories of the lists below that are there until removed; they may start with a token of Config.
+			static std::vector<std::filesystem::path> DefaultGameResourceFileEntryRootDirectories() { return {LR"(<config>\ReplacementFileEntries)"}; }
+			static std::vector<std::filesystem::path> DefaultTtmpSearchDirectories() { return {LR"(<config>\TexToolsMods)", LR"(<sqpack>\TexToolsMods)"}; }
+
 			ConfigItem<bool> Enabled{this, "Enabled", false};
 			ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
-			ConfigItem<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories{this, "AdditionalGameResourceFileEntryRootDirectories"};
+			ConfigItem<std::vector<std::filesystem::path>> GameResourceFileEntryRootDirectories{this, "GameResourceFileEntryRootDirectories", DefaultGameResourceFileEntryRootDirectories()};
 			ConfigItem<std::vector<PathReplacementRule>> PathReplacements{this, "PathReplacements"};
+			ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
 
 			class LanguagesGroup : public ConfigGroup {
 			public:
@@ -184,7 +190,7 @@ namespace XivAlexander {
 				ConfigItem<xivres::game_language> ResourceOverride{this, "ResourceOverride", xivres::game_language::Unspecified};
 				ConfigItem<xivres::game_language> VoiceResourceOverride{this, "VoiceResourceOverride", xivres::game_language::Unspecified};
 				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
-				ConfigItem<std::map<std::string, std::string>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
+				ConfigItem<std::vector<ForcedCharacterLanguage>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
 				ConfigItem<int> ForcedCharacterLipSync{this, "ForcedCharacterLipSync", -1};
 			} Languages{this, "Languages"};
 
@@ -192,11 +198,8 @@ namespace XivAlexander {
 			public:
 				using ConfigGroup::ConfigGroup;
 
-				ConfigItem<bool> FlattenSubdirectoryDisplay{this, "FlattenSubdirectoryDisplay", false};
-				ConfigItem<bool> UseSubdirectoryTogglingOnFlattenedView{this, "UseSubdirectoryTogglingOnFlattenedView", false};
-				ConfigItem<bool> ShowDedicatedMenu{this, "ShowDedicatedMenu", false};
 				ConfigItem<std::vector<ChoicesProfile>> ChoicesFiles{this, "ChoicesFiles", std::vector<ChoicesProfile>{{.Name = "Default", .FileName = "choices.json"}}};
-				ConfigItem<std::vector<std::filesystem::path>> AdditionalSearchDirectories{this, "AdditionalSearchDirectories"};
+				ConfigItem<std::vector<std::filesystem::path>> SearchDirectories{this, "SearchDirectories", DefaultTtmpSearchDirectories()};
 			} Ttmp{this, "Ttmp"};
 
 			class LoggingGroup : public ConfigGroup {
@@ -210,11 +213,6 @@ namespace XivAlexander {
 				ConfigItem<bool> DialogueCharacterNames{this, "DialogueCharacterNames", false};
 				ConfigItem<std::vector<LogPathFilter>> PathFilters{this, "PathFilters"};
 			} Logging{this, "Logging"};
-		} Modding{this, "Modding"};
-
-		class AudioGroup : public ConfigGroup {
-		public:
-			using ConfigGroup::ConfigGroup;
 
 			class MuteVoiceGroup : public ConfigGroup {
 			public:
@@ -225,8 +223,12 @@ namespace XivAlexander {
 				ConfigItem<bool> Emote{this, "Emote", false};
 				ConfigItem<bool> Line{this, "Line", false};
 			} MuteVoice{this, "MuteVoice"};
+		} Modding{this, "Modding"};
 
-			ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
+		class AudioGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
 			ConfigItem<uint32_t> OutputSamplingRate{this, "OutputSamplingRate", 48000U};
 			SoxrResamplerConfigGroup SoxrResampler{this, "SoxrResampler"};
 		} Audio{this, "Audio"};
@@ -302,7 +304,13 @@ namespace XivAlexander {
 		void AllowCurrentGameVersion();
 
 	public:
+		/// The render interval within the framerate range that delays the end of the cooldown the least, or the shortest of
+		/// those within a millisecond of that. See LockedCooldownDelayUs in the source for the delay.
 		[[nodiscard]] static uint64_t CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
+
+		/// The shortest and the longest a cooldown takes when frames are rendered every intervalUs, give or take the deviation:
+		/// until the frame after its end, or the one after that, if that frame may come too early to see it.
+		[[nodiscard]] static std::pair<uint64_t, uint64_t> EstimateLockedCooldownUs(uint64_t cooldownUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation);
 
 	private:
 		std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;

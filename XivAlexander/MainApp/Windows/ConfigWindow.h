@@ -5,7 +5,10 @@
 
 namespace XivAlexander::Apps::MainApp::Window {
 	class ConfigWindow : public BaseWindow {
+		// The repository whose file is edited, or none, for a file of its own.
 		BaseConfigRepository* const m_pRepository;
+		const std::filesystem::path m_path;
+		const std::wstring m_title;
 
 		HWND m_hScintilla = nullptr;
 		SciFnDirect m_direct = nullptr;
@@ -18,12 +21,14 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 	public:
 		ConfigWindow(UINT nTitleStringResourceId, BaseConfigRepository* pRepository);
+		ConfigWindow(std::wstring title, std::filesystem::path path);
 		~ConfigWindow() override;
 
 		void Revert();
 		bool TrySave();
 
 		[[nodiscard]] auto Repository() const { return m_pRepository; }
+		[[nodiscard]] std::filesystem::path GetPath() const;
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;
@@ -33,6 +38,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		LRESULT OnNotify(LPNMHDR nmhdr) override;
 		void OnThemeChanged() override;
 
+		void Initialize();
 		void ApplyScintillaTheme();
 		void ResizeMargin();
 	};

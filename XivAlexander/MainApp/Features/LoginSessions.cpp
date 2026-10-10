@@ -189,11 +189,15 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		if (LobbyLogin || LobbyErrorDialog)
 			return;
 
+		// Neither part needs the other, so this does not fail as a whole; a part that is not found was logged with why.
+		Game::Resolved::LoginSessionsFunctions functions;
+		if (Game::Resolved::LoginSessions.Resolve(functions) != Game::Signatures::ResolveError::Ok)
+			functions = {};
+
 		try {
-			Game::Resolved::LobbyLoginFn lobbyLogin;
-			if (const auto status = Game::Resolved::LobbyLoginFunction.Resolve(lobbyLogin); status != Game::Signatures::ResolveError::Ok)
-				throw std::runtime_error(status.Detail);
-			LobbyLogin.emplace("LobbyLogin", lobbyLogin);
+			if (!functions.LobbyLogin)
+				throw std::runtime_error("lobby login not found");
+			LobbyLogin.emplace("LobbyLogin", *functions.LobbyLogin);
 			HookCleanup += LobbyLogin->SetHook([this](void* self, void* sessionId, void* arg3, void* arg4, void* arg5, void* arg6, uint8_t arg7, uint8_t arg8) {
 				Owner.Reload();
 
@@ -241,10 +245,9 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		}
 
 		try {
-			Game::Resolved::LobbyErrorDialogFn lobbyErrorDialog;
-			if (const auto status = Game::Resolved::LobbyErrorDialogFunction.Resolve(lobbyErrorDialog); status != Game::Signatures::ResolveError::Ok)
-				throw std::runtime_error(status.Detail);
-			LobbyErrorDialog.emplace("LobbyErrorDialog", lobbyErrorDialog);
+			if (!functions.LobbyErrorDialog)
+				throw std::runtime_error("lobby error dialog not found");
+			LobbyErrorDialog.emplace("LobbyErrorDialog", *functions.LobbyErrorDialog);
 			HookCleanup += LobbyErrorDialog->SetHook([this](void* self, void* arg2, Game::AtkValue& result) {
 				if (result.Type != Game::AtkValueType::UInt)
 					return LobbyErrorDialog->bridge(self, arg2, result);
