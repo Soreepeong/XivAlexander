@@ -1,0 +1,3 @@
+[submodule "FFXIV-FontChanger"]
+	path = FFXIV-FontChanger
+	url = git@github.com:Soreepeong/FFXIV-FontChanger.git
