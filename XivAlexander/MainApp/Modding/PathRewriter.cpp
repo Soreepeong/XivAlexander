@@ -19,7 +19,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	std::string PathRewriter::Rewrite(const std::string& original, std::string& description) const {
 		auto name = original;
 		std::string replacedFrom;
-		for (const auto& rule : m_config->Runtime.PathReplacements.Value()) {
+		for (const auto& rule : m_config->Runtime.Modding.PathReplacements.Value()) {
 			auto replaced = srell::regex_replace(name, rule.Regex(), rule.To);
 			if (replaced == name)
 				continue;
@@ -64,9 +64,9 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		auto overrideLanguage = xivres::game_language::Unspecified;
 		if (extLower == ".scd") {
 			if (nameLower.starts_with("cut/") || nameLower.starts_with("sound/voice/vo_line"))
-				overrideLanguage = m_config->Runtime.VoiceResourceLanguageOverride;
+				overrideLanguage = m_config->Runtime.Modding.Languages.VoiceResourceOverride;
 		} else {
-			overrideLanguage = m_config->Runtime.ResourceLanguageOverride;
+			overrideLanguage = m_config->Runtime.Modding.Languages.ResourceOverride;
 		}
 
 		if (overrideLanguage != xivres::game_language::Unspecified) {

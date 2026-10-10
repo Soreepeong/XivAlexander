@@ -4,8 +4,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include "BaseConfigRepository.h"
+
 namespace XivAlexander {
-	/// libsoxr. Zero in a number means "whatever the quality preset says".
+	/// libsoxr's settings, as a resampler is made with. Zero in a number means "whatever the quality preset says".
 	struct SoxrResamplerConfig {
 		enum class QualityPreset : uint8_t {
 			Quick,      // cubic interpolation
@@ -29,9 +31,6 @@ namespace XivAlexander {
 			Medium,     // <= 0.35 dB
 			None,
 		};
-
-		/// Resample voices with soxr instead of the game's linear interpolation.
-		bool Enabled = false;
 
 		// Defaults measure at about 132 dB SINAD with a 1.8 ms delay, far past audible at little CPU.
 		QualityPreset Quality = QualityPreset::Bits20;
@@ -77,6 +76,32 @@ namespace XivAlexander {
 		{SoxrResamplerConfig::Rolloff::None, "None"},
 	})
 
-	void to_json(nlohmann::json&, const SoxrResamplerConfig&);
-	void from_json(const nlohmann::json&, SoxrResamplerConfig&);
+	/// The soxr resampler's settings, saved as an object.
+	class SoxrResamplerConfigGroup : public ConfigGroup {
+	public:
+		using ConfigGroup::ConfigGroup;
+
+		/// Resample voices with soxr instead of the game's linear interpolation.
+		ConfigItem<bool> Enabled{this, "Enabled", false};
+
+		/// What resamplers are made with; a change applies to the voices started after it.
+		class FilterGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
+			ConfigItem<SoxrResamplerConfig::QualityPreset> Quality{this, "Quality", SoxrResamplerConfig::QualityPreset::Bits20};
+			ConfigItem<SoxrResamplerConfig::PhaseResponse> Phase{this, "Phase", SoxrResamplerConfig::PhaseResponse::Minimum};
+			ConfigItem<bool> SteepFilter{this, "SteepFilter", false};
+			ConfigItem<double> PassbandEnd{this, "PassbandEnd", 0.};
+			ConfigItem<double> StopbandBegin{this, "StopbandBegin", 0.};
+			ConfigItem<SoxrResamplerConfig::Rolloff> PassbandRolloff{this, "PassbandRolloff", SoxrResamplerConfig::Rolloff::Small};
+			ConfigItem<bool> DoublePrecision{this, "DoublePrecision", false};
+			ConfigItem<bool> HighPrecisionClock{this, "HighPrecisionClock", false};
+			ConfigItem<uint32_t> Log2MinDftSize{this, "Log2MinDftSize", 8U};
+			ConfigItem<uint32_t> Log2LargeDftSize{this, "Log2LargeDftSize", 8U};
+
+			/// Gets the settings, sanitized together.
+			[[nodiscard]] SoxrResamplerConfig Snapshot() const;
+		} Filter{this, "Filter"};
+	};
 }

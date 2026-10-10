@@ -21,7 +21,7 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 		, Logger(Misc::Logger::Acquire()) {
 
 		Cleanup += Config->PatchCode.OnChange([&] { Apply(); });
-		Cleanup += Config->Runtime.EnabledPatchCodes.OnChange([&] { Apply(); });
+		Cleanup += Config->Runtime.Opcodes.EnabledPatchCodes.OnChange([&] { Apply(); });
 		Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([&] { Apply(); });
 		Config->PatchCode.StartWatching();
 		Apply();
@@ -58,7 +58,7 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 		const auto lock = std::lock_guard(Mtx);
 		Unapply(lock);
 
-		const auto& digestsVector = Config->Runtime.EnabledPatchCodes.Value();
+		const auto& digestsVector = Config->Runtime.Opcodes.EnabledPatchCodes.Value();
 		std::set digests(digestsVector.begin(), digestsVector.end());
 		if (digests.empty())
 			return;

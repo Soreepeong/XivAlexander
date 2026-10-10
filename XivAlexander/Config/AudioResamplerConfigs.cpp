@@ -1,15 +1,6 @@
 #include "pch.h"
 #include "AudioResamplerConfigs.h"
 
-namespace {
-	/// Reads \p key into \p value when it is there, leaving the default otherwise.
-	template<typename T>
-	void Read(const nlohmann::json& j, const char* key, T& value) {
-		if (const auto it = j.find(key); it != j.end())
-			value = it->get<T>();
-	}
-}
-
 XivAlexander::SoxrResamplerConfig XivAlexander::SoxrResamplerConfig::Sanitized() const {
 	auto v = *this;
 	if (v.PassbandEnd <= 0 || v.PassbandEnd >= 1)
@@ -23,33 +14,17 @@ XivAlexander::SoxrResamplerConfig XivAlexander::SoxrResamplerConfig::Sanitized()
 	return v;
 }
 
-void XivAlexander::to_json(nlohmann::json& j, const SoxrResamplerConfig& v) {
-	j = nlohmann::json::object({
-		{"Enabled", v.Enabled},
-		{"Quality", v.Quality},
-		{"Phase", v.Phase},
-		{"SteepFilter", v.SteepFilter},
-		{"PassbandEnd", v.PassbandEnd},
-		{"StopbandBegin", v.StopbandBegin},
-		{"PassbandRolloff", v.PassbandRolloff},
-		{"DoublePrecision", v.DoublePrecision},
-		{"HighPrecisionClock", v.HighPrecisionClock},
-		{"Log2MinDftSize", v.Log2MinDftSize},
-		{"Log2LargeDftSize", v.Log2LargeDftSize},
-	});
-}
-
-void XivAlexander::from_json(const nlohmann::json& j, SoxrResamplerConfig& v) {
-	v = {};
-	Read(j, "Enabled", v.Enabled);
-	Read(j, "Quality", v.Quality);
-	Read(j, "Phase", v.Phase);
-	Read(j, "SteepFilter", v.SteepFilter);
-	Read(j, "PassbandEnd", v.PassbandEnd);
-	Read(j, "StopbandBegin", v.StopbandBegin);
-	Read(j, "PassbandRolloff", v.PassbandRolloff);
-	Read(j, "DoublePrecision", v.DoublePrecision);
-	Read(j, "HighPrecisionClock", v.HighPrecisionClock);
-	Read(j, "Log2MinDftSize", v.Log2MinDftSize);
-	Read(j, "Log2LargeDftSize", v.Log2LargeDftSize);
+XivAlexander::SoxrResamplerConfig XivAlexander::SoxrResamplerConfigGroup::FilterGroup::Snapshot() const {
+	return SoxrResamplerConfig{
+		.Quality = Quality.Value(),
+		.Phase = Phase.Value(),
+		.SteepFilter = SteepFilter.Value(),
+		.PassbandEnd = PassbandEnd.Value(),
+		.StopbandBegin = StopbandBegin.Value(),
+		.PassbandRolloff = PassbandRolloff.Value(),
+		.DoublePrecision = DoublePrecision.Value(),
+		.HighPrecisionClock = HighPrecisionClock.Value(),
+		.Log2MinDftSize = Log2MinDftSize.Value(),
+		.Log2LargeDftSize = Log2LargeDftSize.Value(),
+	}.Sanitized();
 }

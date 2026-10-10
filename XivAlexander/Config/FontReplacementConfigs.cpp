@@ -41,28 +41,3 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 	Read(j, "Min", v.Min);
 	Read(j, "Max", v.Max);
 }
-
-void XivAlexander::to_json(nlohmann::json& j, const FontReplacementConfig& v) {
-	j = nlohmann::json::object({
-		{"Enabled", v.Enabled},
-		{"PresetFolder", v.PresetFolder},
-		{"FamilyPresets", v.FamilyPresets},
-		{"FamilyFonts", v.FamilyFonts},
-		{"MonospacedDigits", v.MonospacedDigits},
-		{"SystemFallback", v.SystemFallback},
-		{"Edge", v.Edge},
-		{"NamePlateMode", v.NamePlateMode},
-	});
-}
-
-void XivAlexander::from_json(const nlohmann::json& j, FontReplacementConfig& v) {
-	v = {};
-	Read(j, "Enabled", v.Enabled);
-	Read(j, "PresetFolder", v.PresetFolder);
-	Read(j, "FamilyPresets", v.FamilyPresets);
-	Read(j, "FamilyFonts", v.FamilyFonts);
-	Read(j, "MonospacedDigits", v.MonospacedDigits);
-	Read(j, "SystemFallback", v.SystemFallback);
-	Read(j, "Edge", v.Edge);
-	Read(j, "NamePlateMode", v.NamePlateMode);
-}

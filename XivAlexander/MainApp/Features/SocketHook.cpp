@@ -356,10 +356,10 @@ struct XivAlexander::Apps::MainApp::Features::SocketHook::Implementation {
 		};
 		Cleanup += Config->Game.Server_IpRange.OnChange(reparse);
 		Cleanup += Config->Game.Server_PortRange.OnChange(reparse);
-		Cleanup += Config->Runtime.TakeOverAllAddresses.OnChange(reparse);
-		Cleanup += Config->Runtime.TakeOverPrivateAddresses.OnChange(reparse);
-		Cleanup += Config->Runtime.TakeOverLoopbackAddresses.OnChange(reparse);
-		Cleanup += Config->Runtime.TakeOverAllPorts.OnChange(reparse);
+		Cleanup += Config->Runtime.Socket.TakeOverAllAddresses.OnChange(reparse);
+		Cleanup += Config->Runtime.Socket.TakeOverPrivateAddresses.OnChange(reparse);
+		Cleanup += Config->Runtime.Socket.TakeOverLoopbackAddresses.OnChange(reparse);
+		Cleanup += Config->Runtime.Socket.TakeOverAllPorts.OnChange(reparse);
 		ParseTakeOverAddresses();
 	}
 
@@ -369,12 +369,12 @@ struct XivAlexander::Apps::MainApp::Features::SocketHook::Implementation {
 		const auto& game = Config->Game;
 		const auto& runtime = Config->Runtime;
 		try {
-			AllowedIpRange = Utils::ParseIpRange(game.Server_IpRange, runtime.TakeOverAllAddresses, runtime.TakeOverPrivateAddresses, runtime.TakeOverLoopbackAddresses);
+			AllowedIpRange = Utils::ParseIpRange(game.Server_IpRange, runtime.Socket.TakeOverAllAddresses, runtime.Socket.TakeOverPrivateAddresses, runtime.Socket.TakeOverLoopbackAddresses);
 		} catch (const std::exception& e) {
 			SocketHook.m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
 		try {
-			AllowedPortRange = Utils::ParsePortRange(game.Server_PortRange, runtime.TakeOverAllPorts);
+			AllowedPortRange = Utils::ParsePortRange(game.Server_PortRange, runtime.Socket.TakeOverAllPorts);
 		} catch (const std::exception& e) {
 			SocketHook.m_logger->Format<LogLevel::Error>(LogCategory::SocketHook, e.what());
 		}
@@ -473,7 +473,7 @@ void XivAlexander::Apps::MainApp::Features::SingleConnection::Implementation::Re
 		SocketHook.m_logger->Format(LogCategory::SocketHook, "{:x}: Local={}", SingleConnection.m_socket, Utils::ToString(local));
 
 		// Set TCP delay here because SIO_TCP_SET_ACK_FREQUENCY seems to work only when localAddress is not 0.0.0.0.
-		if (SocketHook.m_pImpl->Config->Runtime.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
+		if (SocketHook.m_pImpl->Config->Runtime.Socket.ReducePacketDelay && reinterpret_cast<sockaddr_in*>(&local)->sin_addr.s_addr != INADDR_ANY) {
 			try {
 				SetTCPDelay();
 			} catch (const Utils::Win32::Error&) {

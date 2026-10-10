@@ -1,6 +1,11 @@
 #pragma once
 
+#include <filesystem>
+#include <map>
+
 #include <nlohmann/json.hpp>
+
+#include "BaseConfigRepository.h"
 
 namespace XivAlexander {
 	/// A system font a game font family's faces are drawn with: its family's name (English) and the face's weight, stretch and
@@ -51,52 +56,46 @@ namespace XivAlexander {
 		{FontReplacementNamePlateMode::Live, "Live"},
 	})
 
-	/// The font replacement's settings: draws the game's text with fonts of FFXIV-FontChanger's presets, or of system fonts,
-	/// rasterized at the size drawn.
-	struct FontReplacementConfig {
-		bool Enabled = false;
+	/// The font replacement's settings, saved as an object: draws the game's text with fonts of FFXIV-FontChanger's presets,
+	/// or of system fonts, rasterized at the size drawn.
+	class FontReplacementConfigGroup : public ConfigGroup {
+	public:
+		using ConfigGroup::ConfigGroup;
 
-		/// The folder presets are chosen from.
-		std::filesystem::path PresetFolder;
+		ConfigItem<bool> Enabled{this, "Enabled", false};
 
-		/// The presets in use per game font family (AXIS, JupiterN, ...), as paths relative to the preset folder, in the order
-		/// they were selected: of the family's faces, only those are used, and of a face in several, the last one's. A family
-		/// without any (and a face its presets lack) uses the game's glyphs, with SystemFallback for the characters they lack.
-		std::map<std::string, std::vector<std::string>> FamilyPresets;
+		/// What the faces are made from; a change reloads them.
+		class FacesGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		/// The system font per game font family to draw its faces with, made as FFXIV-FontChanger's FaceFromFont makes them;
-		/// over the family's presets.
-		std::map<std::string, FontReplacementFamilyFont> FamilyFonts;
+			/// The folder presets are chosen from.
+			ConfigItem<std::filesystem::path> PresetFolder{this, "PresetFolder"};
 
-		/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by
-		/// putting each in a cell as wide as its 0.
-		bool MonospacedDigits = true;
+			/// The presets in use per game font family (AXIS, JupiterN, ...), as paths relative to the preset folder, in the
+			/// order they were selected: of the family's faces, only those are used, and of a face in several, the last one's.
+			/// A family without any (and a face its presets lack) uses the game's glyphs, with SystemFallback for the
+			/// characters they lack.
+			ConfigItem<std::map<std::string, std::vector<std::string>>> FamilyPresets{this, "FamilyPresets"};
 
-		/// Whether characters the presets lack are drawn with Windows' fallback fonts, instead of the game's.
-		bool SystemFallback = true;
+			/// The system font per game font family to draw its faces with, made as FFXIV-FontChanger's FaceFromFont makes
+			/// them; over the family's presets.
+			ConfigItem<std::map<std::string, FontReplacementFamilyFont>> FamilyFonts{this, "FamilyFonts"};
 
-		FontReplacementEdgeConfig Edge;
-		FontReplacementNamePlateMode NamePlateMode = FontReplacementNamePlateMode::BakedAtFullSize;
+			/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by
+			/// putting each in a cell as wide as its 0.
+			ConfigItem<bool> MonospacedDigits{this, "MonospacedDigits", true};
 
-		[[nodiscard]] FontReplacementConfig Sanitized() const {
-			auto res = *this;
-			res.Edge = Edge.Clamped();
-			return res;
-		}
+			/// Whether characters the presets lack are drawn with Windows' fallback fonts, instead of the game's.
+			ConfigItem<bool> SystemFallback{this, "SystemFallback", true};
+		} Faces{this, "Faces"};
 
-		/// Gets whether the faces are made from different settings: the presets, their families' fonts and how.
-		[[nodiscard]] bool FacesDiffer(const FontReplacementConfig& r) const {
-			return PresetFolder != r.PresetFolder || FamilyPresets != r.FamilyPresets || FamilyFonts != r.FamilyFonts
-				|| MonospacedDigits != r.MonospacedDigits || SystemFallback != r.SystemFallback;
-		}
-
-		bool operator==(const FontReplacementConfig&) const = default;
+		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
+		ConfigItem<FontReplacementNamePlateMode> NamePlateMode{this, "NamePlateMode", FontReplacementNamePlateMode::BakedAtFullSize};
 	};
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
 	void from_json(const nlohmann::json&, FontReplacementFamilyFont&);
 	void to_json(nlohmann::json&, const FontReplacementEdgeConfig&);
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
-	void to_json(nlohmann::json&, const FontReplacementConfig&);
-	void from_json(const nlohmann::json&, FontReplacementConfig&);
 }

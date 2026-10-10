@@ -14,16 +14,16 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	bool PathLogFilter::Wants(const std::string& path, bool replaced) const {
-		for (const auto& filter : m_config->Runtime.LogPathFilters.Value()) {
+		for (const auto& filter : m_config->Runtime.Modding.Logging.PathFilters.Value()) {
 			if (filter.Pattern.empty())
 				continue;
 			if (regex_search(path, filter.Regex()))
 				return filter.Include;
 		}
 
-		return m_config->Runtime.LogAllPaths
-			|| m_config->Runtime.UseHashTrackerKeyLogging
-			|| (replaced && m_config->Runtime.LogReplacedPaths);
+		return m_config->Runtime.Modding.Logging.AllPaths
+			|| m_config->Runtime.Modding.Logging.HashTrackerKeys
+			|| (replaced && m_config->Runtime.Modding.Logging.ReplacedPaths);
 	}
 
 	bool PathLogFilter::IsFresh(size_t site, const std::string& key) {

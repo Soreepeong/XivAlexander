@@ -52,7 +52,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::string DialogueSpeakers::ForceLanguageForSpeaker(const std::string& path) const {
-		if (m_config->Runtime.ForcedCharacterLanguages.Value().empty() && !m_config->Runtime.LogDialogueCharacterNames)
+		if (m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value().empty() && !m_config->Runtime.Modding.Logging.DialogueCharacterNames)
 			return {};
 
 		const auto pathSpec = xivres::path_spec(path);
@@ -83,12 +83,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						continue;
 
 					const auto speaker = xivres::util::unicode::convert<std::string>(key.substr(keyPrefixUpper.size()), &xivres::util::unicode::lower);
-					if (m_config->Runtime.LogDialogueCharacterNames) {
+					if (m_config->Runtime.Modding.Logging.DialogueCharacterNames) {
 						m_logger->Format(LogCategory::GameResourceOverrider,
 							"Dialogue character name={} path={}", speaker, path);
 					}
 
-					const auto& forced = m_config->Runtime.ForcedCharacterLanguages.Value();
+					const auto& forced = m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value();
 					auto it = forced.find(speaker);
 					if (it == forced.end())
 						it = forced.find("");  // anyone unnamed

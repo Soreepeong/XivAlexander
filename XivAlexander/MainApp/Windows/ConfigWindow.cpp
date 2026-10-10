@@ -43,7 +43,7 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStrin
 	m_direct = reinterpret_cast<SciFnDirect>(SendMessageW(m_hScintilla, SCI_GETDIRECTFUNCTION, 0, 0));
 	m_directPtr = SendMessageW(m_hScintilla, SCI_GETDIRECTPOINTER, 0, 0);
 	m_direct(m_directPtr, SCI_STYLESETSIZE, STYLE_DEFAULT, BaseFontSize);
-	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_ConfigWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.Ui.ConfigWindow.UseWordWrap ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Consolas"));
@@ -53,8 +53,8 @@ XivAlexander::Apps::MainApp::Window::ConfigWindow::ConfigWindow(UINT nTitleStrin
 	}
 	ApplyScintillaTheme();
 
-	m_cleanup += m_config->Runtime.UseWordWrap_ConfigWindow.OnChange([this]() {
-		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.UseWordWrap_ConfigWindow ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
+	m_cleanup += m_config->Runtime.Ui.ConfigWindow.UseWordWrap.OnChange([this]() {
+		m_direct(m_directPtr, SCI_SETWRAPMODE, m_config->Runtime.Ui.ConfigWindow.UseWordWrap ? SC_WRAP_CHAR : SC_WRAP_NONE, 0);
 	});
 
 	Revert();
@@ -126,7 +126,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 	switch (uMsg) {
 		case WM_INITMENUPOPUP: {
 			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_ALWAYSONTOP, GetWindowLongPtrW(m_hWnd, GWL_EXSTYLE) & WS_EX_TOPMOST, true);
-			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.UseWordWrap_ConfigWindow, true);
+			Utils::Win32::SetMenuState(GetMenu(m_hWnd), ID_VIEW_USEWORDWRAP, m_config->Runtime.Ui.ConfigWindow.UseWordWrap, true);
 			break;
 		}
 
@@ -156,7 +156,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::ConfigWindow::WndProc(HWND hwnd, UI
 					return 0;
 
 				case ID_VIEW_USEWORDWRAP:
-					m_config->Runtime.UseWordWrap_ConfigWindow = !m_config->Runtime.UseWordWrap_ConfigWindow;
+					m_config->Runtime.Ui.ConfigWindow.UseWordWrap = !m_config->Runtime.Ui.ConfigWindow.UseWordWrap;
 					return 0;
 			}
 			break;

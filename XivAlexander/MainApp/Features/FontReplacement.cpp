@@ -31,9 +31,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
 	bool PendingSettings = true;
 
-	// The settings last seen, to tell what changed.
-	FontReplacementConfig LastSettings;
-
 	std::optional<Host::PresentHook> Present;
 	std::unique_ptr<PresetController> Controller;  // With PendingMutex.
 	xivres::util::on_dtor::multi Cleanup;
@@ -64,7 +61,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		App.RunOnGameLoop([&] {
 			try {
 				Replacer = std::make_unique<FontReplacer>();
-				Replacer->SetEdge(Config->Runtime.FontReplacement.Value().Edge);
+				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
 				NamePlates = Optional<NamePlateText>("Nameplate text");
 				Breaker = Optional<LineBreaker>("Line breaking");
 				Replacer->TextInvalidated = [this] {
@@ -89,12 +86,19 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		}
 
 		// Subscribed before the controller is made, which loads the settings as they are then: a change in between is
-		// either loaded by it, or reloaded.
-		{
+		// either loaded by it, or reloaded. The edge and nameplates are applied before the next frame.
+		auto& settings = Config->Runtime.FontReplacement;
+		Cleanup += settings.Faces.OnChange([this] {
 			const auto lock = std::scoped_lock(PendingMutex);
-			LastSettings = Config->Runtime.FontReplacement.Value();
-		}
-		Cleanup += Config->Runtime.FontReplacement.OnChange([this] { OnSettingsChange(); });
+			if (Controller)
+				Controller->Reload();
+		});
+		const auto markPending = [this] {
+			const auto lock = std::scoped_lock(PendingMutex);
+			PendingSettings = true;
+		};
+		Cleanup += settings.Edge.OnChange(markPending);
+		Cleanup += settings.NamePlateMode.OnChange(markPending);
 
 		auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
 			const auto lock = std::scoped_lock(PendingMutex);
@@ -102,18 +106,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		});
 		const auto lock = std::scoped_lock(PendingMutex);
 		Controller = std::move(controller);
-	}
-
-	// Reloads the presets if what the faces are made from changed; the edge and nameplates are applied before the next
-	// frame.
-	void OnSettingsChange() {
-		const auto settings = Config->Runtime.FontReplacement.Value();
-		const auto lock = std::scoped_lock(PendingMutex);
-		if (settings.Edge != LastSettings.Edge || settings.NamePlateMode != LastSettings.NamePlateMode)
-			PendingSettings = true;
-		if (settings.FacesDiffer(LastSettings) && Controller)
-			Controller->Reload();
-		LastSettings = settings;
 	}
 
 	~Implementation() {
@@ -166,10 +158,10 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		}
 
 		if (settings) {
-			const auto current = Config->Runtime.FontReplacement.Value();
-			Replacer->SetEdge(current.Edge);
+			const auto& current = Config->Runtime.FontReplacement;
+			Replacer->SetEdge(current.Edge.Value());
 			if (NamePlates)
-				NamePlates->SetMode(current.NamePlateMode);
+				NamePlates->SetMode(current.NamePlateMode.Value());
 		}
 
 		if (preset) {

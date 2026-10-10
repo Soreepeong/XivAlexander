@@ -64,9 +64,9 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::file
 				create_directories(fn.parent_path());
 				rename(d3d11, fn);
 				revert += [d3d11, fn, &success]() { if (!success) rename(fn, d3d11); };
-				auto list = config64.ChainLoadPath_d3d11.Value();
+				auto list = config64.ChainLoad.D3d11.Value();
 				list.emplace_back(std::move(fn));
-				config64.ChainLoadPath_d3d11 = list;
+				config64.ChainLoad.D3d11 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
 			remove(dataPath / "config.xivalexinit.json");
@@ -86,9 +86,9 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::Install(const std::file
 				create_directories(fn.parent_path());
 				rename(dinput8, fn);
 				revert += [dinput8, fn, &success]() { if (!success) rename(fn, dinput8); };
-				auto list = config64.ChainLoadPath_dinput8.Value();
+				auto list = config64.ChainLoad.Dinput8.Value();
 				list.emplace_back(std::move(fn));
-				config64.ChainLoadPath_dinput8 = list;
+				config64.ChainLoad.Dinput8 = list;
 			}
 			remove(gamePath / "config.xivalexinit.json");
 			remove(dataPath / "config.xivalexinit.json");
@@ -212,17 +212,17 @@ void XivAlexander::LoaderApp::Actions::InstallUninstall::RevertChainLoadDlls(
 			QueueRemoval(f, success, revert);
 	}
 
-	if (!exists(d3d11) && config64.ChainLoadPath_d3d11.Value().size() == 1) {
-		std::filesystem::path fn = config64.ChainLoadPath_d3d11.Value().back();
+	if (!exists(d3d11) && config64.ChainLoad.D3d11.Value().size() == 1) {
+		std::filesystem::path fn = config64.ChainLoad.D3d11.Value().back();
 		rename(fn, d3d11);
 		revert += [d3d11, fn, &success]() { if (!success) rename(d3d11, fn); };
-		config64.ChainLoadPath_d3d11 = std::vector<std::filesystem::path>();
+		config64.ChainLoad.D3d11 = std::vector<std::filesystem::path>();
 	}
-	if (!exists(dinput8) && config64.ChainLoadPath_dinput8.Value().size() == 1) {
-		std::filesystem::path fn = config64.ChainLoadPath_dinput8.Value().back();
+	if (!exists(dinput8) && config64.ChainLoad.Dinput8.Value().size() == 1) {
+		std::filesystem::path fn = config64.ChainLoad.Dinput8.Value().back();
 		rename(fn, dinput8);
 		revert += [dinput8, fn, &success]() { if (!success) rename(dinput8, fn); };
-		config64.ChainLoadPath_dinput8 = std::vector<std::filesystem::path>();
+		config64.ChainLoad.Dinput8 = std::vector<std::filesystem::path>();
 	}
 }
 

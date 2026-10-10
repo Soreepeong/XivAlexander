@@ -90,7 +90,7 @@ void FontReplacement::PresetController::ThreadBody() {
 		}
 
 		// The preset folder, and the folders of the presets' glyph images, and no others.
-		const auto folder = m_config->Runtime.FontReplacement.Value().PresetFolder;
+		const auto folder = m_config->Runtime.FontReplacement.Faces.PresetFolder.Value();
 		if (folder != watchedFolder) {
 			watchedFolder = folder;
 			presetWatch.Clear();
@@ -150,12 +150,12 @@ void FontReplacement::PresetController::ThreadBody() {
 }
 
 void FontReplacement::PresetController::Load(bool keepOnFailure) {
-	const auto settings = m_config->Runtime.FontReplacement.Value();
-	const auto& folder = settings.PresetFolder;
-	const auto& families = settings.FamilyPresets;
-	const auto& fonts = settings.FamilyFonts;
-	const auto monospacedDigits = settings.MonospacedDigits;
-	const auto systemFallback = settings.SystemFallback;
+	const auto& settings = m_config->Runtime.FontReplacement.Faces;
+	const auto folder = settings.PresetFolder.Value();
+	const auto families = settings.FamilyPresets.Value();
+	const auto fonts = settings.FamilyFonts.Value();
+	const bool monospacedDigits = settings.MonospacedDigits;
+	const bool systemFallback = settings.SystemFallback;
 
 	// Each preset is read once, however many families use it.
 	std::map<std::string, std::optional<Presets::Faces>, LessIgnoringCase> loaded;

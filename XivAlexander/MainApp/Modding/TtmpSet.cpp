@@ -56,7 +56,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			ListPath.parent_path() / "TTMPD.mpd",
 			ListPath.parent_path() / "compression",
 		};
-		for (const auto& profile : Config::Acquire()->Runtime.TtmpChoicesFiles.Value()) {
+		for (const auto& profile : Config::Acquire()->Runtime.Modding.Ttmp.ChoicesFiles.Value()) {
 			if (profile.FileName.empty())
 				continue;
 			paths.emplace_back(ListPath.parent_path() / profile.FileName);

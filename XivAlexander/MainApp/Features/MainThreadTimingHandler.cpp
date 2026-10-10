@@ -85,7 +85,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		static uint16_t s_counter = 0;
 		if (dwMilliseconds > 1)
 			return false;
-		if (!Config->Runtime.UseMoreCpuTime)
+		if (!Config->Runtime.FramerateControl.UseMoreCpuTime)
 			return false;
 		if (GetForegroundWindow() != App.GetGameWindowHandle())
 			return false;
@@ -111,14 +111,14 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		auto recordPumpInterval = false;
 		if (!waitUntilCounterUs) {
 			uint64_t waitForUs, waitForDrift;
-			if (const auto& networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.LockFramerateAutomatic) {
+			if (const auto& networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.FramerateControl.Lock.Automatic) {
 				const auto& group = networkingHelper->GetCooldownGroup(NetworkTimingHandler::CooldownGroup::Id_Gcd);
 				if (group.DurationUs != UINT64_MAX) {
 					const auto frameInterval = static_cast<int64_t>(RuntimeConfigRepository::CalculateLockFramerateIntervalUs(
-						rt.LockFramerateTargetFramerateRangeFrom,
-						rt.LockFramerateTargetFramerateRangeTo,
+						rt.FramerateControl.Lock.TargetFramerateRangeFrom,
+						rt.FramerateControl.Lock.TargetFramerateRangeTo,
 						group.DurationUs,
-						rt.LockFramerateMaximumRenderIntervalDeviation
+						rt.FramerateControl.Lock.MaximumRenderIntervalDeviation
 					));
 					if (frameInterval && LastLockedFramerateRenderIntervalUs && LastLockedFramerateRenderIntervalUs != frameInterval) {
 						const auto prevRenderTimestamp = nowUs / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs + frameInterval;
@@ -139,11 +139,11 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 					waitForUs = LastLockedFramerateRenderIntervalUs = frameInterval;
 					waitForDrift = LastLockedFramerateRenderDriftUs;
 				} else {
-					waitForUs = LastLockedFramerateRenderIntervalUs = static_cast<uint64_t>(1000000. / std::min(1000000., std::max(1., rt.LockFramerateTargetFramerateRangeTo.Value())));
+					waitForUs = LastLockedFramerateRenderIntervalUs = static_cast<uint64_t>(1000000. / std::min(1000000., std::max(1., rt.FramerateControl.Lock.TargetFramerateRangeTo.Value())));
 					waitForDrift = 0;
 				}
 			} else {
-				waitForUs = rt.LockFramerateInterval;
+				waitForUs = rt.FramerateControl.Lock.Interval;
 				waitForDrift = 0;
 			}
 			if (waitForUs) {
@@ -153,14 +153,14 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		}
 
 		const auto maxMsgWaitDuration = static_cast<DWORD>(
-			rt.UseBackgroundFramerateLimit && rt.BackgroundFramerateLimit > 0 && !App.IsGameWindowFocused()
-				? 1000 / rt.BackgroundFramerateLimit
+			rt.FramerateControl.UseBackgroundLimit && rt.FramerateControl.BackgroundLimit > 0 && !App.IsGameWindowFocused()
+				? 1000 / rt.FramerateControl.BackgroundLimit
 				: 0);
 		if (maxMsgWaitDuration)
 			(void)MsgWaitForMultipleObjectsEx(0, nullptr, maxMsgWaitDuration, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
 
 		if (waitUntilCounterUs > 0 && !LastMessagePumpCounterUs.empty()) {
-			if (rt.UseMoreCpuTime) {
+			if (rt.FramerateControl.UseMoreCpuTime) {
 				while (waitUntilCounterUs > Utils::QpcUs())
 					(void)0;
 			} else {

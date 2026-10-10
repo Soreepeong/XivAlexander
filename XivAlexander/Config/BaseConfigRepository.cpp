@@ -6,21 +6,74 @@
 #include "resource.h"
 
 XivAlexander::BaseConfigRepository::BaseConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
-	: m_pConfig(pConfig)
+	: ConfigNode(this)
+	, m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
 	, m_parentKey(std::move(parentKey))
 	, m_logger(Misc::Logger::Acquire()) {}
 
 XivAlexander::BaseConfigRepository::~BaseConfigRepository() = default;
 
-XivAlexander::ConfigItemBase::ConfigItemBase(BaseConfigRepository* pRepository, const char* pszName)
+void XivAlexander::ConfigNode::LoadItemsFrom(const nlohmann::json& data) {
+	for (const auto& item : m_items)
+		item->LoadFrom(data);
+}
+
+void XivAlexander::ConfigNode::SaveItemsTo(nlohmann::json& data) const {
+	for (const auto& item : m_items)
+		item->SaveTo(data);
+}
+
+XivAlexander::ConfigItemBase::ConfigItemBase(ConfigNode* pParent, const char* pszName)
 	: Name(pszName)
-	, m_pBaseRepository(pRepository) {
-	pRepository->m_allItems.push_back(this);
+	, m_pParent(pParent)
+	, m_pBaseRepository(pParent->m_pRepository) {
+	pParent->m_items.push_back(this);
 }
 
 void XivAlexander::ConfigItemBase::TriggerOnChange() {
 	OnChange();
+	m_pParent->OnItemChange();
+}
+
+XivAlexander::ConfigGroup::ConfigGroup(ConfigNode* pParent, const char* pszKey)
+	: ConfigItemBase(pParent, pszKey)
+	, ConfigNode(pParent->m_pRepository) {}
+
+bool XivAlexander::ConfigGroup::LoadFrom(const nlohmann::json& data) {
+	const auto it = data.find(Name);
+	if (it == data.end() || !it->is_object())
+		return false;
+
+	const auto batch = Batch();
+	LoadItemsFrom(*it);
+	return false;
+}
+
+void XivAlexander::ConfigGroup::SaveTo(nlohmann::json& data) const {
+	auto& target = data[Name];
+	if (!target.is_object())
+		target = nlohmann::json::object();
+	SaveItemsTo(target);
+}
+
+void XivAlexander::ConfigGroup::OnItemChange() {
+	if (m_batchDepth)
+		m_changedInBatch = true;
+	else
+		TriggerOnChange();
+}
+
+xivres::util::on_dtor XivAlexander::ConfigGroup::Batch() {
+	auto suppressSave = std::make_shared<xivres::util::on_dtor>(m_pBaseRepository->WithSuppressSave());
+	m_batchDepth++;
+	return {
+		[this, suppressSave = std::move(suppressSave)] {
+			if (!--m_batchDepth && std::exchange(m_changedInBatch, false))
+				TriggerOnChange();
+			suppressSave->clear();
+		}
+	};
 }
 
 xivres::util::on_dtor XivAlexander::ConfigItemBase::AddAndCallOnChange(std::function<void()> cb, std::function<void()> onUnbind) {
@@ -49,11 +102,39 @@ void XivAlexander::BaseConfigRepository::Reload(const std::filesystem::path& fro
 		m_logger->FormatDefaultLanguage(LogCategory::General, IDS_LOG_NEW_CONFIG, xivres::util::unicode::convert<std::string>((from.empty() ? m_sConfigPath : from).wstring()));
 	}
 
-	const auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[FindParentKey(totalConfig)];
+	auto& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[FindParentKey(totalConfig)];
+	Migrate(currentConfig);
 
 	const auto suppressSave = WithSuppressSave();
-	for (const auto& item : m_allItems)
-		item->LoadFrom(currentConfig);
+	LoadItemsFrom(currentConfig);
+}
+
+void XivAlexander::BaseConfigRepository::MoveKey(nlohmann::json& config, const char* from, const ConfigItemBase& item) {
+	if (!config.is_object())
+		return;
+
+	const auto it = config.find(from);
+	if (it == config.end())
+		return;
+
+	auto value = std::move(*it);
+	config.erase(it);
+
+	// The keys from the repository's object down to the item's.
+	std::vector<const char*> path{item.Name};
+	for (auto group = item.m_pParent->AsItem(); group; group = group->m_pParent->AsItem())
+		path.push_back(group->Name);
+
+	auto target = &config;
+	for (auto key = path.rbegin(); key != path.rend() - 1; ++key) {
+		target = &(*target)[*key];
+		if (target->is_null())
+			*target = nlohmann::json::object();
+		else if (!target->is_object())
+			return;
+	}
+	if (!target->contains(item.Name))
+		(*target)[item.Name] = std::move(value);
 }
 
 std::string XivAlexander::BaseConfigRepository::FindParentKey(const nlohmann::json& totalConfig) const {
@@ -107,8 +188,8 @@ void XivAlexander::BaseConfigRepository::Save(const std::filesystem::path& to) {
 	}
 
 	nlohmann::json& currentConfig = m_parentKey.empty() ? totalConfig : totalConfig[FindParentKey(totalConfig)];
-	for (const auto& item : m_allItems)
-		item->SaveTo(currentConfig);
+	Migrate(currentConfig);
+	SaveItemsTo(currentConfig);
 
 	try {
 		Utils::SaveJsonToFile(targetPath, totalConfig);

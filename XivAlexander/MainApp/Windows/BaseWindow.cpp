@@ -70,10 +70,10 @@ XivAlexander::Apps::MainApp::Window::BaseWindow::BaseWindow(const WNDCLASSEXW& w
 	, m_hWnd(InternalCreateWindow(wndclassex, lpWindowName, dwStyle, dwExStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, this)) {
 	s_allBaseWindows.insert(this);
 	m_cleanup += [this]() { s_allBaseWindows.erase(this); };
-	m_cleanup += m_config->Runtime.Language.OnChange([this]() {
+	m_cleanup += m_config->Runtime.Ui.Language.OnChange([this]() {
 		this->ApplyLanguage(m_config->Runtime.GetLangId());
 	});
-	m_cleanup += m_config->Runtime.ThemeMode.OnChange([this]() {
+	m_cleanup += m_config->Runtime.Ui.ThemeMode.OnChange([this]() {
 		OnThemeChanged();
 	});
 }
@@ -139,7 +139,7 @@ double XivAlexander::Apps::MainApp::Window::BaseWindow::GetZoom() const {
 }
 
 bool XivAlexander::Apps::MainApp::Window::BaseWindow::IsDarkModeEnabled(bool refresh) const {
-	switch (m_config->Runtime.ThemeMode.Value()) {
+	switch (m_config->Runtime.Ui.ThemeMode.Value()) {
 		case ThemeMode::Dark:
 			return true;
 		case ThemeMode::Light:

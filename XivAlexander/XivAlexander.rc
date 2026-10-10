@@ -285,16 +285,19 @@ BEGIN
             MENUITEM "フォルダーを開ける(&O)",               ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "バックグラウンド時のフレームレートを制限(&B)",    ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "フレームレート制御(&F)"
+        BEGIN
+            MENUITEM "ゲームがCPUをできるだけ利用させる(&C)",      ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "バックグラウンド時のフレームレートを制限(&B)",    ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "ウィンドウタイトル(&I)"
         BEGIN
             MENUITEM "変更しない(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "前にセッション名かPIDを追加する(&P)",     ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "後ろにセッション名かPIDを追加する(&A)",    ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "FPSの固定(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "リキャストとアニメーション待機時間とゲーム処理の同期化(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "言語(&L) (Language/언어)"
         BEGIN
@@ -858,16 +861,19 @@ BEGIN
             MENUITEM "폴더 열기(&O)",                   ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "프레임 레이트 제어(&F)"
+        BEGIN
+            MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "창 제목(&I)"
         BEGIN
             MENUITEM "변경 안함(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "접두어로 추가(&P)",                 ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "접미어로 추가(&A)",                 ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "언어(&L) (Language/言語)"
         BEGIN
@@ -1499,16 +1505,19 @@ BEGIN
             MENUITEM "&Open Directory",             ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
-        MENUITEM "&Background Framerate Limit", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+        POPUP "&Framerate Control"
+        BEGIN
+            MENUITEM "Force the Game to Use More &CPU Time", ID_CONFIGURE_USEMORECPUTIME
+            MENUITEM "&Background Framerate Limit", ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
+            MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
+        END
         POPUP "Game Window T&itle"
         BEGIN
             MENUITEM "&No Change",                  ID_CONFIGURE_WINDOWTITLE_PID_NONE
             MENUITEM "&Prepend Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
             MENUITEM "&Append Session Name or Process ID", ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
-        MENUITEM "Lock &Framerate ",            ID_CONFIGURE_LOCKFRAMERATE
-        MENUITEM "Synchronize &Processing to Cooldowns and Animation Locks", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         MENUITEM SEPARATOR
         POPUP "&Language (言語/언어)"
         BEGIN

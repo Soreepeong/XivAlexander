@@ -85,18 +85,18 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		});
 		Queue.Start(BuilderCount, [this](Pack& pack) { BuildPack(pack); });
 
-		Cleanup += Config->Runtime.MuteVoice_Battle.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Cm.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Emote.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.MuteVoice_Line.OnChange([this] { ReflectUsedEntries(); });
-		Cleanup += Config->Runtime.TtmpChoicesFiles.OnChange([this] {
+		Cleanup += Config->Runtime.Audio.MuteVoice.Battle.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Audio.MuteVoice.Cm.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Audio.MuteVoice.Emote.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Audio.MuteVoice.Line.OnChange([this] { ReflectUsedEntries(); });
+		Cleanup += Config->Runtime.Modding.Ttmp.ChoicesFiles.OnChange([this] {
 			{
 				const auto lock = Queue.Lock();
 				Library.ReloadChoices();
 			}
 			ReflectUsedEntries();
 		});
-		Cleanup += Config->Runtime.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
+		Cleanup += Config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
 			Sources.RescanReplacementRoots();
 			ReflectUsedEntries();
 		});
@@ -208,10 +208,10 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				if (pathSpec.path_hash() == voBattle || pathSpec.path_hash() == voCm || pathSpec.path_hash() == voEmote || pathSpec.path_hash() == voLine)
 					tempData.Replacements.try_emplace(pathSpec, provider, std::shared_ptr<xivres::packed_stream>(), std::string());
 
-				if ((pathSpec.path_hash() == voBattle && Config->Runtime.MuteVoice_Battle)
-					|| (pathSpec.path_hash() == voCm && Config->Runtime.MuteVoice_Cm)
-					|| (pathSpec.path_hash() == voEmote && Config->Runtime.MuteVoice_Emote)
-					|| (pathSpec.path_hash() == voLine && Config->Runtime.MuteVoice_Line))
+				if ((pathSpec.path_hash() == voBattle && Config->Runtime.Audio.MuteVoice.Battle)
+					|| (pathSpec.path_hash() == voCm && Config->Runtime.Audio.MuteVoice.Cm)
+					|| (pathSpec.path_hash() == voEmote && Config->Runtime.Audio.MuteVoice.Emote)
+					|| (pathSpec.path_hash() == voLine && Config->Runtime.Audio.MuteVoice.Line))
 					std::get<1>(tempData.Replacements.at(pathSpec)) = std::make_shared<xivres::stream_as_packed_stream>(pathSpec, EmptyScd);
 			}
 		}

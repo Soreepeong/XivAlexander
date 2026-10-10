@@ -156,10 +156,10 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
 	try {
 		auto res = Game::CommandLine::FromString(Dll::GetOriginalCommandLine(), &m_bUseParameterObfuscation);
-		if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-			Game::CommandLine::WellKnown::SetLanguage(res, m_config->Runtime.RememberedGameLaunchLanguage);
-		if (m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified)
-			Game::CommandLine::WellKnown::SetRegion(res, m_config->Runtime.RememberedGameLaunchRegion);
+		if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+			Game::CommandLine::WellKnown::SetLanguage(res, m_config->Runtime.Launch.RememberedLanguage);
+		if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
+			Game::CommandLine::WellKnown::SetRegion(res, m_config->Runtime.Launch.RememberedRegion);
 		return res;
 	} catch (const std::exception& e) {
 		m_logger->Format<LogLevel::Warning>(LogCategory::General, m_config->Runtime.GetLangId(), IDS_WARNING_GAME_PARAMETER_PARSE, e.what());
@@ -206,29 +206,29 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 
 	SetTimer(m_hWnd, TimerIdRepaint, 1000, nullptr);
 
-	m_cleanup += m_config->Runtime.AlwaysOnTop_XivAlexMainWindow.OnChange([this] {
-		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	m_cleanup += m_config->Runtime.Ui.MainWindow.AlwaysOnTop.OnChange([this] {
+		SetWindowPos(m_hWnd, m_config->Runtime.Ui.MainWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		});
 
-	m_cleanup += m_config->Runtime.ShowControlWindow.OnChange([this] {
-		ShowWindow(m_hWnd, m_config->Runtime.ShowControlWindow ? SW_SHOWNORMAL : SW_HIDE);
-		if (m_config->Runtime.ShowControlWindow)
-			SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+	m_cleanup += m_config->Runtime.Ui.MainWindow.Show.OnChange([this] {
+		ShowWindow(m_hWnd, m_config->Runtime.Ui.MainWindow.Show ? SW_SHOWNORMAL : SW_HIDE);
+		if (m_config->Runtime.Ui.MainWindow.Show)
+			SetWindowPos(m_hWnd, m_config->Runtime.Ui.MainWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 		});
-	if (m_config->Runtime.ShowControlWindow) {
+	if (m_config->Runtime.Ui.MainWindow.Show) {
 		ShowWindow(m_hWnd, SW_SHOW);
-		SetWindowPos(m_hWnd, m_config->Runtime.AlwaysOnTop_XivAlexMainWindow ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+		SetWindowPos(m_hWnd, m_config->Runtime.Ui.MainWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 	}
-	m_cleanup += m_config->Runtime.TtmpShowDedicatedMenu.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.TtmpFlattenSubdirectoryDisplay.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.EnabledPatchCodes.OnChange([this] {
+	m_cleanup += m_config->Runtime.Opcodes.EnabledPatchCodes.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 	m_cleanup += m_config->PatchCode.OnChange([this] {
@@ -239,22 +239,22 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 			PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 			});
 	}
-	m_cleanup += m_config->Runtime.AudioOutputSamplingRate.OnChange([this] {
+	m_cleanup += m_config->Runtime.Audio.OutputSamplingRate.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.SoxrResampler.OnChange([this] {
+	m_cleanup += m_config->Runtime.Audio.SoxrResampler.Enabled.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 	m_cleanup += m_config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.UseLoginSessionSwitching.OnChange([this] {
+	m_cleanup += m_config->Runtime.Launch.UseLoginSessionSwitching.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
-	m_cleanup += m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
+	m_cleanup += m_config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.OnChange([this] {
 		PostMessageW(m_hWnd, WmRepopulateMenu, 0, 0);
 		});
 	if (!m_sqpacksLoaded) {
@@ -281,7 +281,7 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	ChangeWindowMessageFilterEx(m_hWnd, WM_COPYGLOBALDATA, MSGFLT_ALLOW, nullptr);
 	ChangeWindowMessageFilterEx(m_hWnd, Features::LoginSessions::ReloadMessage, MSGFLT_ALLOW, nullptr);
 
-	if (m_config->Runtime.CheckForUpdatedOpcodesOnStartup)
+	if (m_config->Runtime.Opcodes.CheckForUpdatesOnStartup)
 		CheckUpdatedOpcodes(false);
 }
 
@@ -346,7 +346,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 					m_triggerUnload();
 					break;
 				case IDNO:
-					m_config->Runtime.ShowControlWindow = false;
+					m_config->Runtime.Ui.MainWindow.Show = false;
 					break;
 			}
 		}
@@ -403,7 +403,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 		} else if (eventId == WM_LBUTTONUP) {
 			const auto now = GetTickCount64();
 			if (m_lastTrayIconLeftButtonUp + GetDoubleClickTime() > now) {
-				if (m_config->Runtime.ShowControlWindow.Toggle())
+				if (m_config->Runtime.Ui.MainWindow.Show.Toggle())
 					SetForegroundWindow(m_hWnd);
 				m_lastTrayIconLeftButtonUp = 0;
 			} else
@@ -481,8 +481,8 @@ LRESULT XivAlexander::Apps::MainApp::Window::MainWindow::WndProc(HWND hwnd, UINT
 		EndPaint(m_hWnd, &ps);
 		return 0;
 	} else if (uMsg == WM_SIZE) {
-		if (wParam == SIZE_MINIMIZED && m_config->Runtime.HideOnMinimize_XivAlexMainWindow) {
-			m_config->Runtime.ShowControlWindow = false;
+		if (wParam == SIZE_MINIMIZED && m_config->Runtime.Ui.MainWindow.HideOnMinimize) {
+			m_config->Runtime.Ui.MainWindow.Show = false;
 			return 0;
 		}
 	}
@@ -547,7 +547,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 		const auto hOuterTtmpMenu = GetSubMenu(menu, 4);
 		const auto hInnerTtmpMenu = GetSubMenu(hModMenu, 2);
 
-		if (m_config->Runtime.TtmpShowDedicatedMenu) {
+		if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
 			while (GetMenuItemCount(hOuterTtmpMenu))
 				DeleteMenu(hOuterTtmpMenu, 0, MF_BYPOSITION);
 			for (int index = 0; index < GetMenuItemCount(hInnerTtmpMenu); ++index) {
@@ -566,11 +566,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 		}
 
 		RepopulateMenu_Ttmp(hInnerTtmpMenu, hOuterTtmpMenu);
-		RepopulateMenu_TtmpChoicesProfiles(m_config->Runtime.TtmpShowDedicatedMenu ? hOuterTtmpMenu : hInnerTtmpMenu);
+		RepopulateMenu_TtmpChoicesProfiles(m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu ? hOuterTtmpMenu : hInnerTtmpMenu);
 
 		{
 			std::vector<std::filesystem::path> ttmpDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods"};
-			if (const auto& additional = m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value(); !additional.empty()) {
+			if (const auto& additional = m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.Value(); !additional.empty()) {
 				if (const auto inGame = m_path.parent_path() / "sqpack" / "TexToolsMods"; is_directory(inGame))
 					ttmpDirs.emplace_back(inGame);
 				for (const auto& dir : additional) {
@@ -581,7 +581,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 			RepopulateMenu_DirectoryChoices(menu, ID_MODDING_TTMP_OPENDIRECTORY, ttmpDirs);
 
 			std::vector<std::filesystem::path> replacementDirs{m_config->Init.ResolveConfigStorageDirectoryPath() / "ReplacementFileEntries"};
-			for (const auto& dir : m_config->Runtime.AdditionalGameResourceFileEntryRootDirectories.Value()) {
+			for (const auto& dir : m_config->Runtime.Modding.AdditionalGameResourceFileEntryRootDirectories.Value()) {
 				if (!dir.empty())
 					replacementDirs.emplace_back(Config::TranslatePath(dir));
 			}
@@ -639,7 +639,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_TtmpEnable(
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_TtmpChoicesProfiles(HMENU hTtmpMenu) {
-	const auto profiles = m_config->Runtime.TtmpChoicesFiles.Value();
+	const auto profiles = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
 	if (profiles.size() < 2)
 		return;
 
@@ -658,12 +658,12 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_TtmpChoices
 	for (size_t i = 0; i < profiles.size(); i++) {
 		AppendMenuW(hProfileMenu, MF_STRING | (i == activeIndex ? MF_CHECKED : 0),
 			RepopulateMenu_AllocateMenuId([this, i] {
-				auto updated = m_config->Runtime.TtmpChoicesFiles.Value();
+				auto updated = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
 				if (i >= updated.size())
 					return;
 				for (size_t j = 0; j < updated.size(); j++)
 					updated[j].Active = j == i;
-				m_config->Runtime.TtmpChoicesFiles = updated;
+				m_config->Runtime.Modding.Ttmp.ChoicesFiles = updated;
 				}), xivres::util::unicode::convert<std::wstring>(profiles[i].Name).c_str());
 	}
 
@@ -696,7 +696,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 		std::vector<MenuStack> menuStack;
 		sqpacks->GetTtmps()->Traverse(false, [&](Features::Modding::NestedTtmp& nestedTtmp) {
 			if (!nestedTtmp.Parent) {
-				if (m_config->Runtime.TtmpShowDedicatedMenu) {
+				if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
 					menuStack.emplace_back(MenuStack{.Menu = hOuterTtmpMenu, .Item = &nestedTtmp});
 				} else {
 					menuStack.emplace_back(MenuStack{.Menu = hInnerTtmpMenu, .Item = &nestedTtmp});
@@ -708,7 +708,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 				menuStack.pop_back();
 
 			if (nestedTtmp.IsGroup()) {
-				if (m_config->Runtime.TtmpFlattenSubdirectoryDisplay) {
+				if (m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay) {
 					std::wstring menuName;
 					menuName.resize(3 * (menuStack.size() - 1), L' ');
 					menuName += nestedTtmp.Path.filename().wstring();
@@ -720,7 +720,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 					if (!skipMenu)
 						InsertMenuW(menuStack.front().Menu,
 							menuStack.front().InsertionIndex++,
-							MF_BYPOSITION | MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0) | (m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView ? 0 : MF_DISABLED),
+							MF_BYPOSITION | MF_STRING | (nestedTtmp.Enabled ? MF_CHECKED : 0) | (m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView ? 0 : MF_DISABLED),
 							RepopulateMenu_AllocateMenuId([this, &nestedTtmp, &sqpacks] {
 								try {
 									{
@@ -919,7 +919,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 				}
 			}
 
-			if (m_config->Runtime.TtmpFlattenSubdirectoryDisplay) {
+			if (m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay) {
 				std::wstring menuName;
 				menuName.resize(3 * (menuStack.size() - 1), L' ');
 				menuName += nestedTtmp.Path.filename().wstring();
@@ -938,7 +938,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_Ttmp(HMENU 
 			}
 			});
 	}
-	if (m_config->Runtime.TtmpShowDedicatedMenu) {
+	if (m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu) {
 		if (!ready)
 			AppendMenuW(hOuterTtmpMenu, MF_DISABLED, 0, RepopulateMenu_GetMenuTextById(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY).c_str());
 		DeleteMenu(hInnerTtmpMenu, ID_MODDING_TTMP_NOTREADY, MF_BYCOMMAND);
@@ -959,7 +959,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HME
 	if (entries->empty())
 		return;
 
-	const auto& digestsVector = m_config->Runtime.EnabledPatchCodes.Value();
+	const auto& digestsVector = m_config->Runtime.Opcodes.EnabledPatchCodes.Value();
 	const std::set digests(digestsVector.begin(), digestsVector.end());
 
 	DeleteMenu(hParentMenu, ID_CONFIGURE_GAMEFIX_EMPTY, MF_BYCOMMAND);
@@ -969,18 +969,18 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_GameFix(HME
 		const auto active = digests.contains(entry.Digest);
 
 		InsertMenuW(hParentMenu, position++, MF_BYPOSITION | MF_STRING | (active ? MF_CHECKED : 0), RepopulateMenu_AllocateMenuId([this, digest = entry.Digest] {
-			auto pcs{ m_config->Runtime.EnabledPatchCodes.Value() };
+			auto pcs{ m_config->Runtime.Opcodes.EnabledPatchCodes.Value() };
 			if (const auto it = std::ranges::find(pcs, digest); it == pcs.end())
 				pcs.emplace_back(digest);
 			else
 				pcs.erase(it);
-			m_config->Runtime.EnabledPatchCodes = pcs;
+			m_config->Runtime.Opcodes.EnabledPatchCodes = pcs;
 			}), std::format(L"{}{} ({})", mark, xivres::util::unicode::convert<std::wstring>(entry.Patch.Name), entry.Path.filename().wstring()).c_str());
 	}
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_LoginSessions(HMENU hMenu) {
-	if (!m_config->Runtime.UseLoginSessionSwitching)
+	if (!m_config->Runtime.Launch.UseLoginSessionSwitching)
 		return;
 	const auto& loginSessions = m_app.GetLoginSessions();
 	if (!loginSessions)
@@ -1031,7 +1031,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_LoginSessio
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResampler(HMENU hMenu) {
-	// goes right after the framerate items, wherever the menu that holds them ended up
+	// goes right after the framerate submenu, wherever the menu that holds it ended up
 	HMENU hParent{};
 	int index = -1;
 	for (int i = 0, count = GetMenuItemCount(hMenu); i < count && !hParent; i++) {
@@ -1039,7 +1039,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 		if (!hSub)
 			continue;
 		for (int j = 0, subCount = GetMenuItemCount(hSub); j < subCount; j++) {
-			if (GetMenuItemID(hSub, j) == ID_CONFIGURE_SYNCHRONIZEPROCESSING) {
+			if (const auto hFramerate = GetSubMenu(hSub, j); hFramerate && GetMenuState(hFramerate, ID_CONFIGURE_SYNCHRONIZEPROCESSING, MF_BYCOMMAND) != static_cast<UINT>(-1)) {
 				hParent = hSub;
 				index = j + 1;
 				break;
@@ -1049,8 +1049,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 	if (!hParent)
 		return;
 
-	const auto currentRate = m_config->Runtime.AudioOutputSamplingRate.Value();
-	const auto useSoxr = m_config->Runtime.SoxrResampler.Value().Enabled;
+	const auto currentRate = m_config->Runtime.Audio.OutputSamplingRate.Value();
+	const auto useSoxr = m_config->Runtime.Audio.SoxrResampler.Enabled.Value();
 	const auto hRateMenu = CreatePopupMenu();
 
 	// the device is &0, and the rates &1 onwards in order
@@ -1059,7 +1059,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 		? m_config->Runtime.FormatStringRes(IDS_MENU_SAMPLINGRATE_MATCHDEVICE, deviceRate)
 		: std::wstring(m_config->Runtime.GetStringRes(IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN));
 	AppendMenuW(hRateMenu, MF_STRING | (currentRate == Features::AudioResampler::MatchDefaultDevice ? MF_CHECKED : 0),
-		RepopulateMenu_AllocateMenuId([this] { m_config->Runtime.AudioOutputSamplingRate = Features::AudioResampler::MatchDefaultDevice; }),
+		RepopulateMenu_AllocateMenuId([this] { m_config->Runtime.Audio.OutputSamplingRate = Features::AudioResampler::MatchDefaultDevice; }),
 		matchLabel.c_str());
 	for (size_t i = 0; i < std::size(Features::AudioResampler::Choices); i++) {
 		const auto rate = Features::AudioResampler::Choices[i];
@@ -1067,18 +1067,14 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu_AudioResamp
 			rate == Features::AudioResampler::GameDefault ? IDS_MENU_SAMPLINGRATE_RATE_DEFAULT : IDS_MENU_SAMPLINGRATE_RATE,
 			rate, i + 1);
 		AppendMenuW(hRateMenu, MF_STRING | (rate == currentRate ? MF_CHECKED : 0),
-			RepopulateMenu_AllocateMenuId([this, rate] { m_config->Runtime.AudioOutputSamplingRate = rate; }),
+			RepopulateMenu_AllocateMenuId([this, rate] { m_config->Runtime.Audio.OutputSamplingRate = rate; }),
 			label.c_str());
 	}
 
 	const auto mark = m_config->Runtime.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
 	AppendMenuW(hRateMenu, MF_SEPARATOR, 0, nullptr);
 	AppendMenuW(hRateMenu, MF_STRING | (useSoxr ? MF_CHECKED : 0),
-		RepopulateMenu_AllocateMenuId([this] {
-			auto soxr = m_config->Runtime.SoxrResampler.Value();
-			soxr.Enabled = !soxr.Enabled;
-			m_config->Runtime.SoxrResampler = soxr;
-		}),
+		RepopulateMenu_AllocateMenuId([this] { m_config->Runtime.Audio.SoxrResampler.Enabled.Toggle(); }),
 		std::format(L"{}{}", mark, m_config->Runtime.GetStringRes(IDS_MENU_USESOXRRESAMPLER)).c_str());
 
 	InsertMenuW(hParent, index, MF_BYPOSITION | MF_STRING | MF_POPUP,
@@ -1128,8 +1124,8 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 
 	// File
 	{
-		SetMenuState(hMenu, ID_FILE_SHOWCONTROLWINDOW, config.ShowControlWindow, true);
-		SetMenuState(hMenu, ID_FILE_SHOWLOGGINGWINDOW, config.ShowLoggingWindow, true);
+		SetMenuState(hMenu, ID_FILE_SHOWCONTROLWINDOW, config.Ui.MainWindow.Show, true);
+		SetMenuState(hMenu, ID_FILE_SHOWLOGGINGWINDOW, config.Ui.LogWindow.Show, true);
 	}
 
 	// Game
@@ -1140,7 +1136,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_RESTART_USEPARAMETEROBFUSCATION, m_bUseParameterObfuscation, !m_launchParameters.empty());
 		SetMenuState(hMenu, ID_RESTART_USEELEVATION, m_bUseElevation, !m_launchParameters.empty());
 		const auto languageRegionModifiable = Dll::IsLanguageRegionModifiable();
-		SetMenuState(hMenu, ID_RESTART_LANGUAGE_REMEMBER, languageRegionModifiable && m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified, languageRegionModifiable);
+		SetMenuState(hMenu, ID_RESTART_LANGUAGE_REMEMBER, languageRegionModifiable && m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_ENGLISH, m_gameLanguage == xivres::game_language::English, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_GERMAN, m_gameLanguage == xivres::game_language::German, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_FRENCH, m_gameLanguage == xivres::game_language::French, languageRegionModifiable);
@@ -1148,7 +1144,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE, m_gameLanguage == xivres::game_language::ChineseSimplified, false);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_KOREAN, m_gameLanguage == xivres::game_language::Korean, false);
 		SetMenuState(hMenu, ID_RESTART_LANGUAGE_CHINESETRADITIONAL, m_gameLanguage == xivres::game_language::TraditionalChinese, false);
-		SetMenuState(hMenu, ID_RESTART_REGION_REMEMBER, languageRegionModifiable && m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified, languageRegionModifiable);
+		SetMenuState(hMenu, ID_RESTART_REGION_REMEMBER, languageRegionModifiable && m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_JAPAN, m_gameRegion == xivres::game_publisher::SquareEnixJapan, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_NORTH_AMERICA, m_gameRegion == xivres::game_publisher::SquareEnixAmerica, languageRegionModifiable);
 		SetMenuState(hMenu, ID_RESTART_REGION_EUROPE, m_gameRegion == xivres::game_publisher::SquareEnixEurope, languageRegionModifiable);
@@ -1156,66 +1152,66 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::SetMenuStates() const {
 
 	// Network
 	{
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, config.UseNetworkTimingHandler, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true, config.FormatStringRes(IDS_MENU_NETWORKLATENCYHANDLEMODE_2, config.ExpectedAnimationLockDurationUs.Value()));
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3, config.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.UseHighLatencyMitigationLogging, true);
-		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.UseHighLatencyMitigationPreviewMode, true);
-		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.UseOpcodeFinder, true);
-		SetMenuState(hMenu, ID_NETWORK_USEALLIPCMESSAGELOGGER, config.UseAllIpcMessageLogger, true);
-		SetMenuState(hMenu, ID_NETWORK_REDUCEPACKETDELAY, config.ReducePacketDelay, true);
-		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, config.TakeOverLoopbackAddresses, true);
-		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, config.TakeOverPrivateAddresses, true);
-		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, config.TakeOverAllAddresses, true);
-		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, config.TakeOverAllPorts, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE, config.NetworkTiming.Enabled, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1, config.NetworkTiming.HighLatencyMitigationMode == HighLatencyMitigationMode::SubtractLatency, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2, config.NetworkTiming.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateRtt, true, config.FormatStringRes(IDS_MENU_NETWORKLATENCYHANDLEMODE_2, config.NetworkTiming.ExpectedAnimationLockDurationUs.Value()));
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3, config.NetworkTiming.HighLatencyMitigationMode == HighLatencyMitigationMode::SimulateNormalizedRttAndLatency, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING, config.NetworkTiming.UseHighLatencyMitigationLogging, true);
+		SetMenuState(hMenu, ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE, config.NetworkTiming.UseHighLatencyMitigationPreviewMode, true);
+		SetMenuState(hMenu, ID_NETWORK_USEIPCTYPEFINDER, config.Opcodes.UseOpcodeFinder, true);
+		SetMenuState(hMenu, ID_NETWORK_USEALLIPCMESSAGELOGGER, config.Opcodes.UseAllIpcMessageLogger, true);
+		SetMenuState(hMenu, ID_NETWORK_REDUCEPACKETDELAY, config.Socket.ReducePacketDelay, true);
+		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES, config.Socket.TakeOverLoopbackAddresses, true);
+		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES, config.Socket.TakeOverPrivateAddresses, true);
+		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES, config.Socket.TakeOverAllAddresses, true);
+		SetMenuState(hMenu, ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS, config.Socket.TakeOverAllPorts, true);
 	}
 
 	// Modding
 	{
-		SetMenuState(hMenu, ID_MODDING_ENABLE, config.UseModding, true);
-		SetMenuState(hMenu, ID_MODDING_USEALTCODECMUSICSUPPORT, config.UseAltCodecMusicSupport, true);
-		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.LogAllDataFileRead, true);
+		SetMenuState(hMenu, ID_MODDING_ENABLE, config.Modding.Enabled, true);
+		SetMenuState(hMenu, ID_MODDING_USEALTCODECMUSICSUPPORT, config.Audio.UseAltCodecMusicSupport, true);
+		SetMenuState(hMenu, ID_MODDING_LOGALLFILEACCESS, config.Modding.Logging.AllDataFileRead, true);
 
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.MuteVoice_Battle, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.MuteVoice_Cm, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.MuteVoice_Emote, true);
-		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.MuteVoice_Line, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_BATTLE, config.Audio.MuteVoice.Battle, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_CM, config.Audio.MuteVoice.Cm, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_EMOTE, config.Audio.MuteVoice.Emote, true);
+		SetMenuState(hMenu, ID_MODDING_MUTEVOICE_LINE, config.Audio.MuteVoice.Line, true);
 
-		SetMenuState(hMenu, ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY, config.TtmpFlattenSubdirectoryDisplay, true);
-		SetMenuState(hMenu, ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW, config.TtmpUseSubdirectoryTogglingOnFlattenedView, config.TtmpFlattenSubdirectoryDisplay);
-		SetMenuState(hMenu, ID_MODDING_TTMP_SHOWDEDICATEDMENU, config.TtmpShowDedicatedMenu, true);
+		SetMenuState(hMenu, ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY, config.Modding.Ttmp.FlattenSubdirectoryDisplay, true);
+		SetMenuState(hMenu, ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW, config.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView, config.Modding.Ttmp.FlattenSubdirectoryDisplay);
+		SetMenuState(hMenu, ID_MODDING_TTMP_SHOWDEDICATEDMENU, config.Modding.Ttmp.ShowDedicatedMenu, true);
 	}
 
 	// Configure
 	{
-		SetMenuState(hMenu, ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP, config.CheckForUpdatedOpcodesOnStartup, true);
-		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.UseMoreCpuTime, true);
-		SetMenuState(hMenu, ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT, config.UseBackgroundFramerateLimit, true, config.FormatStringRes(IDS_MENU_BACKGROUND_FRAMERATE_TARGET, config.BackgroundFramerateLimit.Value()));
-		if (config.LockFramerateAutomatic)
+		SetMenuState(hMenu, ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP, config.Opcodes.CheckForUpdatesOnStartup, true);
+		SetMenuState(hMenu, ID_CONFIGURE_USEMORECPUTIME, config.FramerateControl.UseMoreCpuTime, true);
+		SetMenuState(hMenu, ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT, config.FramerateControl.UseBackgroundLimit, true, config.FormatStringRes(IDS_MENU_BACKGROUND_FRAMERATE_TARGET, config.FramerateControl.BackgroundLimit.Value()));
+		if (config.FramerateControl.Lock.Automatic)
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_AUTOMATIC));
-		else if (config.LockFramerateInterval)
-			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.FormatStringRes(IDS_MENU_LOCKFRAMERATE, 1000000. / config.LockFramerateInterval));
+		else if (config.FramerateControl.Lock.Interval)
+			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, true, true, m_config->Runtime.FormatStringRes(IDS_MENU_LOCKFRAMERATE, 1000000. / config.FramerateControl.Lock.Interval));
 		else
 			SetMenuState(hMenu, ID_CONFIGURE_LOCKFRAMERATE, false, true, m_config->Runtime.GetStringRes(IDS_MENU_LOCKFRAMERATE_DISABLED));
-		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.SynchronizeProcessing, true);
-		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_NONE, config.GameWindowTitleMode == GameWindowTitleMode::None, true);
-		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_PREFIX, config.GameWindowTitleMode == GameWindowTitleMode::Prefix, true);
-		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX, config.GameWindowTitleMode == GameWindowTitleMode::Suffix, true);
-		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Language == Language::SystemDefault, true);
-		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Language == Language::English, true);
-		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Language == Language::Korean, true);
-		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_JAPANESE, config.Language == Language::Japanese, true);
-		SetMenuState(hMenu, ID_CONFIGURE_THEME_SYSTEM, config.ThemeMode == ThemeMode::System, true);
-		SetMenuState(hMenu, ID_CONFIGURE_THEME_LIGHT, config.ThemeMode == ThemeMode::Light, true);
-		SetMenuState(hMenu, ID_CONFIGURE_THEME_DARK, config.ThemeMode == ThemeMode::Dark, true);
+		SetMenuState(hMenu, ID_CONFIGURE_SYNCHRONIZEPROCESSING, config.FramerateControl.SynchronizeProcessing, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_NONE, config.GameWindow.TitleMode == GameWindowTitleMode::None, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_PREFIX, config.GameWindow.TitleMode == GameWindowTitleMode::Prefix, true);
+		SetMenuState(hMenu, ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX, config.GameWindow.TitleMode == GameWindowTitleMode::Suffix, true);
+		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT, config.Ui.Language == Language::SystemDefault, true);
+		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_ENGLISH, config.Ui.Language == Language::English, true);
+		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_KOREAN, config.Ui.Language == Language::Korean, true);
+		SetMenuState(hMenu, ID_CONFIGURE_LANGUAGE_JAPANESE, config.Ui.Language == Language::Japanese, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_SYSTEM, config.Ui.ThemeMode == ThemeMode::System, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_LIGHT, config.Ui.ThemeMode == ThemeMode::Light, true);
+		SetMenuState(hMenu, ID_CONFIGURE_THEME_DARK, config.Ui.ThemeMode == ThemeMode::Dark, true);
 	}
 
 	// View
 	{
-		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, config.AlwaysOnTop_XivAlexMainWindow, true);
-		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOPGAME, config.AlwaysOnTop_GameMainWindow, true);
-		SetMenuState(hMenu, ID_VIEW_HIDEONMINIMIZE, config.HideOnMinimize_XivAlexMainWindow, true);
+		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOP, config.Ui.MainWindow.AlwaysOnTop, true);
+		SetMenuState(hMenu, ID_VIEW_ALWAYSONTOPGAME, config.GameWindow.AlwaysOnTop, true);
+		SetMenuState(hMenu, ID_VIEW_HIDEONMINIMIZE, config.Ui.MainWindow.HideOnMinimize, true);
 	}
 }
 
@@ -1310,7 +1306,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::CopyLaunchCommandLine() {
 	setMarker(L"CanIncludeInClipboardHistory", &False, sizeof False);
 	CloseClipboard();
 
-	if (const auto clearSeconds = m_config->Runtime.ClearCopiedLaunchCommandLineSeconds.Value()) {
+	if (const auto clearSeconds = m_config->Runtime.Launch.ClearCopiedCommandLineSeconds.Value()) {
 		m_copiedLaunchCommandLineClipboardSequence = GetClipboardSequenceNumber();
 		SetTimer(m_hWnd, TimerIdClearCopiedLaunchCommandLine, clearSeconds * 1000, nullptr);
 	} else {
@@ -1420,11 +1416,11 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_File(int me
 			return;
 
 		case ID_FILE_SHOWLOGGINGWINDOW:
-			config.ShowLoggingWindow.Toggle();
+			config.Ui.LogWindow.Show.Toggle();
 			return;
 
 		case ID_FILE_SHOWCONTROLWINDOW:
-			config.ShowControlWindow.Toggle();
+			config.Ui.MainWindow.Show.Toggle();
 			SetForegroundWindow(m_hWnd);
 			return;
 
@@ -1473,86 +1469,86 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Restart(int
 			return;
 
 		case ID_RESTART_LANGUAGE_REMEMBER:
-			if (m_config->Runtime.RememberedGameLaunchLanguage == xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage == xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			else
-				m_config->Runtime.RememberedGameLaunchLanguage = xivres::game_language::Unspecified;
+				m_config->Runtime.Launch.RememberedLanguage = xivres::game_language::Unspecified;
 			return;
 
 		case ID_RESTART_LANGUAGE_ENGLISH:
 			m_gameLanguage = xivres::game_language::English;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_GERMAN:
 			m_gameLanguage = xivres::game_language::German;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_FRENCH:
 			m_gameLanguage = xivres::game_language::French;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_JAPANESE:
 			m_gameLanguage = xivres::game_language::Japanese;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_SIMPLIFIEDCHINESE:
 			m_gameLanguage = xivres::game_language::ChineseSimplified;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_KOREAN:
 			m_gameLanguage = xivres::game_language::Korean;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_LANGUAGE_CHINESETRADITIONAL:
 			m_gameLanguage = xivres::game_language::TraditionalChinese;
-			if (m_config->Runtime.RememberedGameLaunchLanguage != xivres::game_language::Unspecified)
-				m_config->Runtime.RememberedGameLaunchLanguage = m_gameLanguage;
+			if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
+				m_config->Runtime.Launch.RememberedLanguage = m_gameLanguage;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_REGION_REMEMBER:
-			if (m_config->Runtime.RememberedGameLaunchRegion == xivres::game_publisher::Unspecified)
-				m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
+			if (m_config->Runtime.Launch.RememberedRegion == xivres::game_publisher::Unspecified)
+				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
 			else
-				m_config->Runtime.RememberedGameLaunchRegion = xivres::game_publisher::Unspecified;
+				m_config->Runtime.Launch.RememberedRegion = xivres::game_publisher::Unspecified;
 			return;
 
 		case ID_RESTART_REGION_JAPAN:
 			m_gameRegion = xivres::game_publisher::SquareEnixJapan;
-			if (m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified)
-				m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
+			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
+				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_REGION_NORTH_AMERICA:
 			m_gameRegion = xivres::game_publisher::SquareEnixAmerica;
-			if (m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified)
-				m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
+			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
+				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
 			AskRestartGame(true);
 			return;
 
 		case ID_RESTART_REGION_EUROPE:
 			m_gameRegion = xivres::game_publisher::SquareEnixEurope;
-			if (m_config->Runtime.RememberedGameLaunchRegion != xivres::game_publisher::Unspecified)
-				m_config->Runtime.RememberedGameLaunchRegion = m_gameRegion;
+			if (m_config->Runtime.Launch.RememberedRegion != xivres::game_publisher::Unspecified)
+				m_config->Runtime.Launch.RememberedRegion = m_gameRegion;
 			AskRestartGame(true);
 			return;
 	}
@@ -1563,39 +1559,39 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 
 	switch (menuId) {
 		case ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE:
-			config.UseNetworkTimingHandler.Toggle();
+			config.NetworkTiming.Enabled.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
+			config.NetworkTiming.HighLatencyMitigationMode = HighLatencyMitigationMode::SubtractLatency;
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateRtt;
+			config.NetworkTiming.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateRtt;
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_MODE_3:
-			config.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
+			config.NetworkTiming.HighLatencyMitigationMode = HighLatencyMitigationMode::SimulateNormalizedRttAndLatency;
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_USELOGGING:
-			config.UseHighLatencyMitigationLogging.Toggle();
+			config.NetworkTiming.UseHighLatencyMitigationLogging.Toggle();
 			return;
 
 		case ID_NETWORK_HIGHLATENCYMITIGATION_PREVIEWMODE:
-			config.UseHighLatencyMitigationPreviewMode.Toggle();
+			config.NetworkTiming.UseHighLatencyMitigationPreviewMode.Toggle();
 			return;
 
 		case ID_NETWORK_USEALLIPCMESSAGELOGGER:
-			config.UseAllIpcMessageLogger.Toggle();
+			config.Opcodes.UseAllIpcMessageLogger.Toggle();
 			return;
 
 		case ID_NETWORK_USEIPCTYPEFINDER:
-			config.UseOpcodeFinder.Toggle();
+			config.Opcodes.UseOpcodeFinder.Toggle();
 			return;
 
 		case ID_NETWORK_REDUCEPACKETDELAY:
-			config.ReducePacketDelay.Toggle();
+			config.Socket.ReducePacketDelay.Toggle();
 			return;
 
 		case ID_NETWORK_RELEASEALLCONNECTIONS:
@@ -1607,19 +1603,19 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:
-			config.TakeOverLoopbackAddresses.Toggle();
+			config.Socket.TakeOverLoopbackAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES:
-			config.TakeOverPrivateAddresses.Toggle();
+			config.Socket.TakeOverPrivateAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES:
-			config.TakeOverAllAddresses.Toggle();
+			config.Socket.TakeOverAllAddresses.Toggle();
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS:
-			config.TakeOverAllPorts.Toggle();
+			config.Socket.TakeOverAllPorts.Toggle();
 			return;
 	}
 }
@@ -1629,43 +1625,43 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Modding(int
 
 	switch (menuId) {
 		case ID_MODDING_ENABLE:
-			config.UseModding.Toggle();
+			config.Modding.Enabled.Toggle();
 			return;
 
 		case ID_MODDING_USEALTCODECMUSICSUPPORT:
-			config.UseAltCodecMusicSupport.Toggle();
+			config.Audio.UseAltCodecMusicSupport.Toggle();
 			return;
 
 		case ID_MODDING_LOGALLFILEACCESS:
-			config.LogAllDataFileRead.Toggle();
+			config.Modding.Logging.AllDataFileRead.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_BATTLE:
-			config.MuteVoice_Battle.Toggle();
+			config.Audio.MuteVoice.Battle.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_CM:
-			config.MuteVoice_Cm.Toggle();
+			config.Audio.MuteVoice.Cm.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_EMOTE:
-			config.MuteVoice_Emote.Toggle();
+			config.Audio.MuteVoice.Emote.Toggle();
 			return;
 
 		case ID_MODDING_MUTEVOICE_LINE:
-			config.MuteVoice_Line.Toggle();
+			config.Audio.MuteVoice.Line.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_FLATTENSUBDIRECTORYDISPLAY:
-			m_config->Runtime.TtmpFlattenSubdirectoryDisplay.Toggle();
+			m_config->Runtime.Modding.Ttmp.FlattenSubdirectoryDisplay.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_USESUBDIRECTORYTOGGLINGONFLATTENEDVIEW:
-			m_config->Runtime.TtmpUseSubdirectoryTogglingOnFlattenedView.Toggle();
+			m_config->Runtime.Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_SHOWDEDICATEDMENU:
-			m_config->Runtime.TtmpShowDedicatedMenu.Toggle();
+			m_config->Runtime.Modding.Ttmp.ShowDedicatedMenu.Toggle();
 			return;
 
 		case ID_MODDING_TTMP_IMPORT: {
@@ -1903,15 +1899,15 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 			return;
 
 		case ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP:
-			config.CheckForUpdatedOpcodesOnStartup.Toggle();
+			config.Opcodes.CheckForUpdatesOnStartup.Toggle();
 			return;
 
 		case ID_CONFIGURE_USEMORECPUTIME:
-			config.UseMoreCpuTime.Toggle();
+			config.FramerateControl.UseMoreCpuTime.Toggle();
 			return;
 
 		case ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT:
-			config.UseBackgroundFramerateLimit.Toggle();
+			config.FramerateControl.UseBackgroundLimit.Toggle();
 			return;
 
 		case ID_CONFIGURE_LOCKFRAMERATE:
@@ -1919,47 +1915,47 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Configure(i
 			return;
 
 		case ID_CONFIGURE_SYNCHRONIZEPROCESSING:
-			config.SynchronizeProcessing.Toggle();
+			config.FramerateControl.SynchronizeProcessing.Toggle();
 			return;
 
 		case ID_CONFIGURE_WINDOWTITLE_PID_NONE:
-			config.GameWindowTitleMode = GameWindowTitleMode::None;
+			config.GameWindow.TitleMode = GameWindowTitleMode::None;
 			return;
 
 		case ID_CONFIGURE_WINDOWTITLE_PID_PREFIX:
-			config.GameWindowTitleMode = GameWindowTitleMode::Prefix;
+			config.GameWindow.TitleMode = GameWindowTitleMode::Prefix;
 			return;
 
 		case ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX:
-			config.GameWindowTitleMode = GameWindowTitleMode::Suffix;
+			config.GameWindow.TitleMode = GameWindowTitleMode::Suffix;
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_SYSTEMDEFAULT:
-			config.Language = Language::SystemDefault;
+			config.Ui.Language = Language::SystemDefault;
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_ENGLISH:
-			config.Language = Language::English;
+			config.Ui.Language = Language::English;
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_KOREAN:
-			config.Language = Language::Korean;
+			config.Ui.Language = Language::Korean;
 			return;
 
 		case ID_CONFIGURE_LANGUAGE_JAPANESE:
-			config.Language = Language::Japanese;
+			config.Ui.Language = Language::Japanese;
 			return;
 
 		case ID_CONFIGURE_THEME_SYSTEM:
-			config.ThemeMode = ThemeMode::System;
+			config.Ui.ThemeMode = ThemeMode::System;
 			return;
 
 		case ID_CONFIGURE_THEME_LIGHT:
-			config.ThemeMode = ThemeMode::Light;
+			config.Ui.ThemeMode = ThemeMode::Light;
 			return;
 
 		case ID_CONFIGURE_THEME_DARK:
-			config.ThemeMode = ThemeMode::Dark;
+			config.Ui.ThemeMode = ThemeMode::Dark;
 			return;
 
 		case ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY:
@@ -1977,15 +1973,15 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_View(int me
 
 	switch (menuId) {
 		case ID_VIEW_ALWAYSONTOP:
-			config.AlwaysOnTop_XivAlexMainWindow.Toggle();
+			config.Ui.MainWindow.AlwaysOnTop.Toggle();
 			return;
 
 		case ID_VIEW_ALWAYSONTOPGAME:
-			config.AlwaysOnTop_GameMainWindow.Toggle();
+			config.GameWindow.AlwaysOnTop.Toggle();
 			return;
 
 		case ID_VIEW_HIDEONMINIMIZE:
-			config.HideOnMinimize_XivAlexMainWindow.Toggle();
+			config.Ui.MainWindow.HideOnMinimize.Toggle();
 			return;
 	}
 }

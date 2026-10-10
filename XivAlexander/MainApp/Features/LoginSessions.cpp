@@ -165,12 +165,12 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		LoadStartupSessions();
 		Reload(false);
 
-		Cleanup += Config->Runtime.UseLoginSessionSwitching.AddAndCallOnChange([this] { UpdateHooks(); });
+		Cleanup += Config->Runtime.Launch.UseLoginSessionSwitching.AddAndCallOnChange([this] { UpdateHooks(); });
 		Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] { UpdateHooks(); });
 	}
 
 	void UpdateHooks() {
-		if (!Config->Runtime.UseLoginSessionSwitching) {
+		if (!Config->Runtime.Launch.UseLoginSessionSwitching) {
 			RemoveHooks();
 		} else if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "Switching login sessions in the running game")) {
 			RemoveHooks();

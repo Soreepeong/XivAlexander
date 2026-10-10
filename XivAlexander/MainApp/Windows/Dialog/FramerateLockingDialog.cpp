@@ -71,12 +71,12 @@ void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowMo
 			, HwndParent(hParentWindow)
 			, ControlFont([]() { NONCLIENTMETRICSW ncm = { sizeof(NONCLIENTMETRICSW) }; SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0); return CreateFontIndirectW(&ncm.lfMessageFont); }())
 			, Config(Config::Acquire())
-			, IntervalUs(Config->Runtime.LockFramerateInterval)
-			, Automatic(Config->Runtime.LockFramerateAutomatic)
-			, FpsRangeFrom(Config->Runtime.LockFramerateTargetFramerateRangeFrom)
-			, FpsRangeTo(Config->Runtime.LockFramerateTargetFramerateRangeTo)
-			, FpsDevUs(Config->Runtime.LockFramerateMaximumRenderIntervalDeviation)
-			, Gcd10ms(Config->Runtime.LockFramerateGlobalCooldown) {
+			, IntervalUs(Config->Runtime.FramerateControl.Lock.Interval)
+			, Automatic(Config->Runtime.FramerateControl.Lock.Automatic)
+			, FpsRangeFrom(Config->Runtime.FramerateControl.Lock.TargetFramerateRangeFrom)
+			, FpsRangeTo(Config->Runtime.FramerateControl.Lock.TargetFramerateRangeTo)
+			, FpsDevUs(Config->Runtime.FramerateControl.Lock.MaximumRenderIntervalDeviation)
+			, Gcd10ms(Config->Runtime.FramerateControl.Lock.GlobalCooldown) {
 			SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 			EnumChildWindows(Hwnd, [](HWND hChild, LPARAM lParam) { SendMessageW(hChild, WM_SETFONT, lParam, 0); return TRUE; }, reinterpret_cast<LPARAM>(ControlFont));
 
@@ -120,8 +120,8 @@ void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowMo
 			SetDlgItemTextW(Hwnd, IDC_ESTIMATEDURATION_NUMGCD_EDIT, L"120");
 			Automatic_OnChange();
 
-			Cleanup += Config->Runtime.UseNetworkTimingHandler.OnChange([&]() {
-				if (Config->Runtime.UseNetworkTimingHandler) {
+			Cleanup += Config->Runtime.NetworkTiming.Enabled.OnChange([&]() {
+				if (Config->Runtime.NetworkTiming.Enabled) {
 					void(Utils::Win32::Thread(L"UseNetworkTimingHandler/OnCooldownGroupUpdateListener Waiter", [&]() {
 						while (!TryRegisterTimingHandler())
 							Sleep(1);
@@ -158,14 +158,14 @@ void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowMo
 
 		void Save() {
 			const auto _ = PreventEditUpdate();
-			Config->Runtime.LockFramerateAutomatic = Automatic;
+			Config->Runtime.FramerateControl.Lock.Automatic = Automatic;
 			if (!Automatic) {
-				Config->Runtime.LockFramerateInterval = IntervalUs;
-				Config->Runtime.LockFramerateGlobalCooldown = Gcd10ms;
+				Config->Runtime.FramerateControl.Lock.Interval = IntervalUs;
+				Config->Runtime.FramerateControl.Lock.GlobalCooldown = Gcd10ms;
 			}
-			Config->Runtime.LockFramerateTargetFramerateRangeFrom = FpsRangeFrom;
-			Config->Runtime.LockFramerateTargetFramerateRangeTo = FpsRangeTo;
-			Config->Runtime.LockFramerateMaximumRenderIntervalDeviation = FpsDevUs;
+			Config->Runtime.FramerateControl.Lock.TargetFramerateRangeFrom = FpsRangeFrom;
+			Config->Runtime.FramerateControl.Lock.TargetFramerateRangeTo = FpsRangeTo;
+			Config->Runtime.FramerateControl.Lock.MaximumRenderIntervalDeviation = FpsDevUs;
 			ReflectDisplay();
 		}
 
@@ -259,8 +259,8 @@ void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowMo
 
 		void Disable_Click() {
 			const auto _ = PreventEditUpdate();
-			Config->Runtime.LockFramerateAutomatic = false;
-			Config->Runtime.LockFramerateInterval = 0;
+			Config->Runtime.FramerateControl.Lock.Automatic = false;
+			Config->Runtime.FramerateControl.Lock.Interval = 0;
 			DestroyWindow(Hwnd);
 		}
 
@@ -324,14 +324,14 @@ void XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog::ShowMo
 				SetDlgItemTextW(Hwnd, IDC_LASTGCD_RANGE_EDIT_MAX, std::format(L"{}", LocalTracker.Max()).c_str());
 			}
 
-			auto changed = Automatic != Config->Runtime.LockFramerateAutomatic;
+			auto changed = Automatic != Config->Runtime.FramerateControl.Lock.Automatic;
 			if (!changed) {
-				changed |= FpsRangeFrom != Config->Runtime.LockFramerateTargetFramerateRangeFrom;
-				changed |= FpsRangeTo != Config->Runtime.LockFramerateTargetFramerateRangeTo;
-				changed |= FpsDevUs != Config->Runtime.LockFramerateMaximumRenderIntervalDeviation;
+				changed |= FpsRangeFrom != Config->Runtime.FramerateControl.Lock.TargetFramerateRangeFrom;
+				changed |= FpsRangeTo != Config->Runtime.FramerateControl.Lock.TargetFramerateRangeTo;
+				changed |= FpsDevUs != Config->Runtime.FramerateControl.Lock.MaximumRenderIntervalDeviation;
 				if (!Automatic) {
-					changed |= IntervalUs != Config->Runtime.LockFramerateInterval;
-					changed |= Gcd10ms != Config->Runtime.LockFramerateGlobalCooldown;
+					changed |= IntervalUs != Config->Runtime.FramerateControl.Lock.Interval;
+					changed |= Gcd10ms != Config->Runtime.FramerateControl.Lock.GlobalCooldown;
 				}
 			}
 			EnableWindow(GetDlgItem(Hwnd, IDOK), changed);

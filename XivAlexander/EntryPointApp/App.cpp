@@ -342,15 +342,15 @@ namespace {
 		auto selfFileNameLower = Dll::Module().PathOf().filename().wstring();
 		CharLowerW(selfFileNameLower.data());
 		if (selfFileNameLower == L"d3d11.dll") {
-			for (auto& path : conf->Runtime.ChainLoadPath_d3d11.Value())
+			for (auto& path : conf->Runtime.ChainLoad.D3d11.Value())
 				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
 					mod.SetPinned();
 		} else if (selfFileNameLower == L"dinput8.dll") {
-			for (auto& path : conf->Runtime.ChainLoadPath_dinput8.Value())
+			for (auto& path : conf->Runtime.ChainLoad.Dinput8.Value())
 				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
 					mod.SetPinned();
 		} else if (selfFileNameLower == L"dxgi.dll") {
-			for (auto& path : conf->Runtime.ChainLoadPath_dxgi.Value())
+			for (auto& path : conf->Runtime.ChainLoad.Dxgi.Value())
 				if (const Utils::Win32::LoadedModule mod = path.empty() ? nullptr : Utils::Win32::LoadedModule(XivAlexander::Config::Config::TranslatePath(path), 0, false))
 					mod.SetPinned();
 		}
@@ -468,7 +468,7 @@ namespace {
 			XivAlexander::Misc::Logger::Acquire()->Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General, "Cannot use a stored login session: {}", e.what());
 		}
 
-		if (XivAlexander::Config::Acquire()->Runtime.UseMoreCpuTime) {
+		if (XivAlexander::Config::Acquire()->Runtime.FramerateControl.UseMoreCpuTime) {
 			static XivAlexander::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
 			static XivAlexander::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
 			if (s_SetThreadAffinityMask) {

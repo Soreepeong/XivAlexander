@@ -132,12 +132,12 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		, Logger(Misc::Logger::Acquire())
 		, Config(Config::Acquire()) {
 
-		Cleanup += Config->Runtime.DisableWindowGhosting.AddAndCallOnChange([this] {
-			if (Config->Runtime.DisableWindowGhosting)
+		Cleanup += Config->Runtime.GameWindow.DisableGhosting.AddAndCallOnChange([this] {
+			if (Config->Runtime.GameWindow.DisableGhosting)
 				DisableProcessWindowsGhosting();
 			else if (WindowGhostingDisabled)
 				Logger->Log(LogCategory::General, "Window ghosting stays disabled until the game restarts.");
-			WindowGhostingDisabled |= Config->Runtime.DisableWindowGhosting.Value();
+			WindowGhostingDisabled |= Config->Runtime.GameWindow.DisableGhosting.Value();
 		});
 
 		Cleanup += [&app] {
@@ -155,28 +155,28 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	[[nodiscard]] std::vector<std::wstring> GetEnabledVersionSensitiveFeatures() const {
 		const auto& runtime = Config->Runtime;
 		std::vector<std::wstring> features;
-		if (runtime.UseModding)
+		if (runtime.Modding.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_MODDING));
-		if (runtime.UseLoginSessionSwitching)
+		if (runtime.Launch.UseLoginSessionSwitching)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_LOGINSESSIONS));
 		{
-			const auto& digests = runtime.EnabledPatchCodes.Value();
+			const auto& digests = runtime.Opcodes.EnabledPatchCodes.Value();
 			for (const auto& entry : *Config->PatchCode.GetEntries()) {
 				if (std::ranges::find(digests, entry.Digest) != digests.end())
 					features.emplace_back(runtime.FormatStringRes(IDS_VERSIONSENSITIVE_PATCHCODE, xivres::util::unicode::convert<std::wstring>(entry.Patch.Name)));
 			}
 		}
-		if (runtime.AudioOutputSamplingRate != Features::AudioResampler::GameDefault)
+		if (runtime.Audio.OutputSamplingRate != Features::AudioResampler::GameDefault)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SAMPLINGRATE));
-		if (runtime.SoxrResampler.Value().Enabled)
+		if (runtime.Audio.SoxrResampler.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_SOXR));
-		if (runtime.UseAltCodecMusicSupport)
+		if (runtime.Audio.UseAltCodecMusicSupport)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_ALTCODEC));
-		if (runtime.UseImeModeIndicator)
+		if (runtime.GameWindow.UseImeModeIndicator)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
-		if (runtime.UseCrowdFix)
+		if (runtime.CrowdFix.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_CROWDFIX));
-		if (runtime.FontReplacement.Value().Enabled)
+		if (runtime.FontReplacement.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_FONTREPLACEMENT));
 		return features;
 	}
@@ -294,47 +294,47 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			TerminateProcess(GetCurrentProcess(), exitCode);
 			});
 
-		Cleanup += Config->Runtime.UseNetworkTimingHandler.AddAndCallOnBoolChange(
+		Cleanup += Config->Runtime.NetworkTiming.Enabled.AddAndCallOnBoolChange(
 			[this] { NetworkTimingHandler.emplace(App); },
 			[this] { NetworkTimingHandler.reset(); });
 
-		Cleanup += Config->Runtime.UseMainThreadTimingHandler.AddAndCallOnBoolChange(
+		Cleanup += Config->Runtime.FramerateControl.UseMainThreadTimingHandler.AddAndCallOnBoolChange(
 			[this] { MainThreadTimingHandler.emplace(App); },
 			[this] { MainThreadTimingHandler.reset(); });
 
-		Cleanup += Config->Runtime.UseOpcodeFinder.AddAndCallOnBoolChange(
+		Cleanup += Config->Runtime.Opcodes.UseOpcodeFinder.AddAndCallOnBoolChange(
 			[this] { IpcTypeFinder.emplace(App); },
 			[this] { IpcTypeFinder.reset(); });
 
-		Cleanup += Config->Runtime.UseAllIpcMessageLogger.AddAndCallOnBoolChange(
+		Cleanup += Config->Runtime.Opcodes.UseAllIpcMessageLogger.AddAndCallOnBoolChange(
 			[this] { AllIpcMessageLogger.emplace(App); },
 			[this] { AllIpcMessageLogger.reset(); });
 
-		Cleanup += Config->Runtime.ShowLoggingWindow.AddAndCallOnBoolChange(
+		Cleanup += Config->Runtime.Ui.LogWindow.Show.AddAndCallOnBoolChange(
 			[this] { LogWindow.emplace(); },
 			[this] { LogWindow.reset(); });
 
 		{
 			const auto updateAltCodecMusicSupport = [this] {
-				if (Config->Runtime.UseAltCodecMusicSupport && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AltCodecMusic, "Alternate codecs for musics"))
+				if (Config->Runtime.Audio.UseAltCodecMusicSupport && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::AltCodecMusic, "Alternate codecs for musics"))
 					AltCodecMusicSupport->Enable();
 				else
 					AltCodecMusicSupport->Disable();
 			};
-			Cleanup += Config->Runtime.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
+			Cleanup += Config->Runtime.Audio.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateAltCodecMusicSupport);
 		}
 
 		{
 			const auto updateImeModeIndicator = [this] {
-				if (Config->Runtime.UseImeModeIndicator && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "IME mode indicator for Korean and Chinese IMEs")) {
+				if (Config->Runtime.GameWindow.UseImeModeIndicator && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "IME mode indicator for Korean and Chinese IMEs")) {
 					if (!ImeModeIndicator)
 						ImeModeIndicator.emplace();
 				} else {
 					ImeModeIndicator.reset();
 				}
 			};
-			Cleanup += Config->Runtime.UseImeModeIndicator.AddAndCallOnChange(updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
+			Cleanup += Config->Runtime.GameWindow.UseImeModeIndicator.AddAndCallOnChange(updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateImeModeIndicator);
 		}
 
@@ -342,25 +342,25 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			using Fix = Features::CrowdFix::Fix;
 			auto& runtime = Config->Runtime;
 			const std::pair<Fix, ConfigItem<bool>*> crowdFixItems[]{
-				{Fix::SkipIdleNotifiers, &runtime.CrowdFix_SkipIdleNotifiers},
-				{Fix::ChainWorkerWakeups, &runtime.CrowdFix_ChainWorkerWakeups},
-				{Fix::DedupeSkeletonSyncs, &runtime.CrowdFix_DedupeSkeletonSyncs},
-				{Fix::TrimCullingClear, &runtime.CrowdFix_TrimCullingClear},
-				{Fix::ShortenAllocatorLock, &runtime.CrowdFix_ShortenAllocatorLock},
-				{Fix::PoolStagingBlocks, &runtime.CrowdFix_PoolStagingBlocks},
-				{Fix::FreezeHiddenMinions, &runtime.CrowdFix_FreezeHiddenMinions},
-				{Fix::SkipPrepareWait, &runtime.CrowdFix_SkipPrepareWait},
-				{Fix::InlineBgPrep, &runtime.CrowdFix_InlineBgPrep},
-				{Fix::SkipHiddenHotbars, &runtime.CrowdFix_SkipHiddenHotbars},
-				{Fix::ParallelAnimTail, &runtime.CrowdFix_ParallelAnimTail},
-				{Fix::SplitCharacterCulling, &runtime.CrowdFix_SplitCharacterCulling},
-				{Fix::PerItemCullingClaims, &runtime.CrowdFix_PerItemCullingClaims},
-				{Fix::GatherUsedCommands, &runtime.CrowdFix_GatherUsedCommands},
+				{Fix::SkipIdleNotifiers, &runtime.CrowdFix.Fixes.SkipIdleNotifiers},
+				{Fix::ChainWorkerWakeups, &runtime.CrowdFix.Fixes.ChainWorkerWakeups},
+				{Fix::DedupeSkeletonSyncs, &runtime.CrowdFix.Fixes.DedupeSkeletonSyncs},
+				{Fix::TrimCullingClear, &runtime.CrowdFix.Fixes.TrimCullingClear},
+				{Fix::ShortenAllocatorLock, &runtime.CrowdFix.Fixes.ShortenAllocatorLock},
+				{Fix::PoolStagingBlocks, &runtime.CrowdFix.Fixes.PoolStagingBlocks},
+				{Fix::FreezeHiddenMinions, &runtime.CrowdFix.Fixes.FreezeHiddenMinions},
+				{Fix::SkipPrepareWait, &runtime.CrowdFix.Fixes.SkipPrepareWait},
+				{Fix::InlineBgPrep, &runtime.CrowdFix.Fixes.InlineBgPrep},
+				{Fix::SkipHiddenHotbars, &runtime.CrowdFix.Fixes.SkipHiddenHotbars},
+				{Fix::ParallelAnimTail, &runtime.CrowdFix.Fixes.ParallelAnimTail},
+				{Fix::SplitCharacterCulling, &runtime.CrowdFix.Fixes.SplitCharacterCulling},
+				{Fix::PerItemCullingClaims, &runtime.CrowdFix.Fixes.PerItemCullingClaims},
+				{Fix::GatherUsedCommands, &runtime.CrowdFix.Fixes.GatherUsedCommands},
 			};
 			static_assert(std::size(crowdFixItems) == static_cast<size_t>(Fix::Count));
 
 			const auto updateCrowdFix = [this, crowdFixItems] {
-				if (Config->Runtime.UseCrowdFix && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "CrowdFix")) {
+				if (Config->Runtime.CrowdFix.Enabled && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "CrowdFix")) {
 					if (!CrowdFix) {
 						CrowdFix.emplace();
 						for (const auto& [fix, item] : crowdFixItems)
@@ -370,7 +370,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 					CrowdFix.reset();
 				}
 			};
-			Cleanup += runtime.UseCrowdFix.AddAndCallOnChange(updateCrowdFix, [this] { CrowdFix.reset(); });
+			Cleanup += runtime.CrowdFix.Enabled.AddAndCallOnChange(updateCrowdFix, [this] { CrowdFix.reset(); });
 			Cleanup += runtime.OnVersionSensitiveFeaturesAllowedChange(updateCrowdFix);
 			for (const auto& [fix, item] : crowdFixItems) {
 				Cleanup += item->OnChange([this, fix, item] {
@@ -383,7 +383,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		{
 			// Set up off the game's thread, which it waits for; a version of the game it can't work with leaves it off.
 			const auto updateFontReplacement = [this] {
-				if (Config->Runtime.FontReplacement.Value().Enabled && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::FontReplacement, "Font replacement")) {
+				if (Config->Runtime.FontReplacement.Enabled && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::FontReplacement, "Font replacement")) {
 					if (!FontReplacement) {
 						try {
 							FontReplacement.emplace(App);
@@ -396,14 +396,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 				}
 			};
 			// The feature applies its other settings itself; only turning it on or off is acted on here.
-			const auto onSettingsChange = [this, updateFontReplacement, lastEnabled = std::make_shared<std::optional<bool>>()] {
-				const auto enabled = Config->Runtime.FontReplacement.Value().Enabled;
-				if (*lastEnabled == enabled)
-					return;
-				*lastEnabled = enabled;
-				updateFontReplacement();
-			};
-			Cleanup += Config->Runtime.FontReplacement.AddAndCallOnChange(onSettingsChange, [this] { FontReplacement.reset(); });
+			Cleanup += Config->Runtime.FontReplacement.Enabled.AddAndCallOnChange(updateFontReplacement, [this] { FontReplacement.reset(); });
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateFontReplacement);
 		}
 	}
@@ -439,21 +432,21 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::InitializeThre
 		});
 
 	auto& config = App.m_pImpl->Config->Runtime;
-	if (config.AlwaysOnTop_GameMainWindow)
+	if (config.GameWindow.AlwaysOnTop)
 		SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	else
 		SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	Cleanup += config.AlwaysOnTop_GameMainWindow.OnChange([&] {
-		if (config.AlwaysOnTop_GameMainWindow)
+	Cleanup += config.GameWindow.AlwaysOnTop.OnChange([&] {
+		if (config.GameWindow.AlwaysOnTop)
 			SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		else
 			SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 		});
 	Cleanup += [this] { SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
-	Cleanup += Config->Runtime.GameWindowTitleMode.AddAndCallOnChange([this] { UpdateWindowTitle(); });
-	Cleanup += Config->Runtime.GameWindowTitlePrefixFormat.OnChange([this] { UpdateWindowTitle(); });
-	Cleanup += Config->Runtime.GameWindowTitleSuffixFormat.OnChange([this] { UpdateWindowTitle(); });
+	Cleanup += Config->Runtime.GameWindow.TitleMode.AddAndCallOnChange([this] { UpdateWindowTitle(); });
+	Cleanup += Config->Runtime.GameWindow.TitlePrefixFormat.OnChange([this] { UpdateWindowTitle(); });
+	Cleanup += Config->Runtime.GameWindow.TitleSuffixFormat.OnChange([this] { UpdateWindowTitle(); });
 	Cleanup += [this] { UpdateWindowTitle(true); };
 
 	ReadyEvent.Set();
@@ -547,14 +540,14 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::UpdateWindowTi
 
 	std::string format;
 	if (!removeDecoration) {
-		switch (Config->Runtime.GameWindowTitleMode) {
+		switch (Config->Runtime.GameWindow.TitleMode) {
 			case GameWindowTitleMode::None:
 				break;
 			case GameWindowTitleMode::Prefix:
-				format = Config->Runtime.GameWindowTitlePrefixFormat.Value();
+				format = Config->Runtime.GameWindow.TitlePrefixFormat.Value();
 				break;
 			case GameWindowTitleMode::Suffix:
-				format = Config->Runtime.GameWindowTitleSuffixFormat.Value();
+				format = Config->Runtime.GameWindow.TitleSuffixFormat.Value();
 				break;
 		}
 	}

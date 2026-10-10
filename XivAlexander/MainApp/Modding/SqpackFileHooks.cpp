@@ -162,7 +162,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 								Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {} @0x{:X}, requested {} bytes, read {} bytes{}",
 									vpath.Path.filename(), fp, nNumberOfBytesToRead, read, DescribeRead(vpath, fp, nNumberOfBytesToRead));
 							} else {
-								if (Config->Runtime.LogAllDataFileRead) {
+								if (Config->Runtime.Modding.Logging.AllDataFileRead) {
 									Logger->Format<LogLevel::Info>(LogCategory::GameResourceOverrider, L"ReadFile: {} @0x{:X}, requested {} bytes{}",
 										vpath.Path.filename(), fp, nNumberOfBytesToRead, DescribeRead(vpath, fp, nNumberOfBytesToRead));
 								}

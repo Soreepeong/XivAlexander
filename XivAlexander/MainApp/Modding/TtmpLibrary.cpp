@@ -170,7 +170,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			std::vector<std::string> sidecars{"TTMPD.mpd", "compression"};
 			std::ranges::copy(TtmpSet::DisableMarkerNames(), std::back_inserter(sidecars));
-			for (const auto& profile : m_config->Runtime.TtmpChoicesFiles.Value()) {
+			for (const auto& profile : m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value()) {
 				if (profile.FileName.empty())
 					continue;
 				sidecars.emplace_back(profile.FileName);
@@ -240,7 +240,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		dirs.emplace_back(m_config->Init.ResolveConfigStorageDirectoryPath() / "TexToolsMods");
 		dirs.emplace_back(m_sqpackPath / "TexToolsMods");
 
-		for (const auto& dir : m_config->Runtime.AdditionalTexToolsModPackSearchDirectories.Value())
+		for (const auto& dir : m_config->Runtime.Modding.Ttmp.AdditionalSearchDirectories.Value())
 			dirs.emplace_back(Config::TranslatePath(dir));
 
 		for (auto it = dirs.begin(); it != dirs.end();) {
@@ -253,7 +253,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::string TtmpLibrary::ResolveChoicesFileName() const {
-		const auto& profiles = m_config->Runtime.TtmpChoicesFiles.Value();
+		const auto& profiles = m_config->Runtime.Modding.Ttmp.ChoicesFiles.Value();
 		for (const auto& profile : profiles) {
 			if (profile.Active && !profile.FileName.empty())
 				return profile.FileName;

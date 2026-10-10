@@ -18,147 +18,247 @@ namespace XivAlexander {
 		using BaseConfigRepository::BaseConfigRepository;
 
 	public:
-		// Miscellaneous configuration
-		ConfigItem<bool> AlwaysOnTop_GameMainWindow{this, "AlwaysOnTop_GameMainWindow", false};
+		// Each group and item is saved under its member's name. Migrate moves the keys 1.14.9.3 saved at the top level.
 
-		ConfigItem<bool> AlwaysOnTop_XivAlexMainWindow{this, "AlwaysOnTop_XivAlexMainWindow", true};
-		ConfigItem<bool> HideOnMinimize_XivAlexMainWindow{this, "HideOnMinimize_XivAlexMainWindow", false};
+		class UiGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> AlwaysOnTop_XivAlexLogWindow{this, "AlwaysOnTop_XivAlexLogWindow", false};
-		ConfigItem<bool> UseWordWrap_XivAlexLogWindow{this, "UseWordWrap_XivAlexLogWindow", false};
-		ConfigItem<bool> UseMonospaceFont_XivAlexLogWindow{this, "UseMonospaceFont_XivAlexLogWindow", false};
+			ConfigItem<Language> Language{this, "Language", Language::SystemDefault};
+			ConfigItem<ThemeMode> ThemeMode{this, "ThemeMode", ThemeMode::System};
 
-		ConfigItem<bool> UseWordWrap_ConfigWindow{this, "UseWordWrap_ConfigWindow", false};
+			class MainWindowGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseNetworkTimingHandler{this, "UseNetworkTimingHandler", true};
-		ConfigItem<HighLatencyMitigationMode> HighLatencyMitigationMode{this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency};
-		ConfigItem<bool> UseHighLatencyMitigationLogging{this, "UseHighLatencyMitigationLogging", true};
-		ConfigItem<bool> UseHighLatencyMitigationPreviewMode{this, "UseHighLatencyMitigationPreviewMode", false};
+				ConfigItem<bool> Show{this, "Show", true};
+				ConfigItem<bool> AlwaysOnTop{this, "AlwaysOnTop", true};
+				ConfigItem<bool> HideOnMinimize{this, "HideOnMinimize", false};
+			} MainWindow{this, "MainWindow"};
 
-		// Troubleshooting purposes. If you think it's not working, change this to zero, and see if anything's different.
-		// * If you find nothing has changed, try checking stuff in "Network > Troubleshooting".
-		// * If you still find nothing has changed, make an issue with a log from the log window.
-		// Revert before doing anything other than hitting striking dummies.
-		// If you lower this value to an unreasonable extent, expect to get called out and banned from ranking communities.
-		// SE probably doesn't care enough, but other players will.
-		ConfigItem<int64_t> ExpectedAnimationLockDurationUs{this, "ExpectedAnimationLockDurationUs", 75000LL};
+			class LogWindowGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
 
-		// Should be the doubled value of the above.
-		ConfigItem<int64_t> MaximumAnimationLockDurationUs{this, "MaximumAnimationLockDurationUs", 150000LL};
+				ConfigItem<bool> Show{this, "Show", true};
+				ConfigItem<bool> AlwaysOnTop{this, "AlwaysOnTop", false};
+				ConfigItem<bool> UseWordWrap{this, "UseWordWrap", false};
+				ConfigItem<bool> UseMonospaceFont{this, "UseMonospaceFont", false};
+			} LogWindow{this, "LogWindow"};
 
-		ConfigItem<bool> ReducePacketDelay{this, "ReducePacketDelay", false};
-		ConfigItem<bool> TakeOverLoopbackAddresses{this, "TakeOverLoopback", false};
-		ConfigItem<bool> TakeOverPrivateAddresses{this, "TakeOverPrivateAddresses", false};
-		ConfigItem<bool> TakeOverAllAddresses{this, "TakeOverAllAddresses", false};
-		ConfigItem<bool> TakeOverAllPorts{this, "TakeOverAllPorts", false};
+			class ConfigWindowGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseOpcodeFinder{this, "UseOpcodeFinder", false};
-		ConfigItem<bool> ShowLoggingWindow{this, "ShowLoggingWindow", true};
-		ConfigItem<bool> ShowControlWindow{this, "ShowControlWindow", true};
-		ConfigItem<bool> UseAllIpcMessageLogger{this, "UseAllIpcMessageLogger", false};
+				ConfigItem<bool> UseWordWrap{this, "UseWordWrap", false};
+			} ConfigWindow{this, "ConfigWindow"};
+		} Ui{this, "Ui"};
 
-		ConfigItem<std::vector<std::string>> EnabledPatchCodes{this, "EnabledPatchCodes", std::vector<std::string>()};
+		class GameWindowGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<std::string> VersionSensitiveFeaturesAllowedGameVersion{this, "VersionSensitiveFeaturesAllowedGameVersion"};
+			ConfigItem<bool> AlwaysOnTop{this, "AlwaysOnTop", false};
+			ConfigItem<GameWindowTitleMode> TitleMode{this, "TitleMode", GameWindowTitleMode::None};
+			ConfigItem<std::string> TitlePrefixFormat{this, "TitlePrefixFormat", std::string("{alias_or_pid} - {title}")};
+			ConfigItem<std::string> TitleSuffixFormat{this, "TitleSuffixFormat", std::string("{title} ({alias_or_pid})")};
+			ConfigItem<bool> DisableGhosting{this, "DisableGhosting", false};
+			ConfigItem<bool> UseImeModeIndicator{this, "UseImeModeIndicator", false};
+		} GameWindow{this, "GameWindow"};
 
-		ConfigItem<bool> UseLoginSessionSwitching{this, "UseLoginSessionSwitching", false};
+		class NetworkTimingGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> LogAllDataFileRead{this, "LogAllDataFileRead", false};
+			ConfigItem<bool> Enabled{this, "Enabled", true};
+			ConfigItem<HighLatencyMitigationMode> HighLatencyMitigationMode{this, "HighLatencyMitigationMode", HighLatencyMitigationMode::SimulateNormalizedRttAndLatency};
+			ConfigItem<bool> UseHighLatencyMitigationLogging{this, "UseHighLatencyMitigationLogging", true};
+			ConfigItem<bool> UseHighLatencyMitigationPreviewMode{this, "UseHighLatencyMitigationPreviewMode", false};
 
-		ConfigItem<xivres::game_language> RememberedGameLaunchLanguage{this, "RememberedGameLaunchLanguage", xivres::game_language::Unspecified};
-		ConfigItem<xivres::game_publisher> RememberedGameLaunchRegion{this, "RememberedGameLaunchRegion", xivres::game_publisher::Unspecified};
+			// Troubleshooting purposes. If you think it's not working, change this to zero, and see if anything's different.
+			// * If you find nothing has changed, try checking stuff in "Network > Troubleshooting".
+			// * If you still find nothing has changed, make an issue with a log from the log window.
+			// Revert before doing anything other than hitting striking dummies.
+			// If you lower this value to an unreasonable extent, expect to get called out and banned from ranking communities.
+			// SE probably doesn't care enough, but other players will.
+			ConfigItem<int64_t> ExpectedAnimationLockDurationUs{this, "ExpectedAnimationLockDurationUs", 75000LL};
 
-		ConfigItem<bool> CheckForUpdatedOpcodesOnStartup{this, "CheckForUpdatedOpcodesOnStartup", true};
+			// Should be the doubled value of the above.
+			ConfigItem<int64_t> MaximumAnimationLockDurationUs{this, "MaximumAnimationLockDurationUs", 150000LL};
+		} NetworkTiming{this, "NetworkTiming"};
 
-		ConfigItem<uint32_t> ClearCopiedLaunchCommandLineSeconds{this, "ClearCopiedLaunchCommandLineSeconds", 30U, [](const uint32_t& val) { return std::min<uint32_t>(val, 86400); }};
+		class SocketGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseMoreCpuTime{this, "UseMoreCpuPower", false};
-		ConfigItem<bool> SynchronizeProcessing{this, "SynchronizeProcessing", false};
-		ConfigItem<GameWindowTitleMode> GameWindowTitleMode{this, "AddProcessIDToGameWindowTitle", GameWindowTitleMode::None};
-		ConfigItem<std::string> GameWindowTitlePrefixFormat{this, "GameWindowTitlePrefixFormat", std::string("{alias_or_pid} - {title}")};
-		ConfigItem<bool> DisableWindowGhosting{this, "DisableWindowGhosting", false};
-		ConfigItem<std::string> GameWindowTitleSuffixFormat{this, "GameWindowTitleSuffixFormat", std::string("{title} ({alias_or_pid})")};
+			ConfigItem<bool> ReducePacketDelay{this, "ReducePacketDelay", false};
+			ConfigItem<bool> TakeOverLoopbackAddresses{this, "TakeOverLoopbackAddresses", false};
+			ConfigItem<bool> TakeOverPrivateAddresses{this, "TakeOverPrivateAddresses", false};
+			ConfigItem<bool> TakeOverAllAddresses{this, "TakeOverAllAddresses", false};
+			ConfigItem<bool> TakeOverAllPorts{this, "TakeOverAllPorts", false};
+		} Socket{this, "Socket"};
 
-		ConfigItem<uint64_t> LockFramerateInterval{
-			this, "LockFramerate", 0, [](const uint64_t& val) {
-				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
-			}
-		};
-		ConfigItem<bool> LockFramerateAutomatic{this, "LockFramerateAutomatic", false};
-		ConfigItem<double> LockFramerateTargetFramerateRangeFrom{this, "LockFramerateTargetFramerateRangeFrom", 50.};
-		ConfigItem<double> LockFramerateTargetFramerateRangeTo{this, "LockFramerateTargetFramerateRangeTo", 60.};
-		ConfigItem<uint64_t> LockFramerateMaximumRenderIntervalDeviation{
-			this, "LockFramerateMaximumRenderIntervalDeviation", 100, [](const uint64_t& val) {
-				return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
-			}
-		};
-		ConfigItem<uint64_t> LockFramerateGlobalCooldown{this, "LockFramerateGlobalCooldown", 250};
+		class FramerateControlGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseMainThreadTimingHandler{this, "UseMainThreadTimingHandler", false};
-		ConfigItem<bool> UseBackgroundFramerateLimit{this, "UseBackgroundFramerateLimit", false};
-		ConfigItem<double> BackgroundFramerateLimit{
-			this, "BackgroundFramerateLimit", 5.0, [](const double& val) {
-				return std::min(1000.0, std::max(0.1, val));
-			}
-		};
+			ConfigItem<bool> UseMoreCpuTime{this, "UseMoreCpuTime", false};
+			ConfigItem<bool> SynchronizeProcessing{this, "SynchronizeProcessing", false};
 
-		ConfigItem<Language> Language{this, "Language", Language::SystemDefault};
-		ConfigItem<ThemeMode> ThemeMode{this, "ThemeMode", ThemeMode::System};
+			class LockGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
+
+				ConfigItem<uint64_t> Interval{
+					this, "Interval", 0, [](const uint64_t& val) {
+						return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
+					}
+				};
+				ConfigItem<bool> Automatic{this, "Automatic", false};
+				ConfigItem<double> TargetFramerateRangeFrom{this, "TargetFramerateRangeFrom", 50.};
+				ConfigItem<double> TargetFramerateRangeTo{this, "TargetFramerateRangeTo", 60.};
+				ConfigItem<uint64_t> MaximumRenderIntervalDeviation{
+					this, "MaximumRenderIntervalDeviation", 100, [](const uint64_t& val) {
+						return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
+					}
+				};
+				ConfigItem<uint64_t> GlobalCooldown{this, "GlobalCooldown", 250};
+			} Lock{this, "Lock"};
+
+			ConfigItem<bool> UseBackgroundLimit{this, "UseBackgroundLimit", false};
+			ConfigItem<double> BackgroundLimit{
+				this, "BackgroundLimit", 5.0, [](const double& val) {
+					return std::min(1000.0, std::max(0.1, val));
+				}
+			};
+
+			/// Whether any of the above needs the main thread timing handler; kept up to date by the repository.
+			ConfigItem<bool> UseMainThreadTimingHandler{this, "UseMainThreadTimingHandler", false};
+		} FramerateControl{this, "FramerateControl"};
+
+		class OpcodesGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
+			ConfigItem<std::vector<std::string>> EnabledPatchCodes{this, "EnabledPatchCodes", std::vector<std::string>()};
+			ConfigItem<std::string> VersionSensitiveFeaturesAllowedGameVersion{this, "VersionSensitiveFeaturesAllowedGameVersion"};
+			ConfigItem<bool> CheckForUpdatesOnStartup{this, "CheckForUpdatesOnStartup", true};
+			ConfigItem<bool> UseOpcodeFinder{this, "UseOpcodeFinder", false};
+			ConfigItem<bool> UseAllIpcMessageLogger{this, "UseAllIpcMessageLogger", false};
+		} Opcodes{this, "Opcodes"};
+
+		class LaunchGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
+			ConfigItem<bool> UseLoginSessionSwitching{this, "UseLoginSessionSwitching", false};
+			ConfigItem<xivres::game_language> RememberedLanguage{this, "RememberedLanguage", xivres::game_language::Unspecified};
+			ConfigItem<xivres::game_publisher> RememberedRegion{this, "RememberedRegion", xivres::game_publisher::Unspecified};
+			ConfigItem<uint32_t> ClearCopiedCommandLineSeconds{this, "ClearCopiedCommandLineSeconds", 30U, [](const uint32_t& val) { return std::min<uint32_t>(val, 86400); }};
+		} Launch{this, "Launch"};
 
 		// If not set, default to files in System32 (SysWOW64) in %WINDIR% (GetSystemDirectory)
 		// If set but invalid, show errors.
-		ConfigItem<std::vector<std::filesystem::path>> ChainLoadPath_d3d11{this, "ChainLoadPath_d3d11"};
-		ConfigItem<std::vector<std::filesystem::path>> ChainLoadPath_dxgi{this, "ChainLoadPath_dxgi"};
-		ConfigItem<std::vector<std::filesystem::path>> ChainLoadPath_dinput8{this, "ChainLoadPath_dinput8"};
+		class ChainLoadGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseModding{this, "UseModding", false};
-		ConfigItem<bool> UseHashTrackerKeyLogging{this, "UseHashTrackerKeyLogging", false};
-		ConfigItem<xivres::game_language> ResourceLanguageOverride{this, "ResourceLanguageOverride", xivres::game_language::Unspecified};
-		ConfigItem<xivres::game_language> VoiceResourceLanguageOverride{this, "VoiceResourceLanguageOverride", xivres::game_language::Unspecified};
-		ConfigItem<std::vector<xivres::game_language>> FallbackLanguagePriority{this, "FallbackLanguagePriority"};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
-		ConfigItem<bool> TtmpFlattenSubdirectoryDisplay{this, "TtmpFlattenSubdirectoryDisplay", false};
-		ConfigItem<bool> TtmpUseSubdirectoryTogglingOnFlattenedView{this, "", false};
-		ConfigItem<bool> TtmpShowDedicatedMenu{this, "TtmpShowDedicatedMenu", false};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalTexToolsModPackSearchDirectories{this, "AdditionalTexToolsModPackSearchDirectories"};
-		ConfigItem<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories{this, "AdditionalGameResourceFileEntryRootDirectories"};
-		ConfigItem<std::vector<ChoicesProfile>> TtmpChoicesFiles{this, "TtmpChoicesFiles", std::vector<ChoicesProfile>{{.Name = "Default", .FileName = "choices.json"}}};
-		ConfigItem<std::vector<PathReplacementRule>> PathReplacements{this, "PathReplacements"};
-		ConfigItem<std::vector<LogPathFilter>> LogPathFilters{this, "LogPathFilters"};
-		ConfigItem<std::map<std::string, std::string>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
-		ConfigItem<int> ForcedCharacterLanguageLipSync{this, "ForcedCharacterLanguageLipSync", -1};
-		ConfigItem<bool> LogAllPaths{this, "LogAllPaths", false};
-		ConfigItem<bool> LogReplacedPaths{this, "LogReplacedPaths", false};
-		ConfigItem<bool> LogDialogueCharacterNames{this, "LogDialogueCharacterNames", false};
+			ConfigItem<std::vector<std::filesystem::path>> D3d11{this, "D3d11"};
+			ConfigItem<std::vector<std::filesystem::path>> Dxgi{this, "Dxgi"};
+			ConfigItem<std::vector<std::filesystem::path>> Dinput8{this, "Dinput8"};
+		} ChainLoad{this, "ChainLoad"};
 
-		ConfigItem<bool> MuteVoice_Battle{this, "MuteVoice_Battle", false};
-		ConfigItem<bool> MuteVoice_Cm{this, "MuteVoice_Cm", false};
-		ConfigItem<bool> MuteVoice_Emote{this, "MuteVoice_Emote", false};
-		ConfigItem<bool> MuteVoice_Line{this, "MuteVoice_Line", false};
+		class ModdingGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
-		ConfigItem<SoxrResamplerConfig> SoxrResampler{this, "SoxrResampler", {}, [](const SoxrResamplerConfig& v) { return v.Sanitized(); }};
-		ConfigItem<uint32_t> AudioOutputSamplingRate{this, "AudioOutputSamplingRate", 48000U};
+			ConfigItem<bool> Enabled{this, "Enabled", false};
+			ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
+			ConfigItem<std::vector<std::filesystem::path>> AdditionalGameResourceFileEntryRootDirectories{this, "AdditionalGameResourceFileEntryRootDirectories"};
+			ConfigItem<std::vector<PathReplacementRule>> PathReplacements{this, "PathReplacements"};
 
-		ConfigItem<bool> UseImeModeIndicator{this, "UseImeModeIndicator", false};
+			class LanguagesGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
 
-		ConfigItem<bool> UseCrowdFix{this, "UseCrowdFix", false};
-		ConfigItem<bool> CrowdFix_SkipIdleNotifiers{this, "CrowdFix_SkipIdleNotifiers", true};
-		ConfigItem<bool> CrowdFix_ChainWorkerWakeups{this, "CrowdFix_ChainWorkerWakeups", true};
-		ConfigItem<bool> CrowdFix_DedupeSkeletonSyncs{this, "CrowdFix_DedupeSkeletonSyncs", true};
-		ConfigItem<bool> CrowdFix_TrimCullingClear{this, "CrowdFix_TrimCullingClear", true};
-		ConfigItem<bool> CrowdFix_ShortenAllocatorLock{this, "CrowdFix_ShortenAllocatorLock", false};
-		ConfigItem<bool> CrowdFix_PoolStagingBlocks{this, "CrowdFix_PoolStagingBlocks", false};
-		ConfigItem<bool> CrowdFix_FreezeHiddenMinions{this, "CrowdFix_FreezeHiddenMinions", true};
-		ConfigItem<bool> CrowdFix_SkipPrepareWait{this, "CrowdFix_SkipPrepareWait", false};
-		ConfigItem<bool> CrowdFix_InlineBgPrep{this, "CrowdFix_InlineBgPrep", false};
-		ConfigItem<bool> CrowdFix_SkipHiddenHotbars{this, "CrowdFix_SkipHiddenHotbars", true};
-		ConfigItem<bool> CrowdFix_ParallelAnimTail{this, "CrowdFix_ParallelAnimTail", true};
-		ConfigItem<bool> CrowdFix_SplitCharacterCulling{this, "CrowdFix_SplitCharacterCulling", false};
-		ConfigItem<bool> CrowdFix_PerItemCullingClaims{this, "CrowdFix_PerItemCullingClaims", false};
-		ConfigItem<bool> CrowdFix_GatherUsedCommands{this, "CrowdFix_GatherUsedCommands", true};
+				ConfigItem<xivres::game_language> ResourceOverride{this, "ResourceOverride", xivres::game_language::Unspecified};
+				ConfigItem<xivres::game_language> VoiceResourceOverride{this, "VoiceResourceOverride", xivres::game_language::Unspecified};
+				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
+				ConfigItem<std::map<std::string, std::string>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
+				ConfigItem<int> ForcedCharacterLipSync{this, "ForcedCharacterLipSync", -1};
+			} Languages{this, "Languages"};
 
-		ConfigItem<FontReplacementConfig> FontReplacement{this, "FontReplacement", {}, [](const FontReplacementConfig& v) { return v.Sanitized(); }};
+			class TtmpGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
+
+				ConfigItem<bool> FlattenSubdirectoryDisplay{this, "FlattenSubdirectoryDisplay", false};
+				ConfigItem<bool> UseSubdirectoryTogglingOnFlattenedView{this, "UseSubdirectoryTogglingOnFlattenedView", false};
+				ConfigItem<bool> ShowDedicatedMenu{this, "ShowDedicatedMenu", false};
+				ConfigItem<std::vector<ChoicesProfile>> ChoicesFiles{this, "ChoicesFiles", std::vector<ChoicesProfile>{{.Name = "Default", .FileName = "choices.json"}}};
+				ConfigItem<std::vector<std::filesystem::path>> AdditionalSearchDirectories{this, "AdditionalSearchDirectories"};
+			} Ttmp{this, "Ttmp"};
+
+			class LoggingGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
+
+				ConfigItem<bool> AllDataFileRead{this, "AllDataFileRead", false};
+				ConfigItem<bool> HashTrackerKeys{this, "HashTrackerKeys", false};
+				ConfigItem<bool> AllPaths{this, "AllPaths", false};
+				ConfigItem<bool> ReplacedPaths{this, "ReplacedPaths", false};
+				ConfigItem<bool> DialogueCharacterNames{this, "DialogueCharacterNames", false};
+				ConfigItem<std::vector<LogPathFilter>> PathFilters{this, "PathFilters"};
+			} Logging{this, "Logging"};
+		} Modding{this, "Modding"};
+
+		class AudioGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
+			class MuteVoiceGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
+
+				ConfigItem<bool> Battle{this, "Battle", false};
+				ConfigItem<bool> Cm{this, "Cm", false};
+				ConfigItem<bool> Emote{this, "Emote", false};
+				ConfigItem<bool> Line{this, "Line", false};
+			} MuteVoice{this, "MuteVoice"};
+
+			ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
+			ConfigItem<uint32_t> OutputSamplingRate{this, "OutputSamplingRate", 48000U};
+			SoxrResamplerConfigGroup SoxrResampler{this, "SoxrResampler"};
+		} Audio{this, "Audio"};
+
+		class CrowdFixGroup : public ConfigGroup {
+		public:
+			using ConfigGroup::ConfigGroup;
+
+			ConfigItem<bool> Enabled{this, "Enabled", false};
+
+			class FixesGroup : public ConfigGroup {
+			public:
+				using ConfigGroup::ConfigGroup;
+
+				ConfigItem<bool> SkipIdleNotifiers{this, "SkipIdleNotifiers", true};
+				ConfigItem<bool> ChainWorkerWakeups{this, "ChainWorkerWakeups", true};
+				ConfigItem<bool> DedupeSkeletonSyncs{this, "DedupeSkeletonSyncs", true};
+				ConfigItem<bool> TrimCullingClear{this, "TrimCullingClear", true};
+				ConfigItem<bool> ShortenAllocatorLock{this, "ShortenAllocatorLock", false};
+				ConfigItem<bool> PoolStagingBlocks{this, "PoolStagingBlocks", false};
+				ConfigItem<bool> FreezeHiddenMinions{this, "FreezeHiddenMinions", true};
+				ConfigItem<bool> SkipPrepareWait{this, "SkipPrepareWait", false};
+				ConfigItem<bool> InlineBgPrep{this, "InlineBgPrep", false};
+				ConfigItem<bool> SkipHiddenHotbars{this, "SkipHiddenHotbars", true};
+				ConfigItem<bool> ParallelAnimTail{this, "ParallelAnimTail", true};
+				ConfigItem<bool> SplitCharacterCulling{this, "SplitCharacterCulling", false};
+				ConfigItem<bool> PerItemCullingClaims{this, "PerItemCullingClaims", false};
+				ConfigItem<bool> GatherUsedCommands{this, "GatherUsedCommands", true};
+			} Fixes{this, "Fixes"};
+		} CrowdFix{this, "CrowdFix"};
+
+		FontReplacementConfigGroup FontReplacement{this, "FontReplacement"};
 
 		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;
@@ -192,6 +292,9 @@ namespace XivAlexander {
 		[[nodiscard]] bool IsCurrentGameVersionAllowed() const;
 		[[nodiscard]] bool AreVersionSensitiveFeaturesDisabledTemporarily() const { return m_versionSensitiveFeaturesAllowedTemporarily == 0; }
 		void DecideVersionSensitiveFeatures(VersionSensitiveFeaturesDecision decision);
+
+	protected:
+		void Migrate(nlohmann::json& config) const override;
 
 	private:
 		std::atomic_int m_versionSensitiveFeaturesAllowedTemporarily = -1;

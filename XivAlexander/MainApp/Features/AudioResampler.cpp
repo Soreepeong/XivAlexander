@@ -130,15 +130,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 			: Config(Config::Acquire())
 			, Logger(Misc::Logger::Acquire()) {
 			ResolveMixRate();
-			Cleanup += Config->Runtime.AudioOutputSamplingRate.OnChange([this] { ApplyMixRate(false); });
+			Cleanup += Config->Runtime.Audio.OutputSamplingRate.OnChange([this] { ApplyMixRate(false); });
 			ApplyMixRate(true);
 
-			Cleanup += Config->Runtime.SoxrResampler.OnChange([this] { SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled); });
-			SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+			Cleanup += Config->Runtime.Audio.SoxrResampler.Enabled.OnChange([this] { SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled); });
+			SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled);
 
 			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] {
 				ApplyMixRate(false);
-				SetEnabled(Config->Runtime.SoxrResampler.Value().Enabled);
+				SetEnabled(Config->Runtime.Audio.SoxrResampler.Enabled);
 			});
 		}
 
@@ -174,7 +174,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			if (!Immediate)
 				return;
 
-			auto rate = Config->Runtime.AudioOutputSamplingRate.Value();
+			auto rate = Config->Runtime.Audio.OutputSamplingRate.Value();
 			if (rate == MatchDefaultDevice) {
 				if ((rate = DefaultDeviceRate()))
 					Logger->Format<LogLevel::Info>(LogCategory::AudioResampler, "default output device mixes at {} Hz", rate);
@@ -241,7 +241,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		std::unique_ptr<Resampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
 			const auto sampleFormat = format == VoiceFormat::Int16 ? SampleFormat::Int16 : SampleFormat::Float;
 			std::string error;
-			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.SoxrResampler.Value(), error);
+			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.Audio.SoxrResampler.Filter.Snapshot(), error);
 			if (!error.empty()) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
 					"soxr ({} -> {} Hz, {} ch) failed: {}", rate, mix, channels, error);

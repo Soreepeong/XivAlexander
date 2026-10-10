@@ -118,7 +118,7 @@ HRESULT WINAPI FORWARDER_D3D11CreateDevice(
 	D3D_FEATURE_LEVEL* pFeatureLevel,
 	ID3D11DeviceContext** ppImmediateContext
 ) {
-	return ChainCall<decltype(&D3D11CreateDevice), HRESULT>("d3d11.dll", "D3D11CreateDevice", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_d3d11.Value(), [&](auto pfn, auto discardImmediately) {
+	return ChainCall<decltype(&D3D11CreateDevice), HRESULT>("d3d11.dll", "D3D11CreateDevice", XivAlexander::Config::Acquire()->Runtime.ChainLoad.D3d11.Value(), [&](auto pfn, auto discardImmediately) {
 		const auto res = pfn(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 		if (res == S_OK && discardImmediately) {
 			if (ppDevice)
@@ -134,7 +134,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory(
 	REFIID riid,
 	IDXGIFactory** ppFactory
 ) {
-	return ChainCall<decltype(&CreateDXGIFactory), HRESULT>("dxgi.dll", "CreateDXGIFactory", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_dxgi.Value(), [&](auto pfn, auto discardImmediately) {
+	return ChainCall<decltype(&CreateDXGIFactory), HRESULT>("dxgi.dll", "CreateDXGIFactory", XivAlexander::Config::Acquire()->Runtime.ChainLoad.Dxgi.Value(), [&](auto pfn, auto discardImmediately) {
 		const auto res = pfn(riid, reinterpret_cast<void**>(ppFactory));
 		if (res == S_OK && discardImmediately) {
 			if (ppFactory)
@@ -148,7 +148,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory1(
 	REFIID riid,
 	IDXGIFactory1** ppFactory
 ) {
-	return ChainCall<decltype(&CreateDXGIFactory1), HRESULT>("dxgi.dll", "CreateDXGIFactory1", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_dxgi.Value(), [&](auto pfn, auto discardImmediately) {
+	return ChainCall<decltype(&CreateDXGIFactory1), HRESULT>("dxgi.dll", "CreateDXGIFactory1", XivAlexander::Config::Acquire()->Runtime.ChainLoad.Dxgi.Value(), [&](auto pfn, auto discardImmediately) {
 		const auto res = pfn(riid, reinterpret_cast<void**>(ppFactory));
 		if (res == S_OK && discardImmediately) {
 			if (ppFactory)
@@ -163,7 +163,7 @@ HRESULT WINAPI FORWARDER_CreateDXGIFactory2(
 	REFIID riid,
 	IDXGIFactory2** ppFactory
 ) {
-	return ChainCall<decltype(&CreateDXGIFactory2), HRESULT>("dxgi.dll", "CreateDXGIFactory1", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_dxgi.Value(), [&](auto pfn, auto discardImmediately) {
+	return ChainCall<decltype(&CreateDXGIFactory2), HRESULT>("dxgi.dll", "CreateDXGIFactory1", XivAlexander::Config::Acquire()->Runtime.ChainLoad.Dxgi.Value(), [&](auto pfn, auto discardImmediately) {
 		const auto res = pfn(Flags, riid, reinterpret_cast<void**>(ppFactory));
 		if (res == S_OK && discardImmediately) {
 			if (ppFactory)
@@ -182,7 +182,7 @@ HRESULT WINAPI FORWARDER_DirectInput8Create(
 	IUnknown** ppvOut,
 	LPUNKNOWN punkOuter
 ) {
-	return ChainCall<decltype(&DirectInput8Create), HRESULT>("dinput8.dll", "DirectInput8Create", XivAlexander::Config::Acquire()->Runtime.ChainLoadPath_dinput8.Value(), [&](auto pfn, auto discardImmediately) {
+	return ChainCall<decltype(&DirectInput8Create), HRESULT>("dinput8.dll", "DirectInput8Create", XivAlexander::Config::Acquire()->Runtime.ChainLoad.Dinput8.Value(), [&](auto pfn, auto discardImmediately) {
 		const auto res = pfn(hinst, dwVersion, riidltf, reinterpret_cast<void**>(ppvOut), punkOuter);
 		if (res == S_OK && discardImmediately) {
 			if (ppvOut)

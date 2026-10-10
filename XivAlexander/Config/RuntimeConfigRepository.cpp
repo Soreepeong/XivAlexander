@@ -65,20 +65,16 @@ namespace {
 
 XivAlexander::RuntimeConfigRepository::RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
 	: BaseConfigRepository(pConfig, std::move(path), std::move(parentKey)) {
-	m_cleanup += Language.AddAndCallOnChange([&] {
+	m_cleanup += Ui.Language.AddAndCallOnChange([&] {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 	});
 
-	m_cleanup += VersionSensitiveFeaturesAllowedGameVersion.OnChange([&] { OnVersionSensitiveFeaturesAllowedChange(); });
+	m_cleanup += Opcodes.VersionSensitiveFeaturesAllowedGameVersion.OnChange([&] { OnVersionSensitiveFeaturesAllowedChange(); });
 
 	const auto updateUseMainThreadTimingHandler = [&] {
-		UseMainThreadTimingHandler = SynchronizeProcessing || LockFramerateAutomatic || LockFramerateInterval || UseBackgroundFramerateLimit || UseMoreCpuTime;
+		FramerateControl.UseMainThreadTimingHandler = FramerateControl.SynchronizeProcessing || FramerateControl.Lock.Automatic || FramerateControl.Lock.Interval || FramerateControl.UseBackgroundLimit || FramerateControl.UseMoreCpuTime;
 	};
-	m_cleanup += SynchronizeProcessing.AddAndCallOnChange(updateUseMainThreadTimingHandler);
-	m_cleanup += LockFramerateAutomatic.AddAndCallOnChange(updateUseMainThreadTimingHandler);
-	m_cleanup += LockFramerateInterval.AddAndCallOnChange(updateUseMainThreadTimingHandler);
-	m_cleanup += UseBackgroundFramerateLimit.AddAndCallOnChange(updateUseMainThreadTimingHandler);
-	m_cleanup += UseMoreCpuTime.AddAndCallOnChange(updateUseMainThreadTimingHandler);
+	m_cleanup += FramerateControl.AddAndCallOnChange(updateUseMainThreadTimingHandler);
 }
 
 XivAlexander::RuntimeConfigRepository::~RuntimeConfigRepository() {
@@ -90,8 +86,67 @@ void XivAlexander::RuntimeConfigRepository::Reload(const std::filesystem::path& 
 	Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 }
 
+void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) const {
+	// The keys 1.14.9.3 saved, all at the top level.
+	const std::pair<const char*, const ConfigItemBase*> moved[]{
+		{"Language", &Ui.Language},
+		{"ThemeMode", &Ui.ThemeMode},
+		{"ShowControlWindow", &Ui.MainWindow.Show},
+		{"AlwaysOnTop_XivAlexMainWindow", &Ui.MainWindow.AlwaysOnTop},
+		{"HideOnMinimize_XivAlexMainWindow", &Ui.MainWindow.HideOnMinimize},
+		{"ShowLoggingWindow", &Ui.LogWindow.Show},
+		{"AlwaysOnTop_XivAlexLogWindow", &Ui.LogWindow.AlwaysOnTop},
+		{"UseWordWrap_XivAlexLogWindow", &Ui.LogWindow.UseWordWrap},
+		{"UseMonospaceFont_XivAlexLogWindow", &Ui.LogWindow.UseMonospaceFont},
+		{"AlwaysOnTop_GameMainWindow", &GameWindow.AlwaysOnTop},
+		{"AddProcessIDToGameWindowTitle", &GameWindow.TitleMode},
+		{"UseNetworkTimingHandler", &NetworkTiming.Enabled},
+		{"HighLatencyMitigationMode", &NetworkTiming.HighLatencyMitigationMode},
+		{"UseHighLatencyMitigationLogging", &NetworkTiming.UseHighLatencyMitigationLogging},
+		{"UseHighLatencyMitigationPreviewMode", &NetworkTiming.UseHighLatencyMitigationPreviewMode},
+		{"ExpectedAnimationLockDurationUs", &NetworkTiming.ExpectedAnimationLockDurationUs},
+		{"MaximumAnimationLockDurationUs", &NetworkTiming.MaximumAnimationLockDurationUs},
+		{"ReducePacketDelay", &Socket.ReducePacketDelay},
+		{"TakeOverLoopback", &Socket.TakeOverLoopbackAddresses},
+		{"TakeOverPrivateAddresses", &Socket.TakeOverPrivateAddresses},
+		{"TakeOverAllAddresses", &Socket.TakeOverAllAddresses},
+		{"TakeOverAllPorts", &Socket.TakeOverAllPorts},
+		{"UseMoreCpuPower", &FramerateControl.UseMoreCpuTime},
+		{"SynchronizeProcessing", &FramerateControl.SynchronizeProcessing},
+		{"LockFramerate", &FramerateControl.Lock.Interval},
+		{"LockFramerateAutomatic", &FramerateControl.Lock.Automatic},
+		{"LockFramerateTargetFramerateRangeFrom", &FramerateControl.Lock.TargetFramerateRangeFrom},
+		{"LockFramerateTargetFramerateRangeTo", &FramerateControl.Lock.TargetFramerateRangeTo},
+		{"LockFramerateMaximumRenderIntervalDeviation", &FramerateControl.Lock.MaximumRenderIntervalDeviation},
+		{"LockFramerateGlobalCooldown", &FramerateControl.Lock.GlobalCooldown},
+		{"UseMainThreadTimingHandler", &FramerateControl.UseMainThreadTimingHandler},
+		{"EnabledPatchCodes", &Opcodes.EnabledPatchCodes},
+		{"CheckForUpdatedOpcodesOnStartup", &Opcodes.CheckForUpdatesOnStartup},
+		{"UseOpcodeFinder", &Opcodes.UseOpcodeFinder},
+		{"UseAllIpcMessageLogger", &Opcodes.UseAllIpcMessageLogger},
+		{"RememberedGameLaunchLanguage", &Launch.RememberedLanguage},
+		{"RememberedGameLaunchRegion", &Launch.RememberedRegion},
+		{"ChainLoadPath_d3d11", &ChainLoad.D3d11},
+		{"ChainLoadPath_dxgi", &ChainLoad.Dxgi},
+		{"ChainLoadPath_dinput8", &ChainLoad.Dinput8},
+		{"UseModding", &Modding.Enabled},
+		{"AdditionalGameResourceFileEntryRootDirectories", &Modding.AdditionalGameResourceFileEntryRootDirectories},
+		{"TtmpFlattenSubdirectoryDisplay", &Modding.Ttmp.FlattenSubdirectoryDisplay},
+		{"", &Modding.Ttmp.UseSubdirectoryTogglingOnFlattenedView},  // saved under an empty key by mistake
+		{"TtmpShowDedicatedMenu", &Modding.Ttmp.ShowDedicatedMenu},
+		{"AdditionalTexToolsModPackSearchDirectories", &Modding.Ttmp.AdditionalSearchDirectories},
+		{"LogAllDataFileRead", &Modding.Logging.AllDataFileRead},
+		{"MuteVoice_Battle", &Audio.MuteVoice.Battle},
+		{"MuteVoice_Cm", &Audio.MuteVoice.Cm},
+		{"MuteVoice_Emote", &Audio.MuteVoice.Emote},
+		{"MuteVoice_Line", &Audio.MuteVoice.Line},
+	};
+	for (const auto& [from, item] : moved)
+		MoveKey(config, from, *item);
+}
+
 WORD XivAlexander::RuntimeConfigRepository::GetLangId() const {
-	if (const auto i = LanguageIdMap.find(Language); i != LanguageIdMap.end())
+	if (const auto i = LanguageIdMap.find(Ui.Language); i != LanguageIdMap.end())
 		return i->second;
 
 	return MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL);
@@ -112,7 +167,7 @@ std::wstring XivAlexander::RuntimeConfigRepository::GetLanguageNameLocalized(xiv
 
 std::vector<xivres::game_language> XivAlexander::RuntimeConfigRepository::GetFallbackLanguageList() const {
 	std::vector<xivres::game_language> result;
-	for (const auto lang : FallbackLanguagePriority.Value()) {
+	for (const auto lang : Modding.Languages.FallbackPriority.Value()) {
 		if (std::ranges::find(result, lang) == result.end() && lang != xivres::game_language::Unspecified)
 			result.push_back(lang);
 	}
@@ -132,12 +187,12 @@ std::vector<xivres::game_language> XivAlexander::RuntimeConfigRepository::GetFal
 
 bool XivAlexander::RuntimeConfigRepository::IsCurrentGameVersionAllowed() const {
 	const auto& gameVersion = CurrentGameVersion();
-	return !gameVersion.empty() && VersionSensitiveFeaturesAllowedGameVersion.Value() == gameVersion;
+	return !gameVersion.empty() && Opcodes.VersionSensitiveFeaturesAllowedGameVersion.Value() == gameVersion;
 }
 
 void XivAlexander::RuntimeConfigRepository::AllowCurrentGameVersion() {
 	if (const auto& gameVersion = CurrentGameVersion(); !gameVersion.empty())
-		VersionSensitiveFeaturesAllowedGameVersion = gameVersion;
+		Opcodes.VersionSensitiveFeaturesAllowedGameVersion = gameVersion;
 }
 
 bool XivAlexander::RuntimeConfigRepository::IsVersionSensitiveFeaturesDecided() const {
@@ -174,16 +229,15 @@ void XivAlexander::RuntimeConfigRepository::DecideVersionSensitiveFeatures(Versi
 			break;
 
 		case VersionSensitiveFeaturesDecision::Disable: {
-			UseLoginSessionSwitching = false;
-			UseModding = false;
-			EnabledPatchCodes = std::vector<std::string>();
-			UseAltCodecMusicSupport = false;
-			UseImeModeIndicator = false;
-			UseCrowdFix = false;
-			AudioOutputSamplingRate = 48000U;
-			auto soxr = SoxrResampler.Value();
-			soxr.Enabled = false;
-			SoxrResampler = soxr;
+			Launch.UseLoginSessionSwitching = false;
+			Modding.Enabled = false;
+			Opcodes.EnabledPatchCodes = std::vector<std::string>();
+			Audio.UseAltCodecMusicSupport = false;
+			GameWindow.UseImeModeIndicator = false;
+			CrowdFix.Enabled = false;
+			Audio.OutputSamplingRate = 48000U;
+			Audio.SoxrResampler.Enabled = false;
+			FontReplacement.Enabled = false;
 
 			m_versionSensitiveFeaturesAllowedTemporarily = -1;
 			if (IsCurrentGameVersionAllowed())
@@ -201,10 +255,10 @@ std::wstring XivAlexander::RuntimeConfigRepository::GetRegionNameLocalized(xivre
 
 std::vector<std::pair<WORD, std::string>> XivAlexander::RuntimeConfigRepository::GetDisplayLanguagePriorities() const {
 	std::vector<std::pair<WORD, std::string>> res;
-	if (Language != Language::SystemDefault) {
+	if (Ui.Language != Language::SystemDefault) {
 		wchar_t buf[64];
-		LCIDToLocaleName(LanguageIdMap.at(Language), &buf[0], 64, 0);
-		res.emplace_back(LanguageIdMap.at(Language), xivres::util::unicode::convert<std::string>(buf));
+		LCIDToLocaleName(LanguageIdMap.at(Ui.Language), &buf[0], 64, 0);
+		res.emplace_back(LanguageIdMap.at(Ui.Language), xivres::util::unicode::convert<std::string>(buf));
 	}
 	try {
 		ULONG num = 0, bufSize = 0;
@@ -224,7 +278,7 @@ std::vector<std::pair<WORD, std::string>> XivAlexander::RuntimeConfigRepository:
 		// pass
 	}
 	for (const auto& [language, languageId] : LanguageIdMap) {
-		if (language == Language::SystemDefault || language == Language)
+		if (language == Language::SystemDefault || language == Ui.Language)
 			continue;
 		wchar_t buf[64];
 		LCIDToLocaleName(languageId, &buf[0], 64, 0);

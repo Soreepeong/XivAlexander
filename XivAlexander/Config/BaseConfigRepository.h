@@ -17,18 +17,50 @@ namespace XivAlexander {
 
 	class Config;
 	class BaseConfigRepository;
+	class ConfigGroup;
+	class ConfigItemBase;
 	template<typename T>
 	class ConfigItem;
 
+	/// What config items are declared in: a repository, or a group.
+	class ConfigNode {
+		friend class BaseConfigRepository;
+		friend class ConfigGroup;
+		friend class ConfigItemBase;
+
+		BaseConfigRepository* const m_pRepository;
+		std::vector<ConfigItemBase*> m_items;
+
+	protected:
+		explicit ConfigNode(BaseConfigRepository* pRepository) : m_pRepository(pRepository) {}
+
+		void LoadItemsFrom(const nlohmann::json& data);
+		void SaveItemsTo(nlohmann::json& data) const;
+
+		/// Called after an item declared in this node changed.
+		virtual void OnItemChange() {}
+
+		/// Gets this node as an item, if it is a group.
+		[[nodiscard]] virtual const ConfigItemBase* AsItem() const { return nullptr; }
+
+	public:
+		ConfigNode(const ConfigNode&) = delete;
+		ConfigNode& operator=(const ConfigNode&) = delete;
+		virtual ~ConfigNode() = default;
+	};
+
 	class ConfigItemBase {
 		friend class BaseConfigRepository;
+		friend class ConfigNode;
+		friend class ConfigGroup;
 		template<typename T>
 		friend class ConfigItem;
 
+		ConfigNode* const m_pParent;
 		BaseConfigRepository* const m_pBaseRepository;
 
 	protected:
-		ConfigItemBase(BaseConfigRepository* pRepository, const char* pszName);
+		ConfigItemBase(ConfigNode* pParent, const char* pszName);
 
 		virtual bool LoadFrom(const nlohmann::json&) = 0;
 		virtual void SaveTo(nlohmann::json&) const = 0;
@@ -59,9 +91,9 @@ namespace XivAlexander {
 		void SaveTo(nlohmann::json& data) const override;
 
 	public:
-		ConfigItem(BaseConfigRepository* pRepository, const char* pszName);
-		ConfigItem(BaseConfigRepository* pRepository, const char* pszName, const T& defaultValue);
-		ConfigItem(BaseConfigRepository* pRepository, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator);
+		ConfigItem(ConfigNode* pParent, const char* pszName);
+		ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue);
+		ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator);
 
 		~ConfigItem() override = default;
 
@@ -127,8 +159,30 @@ namespace XivAlexander {
 		}
 	};
 
-	class BaseConfigRepository {
+	/// Config items declared together, and kept in an object of the group's key. Each item can be subscribed to on its
+	/// own; the group's OnChange is called once after any of them changed, or once per Batch.
+	class ConfigGroup : public ConfigItemBase, public ConfigNode {
+		size_t m_batchDepth = 0;
+		bool m_changedInBatch = false;
+
+	protected:
+		bool LoadFrom(const nlohmann::json& data) override;
+		void SaveTo(nlohmann::json& data) const override;
+		void OnItemChange() override;
+		[[nodiscard]] const ConfigItemBase* AsItem() const override { return this; }
+
+	public:
+		ConfigGroup(ConfigNode* pParent, const char* pszKey);
+		~ConfigGroup() override = default;
+
+		/// Defers the group's OnChange, and saving, until the returned object is destroyed. Items' own OnChange are
+		/// still called as each changes.
+		[[nodiscard]] xivres::util::on_dtor Batch();
+	};
+
+	class BaseConfigRepository : public ConfigNode {
 		friend class ConfigItemBase;
+		friend class ConfigGroup;
 		template<typename T>
 		friend class ConfigItem;
 
@@ -146,12 +200,16 @@ namespace XivAlexander {
 
 		const std::shared_ptr<Misc::Logger> m_logger;
 
-		std::vector<ConfigItemBase*> m_allItems;
-
 		[[nodiscard]] std::string FindParentKey(const nlohmann::json& totalConfig) const;
 
 	protected:
 		xivres::util::on_dtor::multi m_cleanup;
+
+		/// Brings this repository's object, as it was read from the file, up to date: before loading, and before saving.
+		virtual void Migrate(nlohmann::json& config) const {}
+
+		/// Moves the value at key from of config to where item is kept now, unless there is one there already.
+		static void MoveKey(nlohmann::json& config, const char* from, const ConfigItemBase& item);
 
 	public:
 		BaseConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
@@ -169,23 +227,23 @@ namespace XivAlexander {
 
 	// The constructors reach into the repository, so they are defined once it is complete.
 	template<typename T>
-	ConfigItem<T>::ConfigItem(BaseConfigRepository* pRepository, const char* pszName)
-		: ConfigItem(pRepository, pszName, T{}) {}
+	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName)
+		: ConfigItem(pParent, pszName, T{}) {}
 
 	template<typename T>
-	ConfigItem<T>::ConfigItem(BaseConfigRepository* pRepository, const char* pszName, const T& defaultValue)
-		: ConfigItemBase(pRepository, pszName)
+	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue)
+		: ConfigItemBase(pParent, pszName)
 		, m_value(std::move(defaultValue))
 		, m_sanitizer([](T v) { return std::move(v); }) {
-		pRepository->m_cleanup += OnChange([pRepository] { pRepository->Save(); });
+		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
 
 	template<typename T>
-	ConfigItem<T>::ConfigItem(BaseConfigRepository* pRepository, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator)
-		: ConfigItemBase(pRepository, pszName)
+	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator)
+		: ConfigItemBase(pParent, pszName)
 		, m_value(std::move(defaultValue))
 		, m_sanitizer(validator) {
-		pRepository->m_cleanup += OnChange([pRepository] { pRepository->Save(); });
+		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
 
 	// In the header so that any repository's translation unit can instantiate them.

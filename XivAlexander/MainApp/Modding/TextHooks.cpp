@@ -28,7 +28,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			if (Game::Resolved::CutSceneLanguageGetterFn getter; Game::Resolved::CutSceneLanguageGetterFunction.Resolve(getter) == Game::Signatures::ResolveError::Ok) {
 				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", getter);
 				Cleanup += CutSceneLanguageGetter->SetHook([this](void* p) -> int {
-					if (const auto forced = Config->Runtime.ForcedCharacterLanguageLipSync.Value(); forced != -1)
+					if (const auto forced = Config->Runtime.Modding.Languages.ForcedCharacterLipSync.Value(); forced != -1)
 						return forced;
 					return CutSceneLanguageGetter->bridge(p);
 				});
