@@ -10,8 +10,7 @@ namespace {
 	// A game glyph's fields are bytes, so a glyph fits.
 	constexpr int StagingSize = 256;
 
-	// A plane's bit shift in a B4G4R4A4 texel, and its byte offset in a B8G8R8A8 or R8G8B8A8 texel: planes are the R, G, B
-	// and A channels, as in the atlas.
+	// Per plane (the R, G, B, A channels, as in the atlas): bit shift in a B4G4R4A4 texel, byte offset in a B8G8R8A8 or R8G8B8A8 texel.
 	constexpr int Shifts4444[]{8, 4, 0, 12};
 	constexpr int OffsetsBgra[]{2, 1, 0, 3};
 	constexpr int OffsetsRgba[]{0, 1, 2, 3};

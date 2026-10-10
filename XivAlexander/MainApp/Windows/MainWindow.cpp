@@ -44,7 +44,6 @@ namespace {
 	// The first command of the items added to the window menu; below the window menu's own (SC_*, from 0xF000).
 	constexpr UINT SystemMenuCommandBase = 0x1000;
 
-	/// Deletes the submenu that has the command among its items.
 	bool DeleteSubMenuHolding(HMENU hMenu, UINT commandId) {
 		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
 			const auto hSub = GetSubMenu(hMenu, i);
@@ -62,7 +61,6 @@ namespace {
 		return false;
 	}
 
-	/// Deletes the submenus left with nothing but separators.
 	void DeleteEmptySubMenus(HMENU hMenu) {
 		for (int i = GetMenuItemCount(hMenu) - 1; i >= 0; --i) {
 			const auto hSub = GetSubMenu(hMenu, i);
@@ -79,7 +77,6 @@ namespace {
 		}
 	}
 
-	/// Deletes the separators that separate nothing: first, last, or after another.
 	void TidySeparators(HMENU hMenu) {
 		const auto isSeparator = [hMenu](int i) {
 			MENUITEMINFOW mii{.cbSize = sizeof mii, .fMask = MIIM_FTYPE};
@@ -95,7 +92,7 @@ namespace {
 			DeleteMenu(hMenu, 0, MF_BYPOSITION);
 	}
 
-	/// Takes out of the menus what is set on the settings pages in the window; their commands and shortcuts still work.
+	/// Removes what the settings pages in the window cover; their commands and shortcuts still work.
 	void TrimMenu(HMENU hMenu) {
 		for (const UINT commandId : {
 			ID_CONFIGURE_EDITOPCODECONFIGURATION,
@@ -110,7 +107,6 @@ namespace {
 			ID_MODDING_LOGALLFILEACCESS,
 			ID_MODDING_ENABLE,
 			ID_NETWORK_REDUCEPACKETDELAY,
-			ID_NETWORK_RELEASEALLCONNECTIONS,
 			ID_NETWORK_RESETALLCONNECTIONS,
 			ID_VIEW_ALWAYSONTOP,
 			ID_VIEW_ALWAYSONTOPGAME,
@@ -119,8 +115,8 @@ namespace {
 			while (DeleteMenu(hMenu, commandId, MF_BYCOMMAND)) {}
 		}
 
-		// Restart, Modding, Configure, and Help; and the game fixes, the language, the theme, the window title, the network
-		// troubleshooting, the latency and timing helper, the framerate control, and the voice muting.
+		// Whole submenus, each found by an item: Restart, Modding, Configure, Help, game fixes, language, theme, window title, network
+		// troubleshooting, latency helper, framerate control, voice muting.
 		for (const UINT commandId : {
 			ID_RESTART_RESTART,
 			ID_MODDING_TTMP_REFRESH,
@@ -631,8 +627,7 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateMenu() {
 }
 
 void XivAlexander::Apps::MainApp::Window::MainWindow::RepopulateSystemMenu() {
-	// Anew from the stock window menu, after a separator; the window menu reserves the low four bits of its commands, so
-	// the items are numbered by sixteens, each standing for a command of the menu.
+	// Reset to the stock window menu; it reserves the low four bits of its commands, so items are numbered by sixteens.
 	GetSystemMenu(m_hWnd, TRUE);
 	const auto hSystemMenu = GetSystemMenu(m_hWnd, FALSE);
 	const auto hFileMenu = GetSubMenu(m_menu, 0);
@@ -697,7 +692,7 @@ std::vector<std::filesystem::path> XivAlexander::Apps::MainApp::Window::MainWind
 }
 
 std::filesystem::path XivAlexander::Apps::MainApp::Window::MainWindow::ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const {
-	// The first listed, where new files go; the default, even if not listed, if none is.
+	// Where new files go: the first listed, else the default.
 	if (const auto dirs = ResolveDirectories(configured); !dirs.empty())
 		return dirs.front();
 	return m_config->Init.ResolveConfigStorageDirectoryPath() / defaultName;
@@ -1187,12 +1182,9 @@ void XivAlexander::Apps::MainApp::Window::MainWindow::OnCommand_Menu_Network(int
 			config.Socket.ReducePacketDelay.Toggle();
 			return;
 
-		case ID_NETWORK_RELEASEALLCONNECTIONS:
-			m_app.RunOnGameLoop([this] { m_app.GetSocketHook().ReleaseSockets(); });
-			return;
-
 		case ID_NETWORK_RESETALLCONNECTIONS:
-			m_app.RunOnGameLoop([this] { m_app.GetSocketHook().ResetAllConnections(); });
+			if (Dll::MessageBoxF(m_hWnd, MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2, m_config->Runtime.GetStringRes(IDS_CONFIRM_RESET_ALL_CONNECTIONS)) == IDYES)
+				m_app.RunOnGameLoop([this] { m_app.GetSocketHook().ResetAllConnections(); });
 			return;
 
 		case ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES:

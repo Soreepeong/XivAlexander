@@ -1,6 +1,4 @@
-// The vertex shader of the settings' font previews (PreviewRenderer): passes each vertex through as FontEdgePS.hlsl takes
-// it, so that the preview draws edges with the shader the game does. The game's FontEdgeVS computes the same values from
-// its own vertex data; here they are computed on the CPU, with the position already in clip space.
+// Font preview VS (PreviewRenderer): passes through FontEdgePS.hlsl inputs, computed on the CPU (clip space) as the game's FontEdgeVS does.
 
 struct VSInput
 {

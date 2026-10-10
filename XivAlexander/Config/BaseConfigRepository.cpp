@@ -120,7 +120,6 @@ void XivAlexander::BaseConfigRepository::MoveKey(nlohmann::json& config, const c
 	auto value = std::move(*it);
 	config.erase(it);
 
-	// The keys from the repository's object down to the item's.
 	std::vector<const char*> path{item.Name};
 	for (auto group = item.m_pParent->AsItem(); group; group = group->m_pParent->AsItem())
 		path.push_back(group->Name);

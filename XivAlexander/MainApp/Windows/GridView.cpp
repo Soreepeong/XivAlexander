@@ -8,7 +8,7 @@ namespace {
 	constexpr auto ContainerClassName = L"XivAlexander::Window::GridView";
 	constexpr UINT_PTR ListSubclassId = 1;
 	constexpr UINT_PTR EditorSubclassId = 2;
-	constexpr UINT WmSelectionChanged = WM_APP + 1;  // To the container.
+	constexpr UINT WmSelectionChanged = WM_APP + 1;
 
 	std::wstring GetText(HWND hWnd) {
 		std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hWnd)) + 1, L'\0');
@@ -123,7 +123,7 @@ RECT XivAlexander::Apps::MainApp::Window::GridView::GetCellRect(size_t row, size
 	RECT rc{};
 	ListView_GetSubItemRect(m_hList, static_cast<int>(row), static_cast<int>(column), column == 0 ? LVIR_LABEL : LVIR_BOUNDS, &rc);
 	if (column == 0) {
-		// The label of the first column leaves out the space for an icon; the cell starts where the row does.
+		// LVIR_LABEL of the first column leaves out the icon space; the cell starts where the row does.
 		RECT rcRow{};
 		ListView_GetItemRect(m_hList, static_cast<int>(row), &rcRow, LVIR_BOUNDS);
 		rc.left = rcRow.left;
@@ -142,7 +142,7 @@ void XivAlexander::Apps::MainApp::Window::GridView::Toggle(size_t row, size_t co
 	if (!IsEditable(row, column) || m_columns[column].Kind != CellKind::Check || !m_source.GetChecked || (!m_source.SetChecked && !m_source.SetCheckedRows))
 		return;
 
-	// The selected rows together, if this is one of them: all as this one becomes.
+	// If this row is one of the selected ones, they all become as this one does.
 	auto rows = m_source.MultiSelect ? GetSelectedRows() : std::vector<size_t>();
 	if (std::ranges::find(rows, row) == rows.end())
 		rows = {row};
@@ -416,7 +416,6 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 		}
 
 		case WM_CHAR:
-			// Typing edits the current cell with what was typed, as a spreadsheet does.
 			if (wParam >= L' ' && m_column < m_columns.size() && (m_columns[m_column].Kind == CellKind::Text || m_columns[m_column].Kind == CellKind::ComboEdit)
 				&& GetKeyState(VK_CONTROL) >= 0 && IsEditable(m_row, m_column)) {
 				BeginEdit(m_row, m_column, static_cast<wchar_t>(wParam));
@@ -429,8 +428,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 		case WM_MOUSEWHEEL: {
 			EndEdit(EndEditMode::ApplyOrCancel);
 
-			// Scrolls the list while it can that way, and then what the list is in, as nested scrolling goes elsewhere: the
-			// list would otherwise take every turn of the wheel over it, even with nothing left to scroll.
+			// Scroll the list while it can, then its parent; otherwise the list takes every wheel turn even with nothing left to scroll.
 			SCROLLINFO si{.cbSize = sizeof si, .fMask = SIF_RANGE | SIF_PAGE | SIF_POS};
 			const auto scrollable = (GetWindowLongPtrW(m_hList, GWL_STYLE) & WS_VSCROLL) && GetScrollInfo(m_hList, SB_VERT, &si);
 			const auto up = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
@@ -537,7 +535,6 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 					InvalidateRect(m_hList, nullptr, FALSE);
 				}
 
-				// Near the edges, the list scrolls.
 				RECT rc;
 				GetClientRect(m_hList, &rc);
 				RECT rcHeader{};
@@ -676,7 +673,6 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::GridView::OnCustomDr
 			return CDRF_NOTIFYITEMDRAW | CDRF_NOTIFYPOSTPAINT;
 
 		case CDDS_POSTPAINT:
-			// Where a dragged row would go: a line between rows.
 			if (m_dragRow && m_dropBefore) {
 				if (const auto count = GetRowCount()) {
 					RECT rc{};
@@ -711,7 +707,6 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::GridView::OnCustomDr
 				return CDRF_DODEFAULT;
 			const auto rc = GetCellRect(row, column);
 
-			// A checkbox, centered, over the empty text.
 			if (m_columns[column].Kind == CellKind::Check && m_source.GetChecked) {
 				if (const auto hTheme = OpenThemeData(m_hList, L"Button")) {
 					const auto checked = m_source.GetChecked(row, column);
@@ -732,7 +727,6 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::GridView::OnCustomDr
 				}
 			}
 
-			// The current cell, outlined while the list has the focus.
 			if (row == m_row && column == m_column && GetFocus() == m_hList) {
 				RECT rcFocus = rc;
 				InflateRect(&rcFocus, -1, -1);

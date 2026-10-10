@@ -18,8 +18,6 @@
 #include "MainApp/AltCodecMusicDecoders/WavDecoder.h"
 
 namespace XivAlexander::Apps::MainApp::Features {
-	constexpr auto PeekBytes = 0x2000U;
-
 	namespace {
 		using AsiProcessHookType = Misc::Hooks::PointerFunctionOf<AsiStreamProcessFn>;
 		using AsiAttributeHookType = Misc::Hooks::PointerFunctionOf<AsiStreamAttributeFn>;
@@ -64,14 +62,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 			return it == s_streams.end() ? nullptr : it->second.get();
 		}
 
-		Decoder* CreateState(const AsiStream& stream) {
+		Decoder* CreateState(const AsiStream& stream, uint32_t peekBytes) {
 			if (!stream.SourcePtr)
 				return nullptr;
 
 			std::unique_ptr<Decoder> result;
-			if (WavDecoder::IsWav(std::span(stream.SourcePtr, PeekBytes)))
+			if (WavDecoder::IsWav(std::span(stream.SourcePtr, peekBytes)))
 				result = std::make_unique<WavDecoder>();
-			else if (FlacDecoder::IsFlac(std::span(stream.SourcePtr, PeekBytes)))
+			else if (FlacDecoder::IsFlac(std::span(stream.SourcePtr, peekBytes)))
 				result = std::make_unique<FlacDecoder>();
 			else
 				return nullptr;
@@ -125,8 +123,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			Game::Resolved::AltCodecMusicSupportFunctions fns;
-			if (Game::Resolved::AltCodecMusicSupport.Resolve(fns) != Game::Signatures::ResolveError::Ok) {
-				logger->Format<LogLevel::Error>(LogCategory::AltCodecMusic, "stream functions not found; alternative codecs unavailable");
+			if (const auto status = Game::Resolved::AltCodecMusicSupport.Resolve(fns); status != Game::Signatures::ResolveError::Ok) {
+				logger->Format<LogLevel::Error>(LogCategory::AltCodecMusic, "stream functions not found; alternative codecs unavailable: {}", status.Detail);
 				return;
 			}
 
@@ -150,14 +148,16 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return DecoderFor(stream).Attribute(stream, attrib);
 				});
 
-				Cleanup += AsiSetUpDecoderHook->SetHook([this, logger](AsiStream& stream) -> uint32_t {
+				// What the set-up has fetched into the source buffer when it returns.
+				const auto peekBytes = fns.PeekBytes;
+				Cleanup += AsiSetUpDecoderHook->SetHook([this, logger, peekBytes](AsiStream& stream) -> uint32_t {
 					EraseState(stream);
 
 					const auto result = AsiSetUpDecoderHook->bridge(stream);
 					if (result || !Enabled)
 						return result;
 
-					auto* const state = CreateState(stream);
+					auto* const state = CreateState(stream, peekBytes);
 					if (!state) {
 						logger->Format<LogLevel::Info>(LogCategory::AltCodecMusic,
 							"refusing stream {:p} (payload starts {:02x} {:02x} {:02x} {:02x})",
@@ -169,7 +169,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 						return result;
 					}
 
-					state->ParseHeader({stream.SourcePtr, PeekBytes});
+					state->ParseHeader({stream.SourcePtr, peekBytes});
 					stream.Channels = state->ChannelCount();
 
 					auto flags = AsiStreamFlag::None;

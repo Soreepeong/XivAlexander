@@ -24,9 +24,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		using Game::Signatures::ResolveError;
 		using Misc::Hooks::PointerFunctionOf;
 
-		// From FFXIVClientStructs (VisibilityFlags.Model): what hiding a game object's model sets in its render flags. The
-		// game has no single test of it to read it from. The other layouts are read from the game code that uses them;
-		// see the signatures.
+		// From FFXIVClientStructs (VisibilityFlags.Model); unlike the other layouts, the game has no single test to read it from. As of 7.56h.
 		constexpr uint64_t VisibilityFlagsModel = 1 << 1;
 
 		template<typename T>
@@ -124,10 +122,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			void SetEnabled(bool, const FrameState&) override {}
 		};
 
-		/// DeviceDX11::PostTick walks every Kernel::Notifier twice per frame (vtbl+0x10 before Present, vtbl+0x08 after it,
-		/// right before kicking the render thread). Every GPU resource is linked into that list for device events, but only
-		/// CPU mapped buffers do per frame work, so a crowd turns into ~50k cache missing calls that return immediately.
-		/// This keeps a set of the notifiers that can do work and patches both loops to walk only that set.
+		/// DeviceDX11::PostTick's two Kernel::Notifier loops are patched to call only the notifiers that can do work, tracked through Link and Unlink.
 		class IdleNotifierFilter final : public FixBase {
 			static constexpr auto VerifyInterval = std::chrono::seconds(10);
 			static constexpr size_t CallCodeLength = 24;
@@ -190,7 +185,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				EnterCriticalSection(m_list.Lock);
 				{
 					size_t found = 0;
-					for (auto node = *m_list.Head; node; node = At<void*>(node, 0x10)) {
+					for (auto node = *m_list.Head; node; node = At<void*>(node, m_list.NextOffset)) {
 						if (m_activeIndex.contains(node))
 							found++;
 						else if (CanDoWork(node))
@@ -211,7 +206,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				EnterCriticalSection(m_list.Lock);
 				m_active.clear();
 				m_activeIndex.clear();
-				for (auto node = *m_list.Head; node; node = At<void*>(node, 0x10)) {
+				for (auto node = *m_list.Head; node; node = At<void*>(node, m_list.NextOffset)) {
 					if (CanDoWork(node))
 						Add(node);
 				}
@@ -240,7 +235,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			[[nodiscard]] bool CanDoWork(void* node) const {
 				const auto vtable = *static_cast<void* const* const*>(node);
-				return CallbackMayWork(node, vtable[1]) || CallbackMayWork(node, vtable[2]);
+				return CallbackMayWork(node, vtable[m_list.PostKickSlot]) || CallbackMayWork(node, vtable[m_list.PrePresentSlot]);
 			}
 
 			[[nodiscard]] bool CallbackMayWork(const void* node, const void* callback) const {
@@ -248,29 +243,24 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (code[0] == 0xC3 || (code[0] == 0xC2 && code[1] == 0 && code[2] == 0))
 					return false;
 
-				for (const auto& [function, test] : m_list.CallbackTests) {
-					if (function != callback)
+				for (const auto& t : m_list.CallbackTests) {
+					if (t.Function != callback)
 						continue;
 
-					switch (test) {
+					const auto flags = At<uint32_t>(node, t.FlagsOffset);
+					switch (t.Test) {
 						case Resolved::NotifierWorkTest::BufferFlags:
-							return At<uint32_t>(node, 0x1C) & 0x11;
+						case Resolved::NotifierWorkTest::ConstantBufferFlags:
+							return flags & t.Mask;
 
-						case Resolved::NotifierWorkTest::IndexBufferFlags: {
-							const auto flags = At<uint32_t>(node, 0x20);
-							return (flags & 0x11) && !(flags & 0x40);
-						}
+						case Resolved::NotifierWorkTest::IndexBufferFlags:
+							return (flags & t.Mask) && !(flags & t.SecondMask);
 
 						case Resolved::NotifierWorkTest::TextureMappedFlags:
-							return (At<uint32_t>(node, 0x3C) & 0x100010) == 0x100010;
+							return (flags & t.Mask) == t.Mask;
 
-						case Resolved::NotifierWorkTest::TextureMappedOrUploadFlags: {
-							const auto flags = At<uint32_t>(node, 0x3C);
-							return (flags & 0x100010) == 0x100010 || (flags & 0x2000);
-						}
-
-						case Resolved::NotifierWorkTest::ConstantBufferFlags:
-							return At<uint32_t>(node, -0x14) & 0x4000;
+						case Resolved::NotifierWorkTest::TextureMappedOrUploadFlags:
+							return (flags & t.Mask) == t.Mask || (flags & t.SecondMask);
 					}
 				}
 
@@ -322,11 +312,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			static void CallActivePrePresent(IdleNotifierFilter* self) {
-				self->CallActive(2);
+				self->CallActive(self->m_list.PrePresentSlot);
 			}
 
 			static void CallActivePostKick(IdleNotifierFilter* self) {
-				self->CallActive(1);
+				self->CallActive(self->m_list.PostKickSlot);
 			}
 
 			// mov rcx, this; mov rax, target; call rax; jmp rel8 to the end of the original loop
@@ -348,11 +338,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Every job submit calls the pool's wake-all, which SetEvents every sleeping worker from the submitting thread:
-		/// up to 15 syscalls per submit, ~100 submits per frame on the main thread.
-		/// Here the submitter wakes one sleeping worker, and each worker that wakes while the queue still has work wakes
-		/// the next one. Same counters as the game (InnerThread skip flag, wake count and event, where the stock
-		/// wake-all reads them).
+		/// Instead of the stock wake-all, a job submit wakes one sleeping worker, and each woken worker wakes the next while work remains, using the game's own counters.
 		class JobWakeChain final : public FixBase {
 			static constexpr int32_t MaxWorkers = 256;  // a larger count is from a pool that is not set up yet
 
@@ -388,7 +374,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (!enabled) {
-					// the stock wake-all takes over immediately
 					m_hooks.clear();
 
 					// Sleeping workers are still inside the wait detour; a stock wake-all gets them out.
@@ -443,7 +428,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 					const auto wakeCount = std::atomic_ref(At<int32_t>(worker, layout.ThreadWakeCount));
 					const auto current = wakeCount.load();
-					if (current >= 2)
+					if (current >= layout.ThreadWakeLimit)
 						continue;
 
 					// Further sleepers are left to the chain; awake ones only get bumped by the submitter.
@@ -470,9 +455,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// The pose sync walk calls hkaPose::syncModelSpace on each partial skeleton of every render skeleton. It runs
-		/// once from Render::Manager::Render and then again from every Manager::RenderView call (~21 per frame), although
-		/// nothing on the render path dirties poses in between. This lets the first walk of a frame through and skips the rest.
+		/// Only the first pose sync walk of a frame is let through; the later ones, from each RenderView, find nothing dirtied in between.
 		class SkeletonSyncDedupe final : public FixBase {
 			std::optional<PointerFunctionOf<Resolved::SkeletonPoseSyncWalkFn>> m_syncWalk;
 
@@ -522,12 +505,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// The culling setup (~6 calls per frame) zeroes the whole per-object view visibility table (CullingManager+0x20):
-		/// 40,960 object slots x 16 bytes = 640 KB per call, however few objects exist.
-		/// This rewrites the loop count so only slots up to the highest object slot ever used (from the object slot bitmask
-		/// in the culling manager) are cleared. Slots above that mark have never been written, so they are still zero.
+		/// The culling setup's clear of the view visibility table is cut to the highest object slot ever used; slots above it were never written.
 		class CullingClearTrim final : public FixBase {
-			static constexpr uint32_t FullCount = 0xA000;
 			static constexpr int ObjectsPerWord = 32;
 
 			// The bitmask is read from the culling manager's slot allocator, which also checks that it covers every slot.
@@ -540,7 +519,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!Resolve(Resolved::TrimCullingClear, m_clear))
 					return;
 
-				if (*m_clear.ClearCount != FullCount || m_clear.ObjectMaskWords * ObjectsPerWord != FullCount) {
+				if (*m_clear.ClearCount != m_clear.FullCount || m_clear.ObjectMaskWords * ObjectsPerWord != m_clear.FullCount) {
 					SetStatus("Unavailable: unexpected clear count");
 					return;
 				}
@@ -557,7 +536,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 				m_enabled = enabled;
 				if (!enabled)
-					WriteCodeAtomically(m_clear.ClearCount, FullCount);
+					WriteCodeAtomically(m_clear.ClearCount, m_clear.FullCount);
 
 				SetStatus(enabled ? "On" : "Off");
 			}
@@ -583,23 +562,17 @@ namespace XivAlexander::Apps::MainApp::Features {
 				}
 
 				// One spare word of margin for objects added later in the frame.
-				const auto count = static_cast<uint32_t>(std::min((m_highestWord + 2) * ObjectsPerWord, static_cast<int>(FullCount)));
+				const auto count = static_cast<uint32_t>(std::min((m_highestWord + 2) * ObjectsPerWord, static_cast<int>(m_clear.FullCount)));
 				if (count != *m_clear.ClearCount) {
 					WriteCodeAtomically(m_clear.ClearCount, count);
-					SetStatus(std::format("On, clearing {} of {} slots", count, FullCount));
+					SetStatus(std::format("On, clearing {} of {} slots", count, m_clear.FullCount));
 				}
 			}
 		};
 
-		/// The graphics small-object allocator (AllocatorManager+0x10) takes its lock before checking whether a block came
-		/// from its slabs, and for every other block calls the backing allocator's free while still holding that lock.
-		/// Draw building frees ~1,200 such staging blocks per frame from all job threads, so small allocations queue behind
-		/// backing frees. Here the slab check stays under the lock, but backing frees happen after releasing it; slab blocks
-		/// still go through the original Free.
-		/// Mostly relieves the job workers, so it matters on CPUs where the main thread ends up waiting for them.
+		/// The graphics small-object allocator's backing frees of non-slab blocks happen after the slab check releases its lock, instead of under it.
 		class AllocatorFreeLock final : public FixBase {
-			// Everything the detour reads is taken from the original Free, which also checks it all fits together: a
-			// layout guessed wrong would hand slab blocks to the backing allocator and corrupt the heap.
+			// Read and cross-checked from the original Free: a wrong layout would hand slab blocks to the backing allocator and corrupt the heap.
 			Resolved::GraphicsAllocatorLayout m_layout;
 			std::optional<PointerFunctionOf<Resolved::GraphicsAllocatorFreeFn>> m_free;
 
@@ -651,8 +624,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				VirtualFunction<void(*)(void*, void*)>(backing, m_layout.BackingFreeSlot)(backing, block);
 			}
 
-			/// The original's membership test (page header at block & ~0x3FF in 7.x). Only valid under the allocator lock, since
-			/// the chunk table is reallocated when it grows.
+			/// The original's test; needs the allocator lock, as the chunk table is reallocated when it grows.
 			[[nodiscard]] bool IsSlabBlock(void* allocator, void* block) const {
 				const auto page = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(block) & ~static_cast<uintptr_t>(m_layout.PageMask));
 				const auto index = At<uint32_t>(page, m_layout.PageIndex);
@@ -664,20 +636,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Every dynamic buffer write during draw building frees its previous staging block and allocates a new one
-		/// through the graphics allocator at AllocatorManager+0x10. Its Alloc/Free go to a small-object allocator whose
-		/// Free takes a global lock and, for larger blocks, calls the backing allocator (second global lock, coalescing and
-		/// a region re-sort) while still holding it, so the draw-building job threads spend about a third of their time
-		/// waiting on each other.
-		/// This keeps freed blocks of that allocator in power-of-two size buckets and hands them back out, so most
-		/// allocations never reach those locks. The allocator's vtable slots are swapped (they are tiny forwarding
-		/// wrappers). Every pooled block is a genuine allocation of that allocator: its size class comes from the
-		/// allocator's own size query, so blocks still held by the game stay valid for the original Free after the pool
-		/// is turned off.
+		/// Staging blocks freed to the graphics allocator are pooled in power-of-two buckets via its vtable, and stay genuine allocations valid for the original Free after disabling.
 		class StagingPool final : public FixBase {
-			// From reading the backing allocator: a block it hands out directly has this marker in its header, and no size.
-			// Not validated: the backing allocator is only known at run time, and nothing tests the marker in a form that
-			// could be found. The fix is off by default.
+			// Header marker of blocks the backing allocator hands out directly (no size); unvalidated, as that allocator is only known at run time. As of 7.56h.
 			static constexpr ptrdiff_t DirectMarkerOffset = -0x10;
 			static constexpr uint16_t DirectMarker = 0xFFFF;
 
@@ -834,12 +795,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 
 			void Free(void* allocator, void* block) {
-				// Blocks the backing allocator handed out directly (marker 0xFFFF at -0x10) have no size in their header.
 				if (block && allocator == m_target.load(std::memory_order_relaxed)
 					&& !(reinterpret_cast<uintptr_t>(block) & (PoolAlignment - 1))
 					&& At<uint16_t>(block, DirectMarkerOffset) != DirectMarker) {
-					// The allocator's own size query: slab element size from the page header, or the requested size from
-					// the block header. A block goes to the largest class it can hold; past twice the top class it is left alone.
+					// Slab element size or requested size; a block goes to the largest class it can hold, or is left alone past twice the top class.
 					const auto size = m_blockSize(allocator, block);
 					if (size >= (1ULL << MinClassShift) && size < (2ULL << MaxClassShift)) {
 						const auto sizeClass = std::min(static_cast<int>(std::bit_width(size)) - 1, MaxClassShift) - MinClassShift;
@@ -886,12 +845,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Minions are client-side objects whose follow AI (called from Companion::Update) sweeps a sphere against the
-		/// level collision every frame. Hiding a minion only sets the model render flag, so a crowd of hidden minions still
-		/// pays for all of it. This skips the follow AI for minions whose model is hidden; Companion::Update still warps
-		/// them back to their owner when they fall too far behind.
+		/// Minion follow AI is skipped for hidden minions, which Companion::Update still warps back to their owner when too far behind.
 		class HiddenMinionFreeze final : public FixBase {
-			// where Companion::Update reads the render flags: +0x118, but +0x108 in 7.20 to 7.25h3
+			// where Companion::Update reads the render flags
 			size_t m_renderFlagsOffset{};
 			std::optional<PointerFunctionOf<Resolved::CompanionFollowFn>> m_follow;
 
@@ -933,10 +889,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Every job kick prepares its job list, which waits for the previous run and then calls WaitForSingleObject on
-		/// the same manual-reset event a second time before resetting it. The event can only be reset by this function,
-		/// so the second wait always returns at once: ~75 wasted syscalls per frame on the main thread.
-		/// This turns that call into a jump over it, in both Prepare variants (array lists and single-item lists).
+		/// Jumps over job list Prepare's second wait on its manual-reset event (both variants): only Prepare resets the event, so that wait always returns at once.
 		class PrepareWaitSkip final : public FixBase {
 			static constexpr uint16_t CallIndirect = 0x15FF;  // FF 15
 			static constexpr uint16_t JumpOver = 0x04EB;  // EB 04: skips the rest of the 6 byte call
@@ -964,13 +917,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Manager::RenderView kicks a single-item job (BG instancing prep) at the start of every view and
-		/// BGInstancingRenderer::Render waits for it a little later: ~20 kicks per frame, each with an enqueue, a worker
-		/// wake and an event wait, for ~1 us of work. This runs that one item on the main thread at kick time instead,
-		/// through the list's own claim and task functions, so the list ends up exactly as a worker would leave it.
+		/// RenderView's single-item BG instancing prep job runs inline at kick time via the list's own claim and task functions, leaving the list as a worker would.
 		class BgPrepInline final : public FixBase {
-			/// As filled by the job list's describe: claim function, its object, then 16 bytes the claim function reads. The
-			/// workers read it in this order from their queue entry.
+			/// Queue entry as filled by the job list's describe and read by the workers; the state's size is not read from the game. As of 7.56h.
 			struct JobDescriptor {
 				void* Claim;
 				void* Owner;
@@ -1001,8 +950,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			[[nodiscard]] bool Enabled() const override { return m_enabled; }
 
-			/// The inline path only runs on the main thread inside RenderView, so it is never in flight here; after
-			/// disabling, the stock kick finds a finished, signaled list.
+			/// The inline path runs only on the main thread inside RenderView, so it is never in flight here; the stock kick then finds a signaled list.
 			void SetEnabled(bool enabled, const FrameState& frame) override {
 				m_waiting = false;
 				if (!m_available || enabled == m_enabled)
@@ -1053,8 +1001,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (jobList != m_prepList || taskManager != m_taskManager || GetCurrentThreadId() != m_mainThreadId)
 					return m_kick->bridge(taskManager, jobList);
 
-				// The same job list calls as the kick: item count, prepare (waits for the previous run, resets
-				// counters), describe.
+				// Same job list calls as the kick: item count, prepare (waits for the previous run, resets counters), describe.
 				if (!VirtualFunction<uint32_t(*)(void*)>(jobList, m_prep.ListCountSlot)(jobList))
 					return 0;
 
@@ -1084,10 +1031,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// The hotbar update walks all 18 bars and both cross hotbar sets every frame. For hidden ones it still runs
-		/// RaptureHotbarModule::PrepareSlotForRender on every slot into a throwaway intermediate. Nothing reads the result:
-		/// a bar that becomes visible gets a full prepare that same frame. This jumps over the intermediate setup and the
-		/// prepare call at both hidden-bar sites; the number array clears and the item reload call before them still run.
+		/// Both hidden-bar sites of the hotbar update jump over PrepareSlotForRender, whose output is unread for them; a bar shown later is prepared that frame.
 		class HiddenHotbarSkip final : public FixBase {
 			Resolved::SkipHiddenHotbarsFunctions m_sites;
 			uint16_t m_barOriginal{};
@@ -1125,14 +1069,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// After sampling, the animation update finishes every skeleton serially on the main thread (blend timers, pose
-		/// copies), sorted by attach depth so parents go before children. Skeletons of the same depth do not touch each
-		/// other, so this runs each depth level on the job pool, through the same parallel-for group the animation submit
-		/// uses earlier in the frame, with a full join between levels.
-		/// Skeletons that cast a ground ray or have pending animation control removals stay on the main thread.
+		/// Each attach depth level of the animation tail runs on the animation submit's parallel-for group, joined between levels; same-depth skeletons are independent.
 		class AnimTailParallel final : public FixBase {
 			static constexpr int32_t MinParallel = 16;  // smaller depth levels run serially
 
+			// The animation update's tail entries; nothing reads their stride in a way that can be captured. As of 7.56h.
 			struct Entry {
 				void* Skeleton;
 				int32_t Depth;
@@ -1144,8 +1085,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static inline thread_local bool s_inUpdate;
 			static inline thread_local int s_tailCalls;
 
-			// Every layout, the whole parallel-for group above all, is read from the animation submit, its append and the
-			// tail, which also check that they agree with each other.
+			// All layouts (the parallel-for group above all) are read and cross-checked from the animation submit, its append and the tail.
 			Resolved::ParallelAnimTailFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::AnimationUpdateFn>> m_update;
 			std::optional<PointerFunctionOf<Resolved::AnimationTailFn>> m_tail;
@@ -1312,8 +1252,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			/// Ground ray casts (BG collision) and animation control removals are only done on the main thread.
 			[[nodiscard]] bool NeedsMainThread(void* skeleton) const {
-				// The tail's own test. The tail also skips the ray depending on the ScheduleManagement state, which this does
-				// not check: that only keeps a few more skeletons on the main thread.
+				// The tail's own test, minus its ScheduleManagement check: that only keeps a few more skeletons on the main thread.
 				if (const auto ground = At<const void*>(skeleton, m_functions.SkeletonGround); ground && m_functions.GroundRayActive(ground))
 					return true;
 
@@ -1334,19 +1273,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Camera culling splits BG objects into jobs of 200, but puts every character into a single job, so one thread
-		/// culls and registers all characters while the others wait at the join. The job function only reads its item
-		/// (type, index list, start, count), so the thread that gets the character item works through it in small chunks
-		/// and every thread that finishes its own item of the same group helps.
+		/// Camera culling's single character item is split into chunks that its owner and every thread finishing its own item work through; the job only reads its item.
 		class CharacterCullSplit final : public FixBase {
-			// What the job reads of its item, as the job signature checks.
-			static constexpr size_t StartOffset = 0x30;
-			static constexpr size_t CountOffset = 0x34;
 			static constexpr size_t MaxItemSize = 0x80;
 			static constexpr int32_t Chunk = 16;
 
-			/// Shared by the owner and its helpers; one character item is in flight at a time (the culling runs one view at
-			/// a time and joins before returning).
+			/// One character item is in flight at a time: the culling runs one view at a time and joins before returning.
 			struct Shared {
 				void* CullingManager{};
 				uint8_t Item[MaxItemSize]{};
@@ -1355,7 +1287,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				std::atomic<int32_t> Active;
 			};
 
-			// The item type and size are read from the culling's item building.
+			// The item type and size are read from the culling's item building, the range fields from the job.
 			Resolved::SplitCharacterCullingFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::CameraCullJobFn>> m_cullJob;
 			Shared m_shared;
@@ -1368,7 +1300,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!Resolve(Resolved::SplitCharacterCulling, m_functions))
 					return;
 
-				if (m_functions.ItemSize > MaxItemSize || m_functions.ItemSize < CountOffset + sizeof(uint32_t)) {
+				if (m_functions.ItemSize > MaxItemSize) {
 					SetStatus(std::format("Unavailable: unexpected item size {}", m_functions.ItemSize));
 					return;
 				}
@@ -1379,8 +1311,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			[[nodiscard]] bool Enabled() const override { return m_enabled; }
 
-			/// An owner already inside the detour keeps claiming until every chunk is done, so disabling mid-frame only
-			/// stops new help.
+			/// An owner already inside the detour finishes every chunk, so disabling mid-frame only stops new help.
 			void SetEnabled(bool enabled, const FrameState&) override {
 				if (!m_available || enabled == m_enabled)
 					return;
@@ -1397,10 +1328,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 		private:
 			/// Job workers and the main thread's help loop.
 			int64_t CullJobDetour(void* cullingManager, uint8_t* item) {
-				if (item[0] == m_functions.CharacterItemType && At<uint32_t>(item, CountOffset) > Chunk && !m_shared.Active.load()) {
+				if (item[0] == m_functions.CharacterItemType && At<uint32_t>(item, m_functions.CountOffset) > Chunk && !m_shared.Active.load()) {
 					std::memcpy(m_shared.Item, item, m_functions.ItemSize);
 					m_shared.CullingManager = cullingManager;
-					m_shared.Total = static_cast<int32_t>(At<uint32_t>(item, CountOffset));
+					m_shared.Total = static_cast<int32_t>(At<uint32_t>(item, m_functions.CountOffset));
 					m_shared.Next = 0;
 					m_shared.Active = 1;
 					Help();
@@ -1418,24 +1349,21 @@ namespace XivAlexander::Apps::MainApp::Features {
 			void Help() {
 				uint8_t local[MaxItemSize];
 				std::memcpy(local, m_shared.Item, m_functions.ItemSize);
-				const auto start = At<uint32_t>(local, StartOffset);
+				const auto start = At<uint32_t>(local, m_functions.StartOffset);
 				const auto total = m_shared.Total;
 				while (true) {
 					const auto i = m_shared.Next.fetch_add(Chunk);
 					if (i >= total)
 						break;
 
-					At<uint32_t>(local, StartOffset) = start + static_cast<uint32_t>(i);
-					At<uint32_t>(local, CountOffset) = static_cast<uint32_t>(std::min(Chunk, total - i));
+					At<uint32_t>(local, m_functions.StartOffset) = start + static_cast<uint32_t>(i);
+					At<uint32_t>(local, m_functions.CountOffset) = static_cast<uint32_t>(std::min(Chunk, total - i));
 					m_cullJob->bridge(m_shared.CullingManager, local);
 				}
 			}
 		};
 
-		/// The per-view cell culling group and the culling setup tail group hand out work in blocks of up to 8 items. With
-		/// ~20 cells per view only ~3 threads get any, and the main thread then waits for the slowest block. Both groups
-		/// already have the engine's per-item claim variant (one item at a time from a flat counter); this routes their
-		/// block help function to it, on workers and the main thread alike.
+		/// The cell culling and culling setup tail groups' block help is routed to the engine's existing per-item claim variant, spreading their few items wider.
 		class CullPerItemClaim final : public FixBase {
 			Resolved::PerItemCullingClaimsFunctions m_groups;
 			std::optional<PointerFunctionOf<Resolved::ParallelForHelpFn>> m_cellHelp;
@@ -1456,8 +1384,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 			[[nodiscard]] bool Enabled() const override { return m_enabled; }
 
-			/// Every thread in one fork-join must use the same claim mode, and these groups only run (fully joined) inside
-			/// rendering, which is not running now.
+			/// All threads in a fork-join must use the same claim mode; these groups only run, fully joined, inside rendering, which is not running now.
 			void SetEnabled(bool enabled, const FrameState&) override {
 				if (!m_available || enabled == m_enabled)
 					return;
@@ -1482,14 +1409,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// DeviceDX11::PostTick gathers every context's command list for each of the 87 lists: it copies every 16 KB block
-		/// twice (once to a scratch area, once back) and merge sorts the entries, ~1300 calls and a few MB of copying per
-		/// frame. This copies only the used entries, skips the sort when they are already in key order (the sort is stable,
-		/// so it would leave them unchanged), and otherwise calls the game's merge sort over the whole range, which splits
-		/// and merges exactly like the gather's inlined top level. The result is byte for byte what the game produces.
+		/// Replaces PostTick's command list gather: copies only used entries and skips the (stable) sort when already in key order, matching the game's output byte for byte.
 		class GatherUsedBytes final : public FixBase {
-			// The whole layout, the context size above all (0x22C8 before 7.20, 0x2C78 before 7.50, then 0x2F78), is
-			// taken from the gather itself.
+			// Read from the gather itself, the context size above all.
 			Resolved::GatherUsedCommandsFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::CommandListGatherFn>> m_gather;
 
@@ -1649,8 +1571,7 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		Create<CullPerItemClaim>(Fix::PerItemCullingClaims);
 		Create<GatherUsedBytes>(Fix::GatherUsedCommands);
 
-		// Fixes are toggled and updated from here, like CrowdFix does from Framework.Update: on the main thread, before
-		// the frame's tasks, and so outside DeviceDX11::PostTick, which some of them patch.
+		// Like CrowdFix's Framework.Update: main thread, before the frame's tasks, so outside DeviceDX11::PostTick, which some fixes patch.
 		Resolved::FixDriverFunctions driver;
 		if (const auto status = Resolved::FixDriver.Resolve(driver); status != ResolveError::Ok) {
 			Unusable = std::format("Unavailable: {}", status.Detail);

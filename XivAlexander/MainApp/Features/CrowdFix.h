@@ -1,9 +1,7 @@
 #pragma once
 
 namespace XivAlexander::Apps::MainApp::Features {
-	/// The fixes of CrowdFix (SheepGoMeh): per-frame work that grows with the number of objects around, done once
-	/// instead of many times, spread over the job workers, or skipped where nothing reads its result.
-	/// Toggles take effect at the start of the next frame, on the game's main thread.
+	/// Port of CrowdFix (SheepGoMeh) fixes for per-frame work that scales with nearby objects; toggles apply at the next frame start on the main thread.
 	class CrowdFix {
 		struct Implementation;
 		const std::unique_ptr<Implementation> m_pImpl;

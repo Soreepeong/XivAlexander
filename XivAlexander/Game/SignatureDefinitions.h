@@ -12,13 +12,12 @@ namespace XivAlexander::Game {
 	struct AtkValue;
 }
 
-// One signature per feature, named after it, resolving everything that feature uses. A part that its feature can do
-// without is optional in the feature's struct: when it is not found, the failure is logged and the rest still resolves.
+// One signature per feature; parts the feature can do without are optional, logged when missing while the rest still resolves.
 namespace XivAlexander::Game::Resolved {
 	using SqPackIndexLookupFn = bool(*)(void* sqpackManager, const char* path, uint32_t* outOffset, uint32_t* outDatIndex);
 
 	struct SqpackLookupHooksFunctions {
-		// Both index lookups that LoadSqPack sets, one for each kind of index.
+		// The two that LoadSqPack sets, one per index kind.
 		std::vector<SqPackIndexLookupFn> IndexLookups;
 	};
 
@@ -27,7 +26,7 @@ namespace XivAlexander::Game::Resolved {
 
 	struct TextHooksFunctions {
 		std::optional<CutSceneLanguageGetterFn> CutSceneLanguageGetter;
-		std::vector<StringIndirectionResolverFn> StringIndirectionResolvers;  // empty when none is found
+		std::vector<StringIndirectionResolverFn> StringIndirectionResolvers;
 	};
 
 	struct OpcodeGuesserCandidates {
@@ -49,7 +48,7 @@ namespace XivAlexander::Game::Resolved {
 	struct AudioResamplerFunctions {
 		uint32_t* MixRateSetup{};  // the immediate of the mix rate the sound engine is set up with
 		SoundVoiceRenderInfo Render;
-		// What the voices are resampled with; the mix rate can still be changed without them.
+		// Voice resampling; the mix rate can still be changed without it.
 		std::optional<SoundVoiceFunctions> Voice;
 		std::optional<SoundBufferEndInfo> BufferEnd;
 	};
@@ -60,6 +59,7 @@ namespace XivAlexander::Game::Resolved {
 		AsiStreamOpenFn Open{};
 		AsiStreamSetUpDecoderFn SetUpDecoder{};
 		AsiStreamProcessFn Process{};
+		uint32_t PeekBytes{};  // what the decoder set-up fetches into the source buffer first
 	};
 
 	using MessageLoopFn = bool(*)();
@@ -92,8 +92,7 @@ namespace XivAlexander::Game::Resolved {
 	using SwapChainPresentFn = void(*)(void* swapChain);
 
 	struct FontReplacementFunctions {
-		// DeviceDX11::PostTick's call of Present (call rel32) when the render thread is used, which it always is: after the
-		// render thread is done with the frame and the immediate context was cleared, and before the next frame is kicked.
+		// The rel32 of DeviceDX11::PostTick's call of Present on the render thread path.
 		uint8_t* PresentCall{};
 		SwapChainPresentFn Present{};
 	};
@@ -143,13 +142,13 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	using CommandListGatherFn = uint64_t(*)(void* device, uint32_t list, uint8_t** cursor, uint32_t* remaining, uint8_t** results, uint32_t* counts, uint32_t* total);
 	using CommandListSortFn = void(*)(uint8_t* out, uint8_t* in, int32_t first, int32_t last);
 
-	// What Kernel::Notifier callbacks test before doing any work; one of them failing means the callback returns at once.
+	// What Kernel::Notifier callbacks test of their u32 flags before doing any work; one of them failing means the callback returns at once.
 	enum class NotifierWorkTest {
-		BufferFlags,  // the u32 at +0x1C has 0x11
-		IndexBufferFlags,  // the u32 at +0x20 has 0x11 but not 0x40
-		TextureMappedFlags,  // the u32 at +0x3C has all of 0x100010
-		TextureMappedOrUploadFlags,  // the u32 at +0x3C has all of 0x100010, or 0x2000
-		ConstantBufferFlags,  // the u32 at -0x14 has 0x4000
+		BufferFlags,  // any of Mask
+		IndexBufferFlags,  // any of Mask but none of SecondMask
+		TextureMappedFlags,  // all of Mask
+		TextureMappedOrUploadFlags,  // all of Mask, or any of SecondMask
+		ConstantBufferFlags,  // any of Mask
 	};
 
 	// Where TaskManager::JobPool and its InnerThreads keep what the wake-all reads, as read by the wake-all itself.
@@ -160,10 +159,10 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		size_t ThreadSkip{};  // uint8_t: the wake-all leaves the thread alone when set
 		size_t ThreadWakeCount{};  // int32_t: 0 when asleep
 		size_t ThreadEvent{};  // HANDLE
+		int32_t ThreadWakeLimit{};  // the wake-all leaves a thread alone once its wake count reaches this
 	};
 
-	// How a job pool worker runs what it claims of a queued job list, as InnerThread::Run does: claim(owner, &state,
-	// &argument, &remaining) from the queue entry, then the task's vtable call with the pool context.
+	// As InnerThread::Run does: claim(owner, &state, &argument, &remaining) from the queue entry, then the task's vtable call with the pool context.
 	struct JobRunLayout {
 		size_t ThreadPool{};  // the JobPool*, in an InnerThread
 		size_t PoolContext{};  // what tasks are called with, in the JobPool
@@ -171,8 +170,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		size_t TaskRunWithArgumentSlot{};
 	};
 
-	// A parallel-for group, as the animation submit arms, joins and resets it and its append fills it. Items go into
-	// blocks, blocks into chunks; each thread appends through its writer, which owns one block at a time.
+	// As the animation submit arms/joins/resets it and append fills it: items in blocks, blocks in chunks; each thread's writer owns one block at a time.
 	struct ParallelForGroupLayout {
 		size_t Writers{};  // pointer to the writers, one per thread
 		size_t WriterCount{};  // uint32_t
@@ -232,6 +230,9 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	struct NotifierCallbackTest {
 		const void* Function{};
 		NotifierWorkTest Test{};
+		ptrdiff_t FlagsOffset{};  // the u32 flags, from the notifier
+		uint32_t Mask{};
+		uint32_t SecondMask{};
 	};
 
 	// Where the fixes are toggled and updated from; without it, every fix stays off.
@@ -239,11 +240,13 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		TaskManagerExecuteAllTasksFn ExecuteAllTasks{};
 	};
 
-	// The list every Kernel::Notifier is linked into, and the two walks over it in DeviceDX11::PostTick, which call
-	// vtable+0x10 on every notifier before Present and vtable+0x08 after it, right before kicking the render thread.
+	// The Kernel::Notifier list; DeviceDX11::PostTick walks it calling one vtable slot before Present and another after, right before the render kick.
 	struct SkipIdleNotifiersFunctions {
 		CRITICAL_SECTION* Lock{};
-		void* const* Head{};  // linked through +0x10
+		void* const* Head{};
+		size_t NextOffset{};  // the next notifier, in a notifier
+		size_t PrePresentSlot{};
+		size_t PostKickSlot{};
 		NotifierLinkFn Link{};
 		NotifierLinkFn Unlink{};
 		uint8_t* PrePresentLoop{};
@@ -265,10 +268,9 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 
 	struct TrimCullingClearFunctions {
 		uint32_t* ClearCount{};  // the immediate of the loop that clears the visibility table 16 bytes at a time
+		uint32_t FullCount{};  // that immediate as the game has it: every visibility slot
 		size_t TableOffset{};  // the visibility table inside the culling manager
-		// The u32 words of the object slot bitmask inside the culling manager, as its slot allocator reads them: a bit
-		// is set while its slot (the index into the visibility table too) holds an object, and the allocator takes
-		// the lowest clear one.
+		// Object slot bitmask (u32 words) in the culling manager: bit set while the slot (= visibility table index) is used; lowest clear is allocated.
 		size_t ObjectMask{};
 		uint32_t ObjectMaskWords{};
 		void* const* CullingManager{};
@@ -307,8 +309,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		void* const* RenderManager{};
 		size_t PrepListOffset{};  // the single-item job list inside Render::Manager that RenderView kicks
 		size_t FrameworkTaskManagerOffset{};  // the TaskManager inside Framework that RenderView kicks it on
-		// The job list vtable slots the kick calls, in this order: item count, prepare, and describe, which fills a
-		// { claim function, its object, 16 bytes of claim state } descriptor.
+		// Job list vtable slots the kick calls in order: item count, prepare, describe (fills { claim fn, its object, 16-byte claim state }).
 		size_t ListCountSlot{};
 		size_t ListPrepareSlot{};
 		size_t ListDescribeSlot{};
@@ -316,8 +317,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		JobRunLayout Run;
 	};
 
-	// The hotbar update's prepare of every slot of a hidden bar: lea rcx, [intermediate], ..., call Prepare; then the
-	// increment of the slot index.
+	// The hotbar update's per-slot prepare of a hidden bar, then the slot index increment.
 	struct SkipHiddenHotbarsFunctions {
 		uint8_t* Bar{};
 		uint8_t* CrossBar{};
@@ -348,6 +348,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		CameraCullJobFn CullJob{};
 		uint8_t CharacterItemType{};  // the type byte of the item that holds every character
 		size_t ItemSize{};  // the stride the culling item allocator hands items out at
+		size_t StartOffset{};  // uint32_t, in an item: the first object the job culls
+		size_t CountOffset{};  // uint32_t, in an item: how many objects the job culls
 	};
 
 	struct PerItemCullingClaimsFunctions {

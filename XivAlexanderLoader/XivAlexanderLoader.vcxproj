@@ -166,7 +166,6 @@
     <None Include="..\graphics\rt_manif.bin" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Per-monitor DPI awareness, so that the loader's task dialogs are drawn at the monitor's scale. -->
     <Manifest Include="DpiAware.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

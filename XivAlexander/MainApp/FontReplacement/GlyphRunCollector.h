@@ -3,15 +3,11 @@
 #include <dwrite_3.h>
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Receives the glyph runs of a text layout (GlyphRunCollector).
 	using GlyphRunSink = std::function<void(float baselineX, const DWRITE_GLYPH_RUN* run, const DWRITE_GLYPH_RUN_DESCRIPTION* description)>;
 
-	// An IDWriteTextRenderer that draws nothing: IDWriteTextLayout::Draw hands it each shaped glyph run (one font face and
-	// script each, fallback applied), which it passes to the sink given as the drawing context. Not reference counted (it
-	// lives as long as its owner).
+	// Draws nothing: passes each shaped run (one face and script, fallback applied) to the sink given as drawing context. Not ref-counted.
 	class GlyphRunCollector final : public IDWriteTextRenderer {
 	public:
-		// Draws a layout into a sink.
 		void Collect(IDWriteTextLayout* layout, GlyphRunSink sink);
 
 		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppv) override;

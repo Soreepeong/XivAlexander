@@ -35,7 +35,7 @@ namespace {
 		return names;
 	}
 
-	// Gets the size of a game font by its name (FontChanger.FixedSizeFont's data/game_fonts.json); 0 if it isn't one.
+	// From FontChanger.FixedSizeFont's data/game_fonts.json; 0 if it isn't a game font.
 	float SizeOf(const std::string& name) {
 		const auto def = FontChanger::FixedSizeFont::find_fontdata_definition(name);
 		return def ? def->Size : 0.f;

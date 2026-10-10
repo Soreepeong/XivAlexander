@@ -12,16 +12,15 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The macro that sets italics (<italic>): runs end before it.
+	// The <italic> macro.
 	constexpr uint8_t ItalicMacro = 0x1A;
 
 	constexpr size_t MaxActiveRuns = 8;
 	constexpr size_t MaxCachedRuns = 8192;
 
-	// Cells are made at a quarter-pixel resolution of the cluster's position.
 	constexpr float SubpixelSteps = 4;
 
-	// Gets a face as an IDWriteFontFace3, or nullptr on systems without it.
+	// nullptr on systems without IDWriteFontFace3.
 	IDWriteFontFace3Ptr AsFace3(IDWriteFontFace* face) {
 		IDWriteFontFace3Ptr face3;
 		if (FAILED(face->QueryInterface(__uuidof(IDWriteFontFace3), reinterpret_cast<void**>(&face3))))
@@ -111,13 +110,12 @@ FontReplacement::GameGlyph* FontReplacement::TextShaper::TryGetGlyph(const Sized
 			return run.Shaped->Glyphs[p - run.Start];
 	}
 
-	// The oldest run is reused once there are as many as are kept.
 	auto run = m_active.size() == MaxActiveRuns ? std::move(m_active.front()) : std::make_unique<ActiveRun>();
 	const auto shaped = ShapeFrom(sized, p, italic, *run);
 	if (m_active.size() == MaxActiveRuns)
 		m_active.erase(m_active.begin());
 	if (!shaped) {
-		// Not shaped: the run is as it was (ShapeFrom changes it only when it shapes).
+		// ShapeFrom leaves the run untouched when it doesn't shape.
 		if (run->Shaped)
 			m_active.insert(m_active.begin(), std::move(run));
 		return nullptr;
@@ -156,16 +154,13 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 		const auto glyphEnd = k2 < length ? clusterMap[k2] : static_cast<uint16_t>(run->glyphCount);
 		const auto count = glyphEnd - glyphStart;
 
-		// Characters the game draws (by the face, or as none of its elements has them), and those of elements not drawn
-		// from their fonts (merged glyphs, glyph images), stay per character. Others are an element's whose glyphs are
-		// shaped, or the system fonts' (no element).
+		// Characters the game draws, and those of elements not drawn from their fonts (merged glyphs, glyph images), stay per character.
 		const auto& sized = *m_shapingSized;
 		const auto element = m_textElement[start + k];
 		const auto font = element ? element->Shaped() : nullptr;
 		auto missing = element && !font;
 
-		// An element's glyphs are drawn from its own face (simulations, axis values), and FreeType's emboldening advances
-		// them further.
+		// Drawn from the element's own face (simulations, axis values); FreeType's emboldening advances glyphs further.
 		auto face = font ? font->GetRunFace(run->fontFace, run->fontEmSize) : run->fontFace;
 		Keep(face);
 		const auto extra = font ? font->GetExtraAdvance(run->fontEmSize) : 0.f;
@@ -179,9 +174,8 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 			missing |= run->glyphIndices[g] == 0;
 		}
 
-		// Italics. Shaped in italic: a face's real italic stays, a synthesized oblique is drawn upright for the game to shear.
-		// Shaped upright for a node's italics: a single character is drawn with its font's italic, if it has one, at the
-		// upright advance; ligatures and the rest stay upright, sheared.
+		// Real: a synthesized oblique is drawn upright for the game to shear. Images: a single character uses its font's italic
+		// (if any) at the upright advance; the rest stay upright and get sheared.
 		std::vector<uint16_t> glyphs(run->glyphIndices + glyphStart, run->glyphIndices + glyphEnd);
 		std::optional<std::vector<DWRITE_GLYPH_OFFSET>> offsets;
 		if (run->glyphOffsets)
@@ -192,7 +186,6 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 			if (!realItalic)
 				face = GetUprightFace(face);
 		} else if (!missing && m_shapingItalic == ItalicMode::Images && count == 1) {
-			// The cluster is a single character.
 			const auto c0 = m_text[start + k];
 			std::optional<char32_t> codepoint;
 			if (k2 - k == 1 && !(c0 >= 0xD800 && c0 <= 0xDFFF))
@@ -214,8 +207,7 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 			}
 		}
 
-		// An element's transformation scales its advances, and its cell (ReplacementFace::Wrap) widens them by monospacing
-		// and letter spacing; everything after moves along.
+		// The transformation scales advances; the cell (ReplacementFace::Wrap) widens them by monospacing and letter spacing.
 		const auto x0 = std::round(pen);
 		const auto width = advance * (font ? font->Transform().M11 : 1.f);
 		const auto spacing = sized.Face->GetLetterSpacing(element && !element->DrawsGame() ? element : nullptr, sized.Px);
@@ -235,8 +227,7 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 			.RealItalic = realItalic,
 		};
 
-		// The cell ends where the layout ends the cluster, plus letter spacing; a monospaced cell is made now, as it gives the
-		// advance (from the whole pixels it starts at).
+		// A monospaced cell is made now, as it gives the advance (from the whole pixel it starts at).
 		float next;
 		if (!missing && font && element->Def().WrapModifiers.Monospacing.is_enabled()) {
 			const auto rawAdvance = static_cast<int>(std::round(width));
@@ -330,8 +321,7 @@ void FontReplacement::TextShaper::PlaceClusters() {
 		auto& c = m_clusters[i];
 		const std::wstring_view text(m_text.data(), m_text.size());
 
-		// A ligature's characters (text elements: a letter with its marks is one) share its advance evenly, so the caret and
-		// selection can stop inside it; the first draws all of it, and the others draw nothing.
+		// A ligature's text elements share its advance evenly so the caret can stop inside it; the first draws all of it.
 		auto elements = 0;
 		for (auto t = c.TextStart; t < c.TextEnd; t += (std::max)(1, GetNextTextElementLength(text.substr(t, c.TextEnd - t))))
 			elements++;
@@ -397,10 +387,8 @@ IDWriteFontFallbackPtr FontReplacement::TextShaper::CreateSystemFallback(GlyphRa
 }
 
 bool FontReplacement::TextShaper::ShapeFrom(const SizedFont& sized, const uint8_t* p, ItalicMode italic, ActiveRun& run) {
-	// The run: to the end of the line, as UTF-16, each code unit's byte offset kept (-1 for a low surrogate), and each
-	// character's byte whether it is in italics. Italic macros change that within the run, as they do the game's state, so
-	// that a line is laid out whole across them (an italic word's overhangs and spacing next to upright text); a run in a
-	// node's italics, spaced to its upright width, ends at one instead.
+	// To the line end, as UTF-16 (byte offset -1 for low surrogates); italic macros switch italics mid-run so a line is laid
+	// out whole, but end an ItalicMode::Images run.
 	auto count = 0;
 	auto i = 0;
 	auto hash = 0xCBF29CE484222325ull;
@@ -411,14 +399,14 @@ bool FontReplacement::TextShaper::ShapeFrom(const SizedFont& sized, const uint8_
 			break;
 
 		if (b == GameText::MacroStart) {
-			// A macro: skipped whole; a line break macro ends the run.
+			// A line break macro ends the run.
 			if (p[i + 1] == 0x10 || (p[i + 1] == ItalicMacro && italic == ItalicMode::Images))
 				break;
 			const auto total = GameText::MacroLength(p + i);
 			if (total == 0 || i + total > MaxRunBytes)
 				break;
 
-			// <italic>: its argument is a plain integer (1 on, 0 off); anything else ends the run.
+			// The argument is a plain integer (1 on, 0 off); anything else ends the run.
 			if (p[i + 1] == ItalicMacro) {
 				int payload, on;
 				const auto n = GameText::ReadInteger(p + i + 2, payload);
@@ -467,8 +455,7 @@ bool FontReplacement::TextShaper::ShapeFrom(const SizedFont& sized, const uint8_
 	if (i == 0)
 		return false;
 
-	// The byte that ended the run (read above: a terminator, a line break, a sequence that doesn't fit) is compared with it
-	// too, as what follows the last character could join its cluster. A run cut at its maximum length has none.
+	// The terminating byte is compared too, as what follows could join the last cluster; a run cut at MaxRunBytes has none.
 	const auto ended = i < MaxRunBytes;
 	const auto key = std::make_tuple(hash, i, &sized, italic);
 	auto it = m_runs.find(key);
@@ -518,8 +505,6 @@ void FontReplacement::TextShaper::Shape(const SizedFont& sized, const uint8_t* p
 		m_shapingSized = nullptr;
 	});
 
-	// A run in a node's italics is spaced to its upright width (or drawn per character at its upright places); the others
-	// are laid out whole, in italics where their italic macros say.
 	if (italic != ItalicMode::Images)
 		Collect(sized, count, ItalicMode::Real);
 	else if (!CollectSpreadItalics(sized, count))

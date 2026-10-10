@@ -22,7 +22,6 @@ namespace XivAlexander {
 	template<typename T>
 	class ConfigItem;
 
-	/// What config items are declared in: a repository, or a group.
 	class ConfigNode {
 		friend class BaseConfigRepository;
 		friend class ConfigGroup;
@@ -37,10 +36,8 @@ namespace XivAlexander {
 		void LoadItemsFrom(const nlohmann::json& data);
 		void SaveItemsTo(nlohmann::json& data) const;
 
-		/// Called after an item declared in this node changed.
 		virtual void OnItemChange() {}
 
-		/// Gets this node as an item, if it is a group.
 		[[nodiscard]] virtual const ConfigItemBase* AsItem() const { return nullptr; }
 
 	public:
@@ -48,7 +45,7 @@ namespace XivAlexander {
 		ConfigNode& operator=(const ConfigNode&) = delete;
 		virtual ~ConfigNode() = default;
 
-		/// The items and groups declared in this node, in declaration order.
+		/// In declaration order.
 		[[nodiscard]] const std::vector<ConfigItemBase*>& Items() const { return m_items; }
 	};
 
@@ -162,8 +159,7 @@ namespace XivAlexander {
 		}
 	};
 
-	/// Config items declared together, and kept in an object of the group's key. Each item can be subscribed to on its
-	/// own; the group's OnChange is called once after any of them changed, or once per Batch.
+	/// Items kept in an object under the group's key; the group's OnChange fires once per item change, or once per Batch.
 	class ConfigGroup : public ConfigItemBase, public ConfigNode {
 		size_t m_batchDepth = 0;
 		bool m_changedInBatch = false;
@@ -178,8 +174,7 @@ namespace XivAlexander {
 		ConfigGroup(ConfigNode* pParent, const char* pszKey);
 		~ConfigGroup() override = default;
 
-		/// Defers the group's OnChange, and saving, until the returned object is destroyed. Items' own OnChange are
-		/// still called as each changes.
+		/// Defers the group's OnChange and saving until the returned object is destroyed; items' own OnChange still fire immediately.
 		[[nodiscard]] xivres::util::on_dtor Batch();
 	};
 
@@ -208,10 +203,10 @@ namespace XivAlexander {
 	protected:
 		xivres::util::on_dtor::multi m_cleanup;
 
-		/// Brings this repository's object, as it was read from the file, up to date: before loading, and before saving.
+		/// Upgrades this repository's object as read from the file; called before loading and before saving.
 		virtual void Migrate(nlohmann::json& config) const {}
 
-		/// Moves the value at key from of config to where item is kept now, unless there is one there already.
+		/// Moves config[from] to where item is kept now, unless a value is already there.
 		static void MoveKey(nlohmann::json& config, const char* from, const ConfigItemBase& item);
 
 	public:
@@ -228,7 +223,6 @@ namespace XivAlexander {
 		[[nodiscard]] auto GetConfigPath() const { return m_sConfigPath; }
 	};
 
-	// The constructors reach into the repository, so they are defined once it is complete.
 	template<typename T>
 	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName)
 		: ConfigItem(pParent, pszName, T{}) {}
@@ -249,8 +243,7 @@ namespace XivAlexander {
 		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
 
-	// In the header so that any repository's translation unit can instantiate them.
-	// uint16_t is written as hex and so has its own, over in the source file.
+	// uint16_t is written as hex; its specializations are in the source file.
 	template<typename T>
 	bool ConfigItem<T>::LoadFrom(const nlohmann::json& data) {
 		if (const auto it = data.find(Name); it != data.end()) {
@@ -258,7 +251,6 @@ namespace XivAlexander {
 			try {
 				newValue = it->get<T>();
 			} catch (...) {
-				// do nothing for now
 				// TODO: show how the value is invalid
 #ifdef _DEBUG
 				throw;

@@ -16,9 +16,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		}
 	};
 
-	// Rasterizes glyphs with FreeType: for elements a preset draws with FreeType, and for fonts with only bitmaps (which
-	// DirectWrite doesn't draw), whose nearest bitmap size is scaled to the size asked for. Fonts are opened from the files of
-	// DirectWrite's font faces, so glyph indices from DirectWrite's shaping are FreeType's.
+	// For elements a preset draws with FreeType, and bitmap-only fonts (which DirectWrite doesn't draw) scaled from their nearest size.
+	// Fonts are opened from DirectWrite faces' files, so glyph indices from DirectWrite's shaping are FreeType's.
 	class FreeTypeFonts {
 		struct Axis {
 			uint32_t Tag;
@@ -38,11 +37,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unique_ptr<FT_LibraryRec_, LibraryCloser> m_library;
 		std::map<std::pair<std::wstring, uint32_t>, std::unique_ptr<FT_FaceRec_, FaceCloser>> m_faces;
 
-		// The size each face was last set to.
 		std::map<FT_FaceRec_*, float> m_faceSizes;
 
-		// A variable face's axes (DWRITE_FONT_AXIS_TAG, minimum, default, maximum; 16.16), and the design coordinates it was
-		// last set to.
+		// Variable faces' axes (DWRITE_FONT_AXIS_TAG, min, default, max; 16.16) and the design coordinates each was last set to.
 		std::map<FT_FaceRec_*, std::vector<Axis>> m_faceAxes;
 		std::map<FT_FaceRec_*, std::vector<long>> m_faceCoordinates;
 
@@ -52,19 +49,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FreeTypeFonts(const FreeTypeFonts&) = delete;
 		FreeTypeFonts& operator=(const FreeTypeFonts&) = delete;
 
-		// Starts FreeType; nullptr if it can't be used.
+		// nullptr if FreeType can't be used.
 		static std::unique_ptr<FreeTypeFonts> Create();
 
-		// Opens the font file of a DirectWrite font face (kept open, shared); nullptr if it isn't a local file.
+		// Kept open and shared; nullptr if the font face isn't a local file.
 		FT_FaceRec_* Open(IDWriteFontFace* fontFace);
 
-		// Gets whether a face has outlines; one with only bitmaps is drawn by scaling its nearest bitmap size.
+		// A face with only bitmaps is drawn by scaling its nearest bitmap size.
 		static bool IsScalable(FT_FaceRec_* face);
 
-		// Rasterizes a run of glyphs (a glyph, or a shaped cluster) with the pen at originX, each glyph at its advance and
-		// offset, as GlyphRasterizer::RasterizeRun does with DirectWrite. A variable face is set to axes (as
-		// DWRITE_FONT_AXIS_TAG; others at their defaults), and outlines are emboldened by embolden ems before they are
-		// transformed.
+		// As GlyphRasterizer::RasterizeRun does with DirectWrite; axes are DWRITE_FONT_AXIS_TAG (others at defaults), embolden is in ems, before the transform.
 		RasterGlyph RasterizeRun(
 			FT_FaceRec_* face,
 			float px,
@@ -81,11 +75,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			float originY = 0);
 
 	private:
-		// Sets a variable face's design coordinates: the given axis values, the others at their defaults.
+		// Axes not in values are set to their defaults.
 		void SetAxes(FT_FaceRec_* face, const std::map<uint32_t, float>* values);
 
-		// Sets a face to a size: an outline face to it exactly (1 returned), a bitmap face to its nearest bitmap size, the
-		// smallest not below it or else the largest, returning the scale from that size to the one asked for.
+		// Outline faces get px exactly (returns 1); bitmap faces the smallest size not below it, else the largest, returning the scale to px.
 		float SetSize(FT_FaceRec_* face, float px);
 
 		// Reads a glyph slot's bitmap as 8-bit coverage (converting 1, 2 and 4-bit, and taking BGRA's alpha).

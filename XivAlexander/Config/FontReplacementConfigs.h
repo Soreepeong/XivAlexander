@@ -5,8 +5,7 @@
 #include "BaseConfigRepository.h"
 
 namespace XivAlexander {
-	/// A system font a game font family's faces are drawn with: its family's name (English) and the face's weight, stretch and
-	/// style (DWRITE_* values). As FFXIV-FontChanger's plugin has it (FamilyFont).
+	/// A system font by English family name and DWRITE_* weight, stretch and style, as FFXIV-FontChanger's plugin has it (FamilyFont).
 	struct FontReplacementFamilyFont {
 		std::string Name;
 		int Weight = 400;
@@ -16,16 +15,13 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementFamilyFont&) const = default;
 	};
 
-	/// A source of a game font family's faces: a preset of FFXIV-FontChanger's, or a system font made into faces as its
-	/// FaceFromFont makes them.
+	/// An FFXIV-FontChanger preset, or a system font made into faces as its FaceFromFont does.
 	struct FontReplacementFamilySource {
 		bool Enabled = true;
 
-		/// The preset: a path relative to the presets folder (<configuration folder>\FontPresets) for one imported there, or an
-		/// absolute path for one used where it is; empty for a system font.
+		/// Relative to <configuration folder>\FontPresets if imported there, else absolute; empty for a system font.
 		std::string Preset;
 
-		/// The system font, if there is no preset.
 		FontReplacementFamilyFont Font;
 
 		[[nodiscard]] bool IsPreset() const { return !Preset.empty(); }
@@ -35,30 +31,28 @@ namespace XivAlexander {
 
 	/// How a game font family (AXIS, JupiterN, ...) is replaced.
 	struct FontReplacementFamily {
-		/// Whether the family is replaced at all; if not, the game's own font is kept, as for a family without sources.
+		/// If false, the game's own font is kept, as for a family without sources.
 		bool Enabled = true;
 
-		/// Whether a system font's digits are made monospaced: with its tabular figures (tnum) if it has them, else by putting
-		/// each in a cell as wide as its 0.
+		/// Uses the system font's tabular figures (tnum) if it has them, else puts each digit in a cell as wide as its 0.
 		bool MonospacedDigits = true;
 
-		/// The sources, in order: of a preset, only the family's faces are used, and of a face several give, the last one's.
+		/// In order: of a preset only the family's faces are used, and of a face several give, the last one's.
 		std::vector<FontReplacementFamilySource> Sources;
 
 		bool operator==(const FontReplacementFamily&) const = default;
 	};
 
-	/// The edge outline's width at a text size px: clamp(Scale * px, Min, Max) pixels. The defaults are the game's own edge,
-	/// 1 px at every size.
+	/// Edge outline width at text size px: clamp(Scale * px, Min, Max) pixels; the defaults (1 px at every size) are the game's own.
 	struct FontReplacementEdgeConfig {
-		/// The width per pixel of text size (0: Min at every size).
+		/// Width per pixel of text size (0: Min at every size).
 		float Scale = 0;
 		float Min = 1;
 		float Max = 1;
 
 		[[nodiscard]] float GetWidth(float px) const { return std::clamp(Scale * px, Min, Max); }
 
-		/// Gets the settings within what the edge can do: 0.25 to 8 px.
+		/// Within what the edge can do: 0.25 to 8 px.
 		[[nodiscard]] FontReplacementEdgeConfig Clamped() const {
 			const auto min = std::clamp(Min, 0.25f, 8.f);
 			return {std::clamp(Scale, 0.f, 1.f), min, std::clamp(Max, min, 8.f)};
@@ -67,8 +61,7 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
 	};
 
-	/// The font replacement's settings, saved as an object: draws the game's text with fonts of FFXIV-FontChanger's presets,
-	/// or of system fonts, rasterized at the size drawn.
+	/// Saved as one object.
 	class FontReplacementConfigGroup : public ConfigGroup {
 	public:
 		using ConfigGroup::ConfigGroup;
@@ -80,8 +73,7 @@ namespace XivAlexander {
 		public:
 			using ConfigGroup::ConfigGroup;
 
-			/// The settings per game font family. A family that isn't here, is turned off, or has no sources (and a face its
-			/// sources lack) uses the game's glyphs, with SystemFallback for the characters they lack.
+			/// Families missing here, off, or without sources (and faces their sources lack) use the game's glyphs, with SystemFallback for the rest.
 			ConfigItem<std::map<std::string, FontReplacementFamily>> Families{this, "Families"};
 
 			/// Whether characters the presets lack are drawn with Windows' fallback fonts, instead of the game's.

@@ -22,6 +22,7 @@ struct XivAlexander::Apps::MainApp::Features::AllIpcMessageLogger::Implementatio
 			conn.AddIncomingFFXIVMessageHandler(this, [&](auto pMessage) {
 				if (pMessage->Type == message_type::Ipc && pMessage->Data.Ipc.Type == ipc_type::InterestedType) {
 					const char* pszPossibleMessageType;
+					// Wire lengths of ActionEffect01..32, which match the payload sizes the game's duty recorder writes. As of 7.56h.
 					switch (pMessage->Length) {
 						case 0x09c:
 							pszPossibleMessageType = "ActionEffect01";

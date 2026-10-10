@@ -88,7 +88,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 							"Dialogue character name={} path={}", speaker, path);
 					}
 
-					// The first enabled entry of the speaker, or else for anyone unnamed; names as typed, in any case.
+					// The speaker's first enabled entry, else the unnamed one; names compare case-insensitively.
 					const auto& forced = m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value();
 					const auto find = [&forced](const std::string& name) {
 						return std::ranges::find_if(forced, [&name](const ForcedCharacterLanguage& entry) {

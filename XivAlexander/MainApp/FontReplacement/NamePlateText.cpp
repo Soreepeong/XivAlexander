@@ -9,7 +9,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The plate's distance factor never goes below this (OnRequestedUpdate clamps it).
+	// The game's lower clamp of a plate's distance factor.
 	constexpr float MinDistanceFactor = 0.05f;
 
 	// Bake scales beyond these are not worth it (or are a measuring error).
@@ -26,18 +26,13 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	GameLayout::Resolve("Nameplate text", [&] {
 		GameUi::ResolveUnits();
 
-		// bool AllocateBake(BakePlateRenderer* this, NamePlateObject* obj): frees the object's region and takes a new one of
-		// ((TextW + 8) * 2) x ((TextH + 4) * 2) in the render texture; false when it doesn't fit. Called by OnRequestedUpdate
-		// for the plates with NeedsToBeBaked, which it clears on success.
+		// Allocates a plate's bake region, sized by its TextW and TextH, when it NeedsToBeBaked.
 		allocateBake = GameLayout::Address("NamePlateAllocateBake");
 
-		// void BakePlateRenderer.vf3(BakePlateRenderer* this, float* rect, GameFontSet* set, AtkResNode* node): the text
-		// node renderer's per-node setup, then for a bake (CurrentBakeData set) the bake rect and node scale 1.
+		// Per-node text setup; for a bake (CurrentBakeData set), node scale 1.
 		prepare = GameLayout::Address("NamePlateBakePrepare");
 
-		// void DrawBaked(BakePlateRenderer* this, AtkResNode* node, BakeData* bake): draws a baked region, (Width - 4) x
-		// (Height - 4) node units at the node's transform, centered on the node; point sampled only when the transform's
-		// scale is exactly 1.
+		// Draws a baked plate centered on its node.
 		drawBaked = GameLayout::Address("NamePlateDrawBaked");
 
 		m_addonBakePlate = GameLayout::Get("AddonNamePlate.BakePlate");
@@ -70,8 +65,7 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 FontReplacement::NamePlateText::~NamePlateText() {
 	m_allocateBakeHook.reset();
 
-	// Regions baked at another scale must not be drawn without the hooks that know their scale: a plate that needs baking is
-	// drawn live (BakePlateRenderer.Draw) until its next update allocates and bakes it again.
+	// Regions baked at another scale must not be drawn unhooked; a plate needing a bake is drawn live (BakePlateRenderer.Draw) until rebaked.
 	try {
 		ForceRebake();
 	} catch (const std::exception& e) {
@@ -189,16 +183,13 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 		transform[i] = Transform(node, i);
 	const auto shown = std::sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
 
-	// Shown larger than it was baked for (a percent over 100 up close, a targeted plate): bake it again at that size (BakeData
-	// is the object's first member). It is drawn live until then.
+	// Shown larger than baked (over 100% up close, targeted): rebake at that size (BakeData is the object's first member); drawn live until then.
 	const auto obj = bake;
 	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && m_replacer.Enabled())
 		SetNeedsToBeBaked(obj);
 
-	// The region is in bake pixels, scale per node unit: give the original the node in bake pixels too (its size and the text
-	// offset times the scale), so the region lands at the plate's size. Shown at (about) the scale it was baked at, the
-	// transform is exactly 1: the original point samples only then, and bilinear sampling at a fractional position (plates
-	// move smoothly) blends neighbouring texels even at 1:1. Plates aren't rotated.
+	// The region is in bake pixels, so the node's size and text offset are scaled to match; near the bake scale the transform is snapped to exactly 1,
+	// the only case the original point samples (bilinear at fractional positions blurs even at 1:1). Plates aren't rotated.
 	auto& widthField = At<uint16_t>(node + m_nodeWidth);
 	auto& heightField = At<uint16_t>(node + m_nodeHeight);
 	auto& textYOffsetField = At<int16_t>(bake + m_bakeTextYOffset);

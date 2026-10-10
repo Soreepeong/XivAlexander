@@ -402,7 +402,6 @@ namespace XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog {
 				case WM_CTLCOLORBTN:
 				case WM_CTLCOLOREDIT:
 				case WM_CTLCOLORLISTBOX: {
-					// In light mode, the system colors.
 					const auto pData = reinterpret_cast<Data*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 					if (!pData || !pData->Dark)
 						return 0;

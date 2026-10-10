@@ -159,7 +159,6 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton
 	if (_wcsicmp(className, WC_BUTTONW) != 0)
 		return std::nullopt;
 
-	// Those that look like push buttons are drawn as the theme draws them.
 	if (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_PUSHLIKE)
 		return std::nullopt;
 
@@ -188,7 +187,7 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton
 	if (!hTheme)
 		return std::nullopt;
 
-	// The states go unchecked, checked, and for checkboxes mixed, each normal, hot, pressed, and disabled.
+	// Theme states: unchecked, checked, mixed (checkboxes only), each as normal, hot, pressed, disabled.
 	const auto check = Button_GetCheck(hButton);
 	const auto enabled = IsWindowEnabled(hButton);
 	const auto stateOffset = !enabled ? 3 : (nmcd.uItemState & CDIS_SELECTED) ? 2 : (nmcd.uItemState & CDIS_HOT) ? 1 : 0;
@@ -204,7 +203,7 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton
 	TEXTMETRICW tm{};
 	GetTextMetricsW(hdc, &tm);
 
-	// Text of more than one line starts at the top, a line left above it for the focus, with the glyph by its first line.
+	// Multiline text starts at the top, leaving 1px for the focus rect, with the glyph beside its first line.
 	const auto multiline = (GetWindowLongPtrW(hButton, GWL_STYLE) & BS_MULTILINE) != 0;
 	SIZE glyph{};
 	GetThemePartSize(hTheme, hdc, part, state, nullptr, TS_DRAW, &glyph);
@@ -325,7 +324,6 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::HandleDarkModeWindow
 			GetWindowRect(hWnd, &rcWindow);
 			OffsetRect(&rcClient, -rcWindow.left, -rcWindow.top);
 
-			// the rcBar is offset by the window rect
 			RECT rcAnnoyingLine = rcClient;
 			rcAnnoyingLine.bottom = rcAnnoyingLine.top;
 			rcAnnoyingLine.top--;

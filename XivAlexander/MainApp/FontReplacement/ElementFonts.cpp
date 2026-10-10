@@ -16,7 +16,7 @@ using FontChanger::Structs::RendererEnum;
 using namespace FontChanger::FixedSizeFont;
 
 namespace {
-	// Reads the baselines of a font's BASE table (read_baselines), in font units above the glyphs' origin.
+	// In font units above the glyphs' origin.
 	std::map<uint32_t, int> ReadBaselines(IDWriteFontFace* face) {
 		const void* data;
 		UINT32 size;
@@ -28,8 +28,7 @@ namespace {
 		return read_baselines(std::span(static_cast<const char*>(data), size));
 	}
 
-	// Copies coverage into a buffer of fixed_size_font::draw, keeping the larger value: x and y are where the coverage's top
-	// left goes.
+	// Into a fixed_size_font::draw buffer, keeping the larger value; (x, y) is where the coverage's top left goes.
 	void BlitInto(uint8_t* buffer, size_t stride, int destWidth, int destHeight, const FontReplacement::RasterGlyph& g, int x, int y) {
 		for (auto row = (std::max)(0, -y); row < g.Height && row + y < destHeight; row++) {
 			for (auto col = (std::max)(0, -x); col < g.Width && col + x < destWidth; col++) {
@@ -39,8 +38,7 @@ namespace {
 		}
 	}
 
-	// An element's font at a size as a fixed_size_font, which glyph merging takes as its base font: its line metrics and
-	// baselines, and its glyph of a codepoint for shapes that are the element's own glyph.
+	// Glyph merging's base font: the element's line metrics, baselines and own glyphs at a size.
 	class ElementBaseFont final : public default_abstract_fixed_size_font {
 		FontReplacement::IElementFont& m_font;
 		float m_px;
@@ -102,7 +100,7 @@ namespace {
 		}
 	};
 
-	// Texts of glyph merging in a font, shaped with its features, measured by its glyphs' metrics.
+	// Glyph merging's texts, shaped with the font's features and measured by its glyph metrics.
 	class OutlineTextFont final : public default_abstract_fixed_size_font {
 		FontReplacement::OutlineElementFont& m_font;
 		FontReplacement::GlyphRasterizer& m_rasterizer;
@@ -110,7 +108,7 @@ namespace {
 		FontReplacement::GlyphTransform m_transform;
 		FontReplacement::LineMetrics m_metrics;
 
-		// The glyphs of the line being shaped, and their advances and offsets (shaped from the const fixed_size_font calls).
+		// The line being shaped (filled from the const fixed_size_font calls).
 		struct ShapedGlyph {
 			uint16_t Index;
 			float Advance;
@@ -167,8 +165,7 @@ namespace {
 
 		const fixed_size_font* get_base_font(char32_t) const override { return this; }
 
-		// Shaped as the plugin's OutlineTextFont lays texts out: in the font only, with its features; letter spacing goes
-		// between glyphs.
+		// As the plugin's OutlineTextFont lays texts out: in this font only, with letter spacing between glyphs.
 		std::optional<shaped_line> shape_line(std::u32string_view text, int letterSpacing) const override {
 			try {
 				m_shaped.clear();
@@ -589,8 +586,7 @@ std::optional<FontReplacement::RasterGlyph> FontReplacement::MergingElementFont:
 		params.LetterSpacing *= pixelScale;
 		params.LineSpacing *= pixelScale;
 
-		// The element's transformation, then the texts', then the condensing; texts are drawn with the element's font, or for
-		// glyph images, with the font the lookup names if any, else with their own files.
+		// Element transform, then the texts', then condensing; glyph images' texts use the lookup's font if any, else their own files.
 		const auto elementTransform = GlyphTransform::Of(m_def.Transform);
 		const auto textTransform = GlyphTransform::Of(m_def.GlyphMerging.TextTransform);
 		const auto textOutline = m_textOutline;

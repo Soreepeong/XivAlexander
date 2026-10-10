@@ -10,7 +10,7 @@
 #include "Misc/Logger.h"
 
 namespace {
-	// The indicator shows U+E01F + mode, or a blank for 0.
+	// The indicator shows U+E01F + mode, or a blank for 0; the game font's glyph order, not code. As of 7.56h.
 	constexpr uint32_t ImeModeClosed = 0;
 	constexpr uint32_t ImeModeFullwidthLatin = 3;  // Ａ
 	constexpr uint32_t ImeModeHangul = 6;  // 가
@@ -53,8 +53,7 @@ struct XivAlexander::Apps::MainApp::Features::ImeModeIndicator::Implementation {
 		Cleanup.clear();
 	}
 
-	// The game picks Japanese modes, where hiragana is native and full-width; to a Korean or Chinese IME that turns on
-	// full-width Latin, so these keep whatever width the IME has and take only the native or Latin choice.
+	// Japanese modes (hiragana: native, full-width) mean full-width Latin to Korean/Chinese IMEs: keep the IME's width, take only native/Latin.
 	BOOL ImmSetConversionStatusDetour(HIMC inputContext, DWORD conversion, DWORD sentence) {
 		if (KoreanOrChineseKeyboardLanguage() != LANG_NEUTRAL) {
 			constexpr DWORD kept = IME_CMODE_FULLSHAPE | IME_CMODE_KATAKANA;

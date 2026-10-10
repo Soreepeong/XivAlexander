@@ -20,12 +20,9 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 namespace FixedSizeFont = FontChanger::FixedSizeFont;
 
 namespace {
-	// Between the text and the edges of the image.
 	constexpr int Padding = 8;
 
-	// A font of the game's glyphs drawn at another size: the game has its fonts at a few sizes only, which the replacement
-	// draws at any size by scaling a glyph's pixels (GameTextureSource::Scale, RasterGlyph::Scaled); so does this, about the
-	// pen at the top of the line. Metrics scale alike, rounded to whole pixels.
+	// Game glyphs scaled to another size as the replacement does (GameTextureSource::Scale, RasterGlyph::Scaled), about the pen at the top of the line.
 	class ScaledFont final : public FixedSizeFont::default_abstract_fixed_size_font {
 		std::shared_ptr<FixedSizeFont::fixed_size_font> m_base;
 		float m_size;
@@ -92,8 +89,6 @@ namespace {
 	private:
 		[[nodiscard]] int Scale(int value) const { return static_cast<int>(std::round(static_cast<float>(value) * m_scale)); }
 
-		// Draws a glyph's coverage scaled, with the pen at (drawX, drawY), through blend(x, y, coverage) for each pixel in the
-		// destination.
 		template<typename TBlend>
 		bool DrawScaled(char32_t codepoint, int drawX, int drawY, int destWidth, int destHeight, TBlend&& blend) const {
 			FixedSizeFont::glyph_metrics gm;
@@ -118,7 +113,6 @@ namespace {
 		}
 	};
 
-	// Gets a font at a size: itself if it is of the size, else it scaled.
 	std::shared_ptr<FixedSizeFont::fixed_size_font> AtSize(std::shared_ptr<FixedSizeFont::fixed_size_font> font, float size) {
 		if (font->font_size() <= 0 || font->font_size() == size)
 			return font;
@@ -128,8 +122,7 @@ namespace {
 
 FontReplacement::FamilyPreview::FamilyPreview(Notify notify)
 	: m_notify(std::move(notify)) {
-	// FontChanger draws elements of the game's fonts from an installation, which is this process's: the game's folder has
-	// its sqpack. Nothing else here makes FontChanger's element fonts, so setting it for the process changes nothing else.
+	// FontChanger reads the game's fonts from an installation, here this process's own; nothing else here makes element fonts, so it's safe to set globally.
 	static std::once_flag s_gamePathsSet;
 	std::call_once(s_gamePathsSet, [] {
 		FontChanger::ElementFonts::SetGameInstallationPathsProvider([](xivres::font_type) {
@@ -152,7 +145,7 @@ uint64_t FontReplacement::FamilyPreview::Request(DrawRequest request, std::chron
 	uint64_t generation;
 	{
 		const auto lock = std::scoped_lock(m_mutex);
-		// A request that would make the faces anew still does when a later one replaces it before it is drawn.
+		// A pending reload carries over to the request replacing it.
 		request.Reload |= m_pending && m_pending->Reload;
 		m_pending = std::move(request);
 		m_due = std::chrono::steady_clock::now() + delay;
@@ -185,7 +178,7 @@ void FontReplacement::FamilyPreview::ThreadBody() {
 			if (m_stop)
 				return;
 			if (std::chrono::steady_clock::now() < m_due) {
-				// A later request moves the time on; this wakes for it, or for the time.
+				// A later request moves m_due on; wake for it or for the time, then check again.
 				m_wake.wait_until(lock, m_due);
 				continue;
 			}
@@ -210,8 +203,7 @@ void FontReplacement::FamilyPreview::ThreadBody() {
 std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::MakeFont(const std::string& faceName, float px, std::vector<std::string>& failures) const {
 	std::vector<std::pair<std::shared_ptr<FixedSizeFont::fixed_size_font>, FixedSizeFont::codepoint_merge_mode>> fonts;
 
-	// FontChanger makes a font that can't be (one not installed, or the game's that can't be read) as one without glyphs,
-	// and the replacement draws its element so too, silently; here the failure line says so instead.
+	// FontChanger silently makes an unloadable font (not installed, or an unreadable game font) as one without glyphs; report it here instead.
 	const auto noteIfEmpty = [&failures](const FontChanger::Structs::FaceElement& element, const FixedSizeFont::fixed_size_font& base) {
 		if (element.Renderer == FontChanger::Structs::RendererEnum::Empty || !base.all_codepoints().empty())
 			return;
@@ -221,7 +213,7 @@ std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::
 			failures.emplace_back(std::move(failure));
 	};
 
-	// The face, scaled as ReplacementFace scales it: its sizes and pixel values relative to its first element's size.
+	// Scaled as ReplacementFace does: sizes and pixel values relative to the first element's size.
 	if (const auto it = m_faces.find(faceName); it != m_faces.end() && !it->second->Elements.empty()) {
 		const auto& face = *it->second;
 		const auto reference = face.Elements[0]->Size > 0 ? face.Elements[0]->Size : 1.f;
@@ -243,8 +235,7 @@ std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::
 		fonts.emplace_back(std::make_shared<FixedSizeFont::merged_fixed_size_font>(std::move(elements), face.VerticalAlignment), FixedSizeFont::codepoint_merge_mode::AddNew);
 	}
 
-	// After it, the game's glyphs, as the replacer falls back to them. A wrapped font has only the codepoints in its
-	// ranges: the element takes every one.
+	// Then the game's glyphs, as the replacer falls back to them; a wrapped font has only the codepoints in its ranges, so take all.
 	if (const auto game = FontChanger::FaceFromFont::GetGameFontFamilyAndSize(faceName)) {
 		FontChanger::Structs::FaceElement element;
 		element.Renderer = FontChanger::Structs::RendererEnum::PrerenderedGameInstallation;
@@ -310,7 +301,6 @@ FontReplacement::FamilyPreview::Image FontReplacement::FamilyPreview::Draw(const
 					.Width = m.width() + margin * 2,
 					.Height = m.height() + margin * 2,
 				};
-				// Lines below the image aren't drawn.
 				if (glyph.Y >= image.Height || glyph.X >= image.Width || glyph.X + glyph.Width <= 0 || glyph.Y + glyph.Height <= 0)
 					continue;
 				glyph.Alpha.resize(static_cast<size_t>(glyph.Width) * glyph.Height);

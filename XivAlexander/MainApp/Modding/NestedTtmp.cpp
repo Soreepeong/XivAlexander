@@ -72,7 +72,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			if (l->Index != r->Index)
 				return l->Index < r->Index;
 
-			// Those without a position by name, ignoring case; names differing only in case, as they are.
 			const auto& ln = l->Path.native();
 			const auto& rn = r->Path.native();
 			if (const auto res = CompareStringOrdinal(ln.data(), static_cast<int>(ln.size()), rn.data(), static_cast<int>(rn.size()), TRUE); res != CSTR_EQUAL)

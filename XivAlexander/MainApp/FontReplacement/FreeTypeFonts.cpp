@@ -20,7 +20,6 @@ namespace {
 			throw std::runtime_error(std::format("FreeType failed: {}", error));
 	}
 
-	// Gets the file and face index of a DirectWrite font face, if it is a local file.
 	std::optional<std::pair<std::wstring, uint32_t>> GetFile(IDWriteFontFace* fontFace) {
 		const auto file = FontReplacement::FontFileKey::Of(fontFace);
 		IDWriteLocalFontFileLoaderPtr local;
@@ -125,7 +124,6 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeFonts::RasterizeRun(
 		.yy = static_cast<FT_Fixed>(std::round(transform.M22 * 65536)),
 	};
 
-	// The glyphs' coverage, placed relative to the pen, merged into one box.
 	std::vector<RasterGlyph> pieces;
 	pieces.reserve(count);
 	auto x = 0.f;
@@ -142,8 +140,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeFonts::RasterizeRun(
 		const auto slot = face->glyph;
 		const auto bitmapGlyph = slot->format == FT_GLYPH_FORMAT_BITMAP;
 		if (!bitmapGlyph) {
-			// Outlines are emboldened, transformed, and moved by the fraction; bitmaps (of a bitmap face, scaled) are placed
-			// afterwards.
+			// Outlines are emboldened, transformed and moved by the fraction; bitmaps (of a bitmap face) are placed afterwards.
 			if (strength)
 				FT_Outline_EmboldenXY(&slot->outline, strength, strength);
 			FT_Outline_Transform(&slot->outline, &matrix);

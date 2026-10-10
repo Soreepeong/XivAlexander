@@ -3,10 +3,8 @@
 #include "Utils/Win32/Closeable.h"
 
 namespace XivAlexander::Apps::MainApp::Window {
-	/// Rows and columns of its owner's data, whose cells are edited in place as a spreadsheet's: a list view in report view
-	/// with a current cell, moved with the arrow keys; F2, Enter, a double click, or typing edits it in an editor put over
-	/// it, which Enter or leaving applies, Esc cancels, and Tab applies and moves on. Checkboxes toggle with a click or Space.
-	/// Rows may be dragged, or moved with Ctrl+Up and Ctrl+Down, to reorder them.
+	/// Spreadsheet-like report list view: arrows move the current cell; F2, Enter, double click or typing edit it (Enter or leaving
+	/// applies, Esc cancels, Tab applies and moves on); Space or click toggles checkboxes; drag or Ctrl+Up/Down reorders rows.
 	class GridView {
 	public:
 		enum class CellKind {
@@ -24,7 +22,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 			std::function<std::vector<std::wstring>(size_t row)> GetChoices;
 		};
 
-		/// The data shown, and what is done with edits. Indices are of rows as the owner has them.
+		/// Row indices are the owner's.
 		struct Source {
 			std::function<size_t()> GetRowCount;
 			std::function<std::wstring(size_t row, size_t column)> GetText;
@@ -42,10 +40,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 			// A double click on a row, or Enter on a cell that can't be edited; editing the cell if none.
 			std::function<void(size_t row)> Activate;
 
-			// A right click on a row, at a point on the screen.
 			std::function<void(size_t row, POINT ptScreen)> ShowContextMenu;
 
-			// The selected row changed, or was unselected; told after the list is done with its own notification.
+			// Called after the list is done with its own notification.
 			std::function<void(std::optional<size_t> row)> SelectionChanged;
 
 			// Rows may be selected together, with Ctrl and Shift; a check box of a selected row then sets those of all.
@@ -94,7 +91,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		[[nodiscard]] HWND Handle() const { return m_hWnd; }
 
-		/// Shows the data anew: after rows were added or removed, or changed elsewhere.
 		void Refresh();
 
 		[[nodiscard]] std::optional<size_t> GetSelectedRow() const;
@@ -104,7 +100,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void BeginEdit(size_t row, size_t column, std::optional<wchar_t> typed = std::nullopt);
 		[[nodiscard]] bool IsEditing() const { return m_editor.has_value(); }
 
-		/// Applies what is being edited, if anything; cancels it if refused.
+		/// Cancels the edit if SetText refuses it.
 		void CommitEdit();
 
 		void ApplyTheme(bool dark);

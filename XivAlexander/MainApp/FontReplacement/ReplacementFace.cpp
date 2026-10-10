@@ -86,7 +86,6 @@ FontReplacement::FaceElement* FontReplacement::ReplacementFace::GetElement(char3
 
 	FaceElement* assigned = nullptr;
 	for (const auto& e : m_elements) {
-		// Asked only of elements that would take it.
 		const auto mode = e->Def().MergeMode;
 		if ((mode == codepoint_merge_mode::AddNew && assigned) || (mode == codepoint_merge_mode::Replace && !assigned))
 			continue;
@@ -197,8 +196,7 @@ std::unique_ptr<FontReplacement::IElementFont> FontReplacement::ReplacementFace:
 	if (!def.GlyphMerging.IsEnabled())
 		return font;
 
-	// Texts are drawn with the element's font; glyph images draw them with the font the lookup names, if any, else with
-	// their own files.
+	// Texts are drawn with the element's font; glyph images use the font the lookup names, if any, else their own files.
 	std::unique_ptr<OutlineElementFont> ownTextOutline;
 	if (dynamic_cast<ImageElementFont*>(font.get()) && !def.Lookup.Name.empty())
 		ownTextOutline = OutlineElementFont::Create(rasterizer, def, RendererEnum::DirectWrite, gamma, faceName);
@@ -311,8 +309,7 @@ FontReplacement::RasterGlyph FontReplacement::ReplacementFace::Monospace(const F
 
 	int left;
 	if (mono.MaxAdvance && cell > 0 && glyph.Width > cell) {
-		// Hinting and rounding make the ink only roughly as narrow as the scale says: narrower scales are tried until it
-		// fits.
+		// Hinting and rounding make the ink only roughly as narrow as the scale says: narrower scales are tried until it fits.
 		auto scale = static_cast<float>(cell) / static_cast<float>(glyph.Width);
 		auto fitted = glyph;
 		for (auto attempt = 0; attempt < 8; attempt++) {

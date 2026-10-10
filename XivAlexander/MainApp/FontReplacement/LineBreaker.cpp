@@ -21,8 +21,6 @@ namespace {
 
 FontReplacement::LineBreaker::LineBreaker(FontReplacer& replacer)
 	: m_replacer(replacer) {
-	// uint SplitWord(Wrapper* this, int width, int unused, byte* word, byte* measuredWord, bool lineStart), with its call to
-	// int FitUnits(Wrapper* this, byte* measuredWord, int width, int maxUnits, int* bytes).
 	uintptr_t splitWord = 0, fitUnits = 0;
 	GameLayout::Resolve("Line breaking", [&] {
 		splitWord = GameLayout::Address("SplitWord");
@@ -78,8 +76,7 @@ uint32_t FontReplacement::LineBreaker::SplitWordDetour(uintptr_t wrapper, int wi
 	} catch (const std::exception& e) {
 		Host::Error("Splitting a word failed: {}", e.what());
 
-		// The game's own split can take over a word only at its first split; later ones index the table the game built at
-		// the first. Past that, a forced split at the fit keeps the line filled.
+		// The game's split can take over only at a word's first split, as later ones index the table it built then; past that, force a split at the fit.
 		if (!first) {
 			const auto fit = m_fitUnits(wrapper, measuredWord, width, *reinterpret_cast<const int*>(wrapper + m_maxUnitsOffset) - *reinterpret_cast<const int*>(wrapper + m_usedUnitsOffset), nullptr);
 			return fit <= 0 ? (lineStart ? 1u : 0u) : static_cast<uint32_t>(fit);
@@ -105,8 +102,7 @@ uint32_t FontReplacement::LineBreaker::Split(uintptr_t wrapper, int width, const
 	m_wrapAfter.assign(m_text.size() + 1, 0);
 	m_replacer.Shaper().GetBreaks(m_text, m_clusterEnd, m_wrapAfter);
 
-	// The last break opportunity among the units that fit. A break right after a unit is at the end of its text; a macro has
-	// none of its own.
+	// The last break opportunity among the units that fit, looked up at each unit's text end; a macro has none of its own.
 	auto best = 0;
 	for (auto k = 1; k <= fit; k++) {
 		const auto end = m_units[k - 1].TextEnd;

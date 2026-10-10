@@ -25,8 +25,7 @@
 namespace {
 	constexpr auto PageClassName = L"XivAlexander::Window::SettingsView::Page";
 
-	// The line between the tree and the page, as the host's menu bar has under it, in the middle of where it is
-	// dragged from to resize them.
+	// The tree/page divider, matching the line under the host's menu bar, centered in its wider grab area.
 	constexpr int DividerSize = 1;
 	constexpr int DividerGrabSize = 7;  // At 100% zoom.
 
@@ -68,11 +67,11 @@ namespace {
 	// Latin, Japanese and Korean, so that what the family's sources lack shows.
 	constexpr auto DefaultFontPreviewText = L"The quick brown fox jumps over the lazy dog. 0123456789 いろはにほへと ちりぬるを 漢字とカタカナ 다람쥐 헌 쳇바퀴에 타고파";
 
-	// Meidinger draws the numbers flying over battles: digits and a few signs only. Its sample text is its own.
+	// Meidinger draws the numbers flying over battles: digits and a few signs only, hence its own sample text.
 	constexpr auto MeidingerFamily = "Meidinger";
 	constexpr auto MeidingerPreviewText = L"0123456789?!%+-./";
 
-	// Which sample text a family's page shows and keeps: Meidinger's, or the one the others share.
+	// Meidinger keeps its own sample text; the other families share one.
 	std::string FontPreviewTextKey(const std::string& family) {
 		return family == MeidingerFamily ? family : std::string();
 	}
@@ -84,11 +83,7 @@ namespace {
 	constexpr float MinFontPreviewSize = 4;
 	constexpr float MaxFontPreviewSize = 255;
 
-	// Colors of text in the game, for the previews: a text color and an edge color the game's strings set together with
-	// <colortype(n)> and <edgecolortype(m)> (rows n and m of UIColor, dark theme), and a background to see both on. The
-	// pairs are the most used in the game's sheets' strings as of game version 2026.09.15.0000.0000, counted by
-	// scratch\local\uicolor\uicolor_stats.cpp. 571/572, white on a black edge, is left out as the same as Default;
-	// those setting a text color only (547, an unseen speaker's lines) keep the edge of the text around them.
+	// Common <colortype(n)>/<edgecolortype(m)> pairs (UIColor rows, dark theme) of the game's text; how they were chosen is in private-scratch notes.
 	struct FontPreviewColorPreset {
 		UINT LabelId;
 		COLORREF Text;
@@ -96,21 +91,21 @@ namespace {
 		COLORREF Background;
 	};
 	constexpr FontPreviewColorPreset FontPreviewColorPresets[]{
-		// The game's text without color macros: white, with a dark edge.
+		// The game's text without color macros.
 		{IDS_SETTINGS_FONT_COLORS_DEFAULT, RGB(0xFF, 0xFF, 0xFF), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// 504/505: "Duration:", "Potency:" and other labels in tooltips.
+		// UIColor 504/505.
 		{IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL, RGB(0x00, 0xCC, 0x22), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// 500/501: names of actions and terms in descriptions, and headings.
+		// UIColor 500/501.
 		{IDS_SETTINGS_FONT_COLORS_ACTIONNAME, RGB(0xFF, 0x7B, 0x1A), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// 506/507: names of statuses in descriptions, and notes.
+		// UIColor 506/507.
 		{IDS_SETTINGS_FONT_COLORS_STATUSNAME, RGB(0xFF, 0xFF, 0x66), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// 508/509: warnings, and confirmations of what can't be undone.
+		// UIColor 508/509.
 		{IDS_SETTINGS_FONT_COLORS_WARNING, RGB(0xFF, 0x80, 0x80), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// 533/534: notices such as "This quest has been adjusted...", pale on a red edge.
+		// UIColor 533/534.
 		{IDS_SETTINGS_FONT_COLORS_NOTICE, RGB(0xFF, 0xC8, 0xC8), RGB(0xAE, 0x00, 0x00), RGB(0x30, 0x30, 0x30)},
-		// 582/581: places and things highlighted in some quests, orange on a purple edge.
+		// UIColor 582/581.
 		{IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT, RGB(0xFF, 0xA0, 0x00), RGB(0x40, 0x00, 0x80), RGB(0x30, 0x30, 0x30)},
-		// 7/3: the text of content tutorials, black on a grey edge over a light page.
+		// UIColor 7/3.
 		{IDS_SETTINGS_FONT_COLORS_TUTORIAL, RGB(0x00, 0x00, 0x00), RGB(0xA0, 0xA0, 0xA0), RGB(0xE8, 0xE0, 0xD0)},
 	};
 
@@ -127,8 +122,7 @@ namespace {
 		return s.substr(first, s.find_last_not_of(L" \t") - first + 1);
 	}
 
-	/// Turns a menu item's text into a label: without the shortcut after the tab, and without the access key, whether
-	/// marked in place ("&Enable") or after the text ("有効(&E)").
+	/// Drops the shortcut after the tab and the access key, whether marked in place ("&Enable") or after the text ("有効(&E)").
 	std::wstring CleanMenuText(std::wstring s) {
 		if (const auto tab = s.find(L'\t'); tab != std::wstring::npos)
 			s.resize(tab);
@@ -147,9 +141,7 @@ namespace {
 		return Trim(std::move(res));
 	}
 
-	/// Gets the client GUID of the file dialogs for a purpose, so that each purpose's dialogs remember their own last folder
-	/// instead of sharing one. It is made from the purpose's name (FNV-1a, twice with different starting values), so that it
-	/// stays the same from build to build.
+	/// Per-purpose client GUID so each purpose's dialogs remember their own last folder; FNV-1a of the name (two seeds), stable across builds.
 	GUID DialogGuid(std::string_view purpose) {
 		const auto hash = [purpose](uint64_t value) {
 			for (const auto c : std::string_view("XivAlexander.SettingsView.FileDialog."))
@@ -163,7 +155,7 @@ namespace {
 		GUID guid{
 			.Data1 = static_cast<uint32_t>(high >> 32),
 			.Data2 = static_cast<uint16_t>(high >> 16),
-			// Marked as made by a method of its own (RFC 9562's version 8 and variant), so it can't be taken for another kind.
+			// RFC 9562 version 8 (custom) and variant bits, so it can't be taken for another kind of GUID.
 			.Data3 = static_cast<uint16_t>((high & 0x0FFF) | 0x8000),
 		};
 		for (size_t i = 0; i < 8; ++i)
@@ -172,15 +164,13 @@ namespace {
 		return guid;
 	}
 
-	/// What PickPath asks for.
 	enum class PickKind {
 		Folder,
 		Dll,
-		Preset,  // A font preset (.json).
+		Preset,
 	};
 
-	/// Asks for a folder or a file, starting in initial if it is a folder; purpose tells the dialog's last folder apart
-	/// from other dialogs' (DialogGuid).
+	/// purpose keys the dialog's remembered last folder (DialogGuid).
 	std::optional<std::filesystem::path> PickPath(HWND hOwner, const std::filesystem::path& initial, PickKind kind, std::string_view purpose) {
 		try {
 			IFileOpenDialogPtr pDialog;
@@ -232,7 +222,6 @@ namespace {
 		}
 	}
 
-	/// Opens a folder in Explorer, or the folder of a file with the file selected.
 	void OpenInExplorer(HWND hOwner, const std::filesystem::path& path) {
 		std::error_code ec;
 		if (is_directory(path, ec)) {
@@ -255,7 +244,6 @@ namespace {
 			return std::format(L"{}", value);
 	}
 
-	/// Parses the whole of text as a T; nullopt if it isn't one, or is out of its range.
 	template<typename T>
 	std::optional<T> ParseNumber(const std::wstring& text) {
 		const auto s = Trim(text);
@@ -291,7 +279,6 @@ namespace {
 	}
 }
 
-// DirectWrite, for the names of the system's font families.
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFamily, __uuidof(IDWriteFontFamily));
@@ -315,7 +302,6 @@ namespace {
 		}
 	}
 
-	/// Changes an element of a list of a config item; nothing if it isn't there.
 	template<typename T, typename TFn>
 	void EditAt(XivAlexander::ConfigItem<std::vector<T>>& item, size_t index, TFn&& fn) {
 		auto values = item.Value();
@@ -325,7 +311,7 @@ namespace {
 		item = std::move(values);
 	}
 
-	/// Moves an element of a list, to before the one now at the index to; as GridView::Source::MoveRow.
+	/// Moves to before the element currently at index to, as GridView::Source::MoveRow.
 	template<typename T>
 	void MoveWithin(std::vector<T>& values, size_t from, size_t to) {
 		auto value = std::move(values[from]);
@@ -342,7 +328,6 @@ namespace {
 		};
 	}
 
-	/// Adds an element to a list, and edits a cell of it.
 	template<typename T>
 	std::function<void()> AddTo(XivAlexander::ConfigItem<std::vector<T>>& item, XivAlexander::Apps::MainApp::Window::GridView& grid, T value, size_t column) {
 		return [&item, &grid, value = std::move(value), column] {
@@ -354,7 +339,6 @@ namespace {
 		};
 	}
 
-	/// Removes the selected element of a list.
 	template<typename T>
 	std::function<void()> RemoveFrom(XivAlexander::ConfigItem<std::vector<T>>& item, XivAlexander::Apps::MainApp::Window::GridView& grid) {
 		return [&item, &grid] {
@@ -370,7 +354,7 @@ namespace {
 		};
 	}
 
-	// DirectWrite's names of weights, stretches, and styles, after their values.
+	// DirectWrite's names for weight, stretch, and style values.
 	const std::vector<std::pair<int, const wchar_t*>> FontWeights{
 		{100, L"Thin"}, {200, L"Extra Light"}, {300, L"Light"}, {350, L"Semi Light"}, {400, L"Regular"}, {500, L"Medium"},
 		{600, L"Semi Bold"}, {700, L"Bold"}, {800, L"Extra Bold"}, {900, L"Black"}, {950, L"Extra Black"},
@@ -391,9 +375,7 @@ namespace {
 		return std::format(L"{}", value);
 	}
 
-	/// For the text of a button, which would take an ampersand as the start of a shortcut.
-	// The box of a label being edited in the tree takes Enter and Esc, which the window, as a dialog, would otherwise take
-	// as its OK and Cancel before the box sees them.
+	// The tree's label edit box takes Enter and Esc, which the dialog would otherwise take first as OK and Cancel.
 	constexpr UINT_PTR LabelEditSubclassId = 1;
 	LRESULT CALLBACK LabelEditSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
 		if (uMsg == WM_GETDLGCODE)
@@ -458,8 +440,7 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	std::unique_ptr<XivAlexander::Apps::MainApp::Window::GridView> Grid;
 	int Height = 0;  // Of a grid, at 100% zoom.
 	int FlowGroup = 0;  // Of a check row without a description: side by side with the rows before it of the same group.
-	// Of an edit or combo row without a description: on one line with the rows next to it of the same group, each label
-	// as wide as its text and each control LineWidth wide (at 100% zoom), but the last, which takes the rest of the line.
+	// Edit/combo rows without a description share a line per group: labels fit their text, controls are LineWidth (100% zoom), the last takes the rest.
 	int LineGroup = 0;
 	int LineWidth = 0;
 	bool CommitOnChange = false;  // Of an edit row: as it is typed into, rather than when left.
@@ -473,11 +454,9 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	const Row* TabOwner{};  // Of a row in a tab: the tabs row,
 	int TabIndex = -1;  // and its tab.
 
-	// Shows the item's value in the controls.
 	std::function<void()> Refresh;
-	// Sets the item to what is in the controls.
 	std::function<void()> Commit;
-	// A click on the label, the control, or a button (RowPart).
+	// Takes the RowPart clicked.
 	std::function<void(int)> Click;
 };
 
@@ -516,7 +495,6 @@ namespace {
 		row.Type = TRow::RowType::Edit;
 		row.Refresh = [&row, item] { SetWindowTextW(row.Control, FormatNumber(item->Value()).c_str()); };
 		row.Commit = [&row, item] {
-			// What can't be read goes back to the current value.
 			if (const auto value = ParseNumber<T>(GetText(row.Control)))
 				*item = *value;
 			row.Refresh();
@@ -524,7 +502,7 @@ namespace {
 		return true;
 	}
 
-	/// For an opcode: shown in hexadecimal, as the opcode configuration has them; read in any base C accepts.
+	/// Opcodes: shown in hex as the opcode configuration has them; read in any base wcstoul accepts.
 	template<typename TRow>
 	bool BindHex16(TRow& row) {
 		const auto item = dynamic_cast<XivAlexander::ConfigItem<uint16_t>*>(row.Item);
@@ -616,7 +594,6 @@ namespace {
 		return true;
 	}
 
-	/// For a number with suggested values; makeChoices gives them, with their labels.
 	template<typename T, typename TRow, typename TMakeChoices>
 	bool BindNumberCombo(TRow& row, TMakeChoices&& makeChoices) {
 		const auto item = dynamic_cast<XivAlexander::ConfigItem<T>*>(row.Item);
@@ -635,7 +612,6 @@ namespace {
 			}
 		};
 		row.Commit = [&row, item, choices] {
-			// A choice's label stands for its value; anything else is read as a number, or goes back to the current value.
 			const auto text = Trim(GetText(row.Control));
 			if (const auto it = std::ranges::find(*choices, text, &std::pair<T, std::wstring>::second); it != choices->end())
 				*item = it->first;
@@ -653,7 +629,6 @@ namespace {
 		return true;
 	}
 
-	/// For an item of enum type T; makeChoices gives the values to choose from, with their labels.
 	template<typename T, typename TRow, typename TMakeChoices>
 	bool BindEnum(TRow& row, TMakeChoices&& makeChoices) {
 		const auto item = dynamic_cast<XivAlexander::ConfigItem<T>*>(row.Item);
@@ -674,7 +649,6 @@ namespace {
 		return true;
 	}
 
-	/// Lists every value of an enum serialized by name, labelled by that name.
 	template<typename T>
 	std::vector<std::pair<T, std::wstring>> NamedChoices(std::initializer_list<T> values) {
 		std::vector<std::pair<T, std::wstring>> res;
@@ -685,7 +659,7 @@ namespace {
 }
 
 namespace {
-	/// Whether the row takes typed text, and has the focus: the edit of an editable combo box is its child.
+	/// The edit of an editable combo box is its child.
 	template<typename TRow>
 	bool IsTypingInto(const TRow& row, HWND hFocus) {
 		switch (row.Type) {
@@ -713,7 +687,6 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 	, m_batchTtmp(std::move(batchTtmp)) {
 	InitializeItemInfo();
 
-	// The windows made here pass their messages to this object, which they have as GWLP_USERDATA.
 	const auto registerClass = [](LPCWSTR className, WNDPROC wndProc) {
 		const WNDCLASSEXW wcex{
 			.cbSize = sizeof(WNDCLASSEXW),
@@ -772,10 +745,10 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 	// The labels of version-sensitive items are marked while those features are off for this session.
 	m_cleanup += m_config->Runtime.OnVersionSensitiveFeaturesAllowedChange([this] { PostMessageW(m_hWnd, WmRebuildPage, 0, 0); });
 
-	// The cooldowns, from the latency helper, which comes and goes with its setting: after the app has made or removed it.
+	// The latency helper reporting cooldowns comes and goes with its setting; listen again after the app has made or removed it.
 	m_cleanup += m_config->Runtime.NetworkTiming.Enabled.AddAndCallOnChange([this] { PostMessageW(m_hWnd, WmListenToCooldowns, 0, 0); });
 
-	// The ModPacks are loaded on another thread, after this; their folders are in the tree.
+	// The ModPacks are loaded on another thread after this, and their folders go in the tree.
 	m_cleanup += m_app.GetResourceOverrider().OnVirtualSqPacksInitialized([this] { PostMessageW(m_hWnd, WmTtmpSetsChanged, 0, 0); });
 	ListenToTtmps();
 
@@ -951,8 +924,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	})
 		m_itemInfo[item].PickFiles = true;
 
-	// Worked out by the repository, set by the version prompt, or shown on a page of its own; the animation lock
-	// durations are left to editing the file.
+	// Worked out by the repository, set by the version prompt, or shown on their own page; animation lock durations are left to editing the file.
 	for (const ConfigItemBase* item : {
 		static_cast<ConfigItemBase*>(&rt.Launch.RememberedLanguage),
 		static_cast<ConfigItemBase*>(&rt.Launch.RememberedRegion),
@@ -967,7 +939,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	})
 		m_itemInfo[item].Hidden = true;
 
-	// What turning version-sensitive features off turns off.
 	for (const ConfigItemBase* item : {
 		static_cast<ConfigItemBase*>(&rt.Launch.UseLoginSessionSwitching),
 		static_cast<ConfigItemBase*>(&rt.Modding.Enabled),
@@ -1007,7 +978,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		{.LabelId = IDS_SETTINGS_PAGE_GAMEBEHAVIOR, .Children = {
 			{.MenuPosition = 2, .Groups = {&rt.NetworkTiming, &rt.Socket}, .Headings = true, .Children = {
 				{.Groups = {&rt.Opcodes}},
-			}, .AddFirst = [commands] { commands({ID_NETWORK_RELEASEALLCONNECTIONS, ID_NETWORK_RESETALLCONNECTIONS}); }},
+			}, .AddFirst = [commands] { commands({ID_NETWORK_RESETALLCONNECTIONS}); }},
 			{.Groups = {&rt.Modding}, .Children = {
 				{.Kind = Kind::TtmpFolder},
 				{.Groups = {&rt.FontReplacement}, .Children = std::move(fontFamilyNodes)},
@@ -1022,7 +993,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 			{.Kind = Kind::PatchCodes, .LabelId = IDS_SETTINGS_PAGE_PATCHCODES},
 			{.Groups = {&rt.GameWindow}},
 		}},
-		// The loading of other DLLs on a page of its own.
 		{.LabelId = IDS_SETTINGS_PAGE_CONFIGURATION, .Groups = {&rt.Ui}, .Headings = true, .Children = {
 			{.Groups = {&rt.ChainLoad}},
 		}, .AddLast = [this, &rt, commands] {
@@ -1280,7 +1250,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupSection(const Co
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupRows(const ConfigNode& node) {
-	// A group's check boxes may go side by side: each group's of its own.
+	// Check boxes go side by side only with those of the same group, identified by its address.
 	const auto nodeGroup = dynamic_cast<const ConfigGroup*>(&node);
 	const auto nodeInfo = nodeGroup ? FindItemInfo(*nodeGroup) : nullptr;
 	const auto flowGroup = nodeInfo && nodeInfo->Flow ? static_cast<int>(reinterpret_cast<uintptr_t>(&node) & 0x7FFFFFFF) : 0;
@@ -1300,7 +1270,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddGroupRows(const Confi
 			m_rows.back()->FlowGroup = flowGroup;
 	}
 
-	// Inline groups follow, each under its heading, with theirs in turn.
 	for (const auto item : node.Items()) {
 		const auto group = dynamic_cast<const ConfigGroup*>(item);
 		if (const auto info = group ? FindItemInfo(*group) : nullptr; info && info->Inline)
@@ -1313,7 +1282,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddPatchCodeRows() {
 	auto& enabled = rt.Opcodes.EnabledPatchCodes;
 	const auto entries = m_config->PatchCode.GetEntries();
 
-	// As the menu has them. A fix is enabled by its digest, of its contents: renaming its file keeps it enabled.
+	// A fix is enabled by the digest of its contents, so renaming its file keeps it enabled.
 	const auto mark = rt.AreVersionSensitiveFeaturesDisabledTemporarily() ? L"(!) " : L"";
 	auto& grid = CreateGridRow({}, 0, 220, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
@@ -1486,8 +1455,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddRestartRows() {
 		GetMenuText(IDR_TRAY_MENU, ID_RESTART_COPYLAUNCHCOMMANDLINE),
 		[this] { PostMessageW(m_hWndOwner, WM_COMMAND, ID_RESTART_COPYLAUNCHCOMMANDLINE, 0); });
 
-	// What the next restart uses, as the menu had them, each kind on lines of its own; choosing one doesn't restart, as
-	// the menu did.
+	// What the next restart uses, as the menu had them, each kind on its own lines; unlike the menu, choosing one doesn't restart.
 	const auto choice = [this](UINT commandId, bool checkBox, int flowGroup) {
 		CreateChoiceRow(GetMenuText(IDR_TRAY_MENU, commandId), m_restartChoices.GetState(commandId).second,
 			[this, commandId] { return m_restartChoices.GetState(commandId).first; },
@@ -1497,8 +1465,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddRestartRows() {
 	for (const auto commandId : {ID_RESTART_USEXIVALEXANDER, ID_RESTART_USEPARAMETEROBFUSCATION, ID_RESTART_USEELEVATION})
 		choice(commandId, true, 1);
 
-	// The languages and regions that can't be chosen, of other publishers or for an installation that doesn't allow it,
-	// aren't shown; nor is remembering them when none is.
+	// Languages and regions that can't be chosen (other publishers', or disallowed by the installation) are hidden; so is Remember if none can be.
 	const auto choices = [this, &rt, &choice](const std::wstring& heading, std::initializer_list<UINT> commandIds, UINT rememberId, int flowGroup) {
 		if (std::ranges::none_of(commandIds, [this](UINT commandId) { return m_restartChoices.GetState(commandId).second; }))
 			return;
@@ -1516,8 +1483,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddRestartRows() {
 	}, ID_RESTART_LANGUAGE_REMEMBER, 2);
 	choices(rt.GetStringRes(IDS_SETTINGS_RESTART_REGION), {ID_RESTART_REGION_JAPAN, ID_RESTART_REGION_NORTH_AMERICA, ID_RESTART_REGION_EUROPE}, ID_RESTART_REGION_REMEMBER, 4);
 
-	// Switching the sessions, and the sessions to choose from.
-	// Forgetting the stored ones is by the heading, asked first; the launch arguments' session isn't stored.
+	// Forgetting the stored sessions is by the heading, asked first; the launch arguments' session isn't stored.
 	auto anyStored = false;
 	if (auto& loginSessions = m_app.GetLoginSessions()) {
 		m_rowCleanup += loginSessions->OnChange([this] { PostMessageW(m_hWnd, WmRebuildPage, 0, 0); });
@@ -1707,7 +1673,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateNumberRow(const st
 	row.Control = CreateRowControl(PartControl, WS_EX_CLIENTEDGE, WC_EDITW, L"", WS_TABSTOP | ES_AUTOHSCROLL);
 	row.Refresh = [&row, getText = std::move(getText)] { SetWindowTextW(row.Control, getText().c_str()); };
 	row.Commit = [&row, setText = std::move(setText)] {
-		// What can't be read goes back to what was there.
 		setText(GetText(row.Control));
 		row.Refresh();
 	};
@@ -1942,8 +1907,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ListenToTtmps() {
 }
 
 bool XivAlexander::Apps::MainApp::Window::SettingsView::AttachTtmpNodes(bool force) {
-	// Under the node of the TexTools ModPacks, which is the page of those in no folder: the folders as they nest and the
-	// packs, each folder with its own, all in the library's order.
+	// Under the TexTools ModPacks node (the page of those in no folder): the nested folders and packs, in the library's order.
 	TreeNode* pGroupNode{};
 	const std::function<void(std::vector<TreeNode>&)> findGroupNode = [&](std::vector<TreeNode>& nodes) {
 		for (auto& node : nodes) {
@@ -2018,8 +1982,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::OnTtmpSetsChanged() {
 	const auto shownPath = m_pNode ? m_pNode->TtmpPath : std::filesystem::path();
 	const auto showingTtmp = shownKind == Kind::TtmpFolder || shownKind == Kind::TtmpPack;
 	if (AttachTtmpNodes(false)) {
-		// Where it went by a rename or a move here; else what was shown, if it still is there; else, for a ModPack,
-		// its folder; else the packs in no folder.
+		// Where a rename or move here put it; else what was shown, if still there; else a ModPack's folder; else the packs in no folder.
 		if (!m_ttmpToReselect.empty()) {
 			const std::function<const TreeNode*(const std::vector<TreeNode>&)> find = [&](const std::vector<TreeNode>& nodes) -> const TreeNode* {
 				for (const auto& node : nodes) {
@@ -2070,7 +2033,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::OnTtmpSetsChanged() {
 	if (shownKind != Kind::TtmpFolder)
 		return;
 
-	// The same folders and packs, in the same order: only what they show; else the page anew, keeping the filter.
+	// The same folders and packs in the same order: refresh what they show; else build the page anew, keeping the filter.
 	std::vector<std::filesystem::path> packs;
 	if (const auto& sqpacks = m_app.GetResourceOverrider().GetVirtualSqPacks(); sqpacks && m_ttmpPage && m_ttmpPage->Folder) {
 		const auto lock = sqpacks->LockTtmps();
@@ -2131,7 +2094,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 	}
 	m_ttmpPage = page;
 
-	// Whether the folder is used, and what is done with it; the top level has neither a switch nor a name.
+	// The top level has neither an enable switch nor a name.
 	const auto pFolder = page->Folder;
 	if (folder.empty()) {
 		CreateActionRow({{menuText(ID_MODDING_TTMP_IMPORT), command(ID_MODDING_TTMP_IMPORT)}, {menuText(ID_MODDING_TTMP_REFRESH), command(ID_MODDING_TTMP_REFRESH)}});
@@ -2154,7 +2117,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 		return;
 	}
 
-	// Applied as it is typed.
 	CreateNumberRow(rt.GetStringRes(IDS_SETTINGS_TTMP_FILTER), {}, {});
 	auto& filterRow = *m_rows.back();
 	filterRow.Refresh = nullptr;
@@ -2162,11 +2124,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 		m_ttmpFilter = GetText(filterRow.Control);
 		FilterTtmps();
 	};
-	// Setting the text tells of a change at once; it is applied only after.
+	// Before CommitOnChange: setting the text notifies a change at once.
 	SetWindowTextW(filterRow.Control, m_ttmpFilter.c_str());
 	filterRow.CommitOnChange = true;
 
-	// Several may be selected, and acted on together; a double click opens one's own page.
 	const auto requiresRestart = menuText(ID_MODDING_TTMP_ENTRY_REQUIRESRESTART);
 	const std::wstring folderStatus = rt.GetStringRes(IDS_SETTINGS_DIRS_FOLDER);
 	const auto packAt = [page](size_t row) -> NestedTtmp& { return *page->Items[page->Shown[row]]; };
@@ -2189,7 +2150,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 	}, {
 		.GetRowCount = [page] { return page->Shown.size(); },
 		.GetText = [packAt, requiresRestart, folderStatus](size_t row, size_t column) -> std::wstring {
-			// A folder is named by its directory, and says it is one.
 			const auto& item = packAt(row);
 			if (!item.Ttmp)
 				return column == 1 ? item.Path.filename().wstring() : column == 4 ? folderStatus : std::wstring();
@@ -2205,7 +2165,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 		.GetChecked = [packAt](size_t row, size_t) { return packAt(row).Enabled; },
 		.SetChecked = [this, packAt](size_t row, size_t, bool checked) { SetTtmpEnabled(packAt(row), checked); },
 		.MoveRow = [this, page](size_t from, size_t to) {
-			// Among all of them only: the order of some isn't where they go among the rest.
+			// Unfiltered only: a filtered order doesn't tell where they go among the rest.
 			if (!Trim(m_ttmpFilter).empty()) {
 				MessageBeep(MB_ICONWARNING);
 				return;
@@ -2217,7 +2177,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpFolderRows(const 
 			RunTtmpOperation([&] { sqpacks->SetTtmpOrder(page->Folder, children); });
 		},
 		.Activate = [this, packAt](size_t row) {
-			// After the grid is done with the click: the page it is on goes.
+			// Posted, so the grid is done with the click before the page it is on goes.
 			m_ttmpPackToSelect = packAt(row).Path;
 			PostMessageW(m_hWnd, WmSelectTtmpPack, 0, 0);
 		},
@@ -2302,7 +2262,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::FilterTtmps() {
 	if (!page || !page->Grid)
 		return;
 
-	// By name or author, ignoring case.
 	const auto lower = [](std::wstring s) {
 		if (!s.empty())
 			CharLowerBuffW(s.data(), static_cast<DWORD>(s.size()));
@@ -2322,8 +2281,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::FilterTtmps() {
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpProfileRow() {
-	// Which profile's choices are used, as the library picks it: the active one, or else the first. Only with more than one
-	// to switch between.
+	// Selected as the library picks it: the active one, or else the first; shown only with more than one.
 	auto& item = m_config->Runtime.Modding.Ttmp.ChoicesFiles;
 	const auto profiles = item.Value();
 	m_rowCleanup += item.OnChange([this] { PostMessageW(m_hWnd, WmRebuildPage, 0, 0); });
@@ -2397,7 +2355,6 @@ std::shared_ptr<XivAlexander::Apps::MainApp::Features::Modding::NestedTtmp> XivA
 	if (!sqpacks || path.empty())
 		return nullptr;
 
-	// A folder or a ModPack.
 	const auto lock = sqpacks->LockTtmps();
 	std::shared_ptr<NestedTtmp> found;
 	const std::function<void(const std::shared_ptr<NestedTtmp>&)> find = [&](const std::shared_ptr<NestedTtmp>& parent) {
@@ -2443,7 +2400,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::ShowTtmpMoveMenu(std::ve
 	if (!sqpacks || items.empty())
 		return;
 
-	// The top level of each searched directory, then the folders as they nest; where they are is unavailable.
+	// Each searched directory's top level, then the nested folders; where a single item already is, is grayed.
 	std::vector<std::filesystem::path> targets;
 	const auto hMenu = CreatePopupMenu();
 	const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
@@ -2497,7 +2454,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::MoveTtmpToNewFolder(cons
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::RenameTtmpInTree(const std::filesystem::path& path) {
-	// After the list is done with the key or the menu: its page goes once the pack's is shown.
+	// Posted, so the list is done with the key or the menu before its page goes for the pack's.
 	m_ttmpPackToSelect = path;
 	m_ttmpRenameAfterSelect = true;
 	PostMessageW(m_hWnd, WmSelectTtmpPack, 0, 0);
@@ -2506,7 +2463,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::RenameTtmpInTree(const s
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpDetailRows(const std::shared_ptr<Features::Modding::NestedTtmp>& pack) {
 	const auto& set = *pack->Ttmp;
 	const auto& list = set.List;
-	// Without what it doesn't say.
 	auto heading = Wide(set.DisplayName());
 	if (!list.Author.empty() && !list.Version.empty())
 		heading += std::format(L" - {}, {}", Wide(list.Author), Wide(list.Version));
@@ -2527,7 +2483,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTtmpDetailRows(const 
 		}}});
 	}
 
-	// Each group of options under its name: one of them, or any of them if it allows more.
 	auto flowGroup = 0;
 	for (size_t pageIndex = 0; pageIndex < list.ModPackPages.size(); ++pageIndex) {
 		const auto& groups = list.ModPackPages[pageIndex].ModGroups;
@@ -2630,7 +2585,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::DeleteTtmps(const std::v
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddFallbackPriorityRows() {
-	// Every language, in the order used: those not listed come after the listed, so all are shown, and moving one lists them all.
+	// Every language in the order used: those not listed come after the listed, so moving one lists them all.
 	auto& rt = m_config->Runtime;
 	auto& item = rt.Modding.Languages.FallbackPriority;
 	CreateGridRow(GetItemLabel(item), IDS_SETTINGS_FALLBACK_DESC, 190, {
@@ -2707,7 +2662,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddChoicesFileRows() {
 			return true;
 		},
 		.SetChecked = [&item](size_t row, size_t, bool checked) {
-			// None, or one.
 			auto profiles = item.Value();
 			for (size_t i = 0; i < profiles.size(); ++i)
 				profiles[i].Active = i == row ? checked : false;
@@ -2738,8 +2692,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddEdgeRows() {
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_MAX), 0.25, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Max); }, setter(&FontReplacementEdgeConfig::Max));
 	m_rowCleanup += edge.OnChange([this] { PostMessageW(m_hWnd, WmRefreshRows, 0, 0); });
 
-	// A preview to judge the edge by, of the family of most of the UI's text (or the first there is), drawn again as the
-	// rows are refreshed: as the sliders move.
+	// The edge is previewed on the family of most of the UI's text (or the first there is), redrawn as the sliders refresh the rows.
 	auto family = std::string(EdgePreviewFamily);
 	if (FontReplacement::GameFontNames::FacesOf(family).empty() && !m_fontFamilies.empty())
 		family = m_fontFamilies.front();
@@ -2753,8 +2706,7 @@ const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::
 }
 
 std::vector<std::wstring> XivAlexander::Apps::MainApp::Window::SettingsView::ListPresets() {
-	// Paths relative to the presets folder, as the sources keep them; not the font.json of glyph image folders imported
-	// along with their presets, which are no presets.
+	// Relative to the presets folder, as the sources keep them; skips the font.json of glyph image folders imported with presets.
 	std::vector<std::wstring> res;
 	const auto& folder = GetFontPresetFolder();
 	std::error_code ec;
@@ -2809,8 +2761,7 @@ std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::Ch
 	if (!picked)
 		return std::nullopt;
 
-	// One already in the presets folder is used by its path relative to it. Both are made canonical first, so that a
-	// path through a link, or of another case, is still found to be in it.
+	// Canonical first, so a path through a link or in another case is still found to be in the presets folder.
 	std::error_code ec;
 	auto canonicalFolder = weakly_canonical(folder, ec);
 	if (ec)
@@ -2821,9 +2772,7 @@ std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::Ch
 	if (const auto relative = canonicalPicked.lexically_relative(canonicalFolder); !relative.empty() && *relative.begin() != L"..")
 		return Utf8(relative.wstring());
 
-	// Otherwise it is imported, or used where it is. Glyph images it reads from folders next to it would be left behind by
-	// copying the preset alone; they are copied along with it if they are under its folder, and if any isn't, it can only
-	// be used where it is.
+	// Glyph image folders it reads are copied along only if under its folder; if any isn't, it can only be used where it is.
 	std::vector<std::filesystem::path> glyphFolders;
 	try {
 		glyphFolders = FontReplacement::Presets::RelativeGlyphImageFolders(*picked);
@@ -2881,7 +2830,6 @@ std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::Ch
 			return Utf8(picked->lexically_normal().wstring());
 
 		default:
-			// Closed, or cancelled.
 			return std::nullopt;
 	}
 }
@@ -2890,7 +2838,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 	auto& rt = m_config->Runtime;
 	auto& item = rt.FontReplacement.Faces.Families;
 
-	// The family's settings, and setting them: a family as the defaults have it, on and without sources, is left out.
+	// A family as the defaults have it (on, without sources) is left out.
 	const auto getFamily = [&item, family]() -> const FontReplacementFamily& {
 		static const FontReplacementFamily defaults;
 		const auto& all = item.Value();
@@ -2946,7 +2894,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			grid.Select(std::min(*selected, get().size() - 1));
 	};
 
-	// Whether the family is replaced, as a folder or a ModPack is used, with what is done with its sources in the menu.
 	CreateEnabledRow(
 		[getFamily] { return getFamily().Enabled; },
 		[this, getFamily, setFamily] {
@@ -3089,8 +3036,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 		return;
 	auto& rt = m_config->Runtime;
 
-	// The family's sizes are offered; any other can be typed. The size last chosen, or the one nearest the size most text
-	// is drawn at.
+	// The size last chosen, else the family's size nearest 14, which most text is drawn at; other sizes can be typed.
 	std::vector<float> sizes;
 	for (const auto size : faces | std::views::values) {
 		if (std::ranges::find(sizes, size) == sizes.end())
@@ -3104,7 +3050,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 		text = textKey == MeidingerFamily ? MeidingerPreviewText : DefaultFontPreviewText;
 	m_fontPreview = std::make_unique<FontPreview>(FontPreview{.Family = family, .Faces = std::move(faces)});
 
-	// The size and what goes with it share a line, the size box as wide as a number needs.
 	constexpr int LineGroup = 1;
 	auto pSizeRow = std::make_unique<Row>();
 	auto& sizeRow = *pSizeRow;
@@ -3116,8 +3061,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 	for (const auto size : sizes)
 		ComboBox_AddString(sizeRow.Control, FormatNumber(size).c_str());
 	sizeRow.Refresh = [this, &sizeRow, family] { SetWindowTextW(sizeRow.Control, FormatNumber(m_fontPreviewSizes[family]).c_str()); };
-	// Drawn as it is typed, once typing stops for a while. A size is drawn as the replacement draws it: rounded to half
-	// pixels, from 4 to 255 px; what isn't a size is left alone while it is typed, and shown as it was once the box is left.
+	// Rounded to half pixels and clamped as the replacement draws; text that isn't a size stays while typed and reverts once the box is left.
 	sizeRow.CommitOnChange = true;
 	sizeRow.Commit = [this, &sizeRow, family] {
 		if (const auto value = ParseNumber<float>(GetText(sizeRow.Control)); value && std::isfinite(*value) && *value > 0) {
@@ -3140,7 +3084,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 	m_rows.emplace_back(std::move(pSizeRow));
 
 	if (edgePage) {
-		// The colors of every page's preview, for the session.
 		std::vector<std::wstring> colorChoices;
 		for (const auto& preset : FontPreviewColorPresets)
 			colorChoices.emplace_back(rt.GetStringRes(preset.LabelId));
@@ -3152,7 +3095,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 		});
 		m_rows.back()->LineGroup = LineGroup;
 	} else {
-		// Drawn as it is typed, once typing stops for a while; as the TexTools ModPacks' filter, it is not set back.
+		// Like the TexTools ModPacks' filter, it is never set back by a refresh.
 		CreateNumberRow(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_TEXT), {}, {});
 		auto& textRow = *m_rows.back();
 		textRow.LineGroup = LineGroup;
@@ -3161,7 +3104,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 			m_fontPreviewTexts[textKey] = GetText(textRow.Control);
 			RequestFontPreview(FontPreviewDelay);
 		};
-		// Setting the text tells of a change at once; it is applied only after.
+		// Before CommitOnChange: setting the text notifies a change at once.
 		SetWindowTextW(textRow.Control, m_fontPreviewTexts[textKey].c_str());
 		textRow.CommitOnChange = true;
 	}
@@ -3175,8 +3118,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const
 		: std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_DESC)), SS_LEFT | SS_NOPREFIX);
 	row.Control = CreateRowControl(PartControl, 0, FontPreviewClassName, L"", 0);
 	SetWindowLongPtrW(row.Control, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-	// Asked for again whenever the page's rows are refreshed, as they are when the sources change; the faces are kept if
-	// the sources are the same, so that costs only drawing the text.
+	// Requested again on every refresh (as when the sources change); the faces are kept if the sources are the same, so it only redraws text.
 	row.Refresh = [this] { RequestFontPreview(FontPreviewDelay); };
 	m_fontPreview->Control = row.Control;
 	m_rows.emplace_back(std::move(pRow));
@@ -3192,8 +3134,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::RequestFontPreview(std::
 	if (rc.right <= 0 || rc.bottom <= 0)
 		return;
 
-	// The page's first image is wanted at once; the previewer posts here, and whether the image is still wanted is told
-	// when it is taken.
+	// The page's first image is wanted at once; whether a posted image is still wanted is decided when it is taken.
 	if (!m_fontPreview->Generation)
 		delay = std::chrono::milliseconds(0);
 	if (!m_fontPreviewer)
@@ -3245,8 +3186,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::PaintFontPreview(HWND hw
 	GetClientRect(hwnd, &rc);
 	const auto& colors = GetThemeColors(IsDarkModeEnabled());
 
-	// The image at the top left, which is of the size it was asked for; the page's background around it, until it is
-	// drawn anew at the new size.
+	// The image keeps the size it was asked for; the page's background fills around it until it is drawn anew at the new size.
 	const auto pImage = m_fontPreview && m_fontPreview->Control == hwnd && m_fontPreview->Image ? &*m_fontPreview->Image : nullptr;
 	auto drawnWidth = 0, drawnHeight = 0;
 	if (pImage && pImage->Pixels.size() == static_cast<size_t>(pImage->Width) * pImage->Height) {
@@ -3269,8 +3209,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::PaintFontPreview(HWND hw
 			FillRect(hdc, &r, *m_backgroundBrush);
 	}
 
-	// What couldn't be read, and why the edge isn't drawn, along the bottom, in the text's color: the image's background
-	// is the preview's colors', not the page's.
+	// In the preview's text color: the image's background is the preview's colors', not the page's.
 	auto failures = pImage ? Wide(pImage->Failures) : std::wstring();
 	if (pImage && !pImage->EdgeFailure.empty())
 		failures += (failures.empty() ? L"" : L"\n") + m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_PREVIEW_NOEDGE, Wide(pImage->EdgeFailure));
@@ -3372,7 +3311,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRichTextRow(const 
 	row.Description = CreateRowControl(PartDescription, 0, MSFTEDIT_CLASS, L"", ES_MULTILINE | ES_READONLY | ES_NOHIDESEL);
 	row.Button1 = CreateRowControl(PartButton1, 0, WC_BUTTONW, rt.GetStringRes(IDS_SETTINGS_SHOWMORE), WS_TABSTOP | BS_PUSHBUTTON | BS_NOTIFY);
 
-	// Paragraphs as the control takes them, and links told to the page.
+	// CRLF paragraphs, as the control takes them; links are notified to the page.
 	std::wstring normalized;
 	for (size_t i = 0; i < text.size(); ++i) {
 		if (text[i] == L'\r' && i + 1 < text.size() && text[i + 1] == L'\n')
@@ -3407,7 +3346,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRichTextRow(const 
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::CreateEnabledRow(std::function<bool()> isChecked, std::function<void()> toggle, std::vector<std::pair<std::wstring, std::function<void()>>> actions) {
-	// Whether the page's folder, pack, or family is used, with what can be done with it in a menu at the line's end.
 	auto& rt = m_config->Runtime;
 	auto pRow = std::make_unique<Row>();
 	auto& row = *pRow;
@@ -3442,7 +3380,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateEnabledRow(std::fu
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddTabbedRows() {
-	// The page's lists, each in a tab; the tab chosen last for them is chosen again.
+	// The tab chosen last for these lists is chosen again.
 	if (m_deferredTabbed.empty())
 		return;
 	const auto items = std::exchange(m_deferredTabbed, {});
@@ -3489,7 +3427,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTabbedRows() {
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::CreateHeadingRow(const std::wstring& text, const std::wstring& checkLabel, bool enabled, std::function<bool()> isChecked, std::function<void()> toggle,
 	const std::wstring& linkLabel, std::function<void()> link) {
-	// A heading with a check box right after it, for a choice about the whole section.
 	auto pRow = std::make_unique<Row>();
 	auto& row = *pRow;
 	row.Type = Row::RowType::Heading;
@@ -3837,8 +3774,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 			SelectObject(hdc, *m_font);
 			int rowHeight;
 			if (row->LineGroup) {
-				// After the row before it of its group, on its line if the label and a little of the control fit; the last
-				// of the group (or of the line) takes the rest of the line.
+				// On the previous row's line if the label and a little of the control fit; the group's (or line's) last takes the rest.
 				const auto next = &row + 1 != m_rows.data() + m_rows.size() ? (&row)[1].get() : nullptr;
 				const auto labelText = GetText(row->Label);
 				RECT rcLabel{};
@@ -3870,7 +3806,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 						break;
 					}
 
-					// The heading as wide as its text, in its bold font, and its check box after it on the same line.
 					SelectObject(hdc, *m_boldFont);
 					RECT rcHeading{};
 					const auto heading = GetText(row->Label);
@@ -3902,7 +3837,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::Tabs: {
-					// Side by side, as wide as each needs, going on to the next line where one doesn't fit.
 					auto x = pad;
 					auto lineY = y;
 					for (const auto hButton : row->Tabs) {
@@ -3923,7 +3857,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::RichText: {
-					// Three lines, with a button for the rest, if there is more; the control has a margin of its own.
+					// Three lines, with a button for the rest if there is more; the control has a margin of its own.
 					const auto full = measure(row->Description, std::max(1, inner - scale(8))) + scale(4);
 					const auto collapsed = lineHeight * 3 + scale(4);
 					const auto shortened = full > collapsed;
@@ -3943,7 +3877,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::Action: {
-					// Each as wide as its text needs, side by side, going on to the next line where one doesn't fit.
 					auto x = pad;
 					auto lineY = y;
 					for (const auto hButton : {row->Button1, row->Button2, row->Button3, row->Button4}) {
@@ -3966,7 +3899,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::Grid: {
-					// Its label and description above, the full width.
 					auto gridY = y;
 					if (const auto labelHeight = measure(row->Label, inner)) {
 						place(row->Label, pad, gridY, inner, labelHeight);
@@ -3983,7 +3915,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::Preview: {
-					// Its description above, the full width, at its own height.
 					auto previewY = y;
 					if (const auto descriptionHeight = measure(row->Description, inner)) {
 						place(row->Description, pad, previewY, inner, descriptionHeight);
@@ -3996,15 +3927,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				case Row::RowType::Check: {
-					// The button has its label, and is as wide as it needs, wrapping it at the page's width; a line is
-					// left above and below for the focus. A group's heading is spaced and measured as one.
+					// The button holds its label, wrapped at the page's width, with a pixel above and below for the focus; a group's heading is spaced as one.
 					if (row->Bold) {
 						y += scale(8);
 						SelectObject(hdc, *m_boldFont);
 					}
 					const auto text = GetText(row->Control);
-					// Where the button draws its label, so that the description lines up with it: after its glyph and a third
-					// of the glyph's width, as the theme and CustomDrawDarkButton place it.
+					// Where the button draws its label, to line the description up: glyph plus a third of it, as the theme and CustomDrawDarkButton do.
 					const auto textX = [&] {
 						if (const auto hTheme = OpenThemeData(row->Control, L"Button")) {
 							const auto type = GetWindowLongPtrW(row->Control, GWL_STYLE) & BS_TYPEMASK;
@@ -4022,7 +3951,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 					const auto singleWidth = textX + static_cast<int>(rcLine.right) + scale(6);
 
 					if (row->FlowGroup) {
-						// After the one before it of its group, on its line if it fits, or else at the start of the next.
 						if (previousFlowGroup == row->FlowGroup && flowX + singleWidth <= pad + inner)
 							y -= lineHeight + 2 + rowGap;
 						else
@@ -4079,7 +4007,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 				}
 
 				default: {
-					// The label and its description on the left, the control on the right.
 					const auto labelWidth = inner * 45 / 100;
 					const auto controlX = pad + labelWidth + gap;
 					const auto controlWidth = inner - labelWidth - gap;
@@ -4154,7 +4081,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 	SetScrollInfo(m_hPage, SB_VERT, &si, TRUE);
 	InvalidateRect(m_hPage, nullptr, TRUE);
 
-	// The font preview is drawn at its size: anew once that changes, as the page is resized.
+	// The font preview is drawn at its control's size, so anew once resizing the page changes it.
 	if (m_fontPreview) {
 		RECT rcPreview;
 		GetClientRect(m_fontPreview->Control, &rcPreview);
@@ -4192,7 +4119,6 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 			return 0;
 
 		case WM_DRAWITEM: {
-			// A link: underlined text in the theme's link color, and the focus around it.
 			const auto& dis = *reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
 			const auto isLink = std::ranges::any_of(m_rows, [&dis](const auto& row) { return row->LinkButton && row->Button1 == dis.hwndItem; });
 			if (!isLink)
@@ -4279,14 +4205,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 			return 0;
 
 		case WM_LBUTTONDOWN:
-			// The background takes the focus, so that a click on it ends what was being edited; dragging it moves the
-			// window, as its title bar would.
+			// The background takes the focus so a click on it ends any edit; dragging it moves the window as its title bar would.
 			SetFocus(hwnd);
 			DragWindow();
 			return 0;
 
 		case WM_HSCROLL:
-			// A slider moved.
 			for (const auto& row : m_rows) {
 				if (row->Type == Row::RowType::Slider && row->Control == reinterpret_cast<HWND>(lParam) && row->Click)
 					row->Click(PartControl);
@@ -4495,7 +4419,6 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 		case WM_NOTIFY: {
 			const auto nmhdr = reinterpret_cast<LPNMHDR>(lParam);
 			if (nmhdr->hwndFrom == m_hTree && nmhdr->code == NM_CUSTOMDRAW) {
-				// The folders, ModPacks and font families turned off are struck through.
 				const auto& nmcd = reinterpret_cast<LPNMTVCUSTOMDRAW>(lParam)->nmcd;
 				if (nmcd.dwDrawStage == CDDS_PREPAINT)
 					return CDRF_NOTIFYITEMDRAW;
@@ -4519,7 +4442,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 				return 0;
 			}
 			if (nmhdr->hwndFrom == m_hTree && nmhdr->code == TVN_BEGINLABELEDITW) {
-				// Only the folders and the ModPacks, which are directories; true refuses.
+				// Only folders and ModPacks, which are directories, can be renamed; returning true refuses.
 				const auto pNode = reinterpret_cast<const TreeNode*>(reinterpret_cast<LPNMTVDISPINFOW>(lParam)->item.lParam);
 				const auto refuse = !pNode || !((pNode->Kind == TreeNode::NodeKind::TtmpFolder && !pNode->TtmpPath.empty()) || pNode->Kind == TreeNode::NodeKind::TtmpPack);
 				if (!refuse) {

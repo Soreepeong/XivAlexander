@@ -72,7 +72,6 @@ namespace XivAlexander::Misc {
 		void Log(LogCategory category, WORD wLanguage, UINT uStringResId, LogLevel level = LogLevel::Info);
 		void Clear();
 
-		/// Asks where to save the logs, and saves them there; gets where they were saved, or nothing if they weren't.
 		std::optional<std::filesystem::path> AskAndExportLogs(HWND hwndDialogParent, std::string_view heading = std::string_view(), std::string_view preformatted = std::string_view());
 
 		void WithLogs(const std::function<void(const std::deque<LogItem>& items)>& cb) const;

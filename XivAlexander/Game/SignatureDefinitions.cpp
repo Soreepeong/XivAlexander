@@ -9,6 +9,7 @@
 
 #include "Game/ResolveContext.h"
 #include "Game/Signatures.h"
+#include "Game/Structs.h"
 #include "Misc/Logger.h"
 #include "Utils/Win32/Process.h"
 
@@ -33,239 +34,217 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature AudioSamplingRateImmediate(R"(\xC7(?:\x45.|\x44\x24.|\x85....|\x84\x24....)(\x80\xBB\x00\x00)\xC7(?:\x45.|\x44\x24.|\x85....|\x84\x24....)\x0F\x00\x00\x00)");
 	const Signatures::RegexSignature AudioSamplingRateGetter(R"(\x8B\x05(....)\xC3)");
 
-	const Signatures::RegexSignature MssAsiAttribute(R"(\x85\xD2\x74.\x83\xFA\x01\x74\x03\x33\xC0\xC3\xB8\x10\x00\x00\x00\xC3\x8B\x41\x28\xC3)");
-	const Signatures::RegexSignature MssAsiOpen(R"([\x44\x45]\x8B[\x40-\x43\x45-\x47]\x20\x48\x8D\x15....[\x48\x49]\x8B[\xC8-\xCF]\xE8(....))");
+	// The stream attribute query; attribute 0 is the channel count, read from the stream.
+	const Signatures::RegexSignature MssAsiAttribute(R"(\x85\xD2\x74.\x83\xFA\x01\x74\x03\x33\xC0\xC3\xB8\x10\x00\x00\x00\xC3\x8B\x41(.)\xC3)");
+	// The game opening a stream with its fetch callback.
+	const Signatures::RegexSignature MssAsiOpen(R"([\x44\x45]\x8B[\x40-\x43\x45-\x47]\x20\x48\x8D\x15(....)[\x48\x49]\x8B[\xC8-\xCF]\xE8(....))");
+	// The open allocating the stream.
+	const Signatures::RegexSignature MssAsiOpenAllocation(R"(\xB9(....)(?:\xFF\xD0|\xFF\x15....))");
+	// The process (or a function it calls) fetching what is pending: callback(user, cursor, bytes, pending offset), then adding to the fetched bytes and clearing the pending offset.
+	const Signatures::RegexSignature MssAsiProcessFetch(R"(\x44\x8B[\x48-\x4B\x4D-\x4F](.).{0,12}?[\x48\x49]\x8B[\x48-\x4B\x4D-\x4F](.).{0,12}?\x41?\xFF[\x50-\x53\x55-\x57](.)\x41?\x01[\x40-\x43\x45-\x47](.).{0,4}?\x41?\xC7[\x40-\x43\x45-\x47]\1\xFF\xFF\xFF\xFF)");
+	// The decoder set-up storing the source buffer, then fetching its first bytes into it: callback(user, source, bytes, 0).
+	const Signatures::RegexSignature MssAsiSetUpFetch(R"([\x48\x49]\x89[\x40-\x43\x45-\x47](.)[\x48\x4D]\x85\xC0(?:\x75.|\x0F\x85....).{0,96}?[\x48\x49]\x8B[\x48-\x4B\x4D-\x4F](.)\x45\x33\xC9\x41\xB8(....).{0,8}?[\x48\x49]\x8B[\xD0-\xD7]\x41?\xFF[\x50-\x53\x55-\x57](.))");
+	// The game's fetch callback testing its flags: end of stream, then marking the stream for reinitialisation.
+	const Signatures::RegexSignature FfxivAsiFetchFlags(R"(\x0F\xB6\x41(.)\xA8(.)(?:\x0F\x85....|\x75.)\xA8.\x74.\x0C(.)\x88\x41\1)");
 	const Signatures::RegexSignature MssAsiSetUpDecoder(R"([\x48-\x4F]\x8B[\x00-\x3F][\x40-\x4F]?\x89[\x40-\x7F]\x38[\x48-\x4F]\x8B[\x00-\x3F][\x40-\x4F]?\x89[\x40-\x7F]\x34[\x48-\x4F]\x8B[\x00-\x3F]\xC7[\x40-\x47]\x30\x00\x00\x01\x00)");
 	const Signatures::RegexSignature MssAsiProcess(R"(\xFF\x41\x3C[\x40-\x4F]?\x8B[\xC0-\xFF]\x83\x79\x3C\x01)");
 	const Signatures::RegexSignature MssAsiResetPair(R"(\xE8(....)(?:[\x48\x49]\x8B[\x40-\x4F]\x08\x33\xD2|\x33\xD2[\x48\x49]\x8B[\x40-\x4F]\x08)\xE8(....))");
 
-	const Signatures::RegexSignature SoundVoiceInit(R"([\x48-\x4F]\x8B[\xC0-\xFF]\x41\x83\xF8\x10(?:\x0F\x8F....|\x7F.|\x7E.\x83\xC8\xFF\xC3|\x7E.\xB8\xFF\xFF\xFF\xFF\xC3)\x45\x85\xC9(?:\x0F\x84....|\x74.)[\x48\x4C]\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24\x28[\x48-\x4F]\x89[\x80-\xBF])");
+	const Signatures::RegexSignature SoundVoiceInit(R"([\x48-\x4F]\x8B[\xC0-\xFF]\x41\x83\xF8(.)(?:\x0F\x8F....|\x7F.|\x7E.\x83\xC8\xFF\xC3|\x7E.\xB8\xFF\xFF\xFF\xFF\xC3)\x45\x85\xC9(?:\x0F\x84....|\x74.)[\x48\x4C]\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24\x28[\x48-\x4F]\x89[\x80-\xBF])");
 	const Signatures::RegexSignature SoundVoiceVtable(R"([\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)[\x48-\x4F]\x8B[\xC0-\xFF][\x48-\x4F]\x89[\x00-\x3F](?:[\x48\x49]\x8D[\x50-\x57]\x30|[\x48\x49]\x83[\xC0-\xC7]\x30\xFF\x15))");
 	const Signatures::RegexSignature SoundVoiceRender(R"([\x40-\x4F]?\x83[\xB8-\xBB\xBD-\xBF](....)\x03.{0,8}?(?:\x0F\x85....|\x75.)[\x40-\x4F]?\x83[\xB8-\xBB\xBD-\xBF](....)\x00(?:\x0F\x8E....|\x7E.)\xE8(....))");
-	const Signatures::RegexSignature SoundVoiceSubmit(R"(\xF7[\x80-\x83\x85-\x87](....)\xFB\xFF\xFF\xFF.{0,24}?[\x40-\x4F]?\x8B[\x80-\xBF](....)[\x40-\x4F]?\x83[\xF8-\xFF]\x02(?:\x0F\x8D....|\x7D.))");
-	const Signatures::RegexSignature SoundVoiceSetMarker(R"(\xF7[\x80-\x83\x85-\x87](....)\xFB\xFF\xFF\xFF\x74.\x89[\x90-\x93\x95-\x97](....)\x33\xC0\xC3)");
+	// The submit's state test, then the test of the queued buffers against the most it queues.
+	const Signatures::RegexSignature SoundVoiceSubmit(R"(\xF7[\x80-\x83\x85-\x87](....)(....).{0,24}?[\x40-\x4F]?\x8B[\x80-\xBF](....)[\x40-\x4F]?\x83[\xF8-\xFF](.)(?:\x0F\x8D....|\x7D.))");
+	const Signatures::RegexSignature SoundVoiceSetMarker(R"(\xF7[\x80-\x83\x85-\x87](....)(....)\x74.\x89[\x90-\x93\x95-\x97](....)\x33\xC0\xC3)");
 	const Signatures::RegexSignature SoundVoiceStoreImmediate(R"(\xC7[\x80-\x83\x85-\x87](....)(....))");
 	const Signatures::RegexSignature RelativeCall(R"(\xE8(....))");
 	const Signatures::RegexSignature SoundBufferEndHandler(R"([\x40\x41][\x50-\x57]\x48\x83\xEC.\x83\x79.\x07[\x48-\x4F]\x8B[\xC0-\xFF]\x74.\x48\x83\xC1\xF8\xE8....[\x40-\x4F]?\x80[\xB8-\xBB\xBD-\xBF](....)\x01)");
 
 	const Signatures::RegexSignature MessageLoop(R"(\xE8(....)\x84\xc0\x75\xf7)");
 
-	// The callers check that the lobby is in state 4 or 0x3B, then call the login. Holds since 6.10; the login itself
-	// is compiled differently often enough that matching its own instructions broke between 7.25 and 7.30.
+	// Callers of the login, which check lobby state 4 or 0x3B first; the login's own code changes too often to match.
 	const Signatures::RegexSignature LobbyLoginCaller(R"(\x8B[\x80-\xBF]....\x83\xF8\x04(?:\x74.|\x0F\x84....)\x83\xF8\x3B.{0,80}?\xE8(....))");
 	// Near its start, the login tests its last argument to choose between two ways of logging in.
 	const Signatures::RegexSignature LobbyLoginLastArgumentTest(R"(\x80\xBC\x24....\x00)");
 
-	// Same as what NoKillPlugin (Bluefissure) hooks: reads the error code from the dialog result right away.
-	const Signatures::RegexSignature LobbyErrorDialog(R"(\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x49\x8B\xC8\xE8....\x8B\xD0)");
+	// AgentLobby's OK handler of a lobby error dialog, which reads the error code from the dialog result right away.
+	const Signatures::RegexSignature LobbyErrorDialog(R"(\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x49\x8B\xC8\xE8(....)\x8B\xD0)");
+	// What it reads the code with: zero unless the AtkValue has a type, else the u32 value.
+	const Signatures::RegexSignature AtkValueUIntGetter(R"(\xF6\x01(.)\x75.\x33\xC0\xC3\x8B\x41(.)\xC3)");
+	// The Utf8String copy constructor reading the source: used size (to reserve, then to copy from the string pointer), length, then the empty flag.
+	const Signatures::RegexSignature Utf8StringCopy(R"([\x48\x49]\x8B[\x50-\x57](.)\xE8....[\x4C\x4D]\x8B[\x40-\x47](.)[\x48\x49]\x8B[\x10-\x17][\x48\x49]\x8B[\x08-\x0F]\xE8....[\x48\x49]\x8B[\x40-\x47](.)[\x48\x49]\x89[\x40-\x47]\3[\x40-\x4F]?\x0F\xB6[\x40-\x47](.))");
 
-	// The IME mode getter starts by asking ImmGetOpenStatus, then ImmGetConversionStatus, about the HIMC in a global;
-	// it returns early when closed with a jz, or with a jnz over the return before 7.0. Holds since 5.55.
+	// The IME mode getter's ImmGetOpenStatus, then ImmGetConversionStatus, on a global HIMC, with either form of its early return.
 	const Signatures::RegexSignature ImeStatusQueries(R"(\x48\x8B\x0D(....)(?:\xE8|\xFF\x15)(....)\x85\xC0(?:\x74.|\x0F\x84....|\x75.{1,16}?)\x48\x8B\x0D(....)(?:\x4C\x8D\x44\x24.\x48\x8D\x54\x24.|\x48\x8D\x54\x24.\x4C\x8D\x44\x24.)(?:\xE8|\xFF\x15)(....))");
 	// bt eax, 8: tests IME_CMODE_NOCONVERSION, which only the IME mode getter does after those queries.
 	const Signatures::RegexSignature ImeNoConversionTest(R"(\x0F\xBA\xE0\x08)");
 
-	// DeviceDX11::PostTick with the render thread: mov rcx, [device+0x70]; call Kernel::SwapChain::Present; mov byte
-	// [device+0x79], 0; then a jmp over the branch without the render thread, whose call is the same but not followed by
-	// one. Holds since 7.0 (checked through 7.56h); before, PostTick has only the call without the jmp.
+	// The call of Kernel::SwapChain::Present in DeviceDX11::PostTick's render thread path, which then jumps over the other path's call.
 	const Signatures::RegexSignature SwapChainPresentCall(R"([\x48\x49]\x8B[\x48-\x4B\x4D-\x4F]\x70\xE8(....)\x41?\xC6[\x40-\x47]\x79\x00\xEB)");
-	// The walk of the notifiers before Present, 117 bytes before that call since 7.0: lea rcx, [lock];
-	// call [EnterCriticalSection]; mov rbx, [head]; test rbx, rbx; jz; mov rax, [rbx]; mov rcx, rbx; call [rax+0x10]
-	// The walk as the game has it, or as CrowdFix's SkipIdleNotifiers rewrites it (mov rcx, imm64; mov rax, imm64; call rax;
-	// jmp past the rest), after the lock is taken.
+	// The pre-present notifier walk before that call: the game's, or SkipIdleNotifiers' rewrite of it.
 	const Signatures::RegexSignature PrePresentNotifierWalk(R"(\x48\x8D\x0D....\xFF\x15....(?:\x48\x8B\x1D....\x48\x85\xDB\x74.\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10|\x48\xB9.{8}\x48\xB8.{8}\xFF\xD0\xEB))");
 
-	// The signatures below are from CrowdFix (SheepGoMeh), checked against 7.56h (2026.09.15).
+	// The signatures below are from CrowdFix (SheepGoMeh).
 
-	// Framework::Tick: lea rcx, [rbx+TaskManager]; ...; call ExecuteAllTasks; mov rcx, [rbx+...]; test rcx, rcx
+	// The call of TaskManager::ExecuteAllTasks in Framework::Tick.
 	const Signatures::RegexSignature TaskManagerExecuteAllTasksCall(R"(\xE8(....)\x48\x8B\x8B....\x48\x85\xC9\x74.\xF3\x0F\x10\x8B)");
 	// A call to the culling manager getter, which starts with mov rax, [g_CullingManager].
 	const Signatures::RegexSignature CullingManagerGetterCall(R"(\xE8(....)\x48\x8B\x05....\x83\x60..\xE8)");
 	const Signatures::RegexSignature CullingManagerGetter(R"(\x48\x8B\x05(....))");
 
-	// lea rcx, [lock]; call [EnterCriticalSection]; mov rbx, [head]; test rbx, rbx; jz; mov rax, [rbx]; mov rcx, rbx; call [rax+0x10]
+	// The start of the Kernel::Notifier list walk: the lock, then the head.
 	const Signatures::RegexSignature NotifierListWalk(R"(\x48\x8D\x0D(....)\xFF\x15....\x48\x8B\x1D(....)\x48\x85\xDB\x74.\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10)");
-	// The PostTick loops: mov rbx, [head]; test; jz; mov rax, [rbx]; mov rcx, rbx; call [rax+slot]; mov rbx, [rbx+0x10]; test; jnz
-	const Signatures::RegexSignature NotifierPrePresentLoop(R"(\x48\x8B\x1D(....)\x48\x85\xDB\x74\x12\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10\x48\x8B\x5B\x10\x48\x85\xDB\x75\xEE)");
-	const Signatures::RegexSignature NotifierPostKickLoop(R"(\x48\x8B\x1D(....)\x48\x85\xDB\x74\x14\x66\x90\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x08\x48\x8B\x5B\x10\x48\x85\xDB\x75\xEE)");
-	// Link and Unlink take the notifier lock right after saving the node: mov rbx, rcx; lea rcx, [lock]; call [EnterCriticalSection].
-	// Link then reads the list head (mov rax, [head]; xor ecx, ecx), and Unlink the node's previous link (mov rcx, [rbx+8]).
+	// The two PostTick loops over the notifiers, each calling its vtable slot and following the next notifier.
+	const Signatures::RegexSignature NotifierPrePresentLoop(R"(\x48\x8B\x1D(....)\x48\x85\xDB\x74\x12\x48\x8B\x03\x48\x8B\xCB\xFF\x50(.)\x48\x8B\x5B(.)\x48\x85\xDB\x75\xEE)");
+	const Signatures::RegexSignature NotifierPostKickLoop(R"(\x48\x8B\x1D(....)\x48\x85\xDB\x74\x14\x66\x90\x48\x8B\x03\x48\x8B\xCB\xFF\x50(.)\x48\x8B\x5B(.)\x48\x85\xDB\x75\xEE)");
+	// Link and Unlink, which take the notifier lock; then Link reads the head, Unlink [rbx+8].
 	const Signatures::RegexSignature NotifierLinkBody(R"(\x48\x8B\xD9\x48\x8D\x0D(....)\xFF\x15....\x48\x8B\x05(....)\x33\xC9)");
 	const Signatures::RegexSignature NotifierUnlinkBody(R"(\x48\x8B\xD9\x48\x8D\x0D(....)\xFF\x15....\x48\x8B\x4B\x08)");
-	// Notifier callbacks of buffers, vertex buffers, index buffers, textures and constant buffers, up to the flag test
-	// that sends them to their return. The texture's pre-present one also does work for 0x2000: bt edx, 13 (bt ecx, 13
-	// before 7.20) where the jne goes; before 7.20 it starts with push rbx instead of mov rax, rsp; push rbx, and the
-	// jne is short.
-	const Signatures::RegexSignature BufferNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\x8B\x49\x1C\xF6\xC1\x11\x74)");
-	const Signatures::RegexSignature BufferNotifierPrePresent(R"(\x40\x53\x48\x83\xEC\x20\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\xF6\x41\x1C\x11\x74)");
-	const Signatures::RegexSignature IndexBufferNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x4C\x8B\x54\xC1\x28\x4D\x85\xD2\x74.\x8B\x51\x20\xF6\xC2\x11\x74.\xF6\xC2\x40\x75)");
-	const Signatures::RegexSignature IndexBufferNotifierPrePresent(R"(\x40\x53\x48\x83\xEC\x20\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x28\x48\x85\xD2\x74.\x8B\x41\x20\xA8\x11\x74.\xA8\x40\x75)");
-	const Signatures::RegexSignature TextureNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x41\x3C\x48\x8B\xD9\x25\x10\x00\x10\x00\x3D\x10\x00\x10\x00\x0F\x85)");
-	const Signatures::RegexSignature TextureNotifierPrePresent(R"((?:\x40|\x48\x8B\xC4)\x53\x48\x83\xEC\x60\x48\x83\x79\x48\x00\x48\x8B\xD9\x0F\x84....\x8B[\x49\x51]\x3C.{0,32}?\x25\x10\x00\x10\x00.{0,24}?\x3D\x10\x00\x10\x00(?:\x0F\x85(....)|\x75(.)))");
-	const Signatures::RegexSignature TextureNotifierUploadTest(R"(\x0F\xBA[\xE0-\xE7]\x0D)");
-	const Signatures::RegexSignature ConstantBufferNotifierPrePresent(R"(\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x7C\xC1\x18\x48\x85\xFF\x74.\x48\x83\x79\x30\x00\x74.\xF7\x41\xEC\x00\x40\x00\x00\x74)");
+	// Notifier callbacks (buffer, vertex/index buffer, texture, constant buffer) up to the flag test that jumps to their return: the flags, then the masks.
+	// The texture pre-present one also does work for another flag, which it tests at the jne target.
+	const Signatures::RegexSignature BufferNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\x8B\x49(.)\xF6\xC1(.)\x74)");
+	const Signatures::RegexSignature BufferNotifierPrePresent(R"(\x40\x53\x48\x83\xEC\x20\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\xF6\x41(.)(.)\x74)");
+	const Signatures::RegexSignature IndexBufferNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x4C\x8B\x54\xC1\x28\x4D\x85\xD2\x74.\x8B\x51(.)\xF6\xC2(.)\x74.\xF6\xC2(.)\x75)");
+	const Signatures::RegexSignature IndexBufferNotifierPrePresent(R"(\x40\x53\x48\x83\xEC\x20\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x28\x48\x85\xD2\x74.\x8B\x41(.)\xA8(.)\x74.\xA8(.)\x75)");
+	const Signatures::RegexSignature TextureNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x41(.)\x48\x8B\xD9\x25(....)\x3D\2\x0F\x85)");
+	const Signatures::RegexSignature TextureNotifierPrePresent(R"((?:\x40|\x48\x8B\xC4)\x53\x48\x83\xEC\x60\x48\x83\x79\x48\x00\x48\x8B\xD9\x0F\x84....\x8B[\x49\x51](.).{0,32}?\x25(....).{0,24}?\x3D\2(?:\x0F\x85(....)|\x75(.)))");
+	const Signatures::RegexSignature TextureNotifierUploadTest(R"(\x0F\xBA[\xE0-\xE7](.))");
+	const Signatures::RegexSignature ConstantBufferNotifierPrePresent(R"(\x48\x89\x5C\x24\x10\x57\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x7C\xC1\x18\x48\x85\xFF\x74.\x48\x83\x79\x30\x00\x74.\xF7\x41(.)(....)\x74)");
 
-	// Every enqueue into the 128-entry job ring: mov eax, [write index]; inc eax; and eax, 0x7F; mov [write index], eax.
-	// The dequeue does the same with the read index right after it, fewer times.
+	// The increments of the 128-entry job ring's write index by the enqueues, and of its read index by the fewer dequeues.
 	const Signatures::RegexSignature JobRingIndexIncrement(R"(\x8B\x05(....)\xFF\xC0\x83\xE0\x7F\x89\x05(....))");
-	// In the kick: lea rcx, [task manager+JobPool]; call WakeAll; mov rcx, [rsp+...]; mov edx, ...; call [...]
+	// The call of JobPool::WakeAll in the kick.
 	const Signatures::RegexSignature JobPoolWakeAllCall(R"(\x48\x8D[\x48-\x4B\x4D-\x4F](.)\xE8(....)\x48\x8B\x4C\x24.\xBA....\xFF\x15)");
-	// The wake-all's loop: cmp [pool+count], reg; jbe; mov reg, [pool+threads]; mov rcx, [reg+i*8]; movzx eax, [rcx+skip];
-	// test al, al; jnz; xor eax, eax; lock xadd [rcx+wake count], eax; cmp eax, 2; jae; mov eax, 1; lock xadd [rcx+wake
-	// count], eax; test eax, eax; jnz; mov rcx, [rcx+event]; call [SetEvent]
-	const Signatures::RegexSignature JobPoolWakeAllBody(R"(\x39[\x40-\x7F](.)\x76.(?:\x0F\x1F[\x00-\x84].{0,6}?|\x66?\x90)*\x48\x8B[\x40-\x7F](.)\x48\x8B\x0C[\xC0-\xFF]\x0F\xB6\x41(.)\x84\xC0\x75.\x33\xC0\xF0\x0F\xC1\x41(.)\x83\xF8\x02\x73.\xB8\x01\x00\x00\x00\xF0\x0F\xC1\x41\4\x85\xC0\x75.\x48\x8B\x49(.)\xFF\x15(....))");
+	// The wake-all's loop: the pool's thread count and threads, then each thread's skip flag, wake count, wake limit and event.
+	const Signatures::RegexSignature JobPoolWakeAllBody(R"(\x39[\x40-\x7F](.)\x76.(?:\x0F\x1F[\x00-\x84].{0,6}?|\x66?\x90)*\x48\x8B[\x40-\x7F](.)\x48\x8B\x0C[\xC0-\xFF]\x0F\xB6\x41(.)\x84\xC0\x75.\x33\xC0\xF0\x0F\xC1\x41(.)\x83\xF8(.)\x73.\xB8\x01\x00\x00\x00\xF0\x0F\xC1\x41\4\x85\xC0\x75.\x48\x8B\x49(.)\xFF\x15(....))");
 
 	const Signatures::RegexSignature SkeletonPoseSyncWalkCall(R"(\xE8(....)\xE8....\xE8....\x41\x8B\xFF)");
-	// In that order in the walk: movzx eax, word [skeleton+count]; mov rdx, [skeleton+partials]; add rdx, rbx;
-	// mov rcx, [rdx+pose]; test rcx, rcx; jz; call; ...; add rbx, stride; sub rdi, 1
+	// The partial skeleton count, array, pose and stride, in that order in the pose sync walk.
 	const Signatures::RegexSignature PoseSyncPartialCount(R"(\x0F\xB7[\x40-\x7F](.))");
 	const Signatures::RegexSignature PoseSyncPartialArray(R"(\x48\x8B[\x40-\x7F](.)[\x48\x49]\x03[\xC0-\xFF])");
 	const Signatures::RegexSignature PoseSyncPartialPose(R"(\x48\x8B[\x80-\xBF](....)[\x48\x4C]\x85[\xC0-\xFF]\x74.\xE8)");
 	const Signatures::RegexSignature PoseSyncPartialStride(R"([\x48\x49]\x81[\xC0-\xC7](....)[\x48\x49]\x83[\xE8-\xEF]\x01)");
 
-	// mov ecx, 0xA000 (40960 object slots, one 16 byte store each); register restores; then the loop:
-	// movdqu [rax], xmm0; lea rax, [rax+0x10]; sub rcx, 1; jnz
-	const Signatures::RegexSignature CullingVisibilityClearCount(R"(\xB9(\x00\xA0\x00\x00)(?:[\x48\x4C]\x8B[\x84-\xBC]\x24....|\x0F\x28[\x84-\xBC]\x24....|\x90|\x0F\x1F[\x00-\x84].{0,6}?){0,10}\xF3\x0F\x7F\x00\x48\x8D\x40\x10\x48\x83\xE9\x01\x75\xF2)");
-	// Right before it: mov rax, [culling manager+table]; xorps xmm0, xmm0; ...; mov ecx, 0xA000
-	const Signatures::RegexSignature CullingVisibilityTableLoad(R"([\x48\x49]\x8B[\x40-\x47](.)\x0F\x57\xC0.{0,12}?\xB9\x00\xA0\x00\x00)");
-	// The object slot allocator: mov r11, [rcx+mask]; ...; mov eax, [r9]; cmp eax, -1; je (full word); the bit loop;
-	// cmp r8d, words; jb; ...; or edx, eax; mov [r11+r8*4], edx; shl r8d, 5; lea ebx, [rcx+r8] (the slot);
-	// shl rbx, entry shift; add rbx, [r10+objects]
+	// The count of the loop that clears the visibility table, one 16 byte store per object slot.
+	const Signatures::RegexSignature CullingVisibilityClearCount(R"(\xB9(....)(?:[\x48\x4C]\x8B[\x84-\xBC]\x24....|\x0F\x28[\x84-\xBC]\x24....|\x90|\x0F\x1F[\x00-\x84].{0,6}?){0,10}\xF3\x0F\x7F\x00\x48\x8D\x40\x10\x48\x83\xE9\x01\x75\xF2)");
+	// The visibility table load right before that count.
+	const Signatures::RegexSignature CullingVisibilityTableLoad(R"([\x48\x49]\x8B[\x40-\x47](.)\x0F\x57\xC0.{0,12}?\xB9....)");
+	// The culling manager's object slot allocator: the mask, the words it scans, the entry shift and the objects.
 	const Signatures::RegexSignature CullingSlotAlloc(R"([\x48\x4C]\x8B[\x41\x49\x51\x59\x61\x69\x71\x79](.).{0,16}?\x8B[\x00-\x3F]\x83\xF8\xFF\x74..{0,40}?\x81[\xF8-\xFF](....)\x72..{0,24}?\x0B[\xC0-\xFF][\x40-\x4F]?\x89[\x04-\x3C][\x80-\xBF][\x41]?\xC1[\xE0-\xE7]\x05.{0,8}?[\x48\x49]\xC1[\xE0-\xE7](.)[\x48\x49\x4C\x4D]\x03[\x40-\x7F](.))");
-	// The release: sub rcx, [r10+objects]; mov rax, [r10+mask]; sar rcx, entry shift; ...; not eax; and [r9], eax
+	// The object slot release: the objects, the mask and the entry shift.
 	const Signatures::RegexSignature CullingSlotRelease(R"([\x48\x49\x4C\x4D]\x2B[\x40-\x7F](.)[\x48\x49\x4C\x4D]\x8B[\x40-\x7F](.)[\x48\x49]\xC1[\xF8-\xFF](.).{0,24}?\xF7[\xD0-\xD7][\x40-\x4F]?\x21)");
-	// mov rcx, [g_CullingManager]; call ...
+	// A call with g_CullingManager as this.
 	const Signatures::RegexSignature CullingManagerCall(R"(\x48\x8B\x0D(....)\xE8(....))");
 
 	const Signatures::RegexSignature GraphicsAllocatorFreeStart(R"(\x48\x85\xD2\x0F\x84....\x48\x89\x74\x24.\x57\x48\x83\xEC.\x48\x8B\xF1\x48\x89\x5C\x24.\x48\x81\xC1)");
-	// The slab check of Free: add rcx, lock; mov rdi, rdx; call [EnterCriticalSection]; mov r8, rdi; and r8, ~page mask;
-	// mov eax, [r8+page index]; cmp [rsi+chunk count], eax; jbe; lea rcx, [rax+rax*2]; mov rax, [rsi+chunk table];
-	// add rcx, rcx; mov rdx, [rax+rcx*8+chunk base]; test rdx, rdx; jz; mov rax, rdi; sub rax, rdx; cmp rax, chunk span
+	// Free's slab check: the lock, the page mask and index, then the chunk count, table, base and span.
 	const Signatures::RegexSignature GraphicsAllocatorFreeLayout(R"(\x48\x81\xC1(....)[\x48\x4C]\x8B[\xC0-\xFF]\xFF\x15(....)[\x48\x4C]\x8B[\xC0-\xFF][\x48\x49]\x81[\xE0-\xE7](....)[\x40-\x4F]?\x8B[\x40-\x7F](.)\x39[\x80-\xBF](....)\x0F\x86....([\x48\x4C]\x8D[\x00-\x3F][\x40-\x7F])[\x48\x4C]\x8B[\x80-\xBF](....)([\x48\x4C]\x03[\xC0-\xFF])[\x48\x4C]\x8B[\x40-\x7F]([\xC0-\xFF])(.)[\x48\x4C]\x85[\xC0-\xFF]\x0F\x84....[\x48\x4C]\x8B[\xC0-\xFF][\x48\x4C]\x2B[\xC0-\xFF](?:\x48\x3D|\x48\x81[\xF8-\xFF])(....))");
-	// The backing frees: mov rcx, [rsi+backing]; (mov rdx, rdi;) mov rax, [rcx]; call [rax+free slot*8]
+	// The frees through the backing allocator, and the vtable slot they call.
 	const Signatures::RegexSignature GraphicsAllocatorBackingFree(R"(\x48\x8B[\x88-\x8F](....)(?:[\x48\x49]\x8B[\xD0-\xD7])?\x48\x8B\x01\xFF\x50(.))");
-	// The unlock at the end: lea rcx, [rsi+lock]; call [LeaveCriticalSection]
+	// The unlock at the end of Free.
 	const Signatures::RegexSignature GraphicsAllocatorUnlock(R"(\x48\x8D[\x88-\x8F](....)\xFF\x15(....))");
-	// In the buffer write lock: mov rax, [g_AllocatorManager]; ...; mov rcx, [rax+allocator]; mov rax, [rcx]; call [rax+0x10]
+	// The allocator manager load in the buffer write lock, the allocator in it and the slot called on it.
 	const Signatures::RegexSignature GraphicsAllocatorManagerLoad(R"(\x48\x8B\x05(....)\x41\xB8....\x8B\xD7\x48\x8B\x48(.)\x48\x8B\x01\xFF\x50(.)\x48\x89\x83)");
-	// The graphics allocator's destructor (and constructor) setting both vtables: lea rax, [vtable]; (mov rdi, rcx;)
-	// mov [rcx], rax; (mov ebx, edx;) lea rax, [inner vtable]; mov [rcx+inner], rax
+	// The graphics allocator constructor or destructor storing both vtables, and where the inner one goes.
 	const Signatures::RegexSignature GraphicsAllocatorVtables(R"(\x48\x8D\x05(....)(?:[\x48\x4C]\x8B[\xC0-\xFF])?\x48\x89\x01(?:\x8B[\xC0-\xFF])?\x48\x8D\x05(....)\x48\x89\x81(....))");
-	// Its slots: the alloc counts, then forwards to the inner allocator: mov eax, 1; lock xadd [rcx+counter], eax;
-	// add rcx, inner; mov rax, [rcx]; jmp [rax+slot]. Most others only forward.
+	// Its alloc counts, then forwards to the inner allocator (most others only forward).
 	const Signatures::RegexSignature GraphicsAllocatorCountingWrapper(R"(\xB8\x01\x00\x00\x00\xF0\x0F\xC1\x81(....)\x48\x81\xC1(....)\x48\x8B\x01\x48\xFF\x60(.))");
 	const Signatures::RegexSignature GraphicsAllocatorForwardingWrapper(R"(\x48\x81\xC1(....)\x48\x8B\x01\x48\xFF\x60(.))");
-	// The terminate releases the inner allocator, then calls the base's: push rbx; sub rsp, ..; mov rbx, rcx;
-	// add rcx, inner; mov rax, [rcx]; call [rax+slot]; mov rax, [rbx+base]; lea rcx, [rbx+base]; ...
+	// The terminate releases the inner allocator, then calls the base's.
 	const Signatures::RegexSignature GraphicsAllocatorTerminateWrapper(R"(\x40\x53\x48\x83\xEC.\x48\x8B\xD9\x48\x81\xC1(....)\x48\x8B\x01\xFF\x50(.)\x48\x8B\x43(.)\x48\x8D\x4B(.))");
-	// The inner allocator's size query: mov r9, rdx; and r9, ~page mask; mov eax, [r9+page index]; cmp [rcx+chunk count], eax
+	// The inner allocator's size query: the page mask, the page index and the chunk count.
 	const Signatures::RegexSignature SmallObjectAllocatorSize(R"([\x48\x4C]\x8B[\xC8-\xCF][\x48\x49]\x81[\xE0-\xE7](....)[\x40-\x4F]?\x8B[\x40-\x7F](.)\x39[\x80-\xBF](....))");
 
 	// The tail jump to the follow AI at the end of Companion::Update.
 	const Signatures::RegexSignature CompanionFollowJump(R"(\xE9(....)\x48\x8B\xCF\xE8....\xF3\x0F\x58\x87....\x0F\x2F\x05)");
-	// Elsewhere in Companion::Update: call [rax+0x108] (draw-ready check); test or cmp al; jz or jnz; cmp qword [rdi+render flags], 0
+	// Elsewhere in Companion::Update: the render flags test right after the draw-ready check.
 	const Signatures::RegexSignature CompanionRenderFlagsTest(R"(\xFF\x90\x08\x01\x00\x00(?:\x3C\x01\x0F\x85....|\x84\xC0\x0F\x84....|\x3C\x01\x75.|\x84\xC0\x74.)\x48\x83[\xB8-\xBF](....)\x00)");
 
-	// JobList::Prepare: call [rax+0x18] (wait for the previous run); reset counters; mov edx, -1; call [WaitForSingleObject]
+	// JobList::Prepare, up to its second WaitForSingleObject call, after waiting for the previous run and resetting counters.
 	const Signatures::RegexSignature JobListArrayPrepare(R"(\x40\x53\x48\x83\xEC\x20\x48\x8B\x01\x48\x8B\xD9\xFF\x50\x18\x33\xD2\x8B\xC2\x87\x43\x7C\x87\x93\xA0\x00\x00\x00\x48\x8B\x4B\x10\xBA\xFF\xFF\xFF\xFF(\xFF\x15)(....))");
 	const Signatures::RegexSignature JobListSingleItemPrepare(R"(\x40\x53\x48\x83\xEC\x20\x48\x8B\x01\x48\x8B\xD9\xFF\x50\x18\x33\xC0\xBA\xFF\xFF\xFF\xFF\x87\x43\x74\x48\x8B\x4B\x10(\xFF\x15)(....))");
 
-	// Callers of the job list kick: mov rdx, [group+0x18]; mov rcx, [g_TaskManager]; call kick
+	// Callers of the job list kick, with g_TaskManager as this.
 	const Signatures::RegexSignature JobListKickCaller(R"(\x48\x8B[\x50-\x57]\x18\x48\x8B\x0D(....)\xE8(....))");
 	const Signatures::RegexSignature RenderManagerLoad(R"(\x48\x8B\x0D(....)\xE8....\x84\xC0\x74.\x48\x8B\x0D....\xE8....\x33\xC9)");
-	// Manager::RenderView: lea rdx, [manager+prep list]; add rcx, TaskManager (rcx: g_Framework); call kick
+	// Manager::RenderView kicking its prep list on Framework's TaskManager.
 	const Signatures::RegexSignature BgInstancingPrepKickCall(R"(\x48\x8D\x93(....)\x48\x81\xC1(....)\xE8(....))");
-	// The kick's calls on the job list (rbx): call [rax+count]; test eax, eax; jz; then call [rax+prepare];
-	// call [rax+describe] (rdx: the descriptor); call [rax+count] again
+	// The kick's calls on the job list: item count, prepare, describe, item count.
 	const Signatures::RegexSignature JobListKickCalls(R"(\xFF\x50(.)\x85\xC0(?:\x0F\x84....|\x74.)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x8B[\xC8-\xCF]\xFF\x50(.)[\x48\x49]\x8B[\x00-\x3F](?:\x48\x8D\x54\x24.|[\x48\x49]\x8B[\xC8-\xCF]){2}\xFF\x50(.)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x8B[\xC8-\xCF]\xFF\x50(.))");
-	// InnerThread::Run running a claimed task: mov rdx, [thread+pool]; mov rcx, rdi (task); mov r8, [rsp+argument];
-	// add rdx, context; mov rax, [rdi]; test r8, r8; jnz; call [rax+slot]; jmp; mov r8, [r8]; call [rax+slot]
+	// InnerThread::Run running a claimed task: the pool, its context, and the task slots called with and without an argument.
 	const Signatures::RegexSignature JobRunTask(R"(\x48\x8B[\x50-\x57](.)[\x48\x49]\x8B[\xC8-\xCF][\x4C\x48]\x8B[\x44\x4C]\x24.[\x48\x49]\x83\xC2(.)[\x48\x49]\x8B[\x00-\x07][\x4D\x48]\x85[\xC0-\xFF]\x75.\xFF\x50(.)\xE9....[\x4D\x49]\x8B[\x00-\x3F]\xFF\x50(.))");
-	// And claiming it first, from the queue entry (rbx): mov rax, [rbx+claim]; lea rdx, [rbx+state];
-	// mov rcx, [rbx+owner]; lea r9, [rsp+remaining]; lea r8, [rsp+argument]; ...; call rax. Before 7.30, mov rcx, [rbx+owner];
-	// lea rdx, [rbx+state]; lea r9; ...; lea r8; call [rbx+claim].
+	// And claiming it first, from the queue entry: the claim function, the state and the owner, in either order.
 	const Signatures::RegexSignature JobRunClaim(R"((?:\x48\x8B[\x40-\x47](.)\x48\x8D[\x50-\x57](.)\x48\x8B[\x48-\x4F](.)\x4C\x8D\x4C\x24.\x4C\x8D\x44\x24..{0,8}?\xFF\xD0|\x48\x8B[\x48-\x4F](.)\x48\x8D[\x50-\x57](.)\x4C\x8D\x4C\x24..{0,8}?\x4C\x8D\x44\x24.\xFF[\x50-\x57](.)))");
 
-	// lea rcx, [tmp]; call HotbarUIIntermediate::ctor; mov rcx, [module]; lea r8, [tmp]; mov rdx, slot; call Prepare;
-	// inc slot index; add slot id, 0x11
+	// A hotbar slot's prepare: the temporary's constructor, then Prepare; then the slot index increment and slot id step.
 	const Signatures::RegexSignature HotbarPrepare(R"((\x48\x8D\x4C\x24(.)\xE8(....)[\x48\x49]\x8B[\x88-\x8F]....\x4C\x8D\x44\x24\2[\x48\x49]\x8B[\xD0-\xD7]\xE8(....))\xFF[\xC0-\xC7]\x83[\xC0-\xC7]\x11)");
 
 	const Signatures::RegexSignature AnimationUpdateCall(R"(\xE8(....)\x48\x8B\x0D....\x48\x8B\x6C\x24\x58)");
 	const Signatures::RegexSignature AnimationTailStart(R"(\x48\x89\x5C\x24\x18\x55\x48\x83\xEC\x30\x48\x8B\xE9)");
-	// In the animation update: mov [entry count], reg; lea reg, [entries]; cmp reg, 1
+	// The animation update storing the tail entry count, then the entries.
 	const Signatures::RegexSignature AnimationTailEntries(R"(\x89[\x05\x0D\x15\x1D\x2D\x35\x3D](....)\x48\x8D[\x05\x0D\x15\x1D\x2D\x35\x3D](....)\x83[\xF8-\xFF]\x01)");
 	const Signatures::RegexSignature AnimationSubmit(R"(\x48\x89\x5C\x24\x08\x48\x89\x74\x24\x10\x57\x48\x83\xEC\x20\x48\x8B\x05(....)\x48\x8B\xD9\xF3\x0F\x11\x88\xF0\x00\x00\x00)");
-	// The animation submit, in this order. Its group: mov r9, [submit base]; xor esi, esi; mov edi, [r9+writer count];
-	// lea rbx, [r9+group]
+	// The animation submit, in this order. Its group: the submit base, the writer count and the group.
 	const Signatures::RegexSignature AnimationSubmitGroup(R"([\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)(?:[\x40-\x4F]?\x33[\xC0-\xFF])?[\x40-\x4F]?\x8B[\x40-\x7F](.)[\x48\x49\x4C\x4D]\x8D[\x40-\x7F](.))");
-	// Publishing every writer's item count to its block: mov rax, [rbx+writers]; mov r8, [rcx+rax+block];
-	// test r8, r8; jz; mov eax, [rcx+rax+items]; mov [r8], eax; add rcx, writer size; sub rdx, 1; jnz
+	// Publishing every writer's item count to its block: the writers, the block and item count in a writer, and the writer size.
 	const Signatures::RegexSignature ParallelForWriterFlush(R"([\x48\x49]\x8B[\x40-\x7F](.)[\x48\x4C]\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].(.)[\x48\x4D]\x85[\xC0-\xFF]\x74.\x8B[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].(.)[\x40-\x4F]?\x89[\x00-\x3F][\x48\x49]\x83[\xC0-\xC7](.)[\x48\x49]\x83[\xE8-\xEF]\x01\x75.)");
-	// Arming: lea rax, [job]; mov [rbx+context], r9; mov [rbx+job], rax; mov eax, esi; xchg [rbx+counter], eax (twice);
-	// mov eax, esi; lock xadd [rbx+blocks claimed], eax; test eax, eax; jz (nothing appended)
+	// Arming: the job, the context, the two claim counters and the blocks claimed counter, then the test for nothing appended.
 	const Signatures::RegexSignature ParallelForArm(R"(\x48\x8D\x05(....)[\x48\x4C]\x89[\x40-\x7F](.)\x48\x89[\x40-\x7F](.)\x8B[\xC0-\xFF]\x87[\x80-\xBF](....)\x8B[\xC0-\xFF]\x87[\x80-\xBF](....)\x8B[\xC0-\xFF]\xF0\x0F\xC1[\x80-\xBF](....)\x85\xC0\x74.)");
-	// mov rdx, [group+job list]; mov rcx, [g_TaskManager]; call kick; mov rcx, group; cmp [group+per-item claims], <zero>;
-	// je; call help; jmp; call help; then the wait: mov rcx, [group+job list]; mov rax, [rcx]; call [rax+wait]
+	// The kick of the group's job list, the per-item or block help, then the wait on the job list.
 	const Signatures::RegexSignature AnimationSubmitKick(R"(\x48\x8B[\x50-\x57](.)\x48\x8B\x0D(....)\xE8(....)[\x48\x49]\x8B[\xC8-\xCF][\x40-\x47]?\x38[\x80-\xBF](....)\x74\x07\xE8(....)\xEB\x05\xE8(....)[\x48\x49]\x8B[\x48-\x4F](.)\x48\x8B\x01\xFF\x50(.))");
-	// Disarming: mov [rbx+context], rsi; mov [rbx+job], rsi; then emptying every writer: mov rax, [rbx+writers];
-	// lea rcx, [rcx+writer size]; mov dword [rcx+rax+items-size], items per block; mov [rcx+rax+block-size], rsi
+	// Disarming, then emptying every writer: the writers, writer size, items per block and block.
 	const Signatures::RegexSignature ParallelForDisarm(R"([\x48\x4C]\x89[\x40-\x7F](.)[\x48\x4C]\x89[\x40-\x7F](.).{0,40}?[\x48\x49]\x8B[\x40-\x7F](.)[\x48\x49]\x8D[\x40-\x7F](.)\xC7\x44[\x00-\x3F](.)(....)[\x48\x4C]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C][\x00-\x3F](.))");
-	// Emptying the chunks, from the submit base: lea rax, [r8+chunks]; mov edx, chunk count; mov rcx, [rax];
-	// test rcx, rcx; jz; mov [rcx], esi; add rax, 8; sub rdx, 1; jnz; ...; mov [r8+blocks claimed], esi
+	// Emptying the chunks, from the submit base: the chunks, the chunk count, then the blocks claimed counter.
 	const Signatures::RegexSignature ParallelForChunkReset(R"([\x48\x49]\x8D[\x40-\x47](.)\xBA(....)[\x48\x49]\x8B[\x00-\x3F][\x48\x49]\x85[\xC0-\xFF]\x74\x02\x89[\x00-\x3F][\x48\x49]\x83[\xC0-\xC7]\x08[\x48\x49]\x83[\xE8-\xEF]\x01\x75..{0,8}?[\x40-\x4F]?\x89[\x80-\xBF](....))");
-	// The append's prologue, up to mov ebp, TLS slot of the thread's parallel-for writer
+	// The append's prologue, up to the TLS slot of the thread's parallel-for writer.
 	const Signatures::RegexSignature AnimationTailAppend(R"(\x40\x53\x55\x41\x54\x48\x83\xEC\x20\x8B\x0D....\x4C\x8B\xE2\x65\x48\x8B\x04\x25\x58\x00\x00\x00\xBD(....))");
-	// Then claiming a block when the writer's is full: mov ebx, [rbp+items]; cmp ebx, items per block - 1; jbe;
-	// mov rax, [rbp+block]; test rax, rax; jz; mov [rax], ebx; mov rdx, [rbp+group]; ...; lock xadd [rdx+blocks claimed],
-	// ecx; ...; shr r8d, chunk shift; cmp r8d, chunk count; jb (past the last chunk, it stores the item through null);
-	// ...; lock xadd [r15+chunks], rax
+	// Then claiming a block when the writer's is full; past the last chunk, the append stores the item through null.
 	const Signatures::RegexSignature ParallelForBlockClaim(R"(\x8B[\x40-\x7F](.)\x83[\xF8-\xFF](.)(?:\x0F\x86....|\x76.)[\x48\x4C]\x8B[\x40-\x7F](.)[\x48\x4D]\x85[\xC0-\xFF]\x74\x02\x89[\x00-\x3F][\x48\x4C]\x8B[\x40-\x7F](.).{0,8}?\xF0[\x40-\x4F]?\x0F\xC1[\x80-\xBF](....).{0,8}?[\x41]?\xC1[\xE8-\xEF](.)[\x41]?\x83[\xF8-\xFF](.)\x72..{0,64}?\xF0[\x48\x49\x4C\x4D]\x0F\xC1[\x40-\x7F](.))");
-	// The tail's ground ray: mov rcx, [skeleton+ground]; test rcx, rcx; jz; call is active; test al, al; jz
+	// The tail's ground ray: the skeleton's ground state, then the call of the test whether it is active.
 	const Signatures::RegexSignature AnimationTailGround(R"([\x48\x49]\x8B[\x88-\x8F](....)[\x48\x4D]\x85\xC9\x74.\xE8(....)\x84\xC0\x74.)");
-	// That test, which only reads the ground state: test byte [rcx+flags], 1; jz; cmp qword [rcx+..], 0; jz; (again); mov al, 1; ret
+	// That test, which only reads the ground state.
 	const Signatures::RegexSignature GroundRayActiveBody(R"(\xF6\x41.\x01\x74.\x48\x83\x79.\x00\x74.\x48\x83\x79.\x00\x74.\xB0\x01\xC3)");
-	// Then every partial skeleton: cmp qword [partial+pose], 0; jz; (movaps xmm1, xmm6;) mov rcx, partial; call update
+	// Then the update of every partial skeleton with a pose.
 	const Signatures::RegexSignature AnimationTailPartialUpdate(R"([\x48\x49]\x83[\xB8-\xBF](....)\x00\x74.(?:\x0F\x28[\xC8-\xCF]|[\x48\x49]\x8B[\xC8-\xCF]){1,3}\xE8(....))");
-	// The partial skeleton update ends by applying every pending animation control removal: ...; lea rcx, [partial+list];
-	// call erase; cmp qword [partial+count], 0; jnz
+	// The partial skeleton update ends by applying pending animation control removals: the list, then its count.
 	const Signatures::RegexSignature PartialPendingRemovals(R"([\x48\x49\x4C\x4D]\x8D[\x88-\x8F](....)\xE8....[\x48\x49]\x83[\xB8-\xBF](....)\x00\x75.)");
 
-	// A parallel-for group being armed: lea rax, [job]; mov [group+0x20], reg; mov [group+0x28], rax
+	// A parallel-for group being armed: the job stored at +0x28, after the context at +0x20.
 	const Signatures::RegexSignature ParallelForJobStore(R"(\x48\x8D\x05(....)[\x4C\x48]\x89[\x40-\x7F]\x20\x48\x89[\x40-\x7F]\x28)");
-	// What the camera culling job reads of its item (rdx) first: the type byte, the start at +0x30 and the count at +0x34
+	// What the camera culling job reads of its item (rdx) first: the type byte, and u32 fields (REX.R, modrm, disp8).
 	const Signatures::RegexSignature CameraCullItemType(R"([\x40-\x4F]?\x0F\xB6[\x02\x0A\x12\x1A\x32\x3A])");
-	const Signatures::RegexSignature CameraCullItemStart(R"([\x40-\x4F]?\x8B[\x42\x4A\x52\x5A\x62\x6A\x72\x7A]\x30)");
-	const Signatures::RegexSignature CameraCullItemCount(R"([\x40-\x4F]?\x8B[\x42\x4A\x52\x5A\x62\x6A\x72\x7A]\x34)");
-	// Where the culling builds its items: object type tests (cmp r11b, type) sort the visible objects into lists, then
-	// every list but the BG objects' becomes one item: call allocate item; ...; mov [rax+8], list; mov byte [rax], type
+	const Signatures::RegexSignature CameraCullItemField(R"(([\x40\x44]?)\x8B([\x42\x4A\x52\x5A\x62\x6A\x72\x7A])(.))");
+	// Then the end of its range, start + count (lea r32, [base+index]), and the start compared with it (cmp r32, r32).
+	const Signatures::RegexSignature CameraCullRangeEnd(R"(([\x40-\x4F]?)\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])([\x00-\x3F]))");
+	const Signatures::RegexSignature CameraCullRangeCompare(R"(([\x40-\x4F]?)([\x39\x3B])([\xC0-\xFF]))");
+	// Where the culling builds its items: the object type tests that sort visible objects into lists,
+	// then every list but the BG objects' becoming one item with its type byte.
 	const Signatures::RegexSignature CameraCullObjectTypeTest(R"(\x41\x80[\xF8-\xFF](.)\x75)");
 	const Signatures::RegexSignature CameraCullSingleItem(R"(\xE8(....).{0,32}?\x48\x89[\x40-\x7F]\x08\xC6[\x00-\x03\x06\x07](.))");
-	// The item allocator returns the item at the writer's cursor: lea rax, [block+header]; mov [writer+cursor], rax;
+	// The item allocator returns the item at the writer's cursor: the block header, the cursor and the item shift.
 	// ...; mov eax, ebx (index); shl rax, item shift; add rax, [writer+cursor]
 	const Signatures::RegexSignature CameraCullItemAddress(R"([\x48\x49]\x8D[\x40-\x47](.)[\x48\x4C]\x89[\x40-\x7F](.).{0,24}?[\x48\x49]\xC1[\xE0-\xE7](.)[\x48\x49]\x03[\x40-\x7F](.))");
 
-	// add rcx, cell group (or lea); lea r8, [cell job]; movzx r9d, r12b; mov rdx, rsi (in any order); register restores;
-	// call or jmp parallel-for
+	// The cell group's parallel-for call (instructions in any order, then register restores).
 	const Signatures::RegexSignature CullingCellParallelFor(R"([\x48\x49](?:\x81[\xC0-\xC7]|\x8D[\x80-\xBF])(....)(?:\x45\x0F\xB6[\xC8-\xCF]|\x4C\x8D\x05....|[\x48\x49]\x8B[\xD0-\xD7]){3}(?:[\x48\x4C]\x8B[\x40-\x7F]\x24.|\x48\x83\xC4.|\x41?[\x58-\x5F])*[\xE8\xE9](....))");
-	// lea rcx, [rsi+setup group]; mov r9b, 1; lea r8, [job]; mov rdx, rsi; call parallel-for
+	// The setup group's parallel-for call.
 	const Signatures::RegexSignature CullingSetupParallelFor(R"([\x48\x49]\x8D[\x80-\xBF](....)\x41\xB1\x01\x4C\x8D\x05....[\x48\x49]\x8B[\xD0-\xD7]\xE8(....))");
-	// cmp [group+0xBC], <zero> (per-item claims); je; call per-item help; jmp; call block help
+	// The choice between the per-item help (the group's +0xBC flag set) and the block help.
 	const Signatures::RegexSignature ParallelForHelpChoice(R"(\x40\x38[\x80-\xBF]\xBC\x00\x00\x00\x74\x07\xE8(....)\xEB\x05\xE8(....))");
 
 	// The gather is compiled without optimizations, which keeps it stable.
 	const Signatures::RegexSignature CommandListGatherDriver(R"(\x4C\x89\x4C\x24\x20\x4C\x89\x44\x24\x18\x89\x54\x24\x10\x48\x89\x4C\x24\x08\x48\x83\xEC\x48\x48\x8B\x44\x24\x50)");
-	// In the gather: mov rax, [rsp+device]; mov eax, [rax+context count]; mov [rsp+...], eax
+	// The context count, read in the gather.
 	const Signatures::RegexSignature CommandListContextCount(R"(\x8B\x40(.)\x89\x44\x24.)");
-	// imul rax, rax, context size; mov rcx, [rsp+device]; add rax, [rcx+contexts]
+	// The context size and the contexts, in the device.
 	const Signatures::RegexSignature CommandListContextArray(R"([\x48\x4C]\x69[\xC0-\xFF](....)[\x48\x4C]\x8B[\x44\x4C\x54\x5C]\x24.[\x48\x4C]\x03[\x40-\x7F](.))");
-	// The gather of one context's blocks starts with: inc rax (list + 1); lea rax, [rax+rax*2]; lea r12, [rcx+rax*8];
-	// mov eax, [rcx+rax*8+blocks]; mov ebp, eax; shl ebp, block shift
-	const Signatures::RegexSignature CommandListBlocks(R"(\x48\xFF\xC0.{0,12}?\x48\x8D\x04\x40.{0,8}?\x4C\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])\xC1\x8B\x44\xC1(.)\x8B[\xE8-\xEF]\xC1[\xE0-\xE7](.))");
-	// Then, before copying, it loads the first block from that list: mov rdi, [r12] (or r13, in 7.20)
+	// The start of the gather of one context's blocks: the list index scaled to a list (inc; x3; then x8 as an index), its block count and the block shift.
+	const Signatures::RegexSignature CommandListBlocks(R"(\x48\xFF\xC0.{0,12}?\x48\x8D\x04([\x40\x80\xC0]).{0,8}?\x4C\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])([\x01\x41\x81\xC1])\x8B\x44(.)(.)\x8B[\xE8-\xEF]\xC1[\xE0-\xE7](.))");
+	// Then, before copying, it loads the first block from that list, through whichever register holds it.
 	const Signatures::RegexSignature CommandListFirstBlock(R"([\x48-\x4F]\x8B)");
-	// Its copy of every full block: call memcpy; mov rdi, [rdi+next block]; add rbx, block size; sub rsi, 1; jnz
+	// Its copy of every full block: the next block link and the block size.
 	const Signatures::RegexSignature CommandListBlockCopy(R"(\xE8....[\x48\x4C]\x8B[\x80-\xBF](....)[\x48\x49]\x81[\xC0-\xC7](....)[\x48\x49]\x83[\xE8-\xEF]\x01\x75.)");
-	// Then the entry count: shr ebp, entry shift; sub ebp, [r12+free slots]
+	// Then the entry count: the entry shift and the free slots.
 	const Signatures::RegexSignature CommandListEntryCount(R"(\xC1[\xE8-\xEF](.)[\x40-\x4F]?\x2B(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24|[\x40-\x7F])(.))");
 }
 
@@ -289,8 +268,6 @@ namespace XivAlexander::Game::Resolved {
 			return static_cast<size_t>(ctx.InRange<int32_t>(m.Get<int32_t>(group), 1, 0x10000, what));
 		}
 
-		/// Resolves a part that its feature can do without. A part that fails is logged as a failed signature is, and left
-		/// empty, so that the feature's signature still resolves everything else.
 		template<typename TFn>
 		auto OptionalPart(std::string_view feature, std::string_view part, TFn&& resolve) -> std::optional<std::invoke_result_t<TFn&>> {
 			try {
@@ -390,14 +367,12 @@ namespace XivAlexander::Game::Resolved {
 			return false;
 		}
 
-		// The code from p on: up to length bytes, and not past the end of .text.
 		std::span<const uint8_t> CodeFrom(const ResolveContext& ctx, const void* p, size_t length) {
 			const auto text = ctx.Text();
 			const auto begin = static_cast<const uint8_t*>(ctx.RequireInSection(p, ".text", "code"));
 			return {begin, (std::min)(length, static_cast<size_t>(text.data() + text.size() - begin))};
 		}
 
-		// What follows a match within data.
 		std::span<const uint8_t> After(std::span<const uint8_t> data, const ScanResult& m) {
 			return data.subspan(static_cast<size_t>(static_cast<const uint8_t*>(m.end(0)) - data.data()));
 		}
@@ -406,8 +381,7 @@ namespace XivAlexander::Game::Resolved {
 			return m.Get<uint8_t>(group);
 		}
 
-		// The parts of the function that starts at primary, within 16 KB after it: the first part, and those whose unwind
-		// info chains back to it, which is where the compiler moves the rarely run code of a function.
+		// Parts within 16 KB of primary whose unwind info chains back to it; the compiler moves a function's rarely run code into such parts.
 		std::vector<std::span<const uint8_t>> FunctionParts(const ResolveContext& ctx, const void* primary) {
 			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
 			const auto image = xivres::pe_image::from_loaded(base);
@@ -439,38 +413,57 @@ namespace XivAlexander::Game::Resolved {
 			};
 		}
 
-		// The voice's vtable functions, checked against the fields the render reads.
 		SoundVoiceFunctions FindVoiceFunctions(const ResolveContext& ctx, const SoundVoiceRenderInfo& render) {
 			SoundVoiceFunctions r;
 			const auto text = ctx.Text();
-			r.Init = Address(ctx.Unique(SoundVoiceInit, text, "initialiser").begin(0));
+			const auto init = ctx.Unique(SoundVoiceInit, text, "initialiser");
+			r.Init = Address(init.begin(0));
+			// The init hook leaves voices with more channels than this to the game, which refuses them.
+			ctx.Require(init.Get<uint8_t>(1) == VoiceMaxChannels, ResolveError::Mismatch,
+				"the initialiser takes up to {} channels instead of {}", init.Get<uint8_t>(1), VoiceMaxChannels);
 
 			const auto vt = ctx.Unique(SoundVoiceVtable, text, "vtable");
 			const auto slots = ctx.Vtable(vt.ResolveAddress<const void* const*>(1), SoundVoice::MaxVtblSlots, "vtable");
 			const auto destructorBody = ctx.FunctionContaining(vt.begin(0), "destructor").data();
 
 			// every slot is told apart by what it does, so that a reordered vtable is still understood
-			const auto submit = ctx.UniqueSlot(slots, "submit", [&ctx](size_t, std::span<const uint8_t> fn) -> std::optional<SoundVoice::Layout> {
+			struct SubmitTests {
+				SoundVoice::Layout Layout;
+				uint32_t StateMask{};
+				uint8_t MaxQueuedBuffers{};
+			};
+			const auto submit = ctx.UniqueSlot(slots, "submit", [&ctx](size_t, std::span<const uint8_t> fn) -> std::optional<SubmitTests> {
 				const auto m = ctx.Find(SoundVoiceSubmit, fn);
 				if (!m)
 					return std::nullopt;
-				return SoundVoice::Layout{
-					.State = FieldOffset(ctx, *m, 1, "submit state offset"),
-					.QueuedBuffers = FieldOffset(ctx, *m, 2, "submit queued buffers offset"),
+				return SubmitTests{
+					.Layout = {
+						.State = FieldOffset(ctx, *m, 1, "submit state offset"),
+						.QueuedBuffers = FieldOffset(ctx, *m, 3, "submit queued buffers offset"),
+					},
+					.StateMask = m->Get<uint32_t>(2),
+					.MaxQueuedBuffers = m->Get<uint8_t>(4),
 				};
 			});
-			r.Layout = submit.second;
+			r.Layout = submit.second.Layout;
 			r.Layout.SubmitSlot = submit.first;
 
-			const auto setMarker = ctx.UniqueSlot(slots, "set marker", [&ctx](size_t, std::span<const uint8_t> fn) -> std::optional<size_t> {
+			const auto setMarker = ctx.UniqueSlot(slots, "set marker", [&ctx](size_t, std::span<const uint8_t> fn) -> std::optional<std::pair<size_t, uint32_t>> {
 				const auto m = ctx.TryMatchAt(SoundVoiceSetMarker, fn);
 				if (!m)
 					return std::nullopt;
-				return static_cast<size_t>(m->Get<int32_t>(1));
+				return std::make_pair(static_cast<size_t>(m->Get<int32_t>(1)), m->Get<uint32_t>(2));
 			});
-			ctx.Require(setMarker.second == r.Layout.State, ResolveError::Mismatch,
-				"submit state +0x{:X} != set marker state +0x{:X}", r.Layout.State, setMarker.second);
+			ctx.Require(setMarker.second.first == r.Layout.State, ResolveError::Mismatch,
+				"submit state +0x{:X} != set marker state +0x{:X}", r.Layout.State, setMarker.second.first);
 			r.Layout.SetMarkerSlot = setMarker.first;
+
+			// The submit hook repeats the game's checks: a voice takes buffers in any state but these, and up to this many at once.
+			const auto submittable = ~static_cast<uint32_t>(SoundVoiceState::Flushed);
+			ctx.Require(submit.second.StateMask == submittable && setMarker.second.second == submittable, ResolveError::Mismatch,
+				"submit and set marker test the state with 0x{:X} and 0x{:X} instead of 0x{:X}", submit.second.StateMask, setMarker.second.second, submittable);
+			ctx.Require(submit.second.MaxQueuedBuffers == VoiceMaxQueuedBuffers, ResolveError::Mismatch,
+				"submit queues up to {} buffers instead of {}", submit.second.MaxQueuedBuffers, VoiceMaxQueuedBuffers);
 
 			ctx.Require(render.State == r.Layout.State && render.QueuedBuffers == r.Layout.QueuedBuffers, ResolveError::Mismatch,
 				"submit state +0x{:X} and queued buffers +0x{:X} != render state +0x{:X} and queued buffers +0x{:X}",
@@ -521,8 +514,7 @@ namespace XivAlexander::Game::Resolved {
 			ctx.Require(target != nullptr, ResolveError::NotFound, "lobby login caller not found");
 			const auto fn = ctx.FunctionStartingAt(target, "lobby login");
 
-			// The hook relies on the argument layout: 8 arguments, the last picking one of two branches that each copy
-			// the three Utf8String arguments with the same function.
+			// The hook relies on 8 arguments, the last picking one of two branches that each copy the three Utf8String arguments with the same function.
 			ctx.Require(ctx.Find(LobbyLoginLastArgumentTest, fn.first((std::min)(fn.size(), static_cast<size_t>(0x60)))).has_value(), ResolveError::Mismatch,
 				"lobby login {} does not test its last argument", Signatures::Describe(target));
 			std::map<const void*, size_t> callees;
@@ -530,11 +522,37 @@ namespace XivAlexander::Game::Resolved {
 				++callees[call.ResolveAddress<const void*>(1)];
 			ctx.Require(std::ranges::any_of(callees, [](const auto& callee) { return callee.second == 6; }), ResolveError::Mismatch,
 				"lobby login {} does not copy three strings on both branches", Signatures::Describe(target));
+
+			// The hook passes its own Utf8String, which the login only copies: the copy must read the fields where the hook fills them.
+			std::optional<ScanResult> copy;
+			for (const auto& [callee, count] : callees) {
+				if (count != 6 || !ctx.InSection(callee, ".text"))
+					continue;
+				const auto calleeFn = ctx.FunctionStartingAt(callee);
+				if (const auto m = calleeFn.empty() ? std::nullopt : ctx.Find(Utf8StringCopy, calleeFn)) {
+					ctx.Require(!copy, ResolveError::Ambiguous, "lobby login {} calls more than one string copy", Signatures::Describe(target));
+					copy = m;
+				}
+			}
+			ctx.Require(copy.has_value(), ResolveError::NotFound, "string copy of lobby login {} not found", Signatures::Describe(target));
+			const auto reserved = ByteAt(*copy, 1);
+			const auto used = ByteAt(*copy, 2);
+			const auto length = ByteAt(*copy, 3);
+			const auto empty = ByteAt(*copy, 4);
+			ctx.Require(reserved == used && used == offsetof(Utf8String, BufUsed) && length == offsetof(Utf8String, StringLength) && empty == offsetof(Utf8String, IsEmpty), ResolveError::Mismatch,
+				"the string copy reads used size +0x{:X}/+0x{:X}, length +0x{:X} and empty flag +0x{:X}, not where Utf8String has them", reserved, used, length, empty);
 			return Address(fn.data());
 		}
 
 		LobbyErrorDialogFn FindLobbyErrorDialog(const ResolveContext& ctx) {
 			const auto match = ctx.Unique(LobbyErrorDialog, ctx.Text(), "lobby error dialog");
+
+			// The hook reads and rewrites the code as the u32 of an AtkValue, as the getter the handler calls reads it.
+			const auto getter = ctx.RequireInSection(match.ResolveAddress<const void*>(1), ".text", "AtkValue u32 getter");
+			const auto read = ctx.TryMatchAt(AtkValueUIntGetter, CodeFrom(ctx, getter, 0x10));
+			ctx.Require(read.has_value(), ResolveError::Mismatch, "the lobby error dialog reads its code with {}, which is not the AtkValue u32 getter", Signatures::Describe(getter));
+			ctx.Require(read->Get<uint8_t>(1) == static_cast<uint8_t>(AtkValueType::TypeMask) && ByteAt(*read, 2) == offsetof(AtkValue, UInt), ResolveError::Mismatch,
+				"the AtkValue getter tests the type with 0x{:X} and reads +0x{:X}, not as AtkValue has them", read->Get<uint8_t>(1), ByteAt(*read, 2));
 			return Address(ctx.FunctionStartingAt(&match.Get<const uint8_t>(0), "lobby error dialog").data());
 		}
 	}
@@ -568,12 +586,13 @@ namespace XivAlexander::Game::Resolved {
 	}
 
 	std::string to_string(const AltCodecMusicSupportFunctions& value) {
-		return std::format("attribute {}, reset {}, open {}, set up {}, process {}",
+		return std::format("attribute {}, reset {}, open {}, set up {}, process {}, peek 0x{:X} bytes",
 			Signatures::Describe(value.Attribute),
 			Signatures::Describe(value.Reset),
 			Signatures::Describe(value.Open),
 			Signatures::Describe(value.SetUpDecoder),
-			Signatures::Describe(value.Process));
+			Signatures::Describe(value.Process),
+			value.PeekBytes);
 	}
 
 	std::string to_string(const OpcodeGuesserCandidates& value) {
@@ -607,8 +626,7 @@ namespace XivAlexander::Game::Resolved {
 	}
 
 	const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks("SqpackLookupHooks", [](ResolveContext& ctx) {
-		// Each SqPackManager keeps the lookup for its kind of index in a member, which LoadSqPack sets with the
-		// address of either function and then compares against one of them.
+		// Each SqPackManager keeps its index kind's lookup in a member; LoadSqPack sets it to either function, then compares it against one of them.
 		const auto count = ctx.Unique(SqPackIndexEntryCount, ctx.Text(), "index entry count");
 		const auto member = FieldOffset(ctx, count, 1, "lookup member");
 		const auto loadSqPack = ctx.FunctionContaining(count.begin(0), "LoadSqPack");
@@ -685,8 +703,7 @@ namespace XivAlexander::Game::Resolved {
 		r.C2S_ActionRequest = FindActionRequest(text);
 		r.C2S_ActionRequestGroundTargeted = FindActionRequestGroundTargeted(ctx, text);
 
-		// (ActionEffect01,) 08, 16, 24, 32, ActorCast, ActorControl, ActorControlTarget, ActorControlSelf
-		// (AE01->08: 0x200,) 08->...->32: 0x240
+		// In order: (ActionEffect01,) 08, 16, 24, 32, with payload sizes growing by the same step, then ActorCast, ActorControl, ActorControlTarget, ActorControlSelf.
 		r.PayloadWriters = FindDutyRecorderPayloadWriters(ctx, text);
 		const auto& writers = r.PayloadWriters;
 		const auto opcodeAt = [&writers](size_t i) -> std::optional<uint16_t> {
@@ -733,7 +750,8 @@ namespace XivAlexander::Game::Resolved {
 		AltCodecMusicSupportFunctions r;
 		const auto text = ctx.Text();
 
-		const Address attribute = ctx.First(MssAsiAttribute, text, "attribute").begin(0);
+		const auto attributeMatch = ctx.First(MssAsiAttribute, text, "attribute");
+		const Address attribute = attributeMatch.begin(0);
 		r.Attribute = attribute;
 
 		for (const auto& m : MssAsiResetPair.Lookup(text, RegexSignature::FromNextByte)) {
@@ -744,9 +762,55 @@ namespace XivAlexander::Game::Resolved {
 		}
 		ctx.Require(r.Reset != nullptr, ResolveError::NotFound, "reset not found");
 
-		r.Open = Address(ctx.First(MssAsiOpen, text, "open").ResolveAddress<const void*>(1));
-		r.SetUpDecoder = Address(ctx.FunctionContaining(ctx.First(MssAsiSetUpDecoder, text, "decoder set-up").begin(0), "decoder set-up").data());
-		r.Process = Address(ctx.FunctionContaining(ctx.First(MssAsiProcess, text, "process").begin(0), "process").data());
+		const auto open = ctx.First(MssAsiOpen, text, "open");
+		r.Open = Address(open.ResolveAddress<const void*>(2));
+		const auto setUp = ctx.FunctionContaining(ctx.First(MssAsiSetUpDecoder, text, "decoder set-up").begin(0), "decoder set-up");
+		const auto process = ctx.FunctionContaining(ctx.First(MssAsiProcess, text, "process").begin(0), "process");
+		r.SetUpDecoder = Address(setUp.data());
+		r.Process = Address(process.data());
+
+		// The decoders use AsiStream and AsiStreamUserFfxiv as they are declared; refuse unless the stream code reads them there (past shrink-wrapped prologues).
+		const auto allocation = ctx.First(MssAsiOpenAllocation, CodeFrom(ctx, reinterpret_cast<const void*>(r.Open), 0x40), "stream allocation");
+		ctx.Require(std::cmp_equal(allocation.Get<int32_t>(1), sizeof(AsiStream)), ResolveError::Mismatch,
+			"the open allocates 0x{:X} bytes for a stream instead of 0x{:X}", allocation.Get<int32_t>(1), sizeof(AsiStream));
+		ctx.Require(ByteAt(attributeMatch, 1) == offsetof(AsiStream, Channels), ResolveError::Mismatch,
+			"the attribute query reads the channels at +0x{:X} instead of +0x{:X}", ByteAt(attributeMatch, 1), offsetof(AsiStream, Channels));
+
+		std::optional<ScanResult> fetchFound = ctx.Find(MssAsiProcessFetch, CodeFrom(ctx, process.data(), 0x200));
+		for (const auto& call : RelativeCall.Lookup(CodeFrom(ctx, process.data(), 0x200), RegexSignature::FromNextByte)) {
+			if (const auto callee = call.ResolveAddress<const void*>(1); !fetchFound && ctx.InSection(callee, ".text") && !ctx.FunctionStartingAt(callee).empty())
+				fetchFound = ctx.Find(MssAsiProcessFetch, CodeFrom(ctx, callee, 0x200));
+		}
+		ctx.Require(fetchFound.has_value(), ResolveError::NotFound, "process fetch not found");
+		const auto& fetch = *fetchFound;
+		const auto pending = ByteAt(fetch, 1);
+		const auto user = ByteAt(fetch, 2);
+		const auto callback = ByteAt(fetch, 3);
+		const auto fetched = ByteAt(fetch, 4);
+		ctx.Require(pending == offsetof(AsiStream, PendingFetchOffset) && user == offsetof(AsiStream, User)
+			&& callback == offsetof(AsiStream, FetchCallback) && fetched == offsetof(AsiStream, FetchedBytes), ResolveError::Mismatch,
+			"the process fetches with pending offset +0x{:X}, user +0x{:X}, callback +0x{:X} and fetched bytes +0x{:X}, not as AsiStream has them", pending, user, callback, fetched);
+
+		const auto peek = ctx.First(MssAsiSetUpFetch, CodeFrom(ctx, setUp.data(), 0x200), "decoder set-up fetch");
+		ctx.Require(ByteAt(peek, 1) == offsetof(AsiStream, SourcePtr), ResolveError::Mismatch,
+			"the decoder set-up stores the source at +0x{:X} instead of +0x{:X}", ByteAt(peek, 1), offsetof(AsiStream, SourcePtr));
+		ctx.Require(ByteAt(peek, 2) == user && ByteAt(peek, 4) == callback, ResolveError::Mismatch,
+			"the decoder set-up fetches with user +0x{:X} and callback +0x{:X}, the process with +0x{:X} and +0x{:X}", ByteAt(peek, 2), ByteAt(peek, 4), user, callback);
+		r.PeekBytes = ctx.InRange<uint32_t>(peek.Get<uint32_t>(3), 4, 0x10001, "decoder set-up fetch size");
+
+		// The game's fetch callback, which keeps the stream flags the take-over changes.
+		const auto fetchCallback = ctx.RequireInSection(open.ResolveAddress<const void*>(1), ".text", "fetch callback");
+		ctx.Require(!ctx.FunctionStartingAt(fetchCallback).empty(), ResolveError::Mismatch, "the fetch callback {} is not where a function starts", Signatures::Describe(fetchCallback));
+		const auto fetchCallbackFn = CodeFrom(ctx, fetchCallback, 0x100);
+		const auto flags = ctx.Find(FfxivAsiFetchFlags, fetchCallbackFn);
+		ctx.Require(flags.has_value(), ResolveError::NotFound, "the fetch callback {} does not test its flags", Signatures::Describe(fetchCallback));
+		const auto flagsOffset = flags->Get<uint8_t>(1);
+		const auto endOfStream = flags->Get<uint8_t>(2);
+		const uint8_t setsEndOfStream[]{0x80, 0x49, flagsOffset, endOfStream};  // or byte ptr [rcx+flags], end of stream
+		ctx.Require(!std::ranges::search(fetchCallbackFn, setsEndOfStream).empty(), ResolveError::Mismatch, "the fetch callback does not set the end of stream flag it tests");
+		ctx.Require(flagsOffset == offsetof(AsiStreamUserFfxiv, Flags) && endOfStream == static_cast<uint8_t>(AsiStreamFlag::EndOfStream)
+			&& flags->Get<uint8_t>(3) == static_cast<uint8_t>(AsiStreamFlag::NeedsReinit), ResolveError::Mismatch,
+			"the fetch callback keeps its flags at +0x{:X} (end of stream 0x{:X}, reinitialise 0x{:X}), not as AsiStreamUserFfxiv has them", flagsOffset, endOfStream, flags->Get<uint8_t>(3));
 		return r;
 	});
 
@@ -813,7 +877,7 @@ namespace XivAlexander::Game::Resolved {
 
 namespace XivAlexander::Game::Resolved::CrowdFix {
 	namespace {
-		// Both helps of a parallel-for group: per-item claims when its +0xBC flag is set, blocks of items otherwise.
+		// Per-item claims when the group's +0xBC flag is set, blocks of items otherwise.
 		std::pair<ParallelForHelpFn, ParallelForHelpFn> ParallelForHelps(const ResolveContext& ctx, const void* forkJoin, std::string_view what) {
 			const auto m = ctx.Unique(ParallelForHelpChoice, ctx.FunctionStartingAt(forkJoin, what), what);
 			return {
@@ -827,8 +891,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			const void* Kick{};
 		};
 
-		// The job list kick, as what most of its callers call: mov rdx, [group+0x18]; mov rcx, [g_TaskManager]; call kick.
-		// Used by InlineBgPrep and ParallelAnimTail.
+		// The function most callers call: mov rdx, [group+0x18]; mov rcx, [g_TaskManager]; call kick.
 		JobListKickCallers FindJobListKick(const ResolveContext& ctx) {
 			std::map<std::pair<const void*, const void*>, size_t> counts;
 			for (const auto& m : ctx.All(JobListKickCaller, ctx.Text()))
@@ -849,20 +912,17 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			return {static_cast<void* const*>(taskManager), kick};
 		}
 
-		// Used by TrimCullingClear and PerItemCullingClaims.
 		void* const* FindCullingManager(const ResolveContext& ctx) {
 			const auto getter = UniqueCallTarget(ctx, CullingManagerGetterCall, "culling manager getter call");
 			const auto load = ctx.MatchAt(CullingManagerGetter, ctx.FunctionStartingAt(getter, "culling manager getter"), "culling manager getter");
 			return static_cast<void* const*>(ctx.RequireInSection(load.ResolveAddress<const void*>(1), ".data", "culling manager"));
 		}
 
-		// Used by DedupeSkeletonSyncs, and by ParallelAnimTail for the partial skeleton layout.
 		SkeletonPoseSyncWalkFn FindSkeletonPoseSyncWalk(const ResolveContext& ctx) {
 			return Address(UniqueCallTarget(ctx, SkeletonPoseSyncWalkCall, "pose sync walk call"));
 		}
 
 		PartialSkeletonLayout FindPartialSkeletonLayout(const ResolveContext& ctx) {
-			// The walk reads the count, the array, then each partial skeleton's pose, then steps to the next one.
 			auto code = CodeFrom(ctx, reinterpret_cast<const void*>(FindSkeletonPoseSyncWalk(ctx)), 0x180);
 			const auto count = ctx.First(PoseSyncPartialCount, code, "partial skeleton count");
 			code = After(code, count);
@@ -885,14 +945,12 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			JobPoolLayout Layout;
 		};
 
-		// The job pool's wake-all, as what the kick calls, and the layout as the wake-all reads it. Used by
-		// ChainWorkerWakeups and InlineBgPrep.
 		JobPoolWakeAll FindJobPoolWakeAll(const ResolveContext& ctx) {
 			const auto call = ctx.Unique(JobPoolWakeAllCall, ctx.Text(), "job pool wake-all call");
 			const auto wakeAll = ctx.RequireInSection(call.ResolveAddress<const void*>(2), ".text", "job pool wake-all");
 			const auto body = ctx.Find(JobPoolWakeAllBody, ctx.FunctionStartingAt(wakeAll, "job pool wake-all"));
 			ctx.Require(body.has_value(), ResolveError::Mismatch, "job pool wake-all {} does not match", Signatures::Describe(wakeAll));
-			ctx.Require(ImportSlotCalledAt(ctx, *body, 6) == ImportSlot(ctx, "kernel32.dll", "SetEvent"), ResolveError::Mismatch,
+			ctx.Require(ImportSlotCalledAt(ctx, *body, 7) == ImportSlot(ctx, "kernel32.dll", "SetEvent"), ResolveError::Mismatch,
 				"job pool wake-all {} does not call SetEvent", Signatures::Describe(wakeAll));
 
 			return {
@@ -903,19 +961,17 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 					.ThreadCount = ByteAt(*body, 1),
 					.ThreadSkip = ByteAt(*body, 3),
 					.ThreadWakeCount = ByteAt(*body, 4),
-					.ThreadEvent = ByteAt(*body, 5),
+					.ThreadEvent = ByteAt(*body, 6),
+					.ThreadWakeLimit = ctx.InRange<int32_t>(body->Get<int8_t>(5), 1, 0x40, "thread wake limit"),
 				},
 			};
 		}
 
-		// A disp8 operand, which is signed.
 		ptrdiff_t SignedByteAt(const ScanResult& m, size_t group) {
 			return m.Get<int8_t>(group);
 		}
 
-		// The function p is in, from the start of its first part to the end of its last. The compiler moves the code after
-		// a shrink-wrapped register save, or rarely run code, into parts of their own, which only chain to the first one in
-		// their unwind info; a pattern may well span parts.
+		// From its first part's start to its last part's end: code after a shrink-wrapped register save, or rarely run code, gets its own part; patterns may span parts.
 		std::span<const uint8_t> WholeFunctionContaining(const ResolveContext& ctx, const void* p, std::string_view what) {
 			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
 			const auto image = xivres::pe_image::from_loaded(base);
@@ -928,6 +984,39 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			const auto begin = std::ranges::min(parts, {}, [](const auto& part) { return part.data(); }).data();
 			const auto& last = std::ranges::max(parts, {}, [](const auto& part) { return part.data(); });
 			return {begin, last.data() + last.size()};
+		}
+
+		// Where the camera culling job reads the start and count of its item's range: the two fields it adds for the end, and which of them it compares with that end.
+		std::optional<std::pair<size_t, size_t>> FindCullItemRange(const ResolveContext& ctx, const void* job) {
+			std::map<uint8_t, size_t> fields;  // register -> field it was loaded from
+			for (const auto& m : ctx.All(CameraCullItemField, CodeFrom(ctx, job, 0x60))) {
+				const auto reg = static_cast<uint8_t>(((m.Get<uint8_t>(2) >> 3) & 7) | (m.Match()[1].matched && (m.Get<uint8_t>(1) & 4) ? 8 : 0));
+				fields.try_emplace(reg, m.Get<uint8_t>(3));
+			}
+
+			const auto code = CodeFrom(ctx, job, 0x200);
+			for (const auto& lea : ctx.All(CameraCullRangeEnd, code)) {
+				const auto rex = lea.Match()[1].matched ? lea.Get<uint8_t>(1) : uint8_t{};
+				const auto sib = lea.Get<uint8_t>(3);
+				const auto end = static_cast<uint8_t>(((lea.Get<uint8_t>(2) >> 3) & 7) | (rex & 4 ? 8 : 0));
+				const auto base = static_cast<uint8_t>((sib & 7) | (rex & 1 ? 8 : 0));
+				const auto index = static_cast<uint8_t>(((sib >> 3) & 7) | (rex & 2 ? 8 : 0));
+				if ((sib & 7) == 5 || base == index || !fields.contains(base) || !fields.contains(index))
+					continue;
+
+				for (const auto& cmp : ctx.All(CameraCullRangeCompare, After(code, lea).first((std::min)(After(code, lea).size(), size_t{0x20})))) {
+					const auto cmpRex = cmp.Match()[1].matched ? cmp.Get<uint8_t>(1) : uint8_t{};
+					const auto modrm = cmp.Get<uint8_t>(3);
+					auto start = static_cast<uint8_t>(((modrm >> 3) & 7) | (cmpRex & 4 ? 8 : 0));
+					auto other = static_cast<uint8_t>((modrm & 7) | (cmpRex & 1 ? 8 : 0));
+					if (start == end)
+						std::swap(start, other);
+					if (other != end || (start != base && start != index))
+						continue;
+					return std::make_pair(fields.at(start), fields.at(start == base ? index : base));
+				}
+			}
+			return std::nullopt;
 		}
 
 		// The base register and displacement of mov r64, [base+disp] (no index, not rip relative) at the start of code.
@@ -964,18 +1053,28 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const SkipIdleNotifiersFunctions& value) {
-		return std::format("lock {}, head {}, link {}, unlink {}, pre-present loop {}, post-kick loop {}, {} callback tests",
+		std::set<std::string> tests;
+		for (const auto& t : value.CallbackTests)
+			tests.insert(std::format("{}:{:+#x}/{:#x}/{:#x}", static_cast<int>(t.Test), t.FlagsOffset, t.Mask, t.SecondMask));
+		std::string testList;
+		for (const auto& t : tests)
+			testList += (testList.empty() ? "" : " ") + t;
+		return std::format("lock {}, head {} (next +0x{:X}), link {}, unlink {}, pre-present loop {} (slot {}), post-kick loop {} (slot {}), {} callback tests [{}]",
 			Signatures::Describe(value.Lock),
 			Signatures::Describe(value.Head),
+			value.NextOffset,
 			Signatures::Describe(value.Link),
 			Signatures::Describe(value.Unlink),
 			Signatures::Describe(value.PrePresentLoop),
+			value.PrePresentSlot,
 			Signatures::Describe(value.PostKickLoop),
-			value.CallbackTests.size());
+			value.PostKickSlot,
+			value.CallbackTests.size(),
+			testList);
 	}
 
 	std::string to_string(const ChainWorkerWakeupsFunctions& value) {
-		return std::format("queue indices {}, wake all {}, job pool +{} (threads +{}, count +{}), thread skip +{}, wake count +{}, event +{}",
+		return std::format("queue indices {}, wake all {}, job pool +{} (threads +{}, count +{}), thread skip +{}, wake count +{} (limit {}), event +{}",
 			Signatures::Describe(value.QueueIndices),
 			Signatures::Describe(value.WakeAll),
 			Signatures::Describe(value.Layout.TaskManagerJobPool),
@@ -983,6 +1082,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			Signatures::Describe(value.Layout.ThreadCount),
 			Signatures::Describe(value.Layout.ThreadSkip),
 			Signatures::Describe(value.Layout.ThreadWakeCount),
+			Signatures::Describe(value.Layout.ThreadWakeLimit),
 			Signatures::Describe(value.Layout.ThreadEvent));
 	}
 
@@ -1020,8 +1120,9 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const TrimCullingClearFunctions& value) {
-		return std::format("clear count {}, table +{}, object mask +{} ({} words), culling manager {}",
+		return std::format("clear count {} (0x{:X}), table +{}, object mask +{} ({} words), culling manager {}",
 			Signatures::Describe(value.ClearCount),
+			value.FullCount,
 			Signatures::Describe(value.TableOffset),
 			Signatures::Describe(value.ObjectMask),
 			Signatures::Describe(value.ObjectMaskWords),
@@ -1115,10 +1216,12 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	}
 
 	std::string to_string(const SplitCharacterCullingFunctions& value) {
-		return std::format("camera cull job {}, character item type {}, item size {}",
+		return std::format("camera cull job {}, character item type {}, item size {} (start +{}, count +{})",
 			Signatures::Describe(value.CullJob),
 			Signatures::Describe(static_cast<size_t>(value.CharacterItemType)),
-			Signatures::Describe(value.ItemSize));
+			Signatures::Describe(value.ItemSize),
+			Signatures::Describe(value.StartOffset),
+			Signatures::Describe(value.CountOffset));
 	}
 
 	std::string to_string(const PerItemCullingClaimsFunctions& value) {
@@ -1166,14 +1269,21 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.RequireInSection(r.Lock, ".data", "notifier lock");
 		ctx.RequireInSection(r.Head, ".data", "notifier list head");
 
-		const auto loop = [&](const RegexSignature& signature, std::string_view what, uint8_t*& at, size_t& length) {
+		// The patched loops call the same slots and follow the same link as the originals.
+		const auto loop = [&](const RegexSignature& signature, std::string_view what, uint8_t*& at, size_t& length, size_t& slot) {
 			const auto m = ctx.Unique(signature, text, what);
 			ctx.Require(m.ResolveAddress<void* const*>(1) == r.Head, ResolveError::Mismatch, "{} walks another list", what);
+			ctx.Require(ByteAt(m, 2) % 8 == 0, ResolveError::Invalid, "{} calls vtable offset 0x{:X}", what, ByteAt(m, 2));
+			ctx.Require(!r.NextOffset || r.NextOffset == ByteAt(m, 3), ResolveError::Mismatch, "the notifier loops follow +0x{:X} and +0x{:X}", r.NextOffset, ByteAt(m, 3));
 			at = m.begin<uint8_t>(0);
 			length = static_cast<size_t>(static_cast<uint8_t*>(m.end(0)) - at);
+			slot = ByteAt(m, 2) / 8;
+			r.NextOffset = ByteAt(m, 3);
 		};
-		loop(NotifierPrePresentLoop, "pre-present loop", r.PrePresentLoop, r.PrePresentLoopLength);
-		loop(NotifierPostKickLoop, "post-kick loop", r.PostKickLoop, r.PostKickLoopLength);
+		loop(NotifierPrePresentLoop, "pre-present loop", r.PrePresentLoop, r.PrePresentLoopLength, r.PrePresentSlot);
+		loop(NotifierPostKickLoop, "post-kick loop", r.PostKickLoop, r.PostKickLoopLength, r.PostKickSlot);
+		ctx.Require(r.PrePresentSlot != r.PostKickSlot && r.PrePresentSlot && r.PostKickSlot, ResolveError::Mismatch,
+			"the notifier loops call vtable slots {} and {}", r.PrePresentSlot, r.PostKickSlot);
 
 		// Of the functions that take the same lock, only Link and Unlink read these right after.
 		const auto lockUser = [&](const RegexSignature& signature, bool readsHead, std::string_view what) {
@@ -1190,9 +1300,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		r.Link = Address(lockUser(NotifierLinkBody, true, "notifier link"));
 		r.Unlink = Address(lockUser(NotifierUnlinkBody, false, "notifier unlink"));
 
-		// Base and derived classes share their callbacks, so each signature may find a callback used by several vtables.
-		// A callback without a test is treated as one that may always do work, so a test that is not found only makes the
-		// filter keep more notifiers.
+		// Callbacks are shared across base/derived vtables; one without a test is assumed to always do work, so a missed test only keeps more notifiers.
 		const std::pair<const RegexSignature*, NotifierWorkTest> tests[]{
 			{&BufferNotifierPostKick, NotifierWorkTest::BufferFlags},
 			{&BufferNotifierPrePresent, NotifierWorkTest::BufferFlags},
@@ -1202,19 +1310,51 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			{&TextureNotifierPrePresent, NotifierWorkTest::TextureMappedOrUploadFlags},
 			{&ConstantBufferNotifierPrePresent, NotifierWorkTest::ConstantBufferFlags},
 		};
+		// Every callback of the same kind of notifier must test the same flags: a wrong test would skip a notifier that has work.
+		std::map<int, std::pair<ptrdiff_t, uint32_t>> kinds;
 		for (const auto& [signature, test] : tests) {
 			for (const auto& m : ctx.All(*signature, text)) {
 				if (ctx.FunctionStartingAt(m.begin(0)).empty())
 					continue;
-				if (test == NotifierWorkTest::TextureMappedOrUploadFlags) {
-					// where the jne goes: jne rel32, or jne rel8 before 7.20
-					const auto target = m.Match()[1].matched
-						? m.ResolveAddress<const uint8_t*>(1)
-						: m.begin<uint8_t>(2) + 1 + m.Get<int8_t>(2);
-					if (!ctx.InSection(target, ".text") || !ctx.TryMatchAt(TextureNotifierUploadTest, CodeFrom(ctx, target, 4)))
-						continue;
+
+				NotifierCallbackTest t{.Function = m.begin(0), .Test = test, .FlagsOffset = m.Get<int8_t>(1)};
+				int kind = static_cast<int>(test);
+				switch (test) {
+					case NotifierWorkTest::BufferFlags:
+					case NotifierWorkTest::IndexBufferFlags:
+						t.Mask = m.Get<uint8_t>(2);
+						if (test == NotifierWorkTest::IndexBufferFlags)
+							t.SecondMask = m.Get<uint8_t>(3);
+						break;
+
+					case NotifierWorkTest::TextureMappedFlags:
+						t.Mask = m.Get<uint32_t>(2);
+						break;
+
+					case NotifierWorkTest::TextureMappedOrUploadFlags: {
+						t.Mask = m.Get<uint32_t>(2);
+						kind = static_cast<int>(NotifierWorkTest::TextureMappedFlags);
+						// where the jne goes: jne rel32 or jne rel8
+						const auto target = m.Match()[3].matched
+							? m.ResolveAddress<const uint8_t*>(3)
+							: m.begin<uint8_t>(4) + 1 + m.Get<int8_t>(4);
+						const auto upload = ctx.InSection(target, ".text") ? ctx.TryMatchAt(TextureNotifierUploadTest, CodeFrom(ctx, target, 5)) : std::nullopt;
+						if (!upload || upload->Get<uint8_t>(1) >= 32)
+							continue;
+						t.SecondMask = uint32_t{1} << upload->Get<uint8_t>(1);
+						break;
+					}
+
+					case NotifierWorkTest::ConstantBufferFlags:
+						t.Mask = m.Get<uint32_t>(2);
+						break;
 				}
-				r.CallbackTests.push_back({m.begin(0), test});
+
+				ctx.Require(t.Mask != 0, ResolveError::Invalid, "notifier callback {} tests no flags", Signatures::Describe(t.Function));
+				const auto [it, inserted] = kinds.try_emplace(kind, t.FlagsOffset, t.Mask);
+				ctx.Require(inserted || it->second == std::make_pair(t.FlagsOffset, t.Mask), ResolveError::Mismatch,
+					"notifier callbacks of one kind test +0x{:X} with 0x{:X} and +0x{:X} with 0x{:X}", it->second.first, it->second.second, t.FlagsOffset, t.Mask);
+				r.CallbackTests.push_back(t);
 			}
 		}
 		return r;
@@ -1223,7 +1363,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	const Signatures::ComplexSignature<ChainWorkerWakeupsFunctions> ChainWorkerWakeups("CrowdFix::ChainWorkerWakeups", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
 
-		// The write index is the global the enqueues (9 of them in 7.x) increment; the read index follows it.
+		// The write index is the global the enqueues increment; the read index follows it.
 		std::map<const uint32_t*, size_t> increments;
 		for (const auto& m : ctx.All(JobRingIndexIncrement, text)) {
 			if (const auto index = m.ResolveAddress<const uint32_t*>(1); index == m.ResolveAddress<const uint32_t*>(2))
@@ -1259,12 +1399,12 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(load && load->end(0) == site + 5, ResolveError::NotFound, "visibility table load not found");
 		TrimCullingClearFunctions r{
 			.ClearCount = loop.begin<uint32_t>(1),
+			.FullCount = loop.Get<uint32_t>(1),
 			.TableOffset = ByteAt(*load, 1),
 			.CullingManager = FindCullingManager(ctx),
 		};
 
-		// The object slots, as the slot allocator and release that the game calls on the culling manager use them. The
-		// camera culling indexes the visibility table with the same slots.
+		// The camera culling indexes the visibility table with the same slots the culling manager's slot allocator and release use.
 		std::set<const void*> callees;
 		for (const auto& m : ctx.All(CullingManagerCall, text)) {
 			if (m.ResolveAddress<void* const*>(1) == r.CullingManager)
@@ -1298,8 +1438,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(*release == *allocator, ResolveError::Mismatch,
 			"the culling slot allocator (mask +0x{:X}, objects +0x{:X}) and release (mask +0x{:X}, objects +0x{:X}) disagree",
 			mask, objects, std::get<0>(*release), std::get<1>(*release));
-		ctx.Require(std::cmp_equal(static_cast<uint64_t>(words) * 32, *r.ClearCount), ResolveError::Mismatch,
-			"the culling slot allocator scans {} mask words for 0x{:X} visibility slots", words, *r.ClearCount);
+		ctx.Require(std::cmp_equal(static_cast<uint64_t>(words) * 32, r.FullCount), ResolveError::Mismatch,
+			"the culling slot allocator scans {} mask words for 0x{:X} visibility slots", words, r.FullCount);
 		ctx.Require(mask != r.TableOffset && mask != objects, ResolveError::Invalid, "the object mask +0x{:X} overlaps the visibility table or the objects", mask);
 		r.ObjectMask = mask;
 		r.ObjectMaskWords = words;
@@ -1379,10 +1519,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			return found;
 		};
 
-		// The allocator's class is the one whose vtable has the counting alloc that forwards to the small-object allocator
-		// set up next to it. Its other slots are told apart by which of that allocator's slots they forward to, and those
-		// by their code. A pooled block's size class must come from the real size query, and pooled blocks must still be
-		// freed by the real free when the pool is turned off, so a slot guessed wrong would corrupt the heap.
+		// The class whose counting alloc forwards to the small-object allocator beside it; other slots are told apart by the inner slot they forward to.
+		// A wrong guess corrupts the heap: pooled blocks need the real size query for their size class, and the real free once the pool is off.
 		std::optional<std::tuple<const void* const*, const void* const*, int32_t>> classes;
 		for (const auto& m : ctx.All(GraphicsAllocatorVtables, text)) {
 			const auto vtable = m.ResolveAddress<const void* const*>(1);
@@ -1432,8 +1570,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	const Signatures::ComplexSignature<FreezeHiddenMinionsFunctions> FreezeHiddenMinions("CrowdFix::FreezeHiddenMinions", [](ResolveContext& ctx) {
 		const auto jump = ctx.Unique(CompanionFollowJump, ctx.Text(), "companion follow jump");
 
-		// Companion::Update tests the render flags itself after the draw-ready check. Both the tests and the jump may be
-		// in any part of it.
+		// Companion::Update tests the render flags itself after the draw-ready check; the tests and the jump may be in any of its parts.
 		std::optional<size_t> renderFlags;
 		for (const auto part : FunctionParts(ctx, ctx.FunctionContaining(jump.begin(0), "Companion::Update").data())) {
 			for (const auto& m : ctx.All(CompanionRenderFlagsTest, part)) {
@@ -1486,8 +1623,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			.FrameworkTaskManagerOffset = static_cast<size_t>(ctx.InRange<int32_t>(offsets->second, 1, 0x100000, "framework task manager offset")),
 		};
 
-		// The inline run does what the kick and a worker would: the kick's job list calls, then the worker's claim and
-		// task calls, with the context the worker passes.
+		// The inline run does what the kick and a worker would: the kick's job list calls, then the worker's claim and task calls with its context.
 		const auto calls = ctx.Find(JobListKickCalls, CodeFrom(ctx, kick, 0x80));
 		ctx.Require(calls.has_value(), ResolveError::Mismatch, "job list kick {} does not call the job list as expected", Signatures::Describe(kick));
 		ctx.Require(ByteAt(*calls, 1) == ByteAt(*calls, 4), ResolveError::Mismatch, "the job list kick counts the items with two different slots");
@@ -1592,9 +1728,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.RequireInSection(r.SubmitBase, ".data", "submit base");
 		ctx.RequireInSection(r.TaskManager, ".data", "task manager");
 
-		// The fix repeats the submit's whole arm, kick, help, wait and reset sequence on the same group, so all of the
-		// group is read from the submit, and every field it touches more than once has to agree. The writer and block
-		// fields also have to agree with the append, which crashes once the claimed blocks pass the last chunk.
+		// The fix repeats the submit's arm/kick/help/wait/reset on the same group, so every field the submit touches more than once must agree;
+		// writer and block fields must also agree with the append, which crashes once the claimed blocks pass the last chunk.
 		const auto group = ctx.First(AnimationSubmitGroup, submitFn, "animation submit group");
 		ctx.Require(group.ResolveAddress<void* const*>(1) == r.SubmitBase, ResolveError::Mismatch, "the animation submit group is not in the submit base");
 		const auto flush = ctx.First(ParallelForWriterFlush, After(submitFn, group), "parallel-for writer flush");
@@ -1672,9 +1807,9 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	});
 
 	const Signatures::ComplexSignature<SplitCharacterCullingFunctions> SplitCharacterCulling("CrowdFix::SplitCharacterCulling", [](ResolveContext& ctx) {
-		// Of the jobs stored into parallel-for groups, the camera culling job is the one that starts by reading its
-		// item's type, start and count.
+		// Of the jobs stored into parallel-for groups, the camera culling job is the one that starts by reading its item's type, start and count.
 		const void* found = nullptr;
+		std::pair<size_t, size_t> range;
 		std::set<const void*> builders;
 		for (const auto& m : ctx.All(ParallelForJobStore, ctx.Text())) {
 			const auto job = m.ResolveAddress<const void*>(1);
@@ -1682,12 +1817,15 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 				if (!ctx.InSection(job, ".text") || ctx.FunctionStartingAt(job).empty())
 					continue;
 
-				const auto head = CodeFrom(ctx, job, 0x60);
-				if (!ctx.Find(CameraCullItemType, head) || !ctx.Find(CameraCullItemStart, head) || !ctx.Find(CameraCullItemCount, head))
+				if (!ctx.Find(CameraCullItemType, CodeFrom(ctx, job, 0x60)))
+					continue;
+				const auto jobRange = FindCullItemRange(ctx, job);
+				if (!jobRange)
 					continue;
 
 				ctx.Require(!found, ResolveError::Ambiguous, "camera cull jobs at {} and {}", Signatures::Describe(found), Signatures::Describe(job));
 				found = job;
+				range = *jobRange;
 			}
 			builders.insert(WholeFunctionContaining(ctx, m.begin(0), "camera culling").data());
 		}
@@ -1695,9 +1833,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(builders.size() == 1, ResolveError::Mismatch, "{} functions arm the camera cull job instead of 1", builders.size());
 		const auto builder = WholeFunctionContaining(ctx, *builders.begin(), "camera culling");
 
-		// The function that arms the job builds its items: it sorts the visible objects by type, then puts every list but
-		// the BG objects' into a single item of the same type. The character type has to be one of those single items,
-		// and the item size is the stride the item allocator hands items out at.
+		// The arming function builds the items: visible objects sorted by type, every list but the BG objects' put into a single item of that type.
+		// Characters must get one of those single items; the item size is the item allocator's stride.
 		std::set<uint8_t> objectTypes;
 		for (const auto& m : ctx.All(CameraCullObjectTypeTest, builder))
 			objectTypes.insert(m.Get<uint8_t>(1));
@@ -1710,17 +1847,22 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			singleItemTypes.insert(m.Get<uint8_t>(2));
 		}
 		ctx.Require(allocator != nullptr, ResolveError::NotFound, "camera culling item allocation not found");
-		constexpr uint8_t characterType = 2;
+		constexpr uint8_t characterType = 2;  // The object type of characters; no single instruction names it. As of 7.56h.
 		ctx.Require(objectTypes.contains(characterType) && singleItemTypes.contains(characterType), ResolveError::Mismatch,
 			"the camera culling does not put objects of type {} into a single item of their own", characterType);
 
 		const auto address = ctx.First(CameraCullItemAddress, WholeFunctionContaining(ctx, ctx.RequireInSection(allocator, ".text", "camera culling item allocator"), "camera culling item allocator"), "camera culling item address");
 		ctx.Require(ByteAt(address, 2) == ByteAt(address, 4), ResolveError::Mismatch, "the camera culling item allocator returns items from another cursor");
 		const auto itemSize = size_t{1} << ctx.InRange<uint8_t>(address.Get<uint8_t>(3), 6, 8, "camera culling item shift");
+		const auto [start, count] = range;
+		ctx.Require(start != count && start + 4 <= itemSize && count + 4 <= itemSize, ResolveError::Mismatch,
+			"the camera cull job reads its range at +0x{:X} and +0x{:X}, outside items of 0x{:X} bytes", start, count, itemSize);
 		return SplitCharacterCullingFunctions{
 			.CullJob = Address(found),
 			.CharacterItemType = characterType,
 			.ItemSize = itemSize,
+			.StartOffset = start,
+			.CountOffset = count,
 		};
 	});
 
@@ -1794,15 +1936,21 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		}
 		ctx.Require(sort != nullptr, ResolveError::NotFound, "merge sort not found");
 
-		// The layout: the context array from the gather, and the lists and blocks from the gather of blocks.
 		const auto contextCount = ctx.First(CommandListContextCount, gatherFn, "context count");
 		const auto contextArray = ctx.First(CommandListContextArray, gatherFn, "context array");
 		const auto prologue = ctx.Find(CommandListBlocks, blocksFn.first((std::min)(blocksFn.size(), static_cast<size_t>(0x40))));
 		ctx.Require(prologue.has_value(), ResolveError::Mismatch, "command list gather of blocks {} does not start as expected", Signatures::Describe(blocks));
 		const auto copy = ctx.First(CommandListBlockCopy, After(blocksFn, *prologue), "block copy");
 		const auto entryCount = ctx.First(CommandListEntryCount, After(blocksFn, copy), "entry count");
-		// The first block, loaded from the list (lea reg, [rcx+rax*8]) before the copy.
-		const auto list = static_cast<uint8_t>(((prologue->Get<uint8_t>(1) >> 3) & 7) | 8);
+		// The list index plus one is scaled to a list in two steps, the same for the list address and the block count read: the lists start one list in.
+		const auto tripling = prologue->Get<uint8_t>(1);
+		const auto listSib = prologue->Get<uint8_t>(3);
+		ctx.Require((tripling & 0x3F) == 0 && (listSib & 0x38) == 0 && listSib == prologue->Get<uint8_t>(4), ResolveError::Mismatch,
+			"the command list gather of blocks {} does not index its lists as expected", Signatures::Describe(blocks));
+		const auto listSize = (size_t{1} + (size_t{1} << (tripling >> 6))) << (listSib >> 6);
+
+		// The first block, loaded from the list before the copy.
+		const auto list = static_cast<uint8_t>(((prologue->Get<uint8_t>(2) >> 3) & 7) | 8);
 		const auto beforeCopy = After(blocksFn, *prologue).first(static_cast<size_t>(static_cast<const uint8_t*>(copy.begin(0)) - static_cast<const uint8_t*>(prologue->end(0))));
 		std::optional<int32_t> firstBlock;
 		for (const auto& m : ctx.All(CommandListFirstBlock, beforeCopy)) {
@@ -1813,17 +1961,16 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		}
 		ctx.Require(firstBlock.has_value() && *firstBlock >= 0, ResolveError::NotFound, "the command list gather of blocks does not load the first block");
 
-		// The list descriptor is found at (list + 1) * 24 inside the context: the lists start one descriptor in.
 		CommandListLayout r{
 			.ContextArray = ByteAt(contextArray, 2),
 			.ContextCount = ByteAt(contextCount, 1),
 			.ContextSize = static_cast<size_t>(ctx.InRange<int32_t>(contextArray.Get<int32_t>(1), 0x100, 0x100000, "context size")),
-			.Lists = 24,
-			.ListSize = 24,
+			.Lists = listSize,
+			.ListSize = listSize,
 			.ListFirstBlock = static_cast<size_t>(*firstBlock),
 			.ListFreeSlots = ByteAt(entryCount, 2),
-			.ListBlocks = ByteAt(*prologue, 2),
-			.BlockSize = size_t{1} << ctx.InRange<uint8_t>(prologue->Get<uint8_t>(3), 8, 24, "block shift"),
+			.ListBlocks = ByteAt(*prologue, 5),
+			.BlockSize = size_t{1} << ctx.InRange<uint8_t>(prologue->Get<uint8_t>(6), 8, 24, "block shift"),
 			.NextBlock = FieldOffset(ctx, copy, 1, "next block"),
 			.EntrySize = size_t{1} << ctx.InRange<uint8_t>(entryCount.Get<uint8_t>(1), 2, 8, "entry shift"),
 		};

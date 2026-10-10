@@ -2,7 +2,6 @@
 #include "FontReplacementConfigs.h"
 
 namespace {
-	/// Reads key into value when it is there, leaving the default otherwise.
 	template<typename T>
 	void Read(const nlohmann::json& j, const char* key, T& value) {
 		if (const auto it = j.find(key); it != j.end())

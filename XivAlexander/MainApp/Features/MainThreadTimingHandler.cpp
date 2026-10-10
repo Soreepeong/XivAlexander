@@ -122,8 +122,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 						rt.FramerateControl.Lock.MaximumRenderIntervalDeviation
 					));
 					if (frameInterval && LastLockedFramerateRenderIntervalUs && LastLockedFramerateRenderIntervalUs != frameInterval) {
-						// The frames go on: the first on the new interval comes one new interval after the last one on the old (as
-						// the wait below puts frames), or as soon as it can if that has passed. The wait below then lands on it.
+						// The first frame on the new interval comes one new interval after the last on the old (or ASAP if that passed).
 						const auto lastRenderUs = (nowUs - LastLockedFramerateRenderDriftUs) / LastLockedFramerateRenderIntervalUs * LastLockedFramerateRenderIntervalUs + LastLockedFramerateRenderDriftUs;
 						const auto nextRenderUs = std::max(lastRenderUs + frameInterval, nowUs + 1);
 						LastLockedFramerateRenderDriftUs = nextRenderUs % frameInterval;

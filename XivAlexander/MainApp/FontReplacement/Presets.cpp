@@ -10,7 +10,7 @@ namespace Presets = XivAlexander::Apps::MainApp::FontReplacement::Presets;
 namespace GameFontNames = XivAlexander::Apps::MainApp::FontReplacement::GameFontNames;
 
 namespace {
-	// Reads a preset file's model; comments are allowed, as FontChanger writes none but people may.
+	// Comments are allowed: FontChanger writes none, but people may.
 	FontChanger::Structs::MultiFontSet ReadPresetFile(const std::filesystem::path& path) {
 		std::ifstream file(path);
 		if (!file)
@@ -92,7 +92,6 @@ std::filesystem::path Presets::Import(const std::filesystem::path& path, const s
 Presets::Faces Presets::Load(const std::filesystem::path& path) {
 	auto set = ReadPresetFile(path);
 
-	// Relative paths in the preset are from its folder.
 	const auto directory = absolute(path).parent_path();
 	Faces faces;
 	for (const auto& fontSet : set.FontSets) {

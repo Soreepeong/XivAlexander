@@ -15,10 +15,8 @@ namespace {
 	// Editors write a file in several steps; a change is acted on once the file has been quiet this long.
 	constexpr auto ReloadDelay = std::chrono::milliseconds(500);
 
-	// A change notification of a folder, closed when destroyed; empty if the folder can't be watched.
 	using FolderWatch = Utils::Win32::Closeable<HANDLE, FindCloseChangeNotification>;
 
-	// Watches a folder for files coming, going and being written.
 	FolderWatch WatchFolder(const std::filesystem::path& folder, bool subtree) {
 		return {FindFirstChangeNotificationW(folder.c_str(), subtree ? TRUE : FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE), INVALID_HANDLE_VALUE};
 	}
@@ -61,7 +59,6 @@ void FontReplacement::PresetController::Schedule(bool edited, std::chrono::milli
 }
 
 void FontReplacement::PresetController::ThreadBody() {
-	// The presets folder, and the folders of the presets' glyph images, and no others.
 	auto presetWatch = WatchFolder(m_presetFolder, true);
 	std::map<std::filesystem::path, FolderWatch> glyphWatches;
 
@@ -80,7 +77,6 @@ void FontReplacement::PresetController::ThreadBody() {
 		}
 
 		if (load) {
-			// One at a time, in order: each applies the settings as they are when it starts.
 			try {
 				Load(keepOnFailure);
 			} catch (const std::exception& e) {
@@ -117,7 +113,7 @@ void FontReplacement::PresetController::ThreadBody() {
 			});
 		}
 
-		// Waits for a change of files, polling for the settings' and the stop request every so often.
+		// Polls every so often too, as settings changes and the stop request don't signal the handles.
 		DWORD timeout = 100;
 		{
 			const auto lock = std::scoped_lock(m_mutex);
@@ -233,7 +229,6 @@ FontReplacement::Presets::Faces FontReplacement::PresetController::MakeFamilyFac
 std::optional<FontReplacement::Presets::Faces> FontReplacement::PresetController::MakeFaces(const std::string& family, const FontReplacementFamilyFont& font, bool monospacedDigits, std::vector<std::string>& failures) {
 	using FontChanger::FaceFromFont::FontInfo;
 
-	// Each font is opened once for all the faces.
 	std::map<std::tuple<std::string, DWRITE_FONT_WEIGHT, DWRITE_FONT_STRETCH, DWRITE_FONT_STYLE>, std::optional<FontInfo>> opened;
 	const FontChanger::FaceFromFont::FontOpener open = [&opened](const FontChanger::Structs::LookupStruct& lookup) -> const FontInfo* {
 		const auto key = std::make_tuple(lookup.Name, lookup.Weight, lookup.Stretch, lookup.Style);
@@ -261,9 +256,8 @@ std::optional<FontReplacement::Presets::Faces> FontReplacement::PresetController
 			if (elements.empty())
 				continue;
 
-			// The game's own glyphs first, as FontChanger's FaceFromFont.MakeFace makes a face: MakeElements' elements
-			// replace (merge mode Replace) the characters an earlier element has, so with nothing before them they would
-			// draw none. It also makes the face's sizes and line metrics the game font's, as in a preset.
+			// The game's glyphs go first, as in FaceFromFont.MakeFace: MakeElements' Replace-mode elements draw nothing without an earlier element.
+			// It also gives the face the game font's sizes and line metrics, as in a preset.
 			auto face = std::make_shared<FontChanger::Structs::Face>();
 			face->Name = name;
 			auto& game = *face->Elements.emplace_back(std::make_unique<FontChanger::Structs::FaceElement>());

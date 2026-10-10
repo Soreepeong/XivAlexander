@@ -7,7 +7,7 @@
 #include "BaseConfigRepository.h"
 
 namespace XivAlexander {
-	/// libsoxr's settings, as a resampler is made with. Zero in a number means "whatever the quality preset says".
+	/// libsoxr's settings; zero in a number means "whatever the quality preset says".
 	struct SoxrResamplerConfig {
 		enum class QualityPreset : uint8_t {
 			Quick,      // cubic interpolation
@@ -76,7 +76,6 @@ namespace XivAlexander {
 		{SoxrResamplerConfig::Rolloff::None, "None"},
 	})
 
-	/// The soxr resampler's settings, saved as an object.
 	class SoxrResamplerConfigGroup : public ConfigGroup {
 	public:
 		using ConfigGroup::ConfigGroup;
@@ -84,7 +83,7 @@ namespace XivAlexander {
 		/// Resample voices with soxr instead of the game's linear interpolation.
 		ConfigItem<bool> Enabled{this, "Enabled", false};
 
-		/// What resamplers are made with; a change applies to the voices started after it.
+		/// A change applies to the voices started after it.
 		class FilterGroup : public ConfigGroup {
 		public:
 			using ConfigGroup::ConfigGroup;
@@ -100,7 +99,7 @@ namespace XivAlexander {
 			ConfigItem<uint32_t> Log2MinDftSize{this, "Log2MinDftSize", 8U};
 			ConfigItem<uint32_t> Log2LargeDftSize{this, "Log2LargeDftSize", 8U};
 
-			/// Gets the settings, sanitized together.
+			/// Sanitized together.
 			[[nodiscard]] SoxrResamplerConfig Snapshot() const;
 		} Filter{this, "Filter"};
 	};

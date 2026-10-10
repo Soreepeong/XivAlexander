@@ -133,8 +133,7 @@ namespace XivAlexander::Misc::Hooks {
 		}
 
 		~PointerFunction() override {
-			// Remove the hook so that the function can be hooked again; the trampoline goes with it, so wait for the
-			// calls still in it first.
+			// So the function can be hooked again; the trampoline goes with it, so wait for the calls still in it first.
 			MH_DisableHook(this->m_pAddress);
 			while (this->m_hookCounter)
 				Sleep(1);
@@ -163,13 +162,11 @@ namespace XivAlexander::Misc::Hooks {
 		using Type = PointerFunction<R, Args...>;
 	};
 
-	/// The hook for a function pointer type, so that its signature need not be spelled out again;
-	/// e.g. PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Submit)>.
+	/// Spares spelling out the signature again, e.g. PointerFunctionOf<decltype(Game::SoundVoiceFunctions::Submit)>.
 	template<typename TFunctionPointer>
 	using PointerFunctionOf = typename PointerFunctionOfImpl<std::remove_cvref_t<TFunctionPointer>>::Type;
 
-	/// Points one call rel32 instruction elsewhere, through a jump stub allocated within its reach. The displacement is
-	/// swapped with one locked store, so a thread running the code calls either the old or the new target.
+	/// Redirects one call rel32 through a jump stub within its reach; the displacement is swapped with one locked store, so threads call either target.
 	class CallSitePatch {
 		uint8_t* const m_call;
 		const int32_t m_original;
@@ -177,7 +174,7 @@ namespace XivAlexander::Misc::Hooks {
 		uint8_t* m_stub{};  // jmp [rip+2]; int3 x2; the destination, 8 byte aligned
 
 	public:
-		/// Gets what a call rel32 instruction calls; throws if it isn't one.
+		/// Throws if it isn't a call rel32.
 		[[nodiscard]] static void* TargetOf(const void* callInstruction);
 
 		CallSitePatch(void* callInstruction, void* destination);
@@ -185,17 +182,15 @@ namespace XivAlexander::Misc::Hooks {
 		CallSitePatch& operator=(const CallSitePatch&) = delete;
 		~CallSitePatch();
 
-		/// Whether the call goes to the destination now.
 		[[nodiscard]] bool IsRedirected() const;
 
-		/// Whether the call goes to the destination or the original target, i.e. nobody patched it over this.
+		/// Nobody patched it over this: it goes to the destination or the original target.
 		[[nodiscard]] bool IsRestorable() const;
 
-		/// Redirects the call, unless something else changed it since it was looked at; returns whether it did.
+		/// Unless something else changed it since it was looked at; returns whether it did.
 		bool Redirect();
 
-		/// Restores the call. If something else redirected it over this, it may chain to the stub, which is then pointed at
-		/// the original target and kept.
+		/// If something else redirected it over this, it may chain to the stub, which is then pointed at the original target and kept.
 		void Restore();
 
 	private:
@@ -204,9 +199,7 @@ namespace XivAlexander::Misc::Hooks {
 		void SetStubDestination(const void* destination);
 	};
 
-	/// A hook of one call site: only the call rel32 at callInstruction goes to the detour, and the bridge calls whatever it
-	/// called before. Other callers of the function, and other hooks of the function itself (which other tools may patch
-	/// inline), are left alone.
+	/// Hooks only the call rel32 at callInstruction (the bridge calls its previous target); other callers and inline hooks by other tools are untouched.
 	template<typename R, typename ...Args>
 	class CallSiteFunction : public Function<R, Args...> {
 		using Function<R, Args...>::FunctionType;

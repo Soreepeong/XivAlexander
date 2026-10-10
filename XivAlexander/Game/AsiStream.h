@@ -31,6 +31,7 @@ namespace XivAlexander::Game {
 		return static_cast<AsiStreamFlag>(~static_cast<uint8_t>(v));
 	}
 
+	// AltCodecMusicSupport refuses to resolve unless the game's fetch callback keeps its flags here.
 	struct AsiStreamUserFfxiv {
 		uint32_t StreamerMark;
 		AsiStreamFlag Flags;
@@ -52,6 +53,7 @@ namespace XivAlexander::Game {
 
 	constexpr auto NoFetchOffset = 0xFFFFFFFFU;
 
+	// AltCodecMusicSupport refuses to resolve unless the stream code allocates and reads what the decoders use here.
 	struct AsiStream {
 		void* Decoder;
 		AsiStreamUserFfxiv* User;

@@ -46,33 +46,24 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		void RescanTtmp(Window::ProgressPopupWindow& progressWindow);
 		void ApplyTtmpChanges(NestedTtmp& nestedTtmp, bool announce = true);
 
-		// Organizing the library. Call these without holding LockTtmps, and not from the game's main thread: those that
-		// change anything pause the game and stop sqpack reads while they move directories and reapply the packs, then
-		// fire OnTtmpSetsChanged. Nodes stay the same objects, but their Path and those of everything inside change.
-		// Each throws std::invalid_argument, with a message fit to show, when asked for something that cannot be done,
-		// and std::runtime_error when the file system refuses, in which case the item stays where it was.
+		// Call without LockTtmps, off the game's main thread; changes pause the game and fire OnTtmpSetsChanged. Nodes stay the same objects, but their Paths change.
+		// Throw std::invalid_argument (message fit to show) for impossible requests, std::runtime_error when the file system refuses (the item stays put).
 
-		/// \returns The directories whose contents make up the top level of GetTtmps(), in the order they are scanned.
+		/// \returns The directories making up the top level of GetTtmps(), in scan order.
 		[[nodiscard]] std::vector<std::filesystem::path> GetTtmpSearchDirectories() const;
 
-		/// Renames the directory of a pack or folder, keeping its place among its siblings.
+		/// Keeps the item's place among its siblings.
 		void RenameTtmp(const std::shared_ptr<NestedTtmp>& item, const std::wstring& newName);
 
-		/// Moves packs or folders into folderDir: the Path of a folder, one of GetTtmpSearchDirectories(), or an empty
-		/// directory inside either, such as one from CreateTtmpFolder. Moved items go last among their new siblings,
-		/// which gives them the highest priority there, as newly added packs get. Items inside other listed items move
-		/// along with those. Items are moved one by one; if one fails, those before it stay moved.
+		/// folderDir: a folder's Path, a search directory, or an empty directory in either. Moved items go last (highest priority);
+		/// items inside other listed items move along with those. Moves one by one; if one fails, those before it stay moved.
 		void MoveTtmps(const std::vector<std::shared_ptr<NestedTtmp>>& items, const std::filesystem::path& folderDir);
 
-		/// Creates a folder named name in parentDir (as for MoveTtmps), and moves items into it. An empty folder stays
-		/// on disk but does not appear in GetTtmps() until something is moved into it, as scanning skips empty folders.
-		/// If nothing could be moved in, the new folder is removed again.
-		/// \returns Path of the new folder.
+		/// parentDir as for MoveTtmps. Scanning skips empty folders, so one stays out of GetTtmps() until filled; removed again if nothing could be moved in.
 		std::filesystem::path CreateTtmpFolder(const std::filesystem::path& parentDir, const std::wstring& name, const std::vector<std::shared_ptr<NestedTtmp>>& items = {});
 
-		/// Reorders the children of a folder, or of GetTtmps() itself, and saves the order to order.json. Packs apply
-		/// in tree order, so a later one wins over an earlier one where both replace the same file.
-		/// \param children Every child of folder exactly once, in the new order.
+		/// Saves the order to order.json; packs apply in tree order, so a later one wins where both replace the same file.
+		/// \param children Every child of folder exactly once.
 		void SetTtmpOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children);
 
 		xivres::util::listener_manager<Implementation, void> OnTtmpSetsChanged;

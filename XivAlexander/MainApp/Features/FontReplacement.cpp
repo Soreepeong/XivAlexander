@@ -10,7 +10,6 @@
 #include "MainApp/FontReplacement/NamePlateText.h"
 #include "MainApp/FontReplacement/PresetController.h"
 
-// The parts it is made of.
 namespace XivAlexander::Apps::MainApp::Features {
 	using namespace MainApp::FontReplacement;
 }
@@ -21,24 +20,22 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	std::unique_ptr<FontReplacer> Replacer;
 
-	// Null if it couldn't be set up for this version of the game: without them, text is still drawn with the replaced fonts,
-	// nameplates as the game bakes them, and words split by the game's rules.
+	// Null if unsupported by this game version: text is still replaced, but nameplates are as the game bakes them and words split by its rules.
 	std::unique_ptr<NamePlateText> NamePlates;
 	std::unique_ptr<LineBreaker> Breaker;
 
-	// What changed since the last frame, applied on the game's thread before the frame is presented (between frames).
+	// Changes since the last frame, applied on the game's thread between frames.
 	std::mutex PendingMutex;
 	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
 	bool PendingSettings = true;
 
-	// One of them: the hook of the game's call of Present, or where that isn't found, the hook of DXGI's Present.
+	// Only one is set: the hook of the game's call of Present, or DXGI's Present where that isn't found.
 	std::optional<Host::PresentCallHook> PresentCall;
 	std::optional<Host::PresentHook> Present;
 	std::unique_ptr<PresetController> Controller;  // With PendingMutex.
 	xivres::util::on_dtor::multi Cleanup;
 
-	// Set up on a thread of its own: reading the game's executable and finding the signatures takes a while, and the game's
-	// thread is waited for, which may not have its window yet.
+	// Reading the game's executable and finding signatures takes a while, and the game's thread may not have its window yet.
 	std::thread InitThread;
 
 	explicit Implementation(MainApp::App& app)
@@ -78,8 +75,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (error)
 			throw std::runtime_error(*error);
 
-		// The game calls Present on its thread after the frame's UI was drawn; glyphs added during it are uploaded then and
-		// show from the next frame.
+		// The game calls Present on its thread after drawing the UI; glyphs added during the frame are uploaded then and show from the next one.
 		try {
 			try {
 				PresentCall.emplace([this] { BeforePresent(); });
@@ -93,8 +89,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			throw;
 		}
 
-		// Subscribed before the controller is made, which loads the settings as they are then: a change in between is
-		// either loaded by it, or reloaded. The edge and nameplates are applied before the next frame.
+		// Subscribed before the controller loads the settings, so a change in between is loaded or reloaded; the edge and nameplates apply before the next frame.
 		auto& settings = Config->Runtime.FontReplacement;
 		Cleanup += settings.Faces.OnChange([this] {
 			const auto lock = std::scoped_lock(PendingMutex);
@@ -127,7 +122,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			App.RunOnGameLoop([this] { TearDown(); });
 	}
 
-	// Sets up a part the font replacement works without; null, with why logged, if it can't be.
 	template<typename T>
 	std::unique_ptr<T> Optional(const char* part) {
 		try {
@@ -138,7 +132,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		}
 	}
 
-	// Undoes everything, one step at a time: a step that fails is logged and the others still run.
 	void TearDown() {
 		const auto step = [](const char* name, auto&& fn) {
 			try {

@@ -178,7 +178,7 @@ void XivAlexander::Misc::Hooks::WndProcFunction::HookDisable() {
 namespace {
 	constexpr size_t CallSiteStubSize = 16;
 
-	// Allocates memory a call rel32 at address can reach (±2 GB), from the free regions nearest to it, looking down first.
+	// Within a call rel32's reach of address (±2 GB), from the nearest free regions, looking down first.
 	uint8_t* AllocateNear(const void* address, size_t size) {
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);

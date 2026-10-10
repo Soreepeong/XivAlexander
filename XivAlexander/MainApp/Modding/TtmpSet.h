@@ -25,7 +25,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		void TryCleanupUnusedFiles();
 
-		/// The ModPack's name, or the name of its folder if it has none, as packs made by some tools have.
+		/// Falls back to the folder name, as packs made by some tools have no name.
 		[[nodiscard]] std::string DisplayName() const;
 
 		[[nodiscard]] static std::vector<std::string> DisableMarkerNames(const std::string& choicesFileName = {});

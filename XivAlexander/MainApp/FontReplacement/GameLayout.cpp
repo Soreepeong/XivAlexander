@@ -12,7 +12,7 @@ namespace {
 	std::recursive_mutex s_mutex;
 	std::optional<xivres::game_layout> s_layout;
 
-	// Problems recorded here rather than by the layout (CheckFixed), reported with its.
+	// Problems found by CheckFixed rather than by the layout, reported along with its own.
 	std::vector<std::string> s_problems;
 
 	std::string_view ReadSignatures() {

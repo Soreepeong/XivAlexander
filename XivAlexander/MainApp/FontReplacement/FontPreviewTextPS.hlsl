@@ -1,5 +1,5 @@
-// The text pass of the settings' font previews (PreviewRenderer), drawn over the edge pass: the glyph's coverage in its
-// channel of the atlas, in the text color. Each pixel is at a texel's center, so the linear sampler reads the texel as is.
+// Settings font preview text pass (PreviewRenderer), over the edge pass: atlas channel coverage in the text color.
+// Each pixel is at a texel's center, so the linear sampler reads the texel as is.
 
 Texture2D g_TextureT : register(t0);
 SamplerState g_TextureS : register(s0);

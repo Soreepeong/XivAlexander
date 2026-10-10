@@ -189,7 +189,7 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		if (LobbyLogin || LobbyErrorDialog)
 			return;
 
-		// Neither part needs the other, so this does not fail as a whole; a part that is not found was logged with why.
+		// The parts are independent, so a missing one doesn't fail the whole; why it's missing was already logged.
 		Game::Resolved::LoginSessionsFunctions functions;
 		if (Game::Resolved::LoginSessions.Resolve(functions) != Game::Signatures::ResolveError::Ok)
 			functions = {};
@@ -348,7 +348,6 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 		if (selectMostRecentlyWritten && mostRecent) {
 			selected = *mostRecent;
 		} else if (firstLoad) {
-			// the session the game was launched with
 			if (LaunchSession) {
 				if (const auto it = std::ranges::find(sessions, LaunchSession->Alias, &Session::Alias); it != sessions.end())
 					selected = it - sessions.begin();

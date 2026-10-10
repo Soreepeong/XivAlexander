@@ -253,8 +253,7 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 					processPath = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, false, pid).PathOf();
 				} catch (const std::exception&) {
 					// ¯\_(ツ)_/¯
-					// unlikely that we can't access information of process that has anything to do with xiv,
-					// unless it's antivirus, in which case we can't do anything, which will result in failure anyway.
+					// an inaccessible process is unlikely to be xiv-related unless it's antivirus, which would fail the update anyway.
 					continue;
 				}
 			}

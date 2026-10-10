@@ -42,7 +42,6 @@ void FontReplacement::EdgeShader::Set(bool use) {
 	}
 
 	if (!m_shader) {
-		// Made on the device of the game's shader.
 		const auto target = GetEdgeShaderObject(true);
 		if (!target)
 			throw std::runtime_error("The game's edge shader isn't there.");

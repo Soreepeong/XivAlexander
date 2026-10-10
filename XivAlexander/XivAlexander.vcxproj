@@ -436,10 +436,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
-  <!--
-    The shaders of the settings' font previews (IDR_FONTPREVIEWVS, IDR_FONTPREVIEWTEXTPS), compiled into the intermediate
-    directory before the resources are, which embed them.
-  -->
+  <!-- Font preview shaders (IDR_FONTPREVIEWVS, IDR_FONTPREVIEWTEXTPS), compiled into IntDir before the resources that embed them. -->
   <ItemGroup>
     <FxCompile Include="MainApp\FontReplacement\FontPreviewTextPS.hlsl">
       <ShaderType>Pixel</ShaderType>
@@ -453,10 +450,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
       <EntryPointName>main</EntryPointName>
       <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
     </FxCompile>
-    <!--
-      The edge shader of the font replacement (IDR_FONTEDGEPS): FFXIV-FontChanger's FontEdgePS.hlsl, compiled as its
-      FontChanger.ShaderGen does for the Dalamud plugin (ps_5_0, main, /O3, in every configuration), to the same bytecode.
-    -->
+    <!-- IDR_FONTEDGEPS: compiled as FontChanger.ShaderGen does for the Dalamud plugin (ps_5_0, main, /O3, every configuration), to the same bytecode. -->
     <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>

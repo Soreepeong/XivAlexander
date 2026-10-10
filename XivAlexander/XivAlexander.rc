@@ -212,8 +212,7 @@ BEGIN
         MENUITEM "すべてのIPCメッセージをログに記録(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "パケット遅延の軽減(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "すべての接続の処理を解除する(&E)\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "すべての接続を強制に終了する(&S)\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "すべての接続を強制に終了する(&S)", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "トラブルシューティング(&T)"
         BEGIN
             MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -383,6 +382,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "ゲームを強制終了しますか？"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "すべての接続を強制終了しますか？"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
@@ -981,8 +981,7 @@ BEGIN
         MENUITEM "모든 IPC 메시지 로그 사용(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "패킷 딜레이 감소(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "모든 연결 처리 해제하기(&E)\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "모든 접속 강제 해제하기(&S)\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "모든 접속 강제 해제하기(&S)", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "문제 해결(&T)"
         BEGIN
             MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -1214,6 +1213,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "게임을 강제로 종료하시겠습니까?"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "모든 접속을 강제로 해제하시겠습니까?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
@@ -1812,8 +1812,7 @@ BEGIN
         MENUITEM "Log All &IPC Message \tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "&Reduce Packet Delay\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "R&elease All Connections\tCtrl+Shift+F2", ID_NETWORK_RELEASEALLCONNECTIONS
-        MENUITEM "Re&set All Connections\tCtrl+Shift+F3", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "Re&set All Connections", ID_NETWORK_RESETALLCONNECTIONS
         POPUP "&Troubleshooting"
         BEGIN
             MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
@@ -2012,14 +2011,13 @@ IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.m
 // RCDATA
 //
 
-// The signatures of the game's code that the font replacement uses, shared with FFXIV-FontChanger.
+// Game code signatures the font replacement uses, shared with FFXIV-FontChanger.
 IDR_GAMEFONTSIGNATURES  RCDATA                  "..\\FFXIV-FontChanger\\xivres\\data\\game_font_signatures.json"
 
-// The font replacement's edge shader, compiled from FFXIV-FontChanger's FontEdgePS.hlsl at build time (FxCompile) into the
-// intermediate directory, which is an include directory of the resource compiler.
+// Compiled from FFXIV-FontChanger's FontEdgePS.hlsl by FxCompile into the intermediate directory, an include directory of the resource compiler.
 IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
 
-// The shaders of the settings' font previews, compiled at build time (FxCompile) into the intermediate directory.
+// Settings font preview shaders, compiled by FxCompile into the intermediate directory.
 IDR_FONTPREVIEWVS       RCDATA                  "FontPreviewVS.cso"
 IDR_FONTPREVIEWTEXTPS   RCDATA                  "FontPreviewTextPS.cso"
 
@@ -2151,6 +2149,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "Do you want to reset all connections?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 

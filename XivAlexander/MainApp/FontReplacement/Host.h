@@ -13,11 +13,8 @@ _COM_SMARTPTR_TYPEDEF(ID3D11Resource, __uuidof(ID3D11Resource));
 _COM_SMARTPTR_TYPEDEF(ID3D11Texture2D, __uuidof(ID3D11Texture2D));
 _COM_SMARTPTR_TYPEDEF(IDXGISwapChain, __uuidof(IDXGISwapChain));
 
-// The font replacement is a port of FFXIV-FontChanger's Dalamud plugin (FontChanger.DalamudPlugin), kept in the same
-// shape, file for file and class for class, so that the two can be compared. This is what its IHost is here: the game's
-// executable, hooks, textures the game can bind, and a log.
+// The font replacement ports FontChanger.DalamudPlugin file for file and class for class, so the two can be compared; this is its IHost.
 namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
-	// Logs to XivAlexander's log, in the font replacement's category.
 	void Log(LogLevel level, std::string message);
 
 	template<typename... Args>
@@ -40,13 +37,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		Log(LogLevel::Error, std::format(format, std::forward<Args>(args)...));
 	}
 
-	// Gets the path of the game's executable.
 	[[nodiscard]] std::filesystem::path GameFileName();
 
-	// Gets where the game's executable is loaded.
 	[[nodiscard]] uintptr_t GameBaseAddress();
 
-	// A hook of a game function, enabled while it exists.
 	template<typename R, typename... Args>
 	class Hook {
 		std::optional<Misc::Hooks::PointerFunction<R, Args...>> m_hook;
@@ -66,14 +60,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 			m_hook.reset();
 		}
 
-		// Calls the original function.
 		R Original(Args... args) {
 			return m_hook->bridge(args...);
 		}
 	};
 
-	// Calls a function on the thread that presents the game's frames, right before each is presented (the place the plugin's
-	// Dalamud draws its UI): a hook of IDXGISwapChain::Present, for the swap chains of a window.
+	// Runs right before each frame is presented, where the plugin's Dalamud draws its UI.
 	class PresentHook {
 		HWND m_window;
 		std::function<void()> m_beforePresent;
@@ -89,11 +81,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		HRESULT PresentDetour(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags);
 	};
 
-	// Calls a function at the same point as PresentHook, but from the game's own call of Kernel::SwapChain::Present in
-	// DeviceDX11::PostTick, which only that call is redirected for: the many tools that hook IDXGISwapChain::Present
-	// (Dalamud, ReShade, overlays) are not in the way, and whatever hooks Present itself is still called through. The call
-	// is made after the render thread is done with the frame and before the next is kicked, the only time the immediate
-	// context is free to use. Throws if the call isn't found in this version of the game.
+	// Redirects only the game's Kernel::SwapChain::Present call in DeviceDX11::PostTick, so Present hooks (Dalamud, ReShade, overlays) aren't in the way and still run.
+	// That is after the render thread is done with the frame and before the next is kicked, the only time the immediate context is free.
 	class PresentCallHook {
 		std::function<void()> m_beforePresent;
 		std::optional<Misc::Hooks::CallSiteFunction<void, void*>> m_hook;
@@ -109,8 +98,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		void PresentDetour(void* swapChain);
 	};
 
-	// A B8G8R8A8 texture the game can bind (a Kernel::Texture), made on the game's device; destroying it releases it once
-	// the game is done with it.
+	// A Kernel::Texture on the game's device; destroying it releases it once the game is done with it.
 	class Texture {
 		uintptr_t m_kernel = 0;
 		ID3D11ResourcePtr m_resource;
@@ -122,10 +110,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		Texture& operator=(const Texture&) = delete;
 		~Texture();
 
-		// Gets the texture as a Kernel::Texture*.
+		// A Kernel::Texture*.
 		[[nodiscard]] uintptr_t Kernel() const { return m_kernel; }
 
-		// Gets its D3D11 resource, to update its contents.
 		[[nodiscard]] ID3D11Resource* Resource() const { return m_resource.GetInterfacePtr(); }
 	};
 }

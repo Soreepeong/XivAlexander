@@ -28,12 +28,10 @@ namespace XivAlexander::Apps::MainApp {
 namespace XivAlexander::Apps::MainApp::Window {
 	class ConfigWindow;
 
-	/// The status, and all of the runtime configuration: a tree of pages, of which the configuration's are of its groups,
-	/// with their items, each applied as it is changed. A child window of its host, which draws the status and runs the
-	/// commands the pages send.
+	/// The status and the runtime configuration as a tree of pages, applied as changed; the host draws the status and runs the pages' commands.
 	class SettingsView {
 	public:
-		/// The choices for the next restart that the host keeps, by their menu commands.
+		/// The next restart's choices, kept by the host, by their menu commands.
 		struct RestartChoices {
 			std::function<std::pair<bool, bool>(UINT commandId)> GetState;  // Whether it is chosen, and whether it can be changed.
 			std::function<void(UINT commandId)> Choose;
@@ -43,7 +41,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		struct Row;
 		using Font = Utils::Win32::Closeable<HFONT, DeleteObject>;
 
-		/// How an item is shown. An item without a label is shown with its key.
+		/// An item without a label is shown with its key.
 		struct ItemInfo {
 			UINT LabelId = 0;  // A string resource,
 			UINT MenuId = 0;  // or the text of a command in a menu resource.
@@ -60,8 +58,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 			bool Flow = false;
 			// For an item: shown at the end of its page, in a tab of its own among the page's others.
 			bool Tabbed = false;
-			// For a group: buttons atop its page, sending commands to the owner; labelled by a string resource, or with
-			// the command's menu text if it is 0.
+			// For a group: (label string resource, or 0 for the menu text; command) buttons atop its page, sending commands to the owner.
 			std::vector<std::pair<UINT, UINT>> Actions;
 			// For a group: the items of another node, shown at the end of its page under a heading.
 			const ConfigNode* AppendNode = nullptr;
@@ -74,7 +71,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		App& m_app;
 		const std::shared_ptr<Config> m_config;
 
-		// Receives the commands the pages send, such as opening the runtime configuration editor.
+		// Receives the commands the pages send.
 		const HWND m_hWndOwner;
 		const std::function<double()> m_getZoom;
 		const std::function<bool()> m_isDarkMode;
@@ -98,7 +95,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		std::map<const ConfigItemBase*, ItemInfo> m_itemInfo;
 
-		/// A node of the tree, and its page.
 		struct TreeNode {
 			enum class NodeKind {
 				Groups,  // The items of its groups.
@@ -113,8 +109,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 			NodeKind Kind = NodeKind::Groups;
 
-			// Labelled by a string resource, or the top-level menu at this position of the menu resource, or else as its
-			// first group.
+			// Labelled by a string resource, else the top-level menu at this position of the menu resource, else as its first group.
 			UINT LabelId = 0;
 			int MenuPosition = -1;
 
@@ -125,7 +120,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 			// With one group, the groups under it come first, unless they are inline or among these.
 			std::vector<TreeNode> Children;
 
-			// For a font family's page.
 			std::string Family;
 
 			// For a folder of TexTools ModPacks, empty for those in none; or for a ModPack, its folder.
@@ -137,7 +131,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		};
 		std::vector<TreeNode> m_tree;
 
-		// The TexTools ModPacks: their folders in the tree, and the page of a folder.
 		struct TtmpPage;
 		bool m_listeningToTtmps = false;
 		std::vector<std::filesystem::path> m_ttmpNodePaths;  // Of the folders and the ModPacks in the tree.
@@ -153,9 +146,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		std::vector<std::wstring> m_systemFontFamilies;
 		std::filesystem::path m_fontPresetFolder;  // FontReplacement::Presets::Folder, found when first needed.
 
-		// The preview of a font family's page, or of the font replacement's page (for the edge). Images are drawn on the
-		// previewer's thread, which posts when one is done; it is taken by the number of the page's latest request, so one
-		// that comes after the page is gone, or after a newer request, is dropped.
+		// Drawn on the previewer's thread, which posts when done; taken by the page's latest request number, so stale or orphaned images are dropped.
 		struct FontPreview;
 		std::unique_ptr<FontReplacement::FamilyPreview> m_fontPreviewer;  // Made when first needed; lives with this.
 		std::unique_ptr<FontPreview> m_fontPreview;  // Of the page shown; goes with its rows.
@@ -187,15 +178,13 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 		[[nodiscard]] HWND Handle() const { return m_hWnd; }
 
-		/// Labels and colors anew, after the message being handled: a change made on a page comes during its control's
-		/// notification, and the page is made anew.
+		/// Deferred past the message being handled: a change made on a page comes during its control's notification, and the page is rebuilt.
 		void ApplyLanguage();
 		void ApplyTheme();
 
 		/// Applies what is being typed; for Enter.
 		void CommitTypedText();
 
-		/// Draws the status anew, if it is shown.
 		void InvalidateStatus() const;
 
 	private:
@@ -242,10 +231,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddDirectoryListRows(ConfigItem<std::vector<std::filesystem::path>>& item, std::vector<std::filesystem::path> defaults, UINT descriptionId);
 		void AddEdgeRows();
 		void AddFontFamilyRows(const std::string& family);
-		// Adds a family's preview: with the size and the sample text on a family's page, or the size and the colors on the
-		// font replacement's page (edgePage).
+		// With the size and the sample text on a family's page, or the size and the colors on the font replacement's page (edgePage).
 		void AddFontPreviewRows(const std::string& family, bool edgePage);
-		// Asks for the preview drawn anew, at the control's size, once nothing has changed for the delay.
+		// At the control's size, once nothing has changed for the delay.
 		void RequestFontPreview(std::chrono::milliseconds delay);
 		void OnFontPreviewDrawn();
 		void PaintFontPreview(HWND hwnd);
@@ -272,8 +260,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void TruncateRows(size_t count);
 		const std::filesystem::path& GetFontPresetFolder();
 		[[nodiscard]] std::vector<std::wstring> ListPresets();
-		/// Asks for a preset file, and for one outside the presets folder, whether to import it or use it where it is; gets
-		/// what a source keeps of it (FontReplacementFamilySource::Preset), or nothing if cancelled.
+		/// For a file outside the presets folder, asks whether to import it or use it in place; returns FontReplacementFamilySource::Preset's value.
 		std::optional<std::string> ChooseFontPreset();
 		const std::vector<std::wstring>& ListSystemFontFamilies();
 		bool RenamePatchCode(const std::filesystem::path& path, const std::wstring& text);

@@ -164,9 +164,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		Sqpacks.OnTtmpSetsChanged();
 	}
 
-	/// Changes where packs are or in what order they apply. Moving a directory needs its data files closed and kept
-	/// closed, so this pauses the game and stops sqpack reads as ReflectUsedEntries does, holding the tree lock so that
-	/// builders do not read either. Afterwards every pack is reapplied, so that no entry refers to an old data stream.
+	/// Moving directories needs their data files kept closed, so reads are stopped and builders locked out; every pack is then reapplied so no entry refers to an old stream.
 	/// \param change Sets changed once it changed anything, even if it throws afterwards.
 	void ChangeTtmpLayout(const std::function<void(bool& changed)>& change) {
 		auto changed = false;

@@ -58,8 +58,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			});
 		}
 
-		// Something else still having a file open when a directory is renamed is usually brief: a read that was already
-		// past the gate, an antivirus scan, or Explorer generating a thumbnail.
+		// Files held open during a rename usually are briefly: a read already past the gate, an antivirus scan, or an Explorer thumbnail.
 		constexpr auto RenameRetryTimeout = std::chrono::seconds(3);
 		constexpr DWORD RenameRetryIntervalMs = 50;
 
@@ -67,7 +66,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return xivres::util::unicode::convert<std::string>(path.wstring());
 		}
 
-		/// The message of an exception that is shown to the user as it is, in the language of the interface.
+		/// For exception messages shown to the user verbatim, in the interface language.
 		template<typename... Args>
 		std::string Message(UINT id, Args&&... args) {
 			return Config::Acquire()->Runtime.FormatStringResUtf8(id, std::forward<Args>(args)...);
@@ -96,7 +95,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				throw std::invalid_argument(Message(IDS_TTMP_ERROR_NAME_RESERVED));
 		}
 
-		/// \returns Where path ends up when the directory from, which contains it, is moved to to.
 		std::filesystem::path Rebase(const std::filesystem::path& path, const std::filesystem::path& from, const std::filesystem::path& to) {
 			const auto relative = path.lexically_relative(from);
 			if (relative.empty() || relative == L".")
@@ -104,7 +102,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return to / relative;
 		}
 
-		/// Releases the data files of the packs, so that their directories can be renamed.
 		void ReleaseDataStreams(const std::vector<NestedTtmp*>& packs) {
 			for (const auto pack : packs) {
 				if (const auto stream = dynamic_cast<const xivres::oplocking_file_stream*>(pack->Ttmp->DataStream.get()))
@@ -112,8 +109,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			}
 		}
 
-		/// Renames a directory, retrying for a while if a file inside is still open.
-		/// \param beforeEachTry Called before every attempt, to let go of the files again in case something opened them.
+		/// \param beforeEachTry Called before every attempt, to release the files again in case something reopened them.
 		void RenameDirectory(const std::filesystem::path& from, const std::filesystem::path& to, const std::function<void()>& beforeEachTry) {
 			const auto until = std::chrono::steady_clock::now() + RenameRetryTimeout;
 			while (true) {
@@ -131,8 +127,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			}
 		}
 
-		/// \returns Contents of order.json in dir: names of the directories in it, mapped to where each goes among its
-		/// siblings, lower first. An empty object if there is no such file.
+		/// \returns order.json of dir (directory name to position among siblings, lower first), or an empty object if there is none.
 		nlohmann::json LoadOrderFile(const std::filesystem::path& dir) {
 			const auto path = dir / "order.json";
 			if (!exists(path))
@@ -143,7 +138,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return order;
 		}
 
-		/// Renames or removes a name in order.json of dir, if it is there.
 		void UpdateOrderFile(const std::filesystem::path& dir, const std::filesystem::path& oldName, const std::optional<std::filesystem::path>& newName, const std::shared_ptr<Misc::Logger>& logger) {
 			try {
 				auto order = LoadOrderFile(dir);
@@ -212,7 +206,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	NestedTtmp* TtmpLibrary::Add(const std::filesystem::path& ttmplPath, Window::ProgressPopupWindow& progressWindow) {
 		auto folder = FindContainer(ttmplPath, true);
-		if (!folder || folder->Find(ttmplPath.parent_path()))  // already exists
+		if (!folder || folder->Find(ttmplPath.parent_path()))
 			return nullptr;
 
 		std::shared_ptr<NestedTtmp> added;
@@ -242,9 +236,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	void TtmpLibrary::ReconcileFiles() {
-		// A pack whose list is gone was deleted. This runs once what it replaced is known to be put back, so its data
-		// file can go too; the node goes as well, as its data stream is no more. Its name goes from its folder's order
-		// once its directory is gone.
+		// A pack whose list is gone was deleted; this runs once what it replaced is back, so its data file and node go too.
+		// Its name leaves its folder's order once its directory is gone.
 		std::vector<std::shared_ptr<NestedTtmp>> parents;
 		m_root->TraverseInterruptible(false, [&parents](NestedTtmp& nestedTtmp) {
 			if (!nestedTtmp.Ttmp || exists(nestedTtmp.Ttmp->ListPath))
@@ -374,8 +367,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		if (const auto orderingFile = path / "order.json"; exists(orderingFile)) {
 			try {
-				// Kept alive while it is read: structured bindings over items() of a temporary read the values as null. A value
-				// that is not a position is skipped, so that one bad entry does not lose the order of the rest.
+				// Kept alive: structured bindings over items() of a temporary read null. Non-positions are skipped so one bad entry keeps the rest.
 				const auto order = LoadOrderFile(path);
 				std::map<std::filesystem::path, uint64_t> orderMap;
 				for (auto it = order.begin(); it != order.end(); ++it) {
@@ -663,8 +655,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	void TtmpLibrary::WriteOrder(const std::shared_ptr<NestedTtmp>& folder, const std::vector<std::shared_ptr<NestedTtmp>>& children) {
-		// The top level gathers several search directories, each with its own order.json; every child goes into the
-		// one of the directory it is in, with its position counted across the whole top level.
+		// Top-level children go into the order.json of their own search directory, with positions counted across the whole top level.
 		std::map<std::filesystem::path, std::vector<std::pair<std::filesystem::path, uint64_t>>> entriesByDir;
 		for (size_t i = 0; i < children.size(); ++i)
 			entriesByDir[children[i]->Path.parent_path()].emplace_back(children[i]->Path.filename(), i);
@@ -680,8 +671,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						"Replacing unreadable {}: {}", orderPath.wstring(), e.what());
 				}
 
-				// Keep the places of directories not in the tree, such as packs that failed to load, but forget those
-				// of directories that are gone, so that whatever gets that name later does not inherit the place.
+				// Keep directories not in the tree (e.g. packs that failed to load); drop gone ones so a later same name doesn't inherit the place.
 				for (auto it = order.begin(); it != order.end();) {
 					if (is_directory(dir / xivres::util::unicode::convert<std::wstring>(it.key())))
 						++it;
@@ -754,12 +744,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				packs.emplace_back(&t);
 		});
 
-		// No directory with an open file inside can be renamed. Reads are stopped by the caller, so once released,
-		// the data files stay closed; the old streams, if ever read again, find nothing and read zeroes.
+		// The caller stopped reads, so released data files stay closed; the old streams, if ever read again, read zeroes.
 		RenameDirectory(oldPath, newPath, [&packs] { ReleaseDataStreams(packs); });
 
-		// Open the data files at their new place before touching the tree, so that if one fails, moving the directory
-		// back leaves everything as it was.
+		// Open the data files at their new place before touching the tree, so a failure is undone by moving the directory back.
 		std::vector<std::shared_ptr<xivres::stream>> streams;
 		try {
 			for (const auto pack : packs) {

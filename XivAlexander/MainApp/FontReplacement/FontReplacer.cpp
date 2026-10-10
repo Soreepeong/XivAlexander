@@ -9,19 +9,15 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// Sizes in half pixels: below 4 px nothing is legible. Up to 255 px, glyphs are drawn at the size asked for, those larger
-	// than the game's byte-sized glyph fields cut off (PlaceCell); a larger request uses the 255 px copy, scaled up by the
-	// renderer.
+	// Half px. Below 4 px nothing is legible; above 255 px the 255 px copy is scaled up by the renderer (byte-sized glyph fields, PlaceCell).
 	constexpr int MinHalfPx = 8;
 	constexpr int MaxHalfPx = 2 * 255;
 
-	// When the atlas is full, a plane is emptied of glyphs not drawn this recently; at most this often, as text that needs
-	// more than fits would otherwise empty one every frame (what doesn't fit draws nothing until the next).
+	// A full atlas empties a plane of glyphs not drawn within KeepDrawnMs, at most every EvictIntervalMs, else overflowing text evicts every frame.
 	constexpr uint64_t KeepDrawnMs = 2000;
 	constexpr uint64_t EvictIntervalMs = 1000;
 
-	// The glyphs of each game font family go to an atlas of its own: AXIS, the family of most of the UI's text, has pages of
-	// the game's size, the others smaller ones.
+	// AXIS (most of the UI's text) has pages of the game's size.
 	constexpr int AxisAtlasSize = 4096;
 	constexpr int OtherAtlasSize = 2048;
 }
@@ -30,7 +26,6 @@ thread_local FontReplacement::FontReplacer::LayoutContext FontReplacement::FontR
 
 FontReplacement::FontReplacer::FontReplacer() {
 	{
-		// The game's functions, and the layouts of what they use.
 		uintptr_t pickFont = 0, getGlyph = 0, layOutCharacter = 0, buildFontCache = 0, freeFontCache = 0, buildFont = 0;
 		GameLayout::Resolve("Font replacement", [&] {
 			ResolveGameFontStructs();
@@ -55,7 +50,6 @@ FontReplacement::FontReplacer::FontReplacer() {
 			m_stateItalicFlag = static_cast<uint32_t>(GameLayout::Get("FontAnalyzerState.Flags.Italic"));
 			m_setItalicFlag = static_cast<uint32_t>(GameLayout::Get("GameFontSet.DrawFlags.Italic"));
 
-			// The functions found call each other.
 			if (getGlyph && layOutCharacter && GameLayout::Address("LayOutCharacter", "GetGlyph") != getGlyph)
 				throw std::runtime_error("LayOutCharacter doesn't call the GetGlyph found.");
 			if (const auto toggle = buildFontCache && freeFontCache ? GameLayout::Match("ToggleFontCache") : nullptr;
@@ -83,14 +77,13 @@ FontReplacement::FontReplacer::FontReplacer() {
 		m_layOutCharacterHook.emplace("LayOutCharacter", layOutCharacter, [this](uintptr_t analyzer, const uint8_t** text, uintptr_t state) { return LayOutCharacterDetour(analyzer, text, state); });
 		m_buildFontHook.emplace("BuildFont", buildFont, [this](uintptr_t manager, uint16_t index) { return BuildFontDetour(manager, index); });
 
-		// Caches built so far hold the game's glyphs. (If anything before throws, the members undo what was set up.)
+		// Caches built so far hold the game's glyphs. If anything above throws, the members undo the setup.
 		UpdateFontCaches();
 	}
 }
 
 FontReplacement::FontReplacer::~FontReplacer() {
-	// While the hooks are still there: no font set may keep a copy as its cached pick, and no font cache may keep glyphs of
-	// a copy. Caches are rebuilt with the game's fonts.
+	// While the hooks still exist: no font set may keep a copy as cached pick, nor a font cache a copy's glyphs; caches are rebuilt with game fonts.
 	if (m_pickFontHook && m_getGlyphHook && m_buildFontCacheHook)
 		SetEnabled(false);
 	m_edgeShader.Set(false);
@@ -130,7 +123,6 @@ void FontReplacement::FontReplacer::SetPreset(const Presets::Faces& preset, bool
 		}
 	}
 
-	// Copies made so far take the glyphs and metrics of their new faces.
 	for (auto& [copy, info] : m_copies) {
 		info.Sized = GetSized(info.Original, info.HalfPx);
 		Sync(copy, info);
@@ -188,8 +180,7 @@ FontReplacement::GlyphAtlas* FontReplacement::FontReplacer::GetAtlas(const std::
 	atlas->PageAdded = [this, p] { OnPageAdded(p); };
 	m_atlases.emplace(family, std::move(atlas));
 
-	// Glyphs refer to page texture indices, and the renderer only has vertex buffers for those below a font's texture
-	// count: the first page is there before any glyph.
+	// The renderer only has vertex buffers for texture indices below a font's texture count, so the first page must exist before any glyph.
 	p->EnsurePage();
 	return p;
 }
@@ -200,9 +191,8 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 		return;
 	m_edge = edge;
 
-	// This edge shader draws a round edge of any width, which each font sets by the texture width it claims; unless edges
-	// are the game's own (1 px at every size). The game's draws a fixed pattern, made wider only by claiming a narrower
-	// texture (blocky past about 1.5 px): the fallback if this one can't be used.
+	// Round edge of any width, set per font by its claimed texture width, unless edges are the game's own (1 px). Fallback: the game's fixed
+	// pattern, widened only by claiming a narrower texture (blocky past ~1.5 px).
 	try {
 		m_edgeShader.Set(edge != FontReplacementEdgeConfig{});
 	} catch (const std::exception& e) {
@@ -351,30 +341,25 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFon
 	if (!font)
 		return font;
 
-	// The picker's cached choice may be a copy picked before: decide again from its game font, since the picker's cache is
-	// keyed by its own size, which isn't the one copies are chosen by.
+	// The cached pick may be an earlier copy: re-decide from its game font, as the picker's cache is keyed by a size copies aren't chosen by.
 	if (const auto it = m_copies.find(font); it != m_copies.end())
 		font = it->second.Original;
 
 	if (!m_enabled)
 		return font;
 
-	// A font not built yet (its glyph map may be gone), or one using the texture indices the atlas pages take, is left
-	// alone.
+	// Leave fonts not built yet (the glyph map may be gone) or using the texture indices the atlas pages take.
 	if (!font->IsReady() || font->TextureCount() > GlyphAtlas::FirstTextureIndex)
 		return font;
 
 	try {
-		// Picked for the on-screen size, even where the game picked for another (the unscaled size of a node with a fixed
-		// font resolution, or a pick scale of its own), so the renderer doesn't scale the glyphs.
+		// On-screen size even where the game picked another (fixed font resolution node's unscaled size, or its own pick scale), so nothing is scaled.
 		const auto size = set->ScaledSizeY();
 		const auto halfPx = std::clamp(static_cast<int>(std::round(size * 2)), MinHalfPx, MaxHalfPx);
 		const auto copy = GetOrCreateCopy(font, halfPx);
 
-		// The glyphs are rasterized at the size rounded to half pixels, but the copy claims the exact size: the renderer
-		// scales by the requested size over this, and anything but exactly 1 resamples every glyph bilinearly (soft text).
-		// The glyphs are then up to a quarter pixel off in size, which doesn't show. Past the largest size the renderer has
-		// to scale up anyway.
+		// Rasterized at half-pixel sizes, but claim the exact size: any renderer scale other than exactly 1 resamples bilinearly (soft text), while
+		// a quarter pixel size error doesn't show. Past the largest size the renderer scales up anyway.
 		if (halfPx < MaxHalfPx && halfPx > MinHalfPx)
 			copy->Size() = size;
 		set->CurrentFont() = copy;
@@ -430,14 +415,12 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 	auto& info = infoIt->second;
 	auto& sized = *info.Sized;
 
-	// Laid out by FUN_1406EEC70 at a known place in the text: the glyph of its shaped cluster. The character there must be
-	// the one asked for (the lookups of the game's fallback characters, if any, are not).
+	// Laid out by LayOutCharacter at a known text position: use its shaped cluster's glyph, unless this is a lookup of the game's fallback characters.
 	if (const auto p = s_current.Character; p && GameUtf8::PackSequence(p, GameUtf8::SequenceLength(*p)) == utf8Value) {
 		try {
 			const auto italic = GetItalicMode(set);
 			if (const auto shaped = m_shaper->TryGetGlyph(sized, p, &m_emptyGlyph->Glyph, italic)) {
-				// A real italic glyph is drawn as it is: the italic bit is cleared while the character is laid out (the quad
-				// emitter runs after this lookup), and set again after (LayOutCharacterDetour).
+				// Real italics draw unsheared: clear the italic bit while laid out (quads are emitted after this lookup); LayOutCharacterDetour restores it.
 				if (italic != ItalicMode::Upright && shaped != &m_emptyGlyph->Glyph && CellOf(shaped).RealItalic) {
 					*reinterpret_cast<uint32_t*>(s_current.State + m_stateFlagsOffset) &= ~m_stateItalicFlag;
 					s_current.ItalicCleared = true;
@@ -465,7 +448,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 	if (it->second)
 		return WithPixels(it->second);
 
-	// The game's glyph, looked up in the game font, whose glyph map the copy borrows.
+	// Looked up in the game font, whose glyph map the copy borrows.
 	const auto game = m_getGlyphHook->Original(set, utf8Value, info.Original);
 	if (!game)
 		return s_current.Character ? GetMissingGlyph(set, utf8Value, font) : nullptr;
@@ -559,13 +542,11 @@ void FontReplacement::FontReplacer::Sync(GameFont* copy, const CopyInfo& info) c
 	copy->SecondaryRatio() = 0;
 	copy->KerningCount() = 0;
 
-	// Real italics are spaced by shaping: no gap after them for sheared glyphs leaning past their advance. Measuring reads it
-	// from the copy too, so it stays as drawn.
+	// Real italics are spaced by shaping, so no gap for sheared glyphs leaning past their advance; measuring reads it from the copy too.
 	copy->SetItalicCorrection(0);
 
-	// The edge and glare shaders step by one texel of this width (it goes into every vertex): the pages', which the game
-	// font's textures may not share (the lobby fonts' are smaller), else outlines sample several texels apart. Claiming a
-	// narrower width makes the step, and so the edge, that many times wider; the edge shader takes the step as its radius.
+	// Edge and glare shaders step by one texel of this width (in every vertex): the pages', not the game textures' (lobby fonts' are smaller), else
+	// outlines sample texels apart. Claiming narrower widens the step and edge that many times; the edge shader takes the step as its radius.
 	const auto width = GetClaimedTextureWidth(m_edge, sized.Atlas->Size(), sized.Px);
 	copy->TextureWidth() = width;
 	copy->TextureHeight() = width;
@@ -610,15 +591,12 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::CreateGlyph(SizedFont
 }
 
 FontReplacement::GameGlyph* FontReplacement::FontReplacer::PlaceCell(const SizedFont& sized, RasterGlyph r, uint32_t utf8Value, std::optional<GameTextureSource> source) {
-	// The game has no left bearing: the glyph's box starts at the pen. Ink left of the pen (an overhang) moves right into the
-	// box instead. A box wider than the game's byte-sized field cuts the ink off on the right.
+	// The game has no left bearing (boxes start at the pen): overhanging ink moves right into the box; past the byte-sized width it's cut on the right.
 	const auto boxLeft = (std::min)(r.Left, 0);
 	const auto width = r.Width == 0 ? 0 : (std::min)(r.Left + r.Width - boxLeft, 255);
 
-	// A box is a full line high, as the game's are: italics shear each quad by moving its top edge by an amount based on the
-	// line height, which only slants the glyphs of a line alike if all their quads span the same rows. Ink above or below the
-	// line (stacked marks, a fallback font's taller script) grows the box instead of being cut off; only such a glyph slants
-	// a little less. Measuring uses the line height, not the box.
+	// Boxes are a full line high like the game's: italics shift each quad's top edge by a line-height-based amount, slanting alike only if quads
+	// span the same rows. Ink beyond the line (stacked marks, taller fallback scripts) grows the box, slanting a bit less; measuring uses the line height.
 	const auto inkTop = sized.Ascent + r.Top;
 	auto top = 0;
 	auto height = sized.LineHeight;
@@ -635,8 +613,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::PlaceCell(const Sized
 	glyph->OffsetX = static_cast<int8_t>(std::clamp(r.Advance - width, -128, 127));
 	glyph->OffsetY = static_cast<int8_t>(top);
 
-	// Text is measured far more than drawn (every text change, at the node's unscaled size too): a glyph keeps its pixels
-	// here until it is drawn (WithPixels, which every glyph handed to the game goes through).
+	// Text is measured far more than drawn (every change, at the unscaled size too): pixels wait here until drawn (WithPixels, which all glyphs pass).
 	if (width != 0) {
 		CellOf(glyph) = {
 			.State = CellState::Pending,
@@ -721,7 +698,6 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 		oldest[plane] = (std::min)(oldest[plane], cell.Drawn);
 	}
 
-	// The most stale room; without any, the plane whose glyphs were drawn least recently.
 	auto victim = static_cast<int>(std::ranges::max_element(stale) - stale.begin());
 	if (stale[victim] == 0)
 		victim = static_cast<int>(std::ranges::min_element(oldest) - oldest.begin());
@@ -742,7 +718,6 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 	std::ranges::sort(moved, [](const Moved& a, const Moved& b) { return a.Drawn > b.Drawn; });
 	atlas->ClearPlane(victim / GlyphAtlas::PlanesPerPage, victim % GlyphAtlas::PlanesPerPage);
 
-	// What may stay: the glyphs drawn recently, but no more than half of the plane if none were stale.
 	auto budget = stale[victim] == 0 ? static_cast<int64_t>(atlas->Size()) * atlas->Size() / 2 : INT64_MAX;
 	auto kept = 0;
 	for (auto& [slot, drawn, pixels] : moved) {

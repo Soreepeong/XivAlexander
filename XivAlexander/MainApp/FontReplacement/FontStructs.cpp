@@ -268,7 +268,6 @@ void FontReplacement::GameFont::CopyFrom(const GameFont* source) {
 }
 
 FontReplacement::GameGlyph* FontReplacement::GameFont::FindGlyph(char32_t codepoint) const {
-	// The game keys glyphs by their UTF-8 bytes, big-endian; there are none past U+10FFFF.
 	const auto map = GlyphMap();
 	if (!map || codepoint > 0x10FFFF)
 		return nullptr;

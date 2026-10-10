@@ -110,7 +110,6 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, 
 			return true;
 		}
 
-		// The current plane is full: on to one not used yet.
 		if (m_frontier >= MaxPlanes())
 			return false;
 		if (m_frontier / PlanesPerPage >= static_cast<int>(m_pages.size()) && !TryAddPage())

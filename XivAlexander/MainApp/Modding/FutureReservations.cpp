@@ -63,7 +63,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		if (const auto held = m_held.find(pathSpec); held != m_held.end()) {
 			auto& [space, slot] = held->second;
 			if (space >= wanted) {
-				// still fits in the reserved space
 				slot->swap_stream(stream);
 				return slot->path_spec().text();
 			}

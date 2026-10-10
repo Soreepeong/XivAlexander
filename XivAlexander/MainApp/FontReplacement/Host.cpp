@@ -11,8 +11,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 void FontReplacement::Host::Log(LogLevel level, std::string message) {
-	// Not kept in a static: the logger would then live until the DLL is detached, where its destructor waits on its thread,
-	// which can't exit under the loader lock.
+	// Not a static: it would live until DLL detach, where its destructor waits on its thread, which can't exit under the loader lock.
 	Misc::Logger::Acquire()->Log(LogCategory::FontReplacement, message, level);
 }
 
@@ -25,8 +24,7 @@ uintptr_t FontReplacement::Host::GameBaseAddress() {
 }
 
 namespace {
-	// Gets IDXGISwapChain::Present of the system's DXGI, from a swap chain made for a window of no use: every swap chain of
-	// it has the same.
+	// Every swap chain of the system's DXGI shares one Present, so a throwaway window's swap chain gives it.
 	uintptr_t FindPresent() {
 		std::wstring system(MAX_PATH, L'\0');
 		system.resize(GetSystemDirectoryW(system.data(), MAX_PATH));
@@ -62,8 +60,7 @@ namespace {
 		return (*reinterpret_cast<uintptr_t* const*>(swapChain.GetInterfacePtr()))[8];
 	}
 
-	// Device.CreateTexture2D(Device* this, int* size, byte mipLevels, uint format, uint flags, uint unk) and what textures
-	// need of the game; resolved at the first texture.
+	// The game's Device.CreateTexture2D and the rest textures need; resolved at the first texture.
 	struct TextureFunctions {
 		using CreateTexture2DFn = uintptr_t(*)(void* device, int* size, uint8_t mipLevels, uint32_t format, uint32_t flags, uint32_t unknown);
 
@@ -125,7 +122,6 @@ FontReplacement::Host::PresentCallHook::PresentCallHook(std::function<void()> be
 	m_hook.emplace("Kernel::SwapChain::Present (DeviceDX11::PostTick)", functions.PresentCall);
 	m_unhook = m_hook->SetHook([this](void* swapChain) { PresentDetour(swapChain); });
 
-	// Something else changed the call between finding it and redirecting it.
 	if (!m_hook->IsEnabled()) {
 		m_unhook.clear();
 		m_hook.reset();
@@ -170,8 +166,7 @@ FontReplacement::Host::Texture::Texture(int width, int height) {
 FontReplacement::Host::Texture::~Texture() {
 	m_resource = nullptr;
 
-	// The game releases a kernel texture some frames after its last reference goes (it is a delayed-release resource), so
-	// the frames still in flight can keep sampling it.
+	// Kernel textures are delayed-release: the game frees them frames after the last reference, so frames in flight can keep sampling.
 	if (m_kernel)
 		reinterpret_cast<void(*)(uintptr_t)>(*reinterpret_cast<uintptr_t*>(*reinterpret_cast<uintptr_t*>(m_kernel) + m_decRef))(m_kernel);
 }

@@ -195,7 +195,6 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		try {
 			gameVersion = xivres::util::unicode::convert<std::wstring>(Misc::GameInstallationDetector::GetGameReleaseInfo().GameVersion);
 		} catch (...) {
-			// leave it empty
 		}
 
 		std::wstring list;
@@ -655,8 +654,7 @@ XivAlexander::Apps::MainApp::App::~App() {
 		TerminateProcess(GetCurrentProcess(), 0);
 	}
 
-	// Not reset: that nulls m_pImpl before the features go, and their hooks call back into the app from game threads until
-	// each is torn down.
+	// Not reset: that nulls m_pImpl before the features go, while their hooks call back into the app from game threads until each is torn down.
 	delete m_pImpl.get();
 	(void)m_pImpl.release();
 }
@@ -664,8 +662,7 @@ XivAlexander::Apps::MainApp::App::~App() {
 void XivAlexander::Apps::MainApp::App::CustomMessageLoopBody() {
 	const auto activationContextCleanup = Dll::ActivationContext().With();
 
-	// The windows' file dialogs need a single-threaded apartment; without one, this thread is in the game's
-	// multithreaded one, where they hang.
+	// File dialogs need a single-threaded apartment; without one this thread is in the game's multithreaded one, where they hang.
 	const auto comInitialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
 	const auto comCleanup = xivres::util::on_dtor([comInitialized] {
 		if (comInitialized)

@@ -173,7 +173,7 @@ namespace XivAlexander {
 		public:
 			using ConfigGroup::ConfigGroup;
 
-			// The directories of the lists below that are there until removed; they may start with a token of Config.
+			// Defaults of the lists below, kept until the user removes them; they may start with a Config path token.
 			static std::vector<std::filesystem::path> DefaultGameResourceFileEntryRootDirectories() { return {LR"(<config>\ReplacementFileEntries)"}; }
 			static std::vector<std::filesystem::path> DefaultTtmpSearchDirectories() { return {LR"(<config>\TexToolsMods)", LR"(<sqpack>\TexToolsMods)"}; }
 
@@ -192,9 +192,7 @@ namespace XivAlexander {
 				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
 				ConfigItem<std::vector<ForcedCharacterLanguage>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
 
-				// The languages the game's cutscene language can be: those it has voices of. Its index of a language is one
-				// less than the game_language (0 for Japanese); it indexes the cutscenes' lip sync tables and the voice files'
-				// suffixes, which only the client's own languages are sure to have.
+				// Languages with cutscene voices; the game's index is game_language - 1, for lip sync tables and voice file suffixes (only the client's own are sure to exist).
 				static constexpr xivres::game_language LipSyncLanguages[]{
 					xivres::game_language::Japanese,
 					xivres::game_language::English,
@@ -202,8 +200,7 @@ namespace XivAlexander {
 					xivres::game_language::French,
 				};
 
-				// The language whose mouth movements cutscenes play; Unspecified leaves the game's own. Others are read as
-				// Unspecified.
+				// Language of cutscene mouth movements; Unspecified leaves the game's own.
 				ConfigItem<xivres::game_language> LipSyncLanguage{this, "LipSyncLanguage", xivres::game_language::Unspecified, [](const xivres::game_language& value) {
 					return std::ranges::find(LipSyncLanguages, value) == std::end(LipSyncLanguages) ? xivres::game_language::Unspecified : value;
 				}};
@@ -290,7 +287,6 @@ namespace XivAlexander {
 			return std::vformat(GetStringRes(uId), std::make_wformat_args(std::forward<Args&>(args)...));
 		}
 
-		/// FormatStringRes in UTF-8, for the message of an exception that is shown to the user as it is.
 		template<typename... Args>
 		[[nodiscard]] std::string FormatStringResUtf8(UINT uId, Args&&... args) const {
 			return xivres::util::unicode::convert<std::string>(FormatStringRes(uId, std::forward<Args>(args)...));
@@ -325,12 +321,10 @@ namespace XivAlexander {
 		void AllowCurrentGameVersion();
 
 	public:
-		/// The render interval within the framerate range that delays the end of the cooldown the least, or the shortest of
-		/// those within a millisecond of that. See LockedCooldownDelayUs in the source for the delay.
+		/// Interval in the framerate range with the least cooldown-end delay (see LockedCooldownDelayUs), or the shortest within 1 ms of it.
 		[[nodiscard]] static uint64_t CalculateLockFramerateIntervalUs(double fromFps, double toFps, uint64_t gcdUs, uint64_t maximumRenderIntervalDeviation);
 
-		/// The shortest and the longest a cooldown takes when frames are rendered every intervalUs, give or take the deviation:
-		/// until the frame after its end, or the one after that, if that frame may come too early to see it.
+		/// Shortest and longest cooldown at intervalUs: until the frame after its end, or the next one if that frame may come too early to see it.
 		[[nodiscard]] static std::pair<uint64_t, uint64_t> EstimateLockedCooldownUs(uint64_t cooldownUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation);
 
 	private:

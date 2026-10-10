@@ -36,8 +36,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		constexpr size_t OutputBufferCount = VoiceMaxQueuedBuffers + 1;
 
-		// What the engine submits a buffer with when a MARK falls in it (7.56h: FUN_141eb13e0 decides,
-		// the buffer start callback 0x141eb1370 acts on it when the buffer starts playing).
+		// Context the engine submits a buffer with when a MARK falls in it; read from no instruction we resolve. As of 7.56h.
 		constexpr uint64_t MarkContext = 1;
 
 		bool Write(uint32_t* target, uint32_t value) {
@@ -71,10 +70,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			bool Drained = false;
 			std::deque<int64_t> PendingMarks;
 
-			// The engine flags every buffer after a marked one within the same refill, and a refill
-			// goes on while fewer than two buffers are queued. A buffer held back here leaves the queue
-			// short where the game's own would be full, so the refill continues; a flag inherited that
-			// way marks nothing.
+			// The engine flags every buffer after a marked one in the same refill, which goes on while fewer than two buffers are queued;
+			// a buffer held back here leaves the queue short, so the refill continues, and a flag inherited that way marks nothing.
 			bool LastMarked = false;
 			int32_t HeldBack = 0;
 

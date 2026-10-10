@@ -42,8 +42,7 @@ namespace XivAlexander {
 	void to_json(nlohmann::json&, const LogPathFilter&);
 	void from_json(const nlohmann::json&, LogPathFilter&);
 
-	/// The language of the voice lines of a speaker of cutscene dialogue, by name; an empty name stands for anyone unnamed.
-	/// The language is the voice files' suffix (ja, en, ...).
+	/// Voice language (the voice files' suffix: ja, en, ...) of a cutscene speaker by name; an empty name stands for anyone unnamed.
 	struct ForcedCharacterLanguage {
 		bool Enabled = true;
 		std::string Name;

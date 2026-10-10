@@ -5,7 +5,7 @@
 
 namespace XivAlexander::Apps::MainApp::Window {
 	class ConfigWindow : public BaseWindow {
-		// The repository whose file is edited, or none, for a file of its own.
+		// Null when the edited file belongs to no repository.
 		BaseConfigRepository* const m_pRepository;
 		const std::filesystem::path m_path;
 		const std::wstring m_title;

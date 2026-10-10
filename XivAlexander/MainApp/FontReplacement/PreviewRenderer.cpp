@@ -38,7 +38,6 @@ namespace {
 		{"TEXCOORD", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 
-	// Gets the bytecode of a shader compiled at build time and embedded as RCDATA.
 	std::span<const uint8_t> GetShaderCode(UINT id, const char* name) {
 		const auto module = static_cast<HMODULE>(Dll::Module());
 		const auto resource = FindResourceW(module, MAKEINTRESOURCEW(id), RT_RCDATA);
@@ -143,8 +142,7 @@ void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float
 		return;
 	}
 
-	// The glyphs go to the four channels in turn, each channel packed in rows of its own; so neighbouring glyphs overlap in
-	// the texture in different channels, as in the game's atlas, and each glyph's edge keeps to its channel and rectangle.
+	// Glyphs cycle through the four channels, each packed in its own rows, so neighbours overlap in different channels as in the game's atlas.
 	auto atlasWidth = MinAtlasWidth;
 	for (const auto& glyph : glyphs)
 		atlasWidth = (std::max)(atlasWidth, static_cast<int>(std::bit_ceil(static_cast<unsigned>(glyph.Width + 2 * AtlasPadding))));
@@ -203,8 +201,7 @@ void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float
 	ThrowOnError(m_device->CreateTexture2D(&atlasDesc, &atlasData, &atlasTexture), "Making the preview's atlas");
 	ThrowOnError(m_device->CreateShaderResourceView(atlasTexture, nullptr, &atlasView), "Making the preview's atlas view");
 
-	// The edge pass's quads, then the text pass's. The step is one texel of the claimed width as FontEdgeVS passes it, which
-	// the shader multiplies by the atlas's width: the radius in the atlas's texels, which are the image's pixels here.
+	// Step is one texel of the claimed width as FontEdgeVS passes it; the shader scales it by the atlas width into the radius in texels (= pixels).
 	const auto step = radius / static_cast<float>(atlasWidth);
 	const auto edgeColor = ToFloat4(colors.Edge);
 	const auto textColor = ToFloat4(colors.Text);
