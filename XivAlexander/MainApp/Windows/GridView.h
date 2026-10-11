@@ -18,7 +18,8 @@ namespace XivAlexander::Apps::MainApp::Window {
 		struct Column {
 			std::wstring Title;
 			CellKind Kind = CellKind::Text;
-			int Width = 100;  // At 100% zoom; the last column takes what is left.
+			int Width = 100;  // At 100% zoom; the fill column takes what is left, but no less than this.
+			bool Fill = false;  // The last column if no column is.
 			std::function<std::vector<std::wstring>(size_t row)> GetChoices;
 		};
 
@@ -52,6 +53,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 			// A key pressed in the list, not editing; true if handled.
 			std::function<bool(UINT vk)> KeyDown;
+
+			// Shown in the middle of the list while it has no rows; call Refresh after it changes.
+			std::function<std::wstring()> GetEmptyText;
 		};
 
 	private:
@@ -98,7 +102,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void Select(size_t row);
 		void ClearSelection();
 		void BeginEdit(size_t row, size_t column, std::optional<wchar_t> typed = std::nullopt);
-		[[nodiscard]] bool IsEditing() const { return m_editor.has_value(); }
 
 		/// Cancels the edit if SetText refuses it.
 		void CommitEdit();

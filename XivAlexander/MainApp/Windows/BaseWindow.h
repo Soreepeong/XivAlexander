@@ -77,8 +77,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		[[nodiscard]] auto GetWindowAcceleratorTable() const { return static_cast<HACCEL>(m_hAcceleratorWindow); }
 		[[nodiscard]] auto GetThreadAcceleratorTable() const { return static_cast<HACCEL>(m_hAcceleratorThread); }
 
-		xivres::util::listener_manager<BaseWindow, void> OnDestroyListener;
-
 		[[nodiscard]] xivres::util::on_dtor WithTemporaryFocus() const;
 
 	protected:

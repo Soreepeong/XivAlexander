@@ -9,6 +9,8 @@
 
 #include <xivres/util.listener_manager.h>
 
+#include "Game/CommandLine.h"
+
 namespace XivAlexander::Apps::MainApp {
 	class App;
 }
@@ -22,11 +24,19 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		struct Session {
 			std::string Alias;
-			std::vector<std::pair<std::string, std::string>> Parameters;
+			XivAlexander::Game::CommandLine::ArgumentList Parameters;
 
 			bool Expired = false;
 
 			bool operator==(const Session&) const = default;
+		};
+
+		enum class RenameResult {
+			Renamed,
+			Unchanged,
+			NotFound,
+			InvalidAlias,
+			AlreadyExists,
 		};
 
 	private:
@@ -53,8 +63,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// Removes the session of the alias from Credential Manager; gets whether it was there.
 		bool ForgetStoredSession(const std::string& alias);
 
-		[[nodiscard]] static std::optional<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>> GetMostRecentlyStoredArguments();
+		/// Renames the session of the alias in Credential Manager, keeping the rest of what was stored; throws on a Win32 error.
+		RenameResult RenameStoredSession(const std::string& alias, const std::string& newAlias);
 
-		void ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args);
+		[[nodiscard]] static std::optional<std::pair<std::string, XivAlexander::Game::CommandLine::ArgumentList>> GetMostRecentlyStoredArguments();
+
+		void ApplySelectedTo(XivAlexander::Game::CommandLine::ArgumentList& args);
 	};
 }

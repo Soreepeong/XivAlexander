@@ -164,7 +164,7 @@ namespace XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog {
 			}
 
 			bool TryRegisterTimingHandler() {
-				if (auto& handler = App.GetNetworkTimingHandler()) {
+				if (const auto handler = App.GetNetworkTimingHandler()) {
 					CleanupNetworkTimingHandlerCooldownCallback = handler->OnCooldownGroupUpdateListener([&](const Features::NetworkTimingHandler::CooldownGroup& group, bool newDriftItem) {
 						if (group.Id != Features::NetworkTimingHandler::CooldownGroup::Id_Gcd)
 							return;
@@ -230,7 +230,7 @@ namespace XivAlexander::Apps::MainApp::Window::Dialog::FramerateLockingDialog {
 				Automatic = IsDlgButtonChecked(Hwnd, IDC_AUTOMATICFPSLOCKING);
 				if (Automatic) {
 					auto& rt = Config->Runtime;
-					if (auto& handler = App.GetNetworkTimingHandler()) {
+					if (const auto handler = App.GetNetworkTimingHandler()) {
 						if (const auto& group = handler->GetCooldownGroup(Features::NetworkTimingHandler::CooldownGroup::Id_Gcd); group.DurationUs != UINT64_MAX) {
 							Gcd10ms = group.DurationUs / 10000;
 						}

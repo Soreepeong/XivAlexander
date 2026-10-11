@@ -13,6 +13,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 	class SocketHook;
 	class PatchCode;
 	class LoginSessions;
+	class CrowdFix;
 }
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
@@ -51,6 +52,7 @@ namespace XivAlexander::Apps::MainApp {
 
 	public:
 		[[nodiscard]] HWND GetGameWindowHandle(bool wait = false) const;
+		[[nodiscard]] HWND GetMainWindowHandle() const;
 		[[nodiscard]] DWORD GetGameWindowThreadId(bool wait = false) const;
 		[[nodiscard]] bool IsRunningOnGameMainThread() const;
 		[[nodiscard]] bool IsGameWindowFocused() const;
@@ -60,9 +62,11 @@ namespace XivAlexander::Apps::MainApp {
 
 		[[nodiscard]] Features::SocketHook& GetSocketHook();
 		[[nodiscard]] Features::Modding::ResourceOverrider& GetResourceOverrider();
-		[[nodiscard]] std::optional<Features::NetworkTimingHandler>& GetNetworkTimingHandler();
-		[[nodiscard]] std::optional<Features::MainThreadTimingHandler>& GetMainThreadTimingHelper();
-		[[nodiscard]] std::optional<Features::LoginSessions>& GetLoginSessions();
+		// Null while off. The settings make and remove these on any thread: keep the pointer only while using it, never across a wait.
+		[[nodiscard]] std::shared_ptr<Features::NetworkTimingHandler> GetNetworkTimingHandler() const;
+		[[nodiscard]] std::shared_ptr<Features::MainThreadTimingHandler> GetMainThreadTimingHelper() const;
+		[[nodiscard]] std::shared_ptr<Features::LoginSessions> GetLoginSessions() const;
+		[[nodiscard]] std::shared_ptr<Features::CrowdFix> GetCrowdFix() const;
 
 		void AskVersionSensitiveFeatures(HWND hParent);
 

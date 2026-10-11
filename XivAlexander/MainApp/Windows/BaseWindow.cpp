@@ -273,8 +273,6 @@ LRESULT XivAlexander::Apps::MainApp::Window::BaseWindow::OnSysCommand(WPARAM com
 }
 
 void XivAlexander::Apps::MainApp::Window::BaseWindow::OnDestroy() {
-	OnDestroyListener();
-
 	IPropertyStorePtr store;
 	PROPERTYKEY pkey{};
 	if (SUCCEEDED(PSGetPropertyKeyFromName(L"System.AppUserModel.ID", &pkey))

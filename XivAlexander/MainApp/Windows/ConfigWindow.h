@@ -27,7 +27,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void Revert();
 		bool TrySave();
 
-		[[nodiscard]] auto Repository() const { return m_pRepository; }
 		[[nodiscard]] std::filesystem::path GetPath() const;
 
 	protected:

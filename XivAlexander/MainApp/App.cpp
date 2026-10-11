@@ -12,12 +12,14 @@
 #include "MainApp/Features/AltCodecMusicSupport.h"
 #include "MainApp/Features/AudioResampler.h"
 #include "MainApp/Features/CrowdFix.h"
+#include "MainApp/Features/DisplayLanguage.h"
 #include "MainApp/Features/FontReplacement.h"
 #include "MainApp/Features/ImeModeIndicator.h"
 #include "MainApp/Features/IpcTypeFinder.h"
 #include "MainApp/Features/LoginSessions.h"
 #include "MainApp/Features/MainThreadTimingHandler.h"
 #include "MainApp/Features/NetworkTimingHandler.h"
+#include "MainApp/Features/OutgoingText.h"
 #include "MainApp/Features/PatchCode.h"
 #include "MainApp/Features/SocketHook.h"
 #include "MainApp/Modding/ResourceOverrider.h"
@@ -89,14 +91,18 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 	std::optional<Features::SocketHook> SocketHook;
 	std::optional<Features::Modding::ResourceOverrider> ResourceOverrider;
 	std::optional<Features::AltCodecMusicSupport> AltCodecMusicSupport;
-	std::optional<Features::LoginSessions> LoginSessions;
+
+	// Read by other threads through the getters; set with Make and cleared with Remove.
+	std::atomic<std::shared_ptr<Features::LoginSessions>> LoginSessions;
+	std::atomic<std::shared_ptr<Features::CrowdFix>> CrowdFix;
+	std::atomic<std::shared_ptr<Features::NetworkTimingHandler>> NetworkTimingHandler;
+	std::atomic<std::shared_ptr<Features::MainThreadTimingHandler>> MainThreadTimingHandler;
 
 	// Optional
 	std::optional<Features::ImeModeIndicator> ImeModeIndicator;
-	std::optional<Features::CrowdFix> CrowdFix;
+	std::optional<Features::DisplayLanguage> DisplayLanguage;
 	std::optional<Features::FontReplacement> FontReplacement;
-	std::optional<Features::NetworkTimingHandler> NetworkTimingHandler;
-	std::optional<Features::MainThreadTimingHandler> MainThreadTimingHandler;
+	std::optional<Features::OutgoingText> OutgoingText;
 	std::optional<Features::IpcTypeFinder> IpcTypeFinder;
 	std::optional<Features::AllIpcMessageLogger> AllIpcMessageLogger;
 
@@ -152,6 +158,20 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		Cleanup.clear();
 	}
 
+	template<typename T, typename... TArgs>
+	static void Make(std::atomic<std::shared_ptr<T>>& slot, TArgs&&... args) {
+		Remove(slot);
+		slot.store(std::make_shared<T>(std::forward<TArgs>(args)...));
+	}
+
+	/// Destroys the feature on this thread before returning, as std::optional::reset did, once those holding it from a getter are done.
+	template<typename T>
+	static void Remove(std::atomic<std::shared_ptr<T>>& slot) {
+		auto feature = slot.exchange(nullptr);
+		while (feature && feature.use_count() > 1)
+			Sleep(1);
+	}
+
 	[[nodiscard]] std::vector<std::wstring> GetEnabledVersionSensitiveFeatures() const {
 		const auto& runtime = Config->Runtime;
 		std::vector<std::wstring> features;
@@ -176,6 +196,8 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_IMEMODEINDICATOR));
 		if (runtime.CrowdFix.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_CROWDFIX));
+		if (Features::DisplayLanguage::IsNeeded())
+			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_DISPLAYLANGUAGE));
 		if (runtime.FontReplacement.Enabled)
 			features.emplace_back(runtime.GetStringRes(IDS_VERSIONSENSITIVE_FONTREPLACEMENT));
 		return features;
@@ -243,6 +265,12 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		}
 	}
 
+	// Runs update now, on every change of item, and when version-sensitive features get allowed or disallowed.
+	void BindVersionSensitive(ConfigItemBase& item, const std::function<void()>& update, std::function<void()> onUnbind) {
+		Cleanup += item.AddAndCallOnChange(update, std::move(onUnbind));
+		Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(update);
+	}
+
 	void LoadAfterThisConstruct() {
 		if (!Config->Runtime.IsVersionSensitiveFeaturesDecided()) {
 			try {
@@ -269,15 +297,18 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 		Cleanup += [this] { AltCodecMusicSupport.reset(); };
 
 		// before the main window, which lists and receives sessions
-		LoginSessions.emplace(App);
-		Cleanup += [this] { LoginSessions.reset(); };
+		Make(LoginSessions, App);
+		Cleanup += [this] { Remove(LoginSessions); };
 		{
 			const auto showSelectedAlias = [this] {
-				const auto sessions = LoginSessions->GetSessions();
-				const auto selected = LoginSessions->GetSelectedIndex();
+				const auto loginSessions = LoginSessions.load();
+				if (!loginSessions)
+					return;
+				const auto sessions = loginSessions->GetSessions();
+				const auto selected = loginSessions->GetSelectedIndex();
 				App.m_pGameWindow->SetTitleAlias(selected < sessions.size() ? sessions[selected].Alias : std::string());
 			};
-			Cleanup += LoginSessions->OnChange(showSelectedAlias);
+			Cleanup += LoginSessions.load()->OnChange(showSelectedAlias);
 			showSelectedAlias();
 		}
 
@@ -294,12 +325,12 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 			});
 
 		Cleanup += Config->Runtime.NetworkTiming.Enabled.AddAndCallOnBoolChange(
-			[this] { NetworkTimingHandler.emplace(App); },
-			[this] { NetworkTimingHandler.reset(); });
+			[this] { Make(NetworkTimingHandler, App); },
+			[this] { Remove(NetworkTimingHandler); });
 
 		Cleanup += Config->Runtime.FramerateControl.UseMainThreadTimingHandler.AddAndCallOnBoolChange(
-			[this] { MainThreadTimingHandler.emplace(App); },
-			[this] { MainThreadTimingHandler.reset(); });
+			[this] { Make(MainThreadTimingHandler, App); },
+			[this] { Remove(MainThreadTimingHandler); });
 
 		Cleanup += Config->Runtime.Opcodes.UseOpcodeFinder.AddAndCallOnBoolChange(
 			[this] { IpcTypeFinder.emplace(App); },
@@ -320,8 +351,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 				else
 					AltCodecMusicSupport->Disable();
 			};
-			Cleanup += Config->Runtime.Modding.UseAltCodecMusicSupport.AddAndCallOnChange(updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
-			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateAltCodecMusicSupport);
+			BindVersionSensitive(Config->Runtime.Modding.UseAltCodecMusicSupport, updateAltCodecMusicSupport, [this] { AltCodecMusicSupport->Disable(); });
 		}
 
 		{
@@ -333,50 +363,58 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 					ImeModeIndicator.reset();
 				}
 			};
-			Cleanup += Config->Runtime.GameWindow.UseImeModeIndicator.AddAndCallOnChange(updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
-			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateImeModeIndicator);
+			BindVersionSensitive(Config->Runtime.GameWindow.UseImeModeIndicator, updateImeModeIndicator, [this] { ImeModeIndicator.reset(); });
+		}
+
+		{
+			// Exists only while the settings ask for other rules than the game's; it applies changes among those itself.
+			const auto updateDisplayLanguage = [this] {
+				if (Features::DisplayLanguage::IsNeeded() && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::GameResourceOverrider, "Display language")) {
+					if (DisplayLanguage)
+						DisplayLanguage->Update();
+					else
+						DisplayLanguage.emplace();
+				} else {
+					DisplayLanguage.reset();
+				}
+			};
+			auto& languages = Config->Runtime.Modding.Languages;
+			BindVersionSensitive(languages.ResourceOverride, updateDisplayLanguage, [this] { DisplayLanguage.reset(); });
+			Cleanup += languages.TalkLines.OnChange(updateDisplayLanguage);
+			Cleanup += Config->Runtime.Modding.Enabled.OnChange(updateDisplayLanguage);
 		}
 
 		{
 			using Fix = Features::CrowdFix::Fix;
 			auto& runtime = Config->Runtime;
-			const std::pair<Fix, ConfigItem<bool>*> crowdFixItems[]{
-				{Fix::SkipIdleNotifiers, &runtime.CrowdFix.Fixes.SkipIdleNotifiers},
-				{Fix::ChainWorkerWakeups, &runtime.CrowdFix.Fixes.ChainWorkerWakeups},
-				{Fix::DedupeSkeletonSyncs, &runtime.CrowdFix.Fixes.DedupeSkeletonSyncs},
-				{Fix::TrimCullingClear, &runtime.CrowdFix.Fixes.TrimCullingClear},
-				{Fix::ShortenAllocatorLock, &runtime.CrowdFix.Fixes.ShortenAllocatorLock},
-				{Fix::PoolStagingBlocks, &runtime.CrowdFix.Fixes.PoolStagingBlocks},
-				{Fix::FreezeHiddenMinions, &runtime.CrowdFix.Fixes.FreezeHiddenMinions},
-				{Fix::SkipPrepareWait, &runtime.CrowdFix.Fixes.SkipPrepareWait},
-				{Fix::InlineBgPrep, &runtime.CrowdFix.Fixes.InlineBgPrep},
-				{Fix::SkipHiddenHotbars, &runtime.CrowdFix.Fixes.SkipHiddenHotbars},
-				{Fix::ParallelAnimTail, &runtime.CrowdFix.Fixes.ParallelAnimTail},
-				{Fix::SplitCharacterCulling, &runtime.CrowdFix.Fixes.SplitCharacterCulling},
-				{Fix::PerItemCullingClaims, &runtime.CrowdFix.Fixes.PerItemCullingClaims},
-				{Fix::GatherUsedCommands, &runtime.CrowdFix.Fixes.GatherUsedCommands},
-			};
-			static_assert(std::size(crowdFixItems) == static_cast<size_t>(Fix::Count));
-
-			const auto updateCrowdFix = [this, crowdFixItems] {
-				if (Config->Runtime.CrowdFix.Enabled && Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "CrowdFix")) {
-					if (!CrowdFix) {
-						CrowdFix.emplace();
-						for (const auto& [fix, item] : crowdFixItems)
-							CrowdFix->SetEnabled(fix, item->Value());
-					}
+			const auto updateCrowdFix = [this] {
+				auto& runtime = Config->Runtime;
+				if (runtime.CrowdFix.Enabled && runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::General, "CrowdFix")) {
+					if (!CrowdFix.load())
+						Make(CrowdFix, [&runtime](Fix fix) { return Features::CrowdFix::ConfigItemOf(runtime, fix).Value(); });
 				} else {
-					CrowdFix.reset();
+					Remove(CrowdFix);
 				}
 			};
-			Cleanup += runtime.CrowdFix.Enabled.AddAndCallOnChange(updateCrowdFix, [this] { CrowdFix.reset(); });
-			Cleanup += runtime.OnVersionSensitiveFeaturesAllowedChange(updateCrowdFix);
-			for (const auto& [fix, item] : crowdFixItems) {
-				Cleanup += item->OnChange([this, fix, item] {
-					if (CrowdFix)
-						CrowdFix->SetEnabled(fix, item->Value());
+			BindVersionSensitive(runtime.CrowdFix.Enabled, updateCrowdFix, [this] { Remove(CrowdFix); });
+			for (size_t i = 0; i < static_cast<size_t>(Fix::Count); i++) {
+				const auto fix = static_cast<Fix>(i);
+				auto& item = Features::CrowdFix::ConfigItemOf(runtime, fix);
+				Cleanup += item.OnChange([this, fix, &item] {
+					if (const auto crowdFix = CrowdFix.load())
+						crowdFix->SetEnabled(fix, item.Value());
 				});
 			}
+		}
+
+		{
+			// Merged text exists only while modding is on; its chat rewrite part hooks the game.
+			const auto updateOutgoingText = [this] {
+				OutgoingText.reset();
+				if (Config->Runtime.Modding.Enabled)
+					OutgoingText.emplace(App, Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::SocketHook, "Changing merged names in chat back"));
+			};
+			BindVersionSensitive(Config->Runtime.Modding.Enabled, updateOutgoingText, [this] { OutgoingText.reset(); });
 		}
 
 		{
@@ -395,8 +433,7 @@ struct XivAlexander::Apps::MainApp::App::Implementation {
 				}
 			};
 			// The feature applies its other settings itself; only turning it on or off is acted on here.
-			Cleanup += Config->Runtime.FontReplacement.Enabled.AddAndCallOnChange(updateFontReplacement, [this] { FontReplacement.reset(); });
-			Cleanup += Config->Runtime.OnVersionSensitiveFeaturesAllowedChange(updateFontReplacement);
+			BindVersionSensitive(Config->Runtime.FontReplacement.Enabled, updateFontReplacement, [this] { FontReplacement.reset(); });
 		}
 	}
 };
@@ -431,16 +468,9 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::InitializeThre
 		});
 
 	auto& config = App.m_pImpl->Config->Runtime;
-	if (config.GameWindow.AlwaysOnTop)
-		SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	else
-		SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	Cleanup += config.GameWindow.AlwaysOnTop.OnChange([&] {
-		if (config.GameWindow.AlwaysOnTop)
-			SetWindowPos(Handle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-		else
-			SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-		});
+	Cleanup += config.GameWindow.AlwaysOnTop.AddAndCallOnChange([&] {
+		SetWindowPos(Handle, config.GameWindow.AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	});
 	Cleanup += [this] { SetWindowPos(Handle, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE); };
 
 	Cleanup += Config->Runtime.GameWindow.TitleMode.AddAndCallOnChange([this] { UpdateWindowTitle(); });
@@ -524,8 +554,7 @@ void XivAlexander::Apps::MainApp::App::Implementation_GameWindow::UpdateWindowTi
 	if (!Handle)
 		return;
 
-	std::wstring current(GetWindowTextLengthW(Handle) + 1, L'\0');
-	current.resize(GetWindowTextW(Handle, current.data(), static_cast<int>(current.size())));
+	auto current = Utils::Win32::GetWindowString(Handle);
 
 	if (AppliedTitle.empty() || current != AppliedTitle) {
 		OriginalTitle = std::move(current);
@@ -724,6 +753,10 @@ HWND XivAlexander::Apps::MainApp::App::GetGameWindowHandle(bool wait) const {
 	return m_pGameWindow->GetHwnd(wait);
 }
 
+HWND XivAlexander::Apps::MainApp::App::GetMainWindowHandle() const {
+	return m_pImpl->MainWindow ? m_pImpl->MainWindow->Handle() : nullptr;
+}
+
 DWORD XivAlexander::Apps::MainApp::App::GetGameWindowThreadId(bool wait) const {
 	return m_pGameWindow->GetThreadId(wait);
 }
@@ -740,13 +773,10 @@ std::string XivAlexander::Apps::MainApp::App::IsUnloadable() const {
 	if (const auto pszDisabledReason = Dll::GetUnloadDisabledReason())
 		return pszDisabledReason;
 
-	if (Dll::IsLoadedAsDependency())
-		return xivres::util::unicode::convert<std::string>(m_pImpl->Config->Runtime.GetStringRes(IDS_NOUNLOADREASON_DEPENDENCY));
-
 	if (m_pImpl == nullptr || m_pGameWindow == nullptr)
 		return "";
 
-	if (m_pImpl->ResourceOverrider->GetVirtualSqPacks())
+	if (m_pImpl->ResourceOverrider && m_pImpl->ResourceOverrider->GetVirtualSqPacks())
 		return xivres::util::unicode::convert<std::string>(m_pImpl->Config->Runtime.GetStringRes(IDS_NOUNLOADREASON_MODACTIVE));
 
 	if (m_pImpl->SocketHook && !m_pImpl->SocketHook->IsUnloadable())
@@ -766,16 +796,20 @@ XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider& XivAlexander:
 	return *m_pImpl->ResourceOverrider;
 }
 
-std::optional<XivAlexander::Apps::MainApp::Features::NetworkTimingHandler>& XivAlexander::Apps::MainApp::App::GetNetworkTimingHandler() {
-	return m_pImpl->NetworkTimingHandler;
+std::shared_ptr<XivAlexander::Apps::MainApp::Features::NetworkTimingHandler> XivAlexander::Apps::MainApp::App::GetNetworkTimingHandler() const {
+	return m_pImpl->NetworkTimingHandler.load();
 }
 
-std::optional<XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler>& XivAlexander::Apps::MainApp::App::GetMainThreadTimingHelper() {
-	return m_pImpl->MainThreadTimingHandler;
+std::shared_ptr<XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler> XivAlexander::Apps::MainApp::App::GetMainThreadTimingHelper() const {
+	return m_pImpl->MainThreadTimingHandler.load();
 }
 
-std::optional<XivAlexander::Apps::MainApp::Features::LoginSessions>& XivAlexander::Apps::MainApp::App::GetLoginSessions() {
-	return m_pImpl->LoginSessions;
+std::shared_ptr<XivAlexander::Apps::MainApp::Features::LoginSessions> XivAlexander::Apps::MainApp::App::GetLoginSessions() const {
+	return m_pImpl->LoginSessions.load();
+}
+
+std::shared_ptr<XivAlexander::Apps::MainApp::Features::CrowdFix> XivAlexander::Apps::MainApp::App::GetCrowdFix() const {
+	return m_pImpl->CrowdFix.load();
 }
 
 void XivAlexander::Apps::MainApp::App::AskVersionSensitiveFeatures(HWND hParent) {
@@ -784,9 +818,6 @@ void XivAlexander::Apps::MainApp::App::AskVersionSensitiveFeatures(HWND hParent)
 
 size_t Dll::EnableXivAlexander(size_t bEnable) {
 	static std::unique_ptr<XivAlexander::Apps::MainApp::App> s_app;
-
-	if (IsLoadedAsDependency())
-		return -1;
 
 	if (!!bEnable == !!s_app)
 		return 0;

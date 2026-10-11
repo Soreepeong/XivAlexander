@@ -9,12 +9,6 @@ namespace {
 	constexpr UINT_PTR ListSubclassId = 1;
 	constexpr UINT_PTR EditorSubclassId = 2;
 	constexpr UINT WmSelectionChanged = WM_APP + 1;
-
-	std::wstring GetText(HWND hWnd) {
-		std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hWnd)) + 1, L'\0');
-		text.resize(GetWindowTextW(hWnd, text.data(), static_cast<int>(text.size())));
-		return text;
-	}
 }
 
 XivAlexander::Apps::MainApp::Window::GridView::GridView(HWND hParent, UINT id, std::vector<Column> columns, Source source)
@@ -267,7 +261,7 @@ bool XivAlexander::Apps::MainApp::Window::GridView::EndEdit(EndEditMode mode) {
 				mode = EndEditMode::Cancel;
 			}
 		} else {
-			text = GetText(editor.Window);
+			text = Utils::Win32::GetWindowString(editor.Window);
 		}
 		if (mode != EndEditMode::Cancel && !m_source.SetText(editor.Row, editor.Column, text)) {
 			MessageBeep(MB_ICONWARNING);
@@ -660,6 +654,15 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ContainerProc(UINT uMsg, 
 					if (const auto result = OnCustomDraw(*reinterpret_cast<LPNMLVCUSTOMDRAW>(lParam)))
 						return *result;
 					break;
+
+				case LVN_GETEMPTYMARKUP: {
+					if (!m_source.GetEmptyText)
+						return FALSE;
+					auto& markup = *reinterpret_cast<NMLVEMPTYMARKUP*>(lParam);
+					markup.dwFlags = EMF_CENTERED;
+					wcsncpy_s(markup.szMarkup, m_source.GetEmptyText().c_str(), _TRUNCATE);
+					return TRUE;
+				}
 			}
 			break;
 		}
@@ -743,13 +746,18 @@ void XivAlexander::Apps::MainApp::Window::GridView::UpdateColumnWidths() {
 		return;
 	RECT rc;
 	GetClientRect(m_hList, &rc);
+	auto fillIndex = m_columns.size() - 1;
+	if (const auto it = std::ranges::find_if(m_columns, &Column::Fill); it != m_columns.end())
+		fillIndex = static_cast<size_t>(it - m_columns.begin());
 	auto used = 0;
-	for (size_t i = 0; i + 1 < m_columns.size(); ++i) {
+	for (size_t i = 0; i < m_columns.size(); ++i) {
+		if (i == fillIndex)
+			continue;
 		const auto width = static_cast<int>(m_columns[i].Width * m_zoom);
 		ListView_SetColumnWidth(m_hList, static_cast<int>(i), width);
 		used += width;
 	}
-	ListView_SetColumnWidth(m_hList, static_cast<int>(m_columns.size() - 1), std::max(static_cast<int>(m_columns.back().Width * m_zoom), static_cast<int>(rc.right) - used));
+	ListView_SetColumnWidth(m_hList, static_cast<int>(fillIndex), std::max(static_cast<int>(m_columns[fillIndex].Width * m_zoom), static_cast<int>(rc.right) - used));
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::ApplyTheme(bool dark) {

@@ -17,7 +17,7 @@ namespace {
 	constexpr auto SessionIdKey = "DEV.TestSID";
 	constexpr const char* AllowedKeys[]{SessionIdKey, "DEV.MaxEntitledExpansionID"};
 
-	using ArgumentList = std::vector<std::pair<std::string, std::string>>;
+	using XivAlexander::Game::CommandLine::ArgumentList;
 
 	struct StoredSession {
 		XivAlexander::Apps::MainApp::Features::LoginSessions::Session Session;
@@ -366,7 +366,7 @@ struct XivAlexander::Apps::MainApp::Features::LoginSessions::Implementation {
 	}
 
 	void LoadStartupSessions() {
-		std::vector<std::pair<std::string, std::string>> args;
+		ArgumentList args;
 		try {
 			args = Game::CommandLine::FromString(Dll::GetOriginalCommandLine());
 		} catch (...) {
@@ -415,7 +415,7 @@ void XivAlexander::Apps::MainApp::Features::LoginSessions::Select(size_t index) 
 	OnChange();
 }
 
-std::optional<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>> XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments() {
+std::optional<std::pair<std::string, ArgumentList>> XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments() {
 	auto stored = ReadStoredSessions(*Misc::Logger::Acquire());
 	const auto it = std::ranges::max_element(stored, [](const StoredSession& l, const StoredSession& r) {
 		return CompareFileTime(&l.LastWritten, &r.LastWritten) < 0;
@@ -450,19 +450,109 @@ size_t XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSession
 		}
 	}
 	m_pImpl->Logger->Format(LogCategory::General, "Removed {} login session(s) from Credential Manager", removed);
+	{
+		// Otherwise the launch arguments' session would stay listed under the name it was stored with.
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (m_pImpl->LaunchSession)
+			m_pImpl->LaunchSession->Alias.clear();
+	}
 	Reload();
 	return removed;
 }
 
 bool XivAlexander::Apps::MainApp::Features::LoginSessions::ForgetStoredSession(const std::string& alias) {
 	const auto removed = !alias.empty() && CredDeleteW(CredentialTarget(alias).c_str(), CRED_TYPE_GENERIC, 0);
-	if (removed)
+	if (removed) {
 		m_pImpl->Logger->Format(LogCategory::General, "Removed login session \"{}\" from Credential Manager", alias);
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (m_pImpl->LaunchSession && m_pImpl->LaunchSession->Alias == alias)
+			m_pImpl->LaunchSession->Alias.clear();
+	}
 	Reload();
 	return removed;
 }
 
-void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(std::vector<std::pair<std::string, std::string>>& args) {
+XivAlexander::Apps::MainApp::Features::LoginSessions::RenameResult XivAlexander::Apps::MainApp::Features::LoginSessions::RenameStoredSession(const std::string& alias, const std::string& newAlias) {
+	if (newAlias == alias)
+		return RenameResult::Unchanged;
+	try {
+		ValidateAlias(newAlias);
+	} catch (const std::invalid_argument&) {
+		return RenameResult::InvalidAlias;
+	}
+
+	const auto target = CredentialTarget(alias);
+	const auto newTarget = CredentialTarget(newAlias);
+	PCREDENTIALW cred = nullptr;
+	if (alias.empty() || !CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &cred))
+		return RenameResult::NotFound;
+	const auto freeCred = xivres::util::on_dtor([cred] { CredFree(cred); });
+
+	// Credential Manager compares names case-insensitively.
+	const auto sameTarget = CompareStringOrdinal(target.c_str(), -1, newTarget.c_str(), -1, TRUE) == CSTR_EQUAL;
+	if (!sameTarget) {
+		PCREDENTIALW existing = nullptr;
+		if (CredReadW(newTarget.c_str(), CRED_TYPE_GENERIC, 0, &existing)) {
+			CredFree(existing);
+			return RenameResult::AlreadyExists;
+		}
+	}
+
+	// Only the alias changes; the order and values of the rest (Arguments, Publisher, ...) stay as CmdXivLauncher wrote them.
+	auto json = nlohmann::ordered_json::parse(std::string_view(reinterpret_cast<const char*>(cred->CredentialBlob), cred->CredentialBlobSize), nullptr, false);
+	if (json.is_discarded() || !json.is_object())
+		throw std::runtime_error("The stored login session is not valid JSON");
+	json["Alias"] = newAlias;
+	auto blob = json.dump();
+	const auto wipeBlob = xivres::util::on_dtor([&blob] { SecureZeroMemory(blob.data(), blob.size()); });
+
+	const auto oldAliasW = xivres::util::unicode::convert<std::wstring>(alias);
+	const auto newAliasW = xivres::util::unicode::convert<std::wstring>(newAlias);
+	auto original = *cred;
+	original.Flags = 0;
+	auto renamed = original;
+	renamed.TargetName = const_cast<LPWSTR>(newTarget.c_str());
+	if (cred->UserName && oldAliasW == cred->UserName)
+		renamed.UserName = const_cast<LPWSTR>(newAliasW.c_str());
+	renamed.CredentialBlob = reinterpret_cast<LPBYTE>(blob.data());
+	renamed.CredentialBlobSize = static_cast<DWORD>(blob.size());
+
+	if (sameTarget) {
+		// Written anew rather than over, so that the name takes the new case.
+		if (!CredDeleteW(target.c_str(), CRED_TYPE_GENERIC, 0))
+			throw Utils::Win32::Error("CredDeleteW");
+		if (!CredWriteW(&renamed, 0)) {
+			const auto err = GetLastError();
+			CredWriteW(&original, 0);
+			throw Utils::Win32::Error(err, "CredWriteW");
+		}
+	} else {
+		if (!CredWriteW(&renamed, 0))
+			throw Utils::Win32::Error("CredWriteW");
+		if (!CredDeleteW(target.c_str(), CRED_TYPE_GENERIC, 0)) {
+			const auto err = GetLastError();
+			CredDeleteW(newTarget.c_str(), CRED_TYPE_GENERIC, 0);
+			throw Utils::Win32::Error(err, "CredDeleteW");
+		}
+	}
+	m_pImpl->Logger->Format(LogCategory::General, "Renamed login session \"{}\" to \"{}\"", alias, newAlias);
+
+	// Renamed here too, so that the selection and what the lobby said about it carry over.
+	{
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (m_pImpl->LaunchSession && m_pImpl->LaunchSession->Alias == alias)
+			m_pImpl->LaunchSession->Alias = newAlias;
+		for (auto& session : m_pImpl->Sessions) {
+			if (session.Alias == alias)
+				session.Alias = newAlias;
+		}
+	}
+	m_pImpl->Reload(false);
+	OnChange();
+	return RenameResult::Renamed;
+}
+
+void XivAlexander::Apps::MainApp::Features::LoginSessions::ApplySelectedTo(ArgumentList& args) {
 	Reload();
 
 	const auto lock = std::lock_guard(m_pImpl->Mtx);

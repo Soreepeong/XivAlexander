@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Config.h"
+#include "Game/CommandLine.h"
 #include "Misc/GameInstallationDetector.h"
 #include "MainApp/Modding/NestedTtmp.h"
 #include "MainApp/Windows/BaseWindow.h"
@@ -34,14 +35,12 @@ namespace XivAlexander::Apps::MainApp::Window {
 		bool m_bUseElevation;
 		xivres::game_language m_gameLanguage = xivres::game_language::Unspecified;
 		xivres::game_publisher m_gameRegion = xivres::game_publisher::Unspecified;
-		const std::vector<std::pair<std::string, std::string>> m_launchParameters;
+		const XivAlexander::Game::CommandLine::ArgumentList m_launchParameters;
 		const std::wstring m_startupArgumentsForDisplay;
 
 		Utils::Win32::Thread m_backgroundWorkerThread;
 		std::shared_ptr<ProgressPopupWindow> m_backgroundWorkerProgressWindow;
 		std::atomic<bool> m_ttmpRescanPending = false;  // Asked for while the worker was busy; done when it's done.
-
-		std::map<uint16_t, std::function<void()>> m_menuIdCallbacks;
 
 		// The menu, which isn't the window's: its first submenu is the tray icon's, and is in the window menu.
 		Utils::Win32::Menu m_menu;
@@ -61,51 +60,52 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 	protected:
 		void ApplyLanguage(WORD languageId) final;
+		std::vector<std::filesystem::path> ResolveDirectories(const std::vector<std::filesystem::path>& configured) const;
+		std::filesystem::path ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const;
+		void EnsureAndOpenDirectory(const std::filesystem::path& path);
 
 		LRESULT WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 		void OnLayout(double zoom, double width, double height, int resizeType) override;
-		LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos) override;
 		void OnDestroy() override;
 		void OnThemeChanged() override;
-
 		void PaintStatus(HDC hdc, const RECT& rect) const;
-		
-		void RepopulateMenu();
-		UINT_PTR RepopulateMenu_AllocateMenuId(std::function<void()>);
-		static std::wstring RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId);
-		[[nodiscard]] std::pair<bool, bool> GetRestartChoiceState(UINT commandId) const;
-		bool ChooseForRestart(UINT commandId);
-		std::vector<std::filesystem::path> ResolveDirectories(const std::vector<std::filesystem::path>& configured) const;
-		std::filesystem::path ResolvePrimaryDirectory(const std::vector<std::filesystem::path>& configured, const wchar_t* defaultName) const;
-		void SetMenuStates() const;
-		void RepopulateSystemMenu();
 		void RegisterTrayIcon();
+		void HideToTray();
 		void RemoveTrayIcon();
 
+		void RepopulateMenu();
+		void RepopulateSystemMenu();
+		LRESULT OnSysCommand(WPARAM commandId, short xPos, short yPos) override;
+		static std::wstring RepopulateMenu_GetMenuTextById(HMENU hParentMenu, UINT commandId);
+		void SetMenuStates() const;
+
+		void OnCommand_Menu_File(int menuId);
+
 		[[nodiscard]] static std::filesystem::path GameExecutablePath();
+		bool WarnIfLaunchParametersMissing();
 		[[nodiscard]] std::wstring MakeLaunchArguments() const;
 		void CopyLaunchCommandLine();
 		void ClearCopiedLaunchCommandLine();
 		void AskRestartGame(bool onlyOnModifier = false);
-
-		void OnCommand_Menu_File(int menuId);
 		void OnCommand_Menu_Restart(int menuId);
+		bool ChooseForRestart(UINT commandId);
+		[[nodiscard]] std::pair<bool, bool> GetRestartChoiceState(UINT commandId) const;
+
 		void OnCommand_Menu_Network(int menuId);
+
 		void OnCommand_Menu_Modding(int menuId);
-		void OnCommand_Menu_Configure(int menuId);
-		void OnCommand_Menu_View(int menuId);
-		void OnCommand_Menu_Help(int menuId);
-
-		[[nodiscard]] std::vector<std::filesystem::path> ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath = {}) const;
-
-		std::string InstallTTMP(const std::filesystem::path& path, ProgressPopupWindow& progressWindow);
 		void BatchTtmpOperation(Features::Modding::NestedTtmp& parent, int menuId);
 
+		[[nodiscard]] std::vector<std::filesystem::path> ChooseFileToOpen(std::span<const COMDLG_FILTERSPEC> fileTypes, UINT nTitleResId, const std::filesystem::path& defaultPath = {}) const;
+		std::string InstallTTMP(const std::filesystem::path& path, ProgressPopupWindow& progressWindow);
 		std::pair<std::filesystem::path, std::string> InstallAnyFile(const std::filesystem::path& path, ProgressPopupWindow& progressWindow);
 		void InstallMultipleFiles(const std::vector<std::filesystem::path>& paths);
 
-		void EnsureAndOpenDirectory(const std::filesystem::path& path);
-
+		void OnCommand_Menu_Configure(int menuId);
 		void CheckUpdatedOpcodes(bool showResultMessageBox);
+
+		void OnCommand_Menu_View(int menuId);
+
+		void OnCommand_Menu_Help(int menuId);
 	};
 }

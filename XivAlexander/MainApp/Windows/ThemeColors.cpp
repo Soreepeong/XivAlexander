@@ -178,8 +178,7 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::CustomDrawDarkButton
 			return std::nullopt;
 	}
 
-	std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hButton)) + 1, L'\0');
-	text.resize(GetWindowTextW(hButton, text.data(), static_cast<int>(text.size())));
+	const auto text = Utils::Win32::GetWindowString(hButton);
 	if (text.empty())
 		return std::nullopt;
 
