@@ -11,6 +11,7 @@
 #include "Config.h"
 #include "Misc/Logger.h"
 #include "resource.h"
+#include "Utils/StringUtils.h"
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
 	namespace {
@@ -58,13 +59,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			});
 		}
 
-		// Files held open during a rename usually are briefly: a read already past the gate, an antivirus scan, or an Explorer thumbnail.
+		// Files are often held open briefly, by a read, an antivirus scan or Explorer.
 		constexpr auto RenameRetryTimeout = std::chrono::seconds(3);
 		constexpr DWORD RenameRetryIntervalMs = 50;
 
-		std::string ToUtf8(const std::filesystem::path& path) {
-			return xivres::util::unicode::convert<std::string>(path.wstring());
-		}
+		using Utils::ToUtf8;
 
 		/// For exception messages shown to the user verbatim, in the interface language.
 		template<typename... Args>
@@ -168,21 +167,31 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	TtmpLibrary::~TtmpLibrary() = default;
 
 	void TtmpLibrary::Scan(Window::ProgressPopupWindow& progressWindow) {
+		std::exception_ptr error;
 		{
 			const auto loaderThread = Utils::Win32::Thread(L"TTMP Scanner", [&] {
-				for (const auto& dir : GetPossibleTtmpDirs()) {
-					if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
-						throw std::runtime_error("Cancelled");
-					RescanTree(dir, m_root, progressWindow);
+				try {
+					for (const auto& dir : GetPossibleTtmpDirs()) {
+						if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
+							return;
+						RescanTree(dir, m_root, progressWindow);
+					}
+				} catch (...) {
+					error = std::current_exception();
 				}
 			});
 			do {
 				progressWindow.UpdateMessage(m_config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES));
 			} while (WAIT_TIMEOUT == progressWindow.DoModalLoop(100, {loaderThread}));
+
+			// DoModalLoop also returns on cancel, while the thread still uses the captures.
+			loaderThread.Wait();
 		}
 
 		if (progressWindow.GetCancelEvent().Wait(0) == WAIT_OBJECT_0)
 			throw std::runtime_error("Cancelled");
+		if (error)
+			std::rethrow_exception(error);
 	}
 
 	void TtmpLibrary::Rescan(Window::ProgressPopupWindow& progressWindow) {
@@ -295,10 +304,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	std::vector<std::filesystem::path> TtmpLibrary::GetPossibleTtmpDirs() const {
 		std::vector<std::filesystem::path> dirs;
-		for (const auto& dir : m_config->Runtime.Modding.Ttmp.SearchDirectories.Value()) {
-			if (!dir.empty())
-				dirs.emplace_back(m_config->TranslateDirectoryPath(dir, m_sqpackPath));
-		}
+		for (const auto& dir : ToggledPath::EnabledOf(m_config->Runtime.Modding.Ttmp.SearchDirectories.Value()))
+			dirs.emplace_back(m_config->TranslateDirectoryPath(dir, m_sqpackPath));
 
 		for (auto it = dirs.begin(); it != dirs.end();) {
 			if (it->empty() || !is_directory(*it))
@@ -408,7 +415,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			auto dataStream = std::make_shared<xivres::oplocking_file_stream>(ttmpdPath, false);
 			if (dataStream->done())
 				throw std::runtime_error(std::format("failed to open {}", ttmpdPath.string()));
-			dataStream->emplace_tag<ModpackNameTag>(list.Name.empty() ? xivres::util::unicode::convert<std::string>(ttmpDir.filename().wstring()) : list.Name);
+			dataStream->emplace_tag<ModpackNameTag>(list.Name.empty() ? ToUtf8(ttmpDir.filename()) : list.Name);
 
 			added = parent->Children->emplace_back(std::make_shared<NestedTtmp>(NestedTtmp{
 				.Path = ttmpDir,

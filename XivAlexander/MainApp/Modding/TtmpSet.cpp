@@ -4,6 +4,7 @@
 #include <xivres/stream.oplocking.h>
 
 #include "Config.h"
+#include "Utils/StringUtils.h"
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
 	void TtmpSet::FixChoices() {
@@ -23,13 +24,16 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			for (size_t modGroupIndex = 0; modGroupIndex < modGroups.size(); ++modGroupIndex) {
 				const auto& modGroup = modGroups[modGroupIndex];
-				if (modGroups.empty())
-					continue;
 
 				while (pageChoices.size() <= modGroupIndex)
 					pageChoices.emplace_back(modGroup.SelectionType == "Multi" ? nlohmann::json::array() : nlohmann::json::array({0}));
 
 				auto& modGroupChoice = pageChoices.at(modGroupIndex);
+				if (modGroup.OptionList.empty()) {
+					modGroupChoice = nlohmann::json::array();
+					continue;
+				}
+
 				if (!modGroupChoice.is_array())
 					modGroupChoice = nlohmann::json::array({modGroupChoice});
 
@@ -55,7 +59,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	std::string TtmpSet::DisplayName() const {
 		if (!List.Name.empty())
 			return List.Name;
-		return xivres::util::unicode::convert<std::string>(ListPath.parent_path().filename().wstring());
+		return Utils::ToUtf8(ListPath.parent_path().filename());
 	}
 
 	void TtmpSet::TryCleanupUnusedFiles() {

@@ -5,9 +5,8 @@
 #include "Utils/Win32/Process.h"
 #include "resource.h"
 
-XivAlexander::BaseConfigRepository::BaseConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
+XivAlexander::BaseConfigRepository::BaseConfigRepository(std::filesystem::path path, std::string parentKey)
 	: ConfigNode(this)
-	, m_pConfig(pConfig)
 	, m_sConfigPath(std::move(path))
 	, m_parentKey(std::move(parentKey))
 	, m_logger(Misc::Logger::Acquire()) {}
@@ -40,14 +39,13 @@ XivAlexander::ConfigGroup::ConfigGroup(ConfigNode* pParent, const char* pszKey)
 	: ConfigItemBase(pParent, pszKey)
 	, ConfigNode(pParent->m_pRepository) {}
 
-bool XivAlexander::ConfigGroup::LoadFrom(const nlohmann::json& data) {
+void XivAlexander::ConfigGroup::LoadFrom(const nlohmann::json& data) {
 	const auto it = data.find(Name);
 	if (it == data.end() || !it->is_object())
-		return false;
+		return;
 
 	const auto batch = Batch();
 	LoadItemsFrom(*it);
-	return false;
 }
 
 void XivAlexander::ConfigGroup::SaveTo(nlohmann::json& data) const {
@@ -198,28 +196,26 @@ void XivAlexander::BaseConfigRepository::Save(const std::filesystem::path& to) {
 }
 
 template<>
-bool XivAlexander::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data) {
+void XivAlexander::ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data) {
 	if (const auto it = data.find(Name); it != data.end()) {
 		uint16_t newValue;
-		std::string strVal;
 		try {
-			strVal = it->get<std::string>();
 			if (it->is_string())
 				newValue = static_cast<uint16_t>(std::stoi(it->get<std::string>(), nullptr, 0));
 			else if (it->is_number_integer())
 				newValue = it->get<uint16_t>();
 			else
-				return false;
+				return;
 		} catch (const std::exception& e) {
-			m_pBaseRepository->m_logger->FormatDefaultLanguage(LogCategory::General, IDS_ERROR_CONFIGURATION_PARSE_VALUE, strVal, e.what());
+			m_pBaseRepository->m_logger->FormatDefaultLanguage(LogCategory::General, IDS_ERROR_CONFIGURATION_PARSE_VALUE, it->dump(), e.what());
+			return;
 		}
 
 		*this = newValue;
 	}
-	return false;
 }
 
 template<>
 void XivAlexander::ConfigItem<uint16_t>::SaveTo(nlohmann::json& data) const {
-	data[Name] = std::format("0x{:04x}", m_value);
+	data[Name] = std::format("0x{:04x}", Value());
 }

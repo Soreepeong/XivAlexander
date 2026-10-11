@@ -2,14 +2,18 @@
 #include "MainApp/FontReplacement/LineBreaker.h"
 
 #include <icu.h>
+#include <xivres/xivstring.h>
 
 #include "MainApp/FontReplacement/FontReplacer.h"
 #include "MainApp/FontReplacement/GameLayout.h"
-#include "MainApp/FontReplacement/GameText.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
+	std::span<const uint8_t> AsText(const uint8_t* p) {
+		return {p, std::strlen(reinterpret_cast<const char*>(p))};
+	}
+
 	// Macros that the game counts as characters (icons).
 	constexpr uint8_t IconMacro = 0x12;
 	constexpr uint8_t Icon2Macro = 0x1E;
@@ -35,20 +39,22 @@ FontReplacement::LineBreaker::LineBreaker(FontReplacer& replacer)
 	});
 }
 
-bool FontReplacement::LineBreaker::NeedsClusters(const uint8_t* p) {
-	while (*p) {
-		if (*p == GameText::MacroStart) {
-			const auto length = GameText::MacroLength(p);
-			if (!length)
+bool FontReplacement::LineBreaker::NeedsClusters(const uint8_t* word) {
+	const auto text = AsText(word);
+	for (size_t i = 0; i < text.size();) {
+		const auto rest = text.subspan(i);
+		if (rest[0] == static_cast<uint8_t>(xivres::xivstring::StartOfText)) {
+			const auto macro = xivres::xivstring::read_macro(rest);
+			if (!macro)
 				return false;
-			p += length;
+			i += macro->size;
 			continue;
 		}
 
-		const auto n = GameText::CharacterLength(p);
+		const auto n = xivres::xivstring::character_length(rest);
 		if (!n)
 			return false;
-		if (const auto c = GameUtf8::Decode(p, n); c >= 0) {
+		if (const auto c = GameUtf8::Decode(rest.data(), static_cast<int>(n)); c >= 0) {
 			const auto type = u_charType(c);
 			if (type == U_NON_SPACING_MARK || type == U_COMBINING_SPACING_MARK || type == U_ENCLOSING_MARK
 				|| (c >= 0x0E00 && c <= 0x0FFF)  // Thai, Lao, Tibetan
@@ -61,7 +67,7 @@ bool FontReplacement::LineBreaker::NeedsClusters(const uint8_t* p) {
 				return true;
 		}
 
-		p += n;
+		i += n;
 	}
 	return false;
 }
@@ -102,7 +108,7 @@ uint32_t FontReplacement::LineBreaker::Split(uintptr_t wrapper, int width, const
 	m_wrapAfter.assign(m_text.size() + 1, 0);
 	m_replacer.Shaper().GetBreaks(m_text, m_clusterEnd, m_wrapAfter);
 
-	// The last break opportunity among the units that fit, looked up at each unit's text end; a macro has none of its own.
+	// A macro has no break opportunity of its own.
 	auto best = 0;
 	for (auto k = 1; k <= fit; k++) {
 		const auto end = m_units[k - 1].TextEnd;
@@ -135,32 +141,35 @@ uint32_t FontReplacement::LineBreaker::Split(uintptr_t wrapper, int width, const
 	return static_cast<uint32_t>(best);
 }
 
-void FontReplacement::LineBreaker::Decode(const uint8_t* p) {
+void FontReplacement::LineBreaker::Decode(const uint8_t* word) {
 	m_units.clear();
 	m_text.clear();
-	while (*p) {
-		if (*p == GameText::MacroStart) {
-			const auto length = GameText::MacroLength(p);
-			if (!length)
+	const auto text = AsText(word);
+	for (size_t i = 0; i < text.size();) {
+		const auto rest = text.subspan(i);
+		if (rest[0] == static_cast<uint8_t>(xivres::xivstring::StartOfText)) {
+			const auto macro = xivres::xivstring::read_macro(rest);
+			if (!macro)
 				break;
-			const auto icon = p[1] == IconMacro || p[1] == Icon2Macro;
+			const auto type = static_cast<uint8_t>(macro->type);
+			const auto icon = type == IconMacro || type == Icon2Macro;
 			if (icon)
 				m_text.push_back(L'\xFFFC');
 			m_units.push_back({!icon, static_cast<int>(m_text.size())});
-			p += length;
+			i += macro->size;
 			continue;
 		}
 
-		const auto n = GameText::CharacterLength(p);
+		const auto n = xivres::xivstring::character_length(rest);
 		if (!n)
 			break;
 		char32_t rune;
-		if (*p == NonBreakingSpaceChar) {
+		if (rest[0] == NonBreakingSpaceChar) {
 			rune = 0xA0;
-		} else if (*p == HyphenChar) {
+		} else if (rest[0] == HyphenChar) {
 			rune = U'-';
 		} else {
-			const auto c = GameUtf8::Decode(p, n);
+			const auto c = GameUtf8::Decode(rest.data(), static_cast<int>(n));
 			rune = c < 0 ? U'\xFFFD' : static_cast<char32_t>(c);
 		}
 
@@ -171,6 +180,6 @@ void FontReplacement::LineBreaker::Decode(const uint8_t* p) {
 			m_text.push_back(static_cast<wchar_t>(0xDC00 + ((rune - 0x10000) & 0x3FF)));
 		}
 		m_units.push_back({false, static_cast<int>(m_text.size())});
-		p += n;
+		i += n;
 	}
 }

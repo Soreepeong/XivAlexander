@@ -9,6 +9,18 @@ namespace XivAlexander::Misc::Hooks {
 
 	using namespace XivAlexander::Game::Signatures;
 
+	/// One write, so other threads see the old or the new value; throws, leaving memory untouched, if the protection can't be changed.
+	template<typename T> requires std::is_trivially_copyable_v<T> && (sizeof(T) <= sizeof(uint64_t))
+	void WriteAtomically(void* address, T value, DWORD writableProtect = PAGE_EXECUTE_READWRITE) {
+		const auto& process = Utils::Win32::Process::Current();
+		{
+			const auto protect = process.WithVirtualProtect(address, 0, sizeof value, writableProtect);
+			*static_cast<volatile T*>(address) = value;
+		}
+		if (writableProtect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+			process.FlushInstructionsCache(address, sizeof value);
+	}
+
 	class Binder {
 	public:
 #if INTPTR_MAX == INT32_MAX
@@ -38,15 +50,16 @@ namespace XivAlexander::Misc::Hooks {
 		}
 	};
 
+	// __stdcall only matters to the x86 build, which hooks Win32 API functions alone.
 	template<typename R, typename ...Args>
-	class Function : public Signature<R(*)(Args...)> {
+	class Function : public Signature<R(__stdcall*)(Args...)> {
 	protected:
-		typedef R(*FunctionType)(Args...);
+		typedef R(__stdcall* FunctionType)(Args...);
 
 		FunctionType m_bridge = nullptr;
 		std::function<std::remove_pointer_t<FunctionType>> m_detour = nullptr;
 
-		static R DetouredGatewayTemplateFunction(Args...args) {
+		static R __stdcall DetouredGatewayTemplateFunction(Args...args) {
 			const volatile auto target = reinterpret_cast<Function<R, Args...>*>(Binder::DummyAddress);
 			return target->DetouredGateway(args...);
 		}
@@ -84,7 +97,12 @@ namespace XivAlexander::Misc::Hooks {
 			if (m_detour)
 				throw std::runtime_error("Cannot add multiple hooks");
 			m_detour = std::move(pfnDetour);
-			HookEnable();
+			try {
+				HookEnable();
+			} catch (...) {
+				m_detour = nullptr;
+				throw;
+			}
 
 			return xivres::util::on_dtor([this, m_destructed = m_destructed] {
 				if (*m_destructed)
@@ -258,19 +276,15 @@ namespace XivAlexander::Misc::Hooks {
 
 	protected:
 		void HookEnable() final {
-			MEMORY_BASIC_INFORMATION mbi;
-			VirtualQuery(this->m_pAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &mbi.Protect);
-			*reinterpret_cast<void**>(this->m_pAddress) = this->m_binder.GetBinder();
-			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
+			WriteAtomically(reinterpret_cast<void*>(this->m_pAddress), this->m_binder.template GetBinder<void*>());
 		}
 
 		void HookDisable() final {
-			MEMORY_BASIC_INFORMATION mbi;
-			VirtualQuery(this->m_pAddress, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &mbi.Protect);
-			*reinterpret_cast<void**>(this->m_pAddress) = this->m_bridge;
-			VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
+			try {
+				WriteAtomically(reinterpret_cast<void*>(this->m_pAddress), reinterpret_cast<void*>(this->m_bridge));
+			} catch (...) {
+				// Runs from a destructor; the slot stays hooked if it cannot be made writable.
+			}
 		}
 	};
 

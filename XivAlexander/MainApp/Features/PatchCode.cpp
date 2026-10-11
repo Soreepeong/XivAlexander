@@ -43,6 +43,7 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 				continue;
 			*p1 = p2;
 			VirtualProtect(p1, 1, old, &old);
+			FlushInstructionCache(GetCurrentProcess(), p1, 1);
 		}
 		OriginalCodes.clear();
 	}
@@ -213,6 +214,7 @@ struct XivAlexander::Apps::MainApp::Features::PatchCode::Implementation {
 
 							if (!VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProtect, &oldProtect))
 								throw std::runtime_error(std::format("VirtualProtect#2(0x{:X}) failure: {}", reinterpret_cast<size_t>(pointer), GetLastError()));
+							FlushInstructionCache(GetCurrentProcess(), pointer, available);
 
 							remaining -= available;
 							pointer += available;

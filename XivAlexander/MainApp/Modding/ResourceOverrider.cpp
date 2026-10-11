@@ -28,6 +28,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 	std::optional<SqpackLookupHooks> LookupHooks;
 	std::optional<TextHooks> TextHooks;
 
+	const Utils::Win32::Event StopInitEvent = Utils::Win32::Event::Create();
 	Utils::Win32::Thread VirtualSqPackInitThread;
 	xivres::util::listener_manager<Implementation, void> OnVirtualSqPacksInitialized;
 
@@ -38,7 +39,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 		, AntiDebugger(Misc::DebuggerDetectionDisabler::Acquire())
 		, SqpackPath(Utils::Win32::Process::Current().PathOf().remove_filename() / L"sqpack") {
 
-		if (!Dll::IsLoadedAsDependency() && !Dll::IsLoadedFromEntryPoint())
+		if (!Dll::IsLoadedFromEntryPoint())
 			return;
 
 		if (!Config->Runtime.Modding.Enabled)
@@ -47,31 +48,48 @@ struct XivAlexander::Apps::MainApp::Features::Modding::ResourceOverrider::Implem
 		if (!Config->Runtime.AreVersionSensitiveFeaturesAllowed(LogCategory::GameResourceOverrider, "Modding"))
 			return;
 
-		VirtualSqPackInitThread = Utils::Win32::Thread(L"VirtualSqPackInitThread", [&] {
+		VirtualSqPackInitThread = Utils::Win32::Thread(L"VirtualSqPackInitThread", [this] {
 			try {
-				Sqpacks.emplace(App, SqpackPath, IoGate);
+				Sqpacks.emplace(App, SqpackPath, IoGate, static_cast<HANDLE>(StopInitEvent));
 			} catch (const std::exception& e) {
-				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"Failed to load VirtualSqPacks: {}", e.what());
 				SqpacksFailed = true;
+				if (StopInitEvent.Wait(0) == WAIT_OBJECT_0)
+					return;
+				Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"Failed to load VirtualSqPacks: {}", e.what());
 			}
 
-			OnVirtualSqPacksInitialized();
+			if (StopInitEvent.Wait(0) != WAIT_OBJECT_0)
+				OnVirtualSqPacksInitialized();
 		});
 
-		FileHooks.emplace(IoGate, [this](const std::filesystem::path& path) -> std::shared_ptr<xivres::stream> {
-			VirtualSqPackInitThread.Wait();
-			return Sqpacks ? Sqpacks->OpenStream(path) : nullptr;
-		});
+		try {
+			FileHooks.emplace(IoGate, [this](const std::filesystem::path& path) -> std::shared_ptr<xivres::stream> {
+				VirtualSqPackInitThread.Wait();
+				return Sqpacks ? Sqpacks->OpenStream(path) : nullptr;
+			});
 
-		Rewriter.emplace(SqpackPath.parent_path(), Sqpacks);
-		LookupHooks.emplace(*Rewriter);
-		TextHooks.emplace();
+			Rewriter.emplace(SqpackPath.parent_path(), Sqpacks);
+			LookupHooks.emplace(*Rewriter);
+			TextHooks.emplace();
+		} catch (...) {
+			StopInitThread();
+			throw;
+		}
 	}
 
 	~Implementation() {
+		StopInitThread();
 		FileHooks.reset();
 		LookupHooks.reset();
 		TextHooks.reset();
+	}
+
+	// The init thread uses the members, so it has to finish before they go.
+	void StopInitThread() {
+		if (!VirtualSqPackInitThread)
+			return;
+		StopInitEvent.Set();
+		VirtualSqPackInitThread.Wait();
 	}
 };
 

@@ -10,6 +10,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			{128 * 1048576, 256},
 			{0x7FFFFFFF, 8},
 		};
+
+		constexpr size_t MaxRejectedStandIns = 4096;
 	}
 
 	std::string FutureReservations::PackKey(const xivres::path_spec& pathSpec) {
@@ -34,17 +36,15 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		for (const auto& [space, count] : ReservationSizes) {
 			auto& slots = pool[space];
 
-			Slot stream;
-			for (size_t i = 0; i < count; i++, counter++) {
+			for (size_t added = 0, rejected = 0; added < count; counter++) {
 				const xivres::path_spec pathSpec(std::format("{}x/{:x}.xivalex", requiredPrefix, counter));
-				if (!stream)
-					stream = std::make_shared<xivres::hotswap_packed_stream>(pathSpec, space);
-
-				if (generator.add(stream, false).Added.empty()) {
-					i--;
-				} else {
+				auto stream = std::make_shared<xivres::hotswap_packed_stream>(pathSpec, space);
+				if (!generator.add(stream, false).Added.empty()) {
 					slots.emplace_back(std::move(stream));
-					stream = nullptr;
+					added++;
+					rejected = 0;
+				} else if (++rejected >= MaxRejectedStandIns) {
+					throw std::runtime_error(std::format("{}: {} stand-in paths were rejected in a row", PackKey(generator), rejected));
 				}
 			}
 		}

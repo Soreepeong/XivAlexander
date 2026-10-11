@@ -18,7 +18,11 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 #endif
 
 	ZydisDecoder decoder;
+#if INTPTR_MAX == INT32_MAX
+	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_STACK_WIDTH_32);
+#else
 	ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+#endif
 
 	std::vector<char, Utils::Win32::HeapAllocator<char>> body(allocator);
 	std::map<size_t, size_t> replacementJumps;
@@ -74,14 +78,11 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 						reinterpret_cast<size_t>(source) + offset, &resultAddress)) {
 
 #if INTPTR_MAX == INT32_MAX
-					// call relative_addr
 					body.push_back('\xE8');
 					replacementJumps[body.size()] = static_cast<size_t>(resultAddress);
 					body.resize(body.size() + 4, '\0');
 
 #elif INTPTR_MAX == INT64_MAX
-					// call QWORD PTR [rip+0x00000000]
-					// FF 15 00 00 00 00
 					body.push_back('\xFF');
 					body.push_back('\x15');
 					replacementJumps[body.size()] = resultAddress;
@@ -248,8 +249,11 @@ XivAlexander::Misc::Hooks::CallSitePatch::CallSitePatch(void* callInstruction, v
 	constexpr uint8_t jump[8]{0xFF, 0x25, 0x02, 0x00, 0x00, 0x00, 0xCC, 0xCC};
 	std::memcpy(m_stub, jump, sizeof jump);
 	std::memcpy(m_stub + 8, &destination, sizeof destination);
-	DWORD oldProtect;
-	VirtualProtect(m_stub, CallSiteStubSize, PAGE_EXECUTE_READ, &oldProtect);
+	if (DWORD oldProtect; !VirtualProtect(m_stub, CallSiteStubSize, PAGE_EXECUTE_READ, &oldProtect)) {
+		const auto err = GetLastError();
+		VirtualFree(m_stub, 0, MEM_RELEASE);
+		throw Utils::Win32::Error(err, "VirtualProtect");
+	}
 	FlushInstructionCache(GetCurrentProcess(), m_stub, CallSiteStubSize);
 }
 
@@ -298,8 +302,10 @@ bool XivAlexander::Misc::Hooks::CallSitePatch::Exchange(int32_t from, int32_t to
 }
 
 void XivAlexander::Misc::Hooks::CallSitePatch::SetStubDestination(const void* destination) {
+	// Runs from the destructor, so a failure leaves the stub as it is instead of throwing; it stays executable for threads inside it.
 	DWORD oldProtect;
-	VirtualProtect(m_stub, CallSiteStubSize, PAGE_READWRITE, &oldProtect);
+	if (!VirtualProtect(m_stub, CallSiteStubSize, PAGE_EXECUTE_READWRITE, &oldProtect))
+		return;
 	*reinterpret_cast<const void* volatile*>(m_stub + 8) = destination;
 	VirtualProtect(m_stub, CallSiteStubSize, PAGE_EXECUTE_READ, &oldProtect);
 	FlushInstructionCache(GetCurrentProcess(), m_stub, CallSiteStubSize);

@@ -25,7 +25,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		const std::unique_ptr<Implementation> m_pImpl;
 
 	public:
-		VirtualSqPacks(App& App, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate);
+		/// \param hCancelEvent When signalled, the initial scan stops and the constructor throws.
+		VirtualSqPacks(App& App, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate, HANDLE hCancelEvent = nullptr);
 		~VirtualSqPacks();
 
 		std::shared_ptr<xivres::stream> OpenStream(const std::filesystem::path& path);
@@ -46,7 +47,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		void RescanTtmp(Window::ProgressPopupWindow& progressWindow);
 		void ApplyTtmpChanges(NestedTtmp& nestedTtmp, bool announce = true);
 
-		// Call without LockTtmps, off the game's main thread; changes pause the game and fire OnTtmpSetsChanged. Nodes stay the same objects, but their Paths change.
+		// Call without LockTtmps, off the game's main thread; changes pause the game and fire OnTtmpSetsChanged. Nodes are kept, but Paths change.
 		// Throw std::invalid_argument (message fit to show) for impossible requests, std::runtime_error when the file system refuses (the item stays put).
 
 		/// \returns The directories making up the top level of GetTtmps(), in scan order.

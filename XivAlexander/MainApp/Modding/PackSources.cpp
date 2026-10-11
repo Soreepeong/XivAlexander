@@ -78,6 +78,21 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			}
 		}
 
+		// Excel data of other clients is not merged raw; only what ExcelMerger decided on is added.
+		if (creator.DatExpac == "ffxiv" && creator.DatName == "0a0000" && !m_excelEntries.empty()) {
+			xivres::sqpack::generator::add_result result;
+			for (const auto& entry : m_excelEntries)
+				creator.add(result, entry, true);
+			m_logger->Format<LogLevel::Info>(LogCategory::VirtualSqPacks,
+				"[{}/{}] Merged excel data: added {}, replaced {}, error {}",
+				creator.DatExpac, creator.DatName,
+				result.Added.size(), result.Replaced.size(), result.Error.size());
+			for (const auto& error : result.Error) {
+				m_logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks,
+					"\t=> Error processing {}: {}", error.first, error.second);
+			}
+		}
+
 		std::shared_ptr<const xivres::stream> emptyScd;
 		if (creator.DatExpac == "ffxiv" && creator.DatName == "070000") {
 			try {
@@ -150,10 +165,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	std::vector<std::filesystem::path> PackSources::CollectReplacementRoots() const {
 		std::vector<std::filesystem::path> roots;
-		for (const auto& dir : m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value()) {
-			if (!dir.empty())
-				roots.emplace_back(m_config->TranslateDirectoryPath(dir));
-		}
+		for (const auto& dir : ToggledPath::EnabledOf(m_config->Runtime.Modding.GameResourceFileEntryRootDirectories.Value()))
+			roots.emplace_back(m_config->TranslateDirectoryPath(dir));
 
 		const auto configured = roots.size();
 		for (size_t i = 0; i < configured; i++)
@@ -170,10 +183,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 	std::vector<std::filesystem::path> PackSources::CollectAdditionalGameDirectories() const {
 		std::vector<std::filesystem::path> dirs;
-		for (const auto& dir : m_config->Runtime.Modding.AdditionalSqpackRootDirectories.Value()) {
-			if (!dir.empty())
-				dirs.emplace_back(Config::TranslatePath(dir));
-		}
+		for (const auto& dir : ToggledPath::EnabledOf(m_config->Runtime.Modding.AdditionalSqpackRootDirectories.Value()))
+			dirs.emplace_back(Config::TranslatePath(dir));
 		return dirs;
 	}
 

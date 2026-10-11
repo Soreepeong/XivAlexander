@@ -238,7 +238,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 							return FALSE;
 
 						} catch (const std::exception& e) {
-							Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"ReadFile: {}, Message: {}",
+							Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, L"SetFilePointerEx: {}, Message: {}",
 								vpath.Path.filename(), e.what());
 							SetLastError(ERROR_READ_FAULT);
 							return FALSE;

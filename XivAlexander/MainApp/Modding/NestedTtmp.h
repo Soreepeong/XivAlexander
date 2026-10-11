@@ -29,10 +29,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		};
 
 		void Traverse(bool traverseEnabledOnly, const std::function<void(NestedTtmp&)>& cb);
-		void Traverse(bool traverseEnabledOnly, const std::function<void(const NestedTtmp&)>& cb) const;
 		TraverseCallbackResult TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(NestedTtmp&)>& cb);
 		TraverseCallbackResult TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(const NestedTtmp&)>& cb) const;
-		size_t Count() const;
 		void Sort();
 		void RemoveEmptyChildren();
 		std::shared_ptr<NestedTtmp> Find(const std::filesystem::path& path);

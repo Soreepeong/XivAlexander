@@ -41,6 +41,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 		uint64_t m_replacementGeneration = 0;
 		mutable std::map<std::string, std::shared_ptr<const ReplacementFiles>> m_replacementFiles;
 
+		std::vector<std::shared_ptr<xivres::packed_stream>> m_excelEntries;
+
 	public:
 		PackSources();
 		~PackSources();
@@ -53,6 +55,9 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		[[nodiscard]] std::shared_ptr<const ReplacementFiles> GetReplacementFiles(const std::string& packKey, const std::filesystem::path& indexPath) const;
 		void RescanReplacementRoots();
+
+		/// Files from ExcelMerger, added to ffxiv/0a0000; call before any pack is built.
+		void SetExcelEntries(std::vector<std::shared_ptr<xivres::packed_stream>> entries) { m_excelEntries = std::move(entries); }
 
 	private:
 		[[nodiscard]] std::vector<std::filesystem::path> CollectReplacementRoots() const;

@@ -63,8 +63,8 @@ namespace {
 }
 
 
-XivAlexander::RuntimeConfigRepository::RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey)
-	: BaseConfigRepository(pConfig, std::move(path), std::move(parentKey)) {
+XivAlexander::RuntimeConfigRepository::RuntimeConfigRepository(std::filesystem::path path, std::string parentKey)
+	: BaseConfigRepository(std::move(path), std::move(parentKey)) {
 	m_cleanup += Ui.Language.AddAndCallOnChange([&] {
 		Utils::Win32::Error::SetDefaultLanguageId(GetLangId());
 	});
@@ -105,7 +105,6 @@ void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) cons
 		{"UseHighLatencyMitigationLogging", &NetworkTiming.UseHighLatencyMitigationLogging},
 		{"UseHighLatencyMitigationPreviewMode", &NetworkTiming.UseHighLatencyMitigationPreviewMode},
 		{"ExpectedAnimationLockDurationUs", &NetworkTiming.ExpectedAnimationLockDurationUs},
-		{"MaximumAnimationLockDurationUs", &NetworkTiming.MaximumAnimationLockDurationUs},
 		{"ReducePacketDelay", &Socket.ReducePacketDelay},
 		{"TakeOverLoopback", &Socket.TakeOverLoopbackAddresses},
 		{"TakeOverPrivateAddresses", &Socket.TakeOverPrivateAddresses},
@@ -139,8 +138,7 @@ void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) cons
 		{"MuteVoice_Line", &Modding.MuteVoice.Line},
 	};
 
-	// These were searched in addition to the defaults, which are now listed explicitly so that they can be removed.
-	const std::pair<const char*, std::vector<std::filesystem::path>> listedDefaults[]{
+	const std::pair<const char*, std::vector<ToggledPath>> listedDefaults[]{
 		{"AdditionalGameResourceFileEntryRootDirectories", ModdingGroup::DefaultGameResourceFileEntryRootDirectories()},
 		{"AdditionalTexToolsModPackSearchDirectories", ModdingGroup::DefaultTtmpSearchDirectories()},
 	};
@@ -149,7 +147,7 @@ void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) cons
 			if (const auto it = config.find(from); it != config.end() && it->is_array()) {
 				auto value = nlohmann::json::array();
 				for (const auto& dir : defaults)
-					value.emplace_back(xivres::util::unicode::convert<std::string>(dir.wstring()));
+					value.emplace_back(xivres::util::unicode::convert<std::string>(dir.Path.wstring()));
 				for (auto& dir : *it)
 					value.emplace_back(std::move(dir));
 				*it = std::move(value);
@@ -269,37 +267,36 @@ std::wstring XivAlexander::RuntimeConfigRepository::GetRegionNameLocalized(xivre
 	return GetStringRes(RegionResourceIdMap.at(gameRegion));
 }
 
-std::vector<std::pair<WORD, std::string>> XivAlexander::RuntimeConfigRepository::GetDisplayLanguagePriorities() const {
-	std::vector<std::pair<WORD, std::string>> res;
-	if (Ui.Language != Language::SystemDefault) {
-		wchar_t buf[64];
-		LCIDToLocaleName(LanguageIdMap.at(Ui.Language), &buf[0], 64, 0);
-		res.emplace_back(LanguageIdMap.at(Ui.Language), xivres::util::unicode::convert<std::string>(buf));
-	}
-	try {
-		ULONG num = 0, bufSize = 0;
-		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize))
-			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize)");
-		std::wstring buf(bufSize, L'\0');
-		if (!GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, buf.data(), &bufSize))
-			throw Utils::Win32::Error("GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, &buf[0], &bufSize)");
-		buf.resize(bufSize);
-		auto ptr = buf.data();
-		while (*ptr) {
-			const auto len = wcslen(ptr);
-			res.emplace_back(LANGIDFROMLCID(LocaleNameToLCID(ptr, 0)), xivres::util::unicode::convert<std::string>(ptr));
-			ptr += len + 1;
+std::vector<std::wstring> XivAlexander::RuntimeConfigRepository::GetUiLocalePreferences() const {
+	std::vector<std::wstring> res;
+	const auto add = [&res](std::wstring name) {
+		if (name.empty())
+			return;
+		for (const auto& existing : res) {
+			if (CompareStringOrdinal(existing.c_str(), static_cast<int>(existing.size()), name.c_str(), static_cast<int>(name.size()), TRUE) == CSTR_EQUAL)
+				return;
 		}
-	} catch (...) {
-		// pass
+		res.emplace_back(std::move(name));
+	};
+
+	if (Ui.Language != Language::SystemDefault) {
+		std::wstring buf(LOCALE_NAME_MAX_LENGTH, L'\0');
+		if (const auto len = LCIDToLocaleName(LanguageIdMap.at(Ui.Language), buf.data(), static_cast<int>(buf.size()), 0); len > 0) {
+			buf.resize(static_cast<size_t>(len) - 1);
+			add(std::move(buf));
+		}
 	}
-	for (const auto& [language, languageId] : LanguageIdMap) {
-		if (language == Language::SystemDefault || language == Ui.Language)
-			continue;
-		wchar_t buf[64];
-		LCIDToLocaleName(languageId, &buf[0], 64, 0);
-		res.emplace_back(languageId, xivres::util::unicode::convert<std::string>(buf));
+
+	ULONG num = 0, bufSize = 0;
+	if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, nullptr, &bufSize) && bufSize) {
+		std::wstring buf(bufSize, L'\0');
+		if (GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &num, buf.data(), &bufSize)) {
+			for (auto ptr = buf.data(); ptr < buf.data() + buf.size() && *ptr; ptr += wcslen(ptr) + 1)
+				add(ptr);
+		}
 	}
+
+	add(L"en-US");
 	return res;
 }
 
@@ -307,8 +304,7 @@ namespace {
 	// The shortest interval within this of the least delay wins: a higher framerate is worth more than 1 ms of a multi-second cooldown.
 	constexpr uint64_t PreferHigherFramerateWithinUs = 1000;
 
-	// Slack (i - cooldown % i, 1 to i) is how late the seeing frame comes; the game's summed frame times run short, so an exact hit misses.
-	// A frame may come up to the deviation early, so with less slack than that a miss costs another interval.
+	// Slack is how late the seeing frame comes; with less than the deviation, a miss costs another interval.
 	uint64_t LockedCooldownDelayUs(uint64_t slackUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation) {
 		return slackUs < maximumRenderIntervalDeviation ? slackUs + intervalUs : slackUs;
 	}
@@ -320,8 +316,7 @@ uint64_t XivAlexander::RuntimeConfigRepository::CalculateLockFramerateIntervalUs
 	const auto first = static_cast<uint64_t>(1000000. / toFps);
 	const auto last = std::max(first, static_cast<uint64_t>(1000000. / fromFps));
 
-	// In a block of equal frames = gcd / i, delay grows with i except a drop where slack reaches the deviation, so only the block's shortest
-	// interval and its shortest with enough slack are candidates; usually a few dozen blocks (at most ~2 * sqrt(gcd)).
+	// In a block of equal frames only the shortest interval and the shortest with enough slack can win.
 	const auto findInBlocks = [&](auto&& fn) -> std::optional<uint64_t> {
 		for (auto lo = first; lo <= last;) {
 			const auto frames = gcdUs / lo;
@@ -353,12 +348,4 @@ std::pair<uint64_t, uint64_t> XivAlexander::RuntimeConfigRepository::EstimateLoc
 	// Frames stay on their grid, so deviation doesn't accumulate: at worst the frame that should see the end misses it and the next one does.
 	const auto shortest = cooldownUs + (intervalUs - cooldownUs % intervalUs);
 	return {shortest, cooldownUs + LockedCooldownDelayUs(shortest - cooldownUs, intervalUs, maximumRenderIntervalDeviation)};
-}
-
-[[nodiscard]] const std::map<std::string, std::string>& XivAlexander::RuntimeConfigRepository::GetMusicDirectoryPurchaseWebsites(std::string name) const {
-	static std::map<std::string, std::string> empty;
-	const auto it = m_musicDirectoryPurchaseWebsites.find(name);
-	if (it == m_musicDirectoryPurchaseWebsites.end())
-		return empty;
-	return it->second;
 }

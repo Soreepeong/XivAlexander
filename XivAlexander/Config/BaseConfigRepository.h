@@ -1,7 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -45,7 +47,6 @@ namespace XivAlexander {
 		ConfigNode& operator=(const ConfigNode&) = delete;
 		virtual ~ConfigNode() = default;
 
-		/// In declaration order.
 		[[nodiscard]] const std::vector<ConfigItemBase*>& Items() const { return m_items; }
 	};
 
@@ -62,7 +63,7 @@ namespace XivAlexander {
 	protected:
 		ConfigItemBase(ConfigNode* pParent, const char* pszName);
 
-		virtual bool LoadFrom(const nlohmann::json&) = 0;
+		virtual void LoadFrom(const nlohmann::json&) = 0;
 		virtual void SaveTo(nlohmann::json&) const = 0;
 
 		void TriggerOnChange();
@@ -79,15 +80,48 @@ namespace XivAlexander {
 		[[nodiscard]] xivres::util::on_dtor AddAndCallOnChange(std::function<void()> cb, std::function<void()> onUnbind = {});
 	};
 
+	template<typename T, bool = std::is_trivially_copyable_v<T>>
+	struct ConfigValueIsAtomic : std::false_type {};
+
+	template<typename T>
+	struct ConfigValueIsAtomic<T, true> : std::bool_constant<std::atomic<T>::is_always_lock_free> {};
+
+	/// Thread-safe: values are read and written whole, either as a lock-free atomic or as an immutable snapshot.
 	template<typename T>
 	class ConfigItem : public ConfigItemBase {
 		friend class BaseConfigRepository;
 
-		T m_value;
+		static constexpr bool IsAtomic = ConfigValueIsAtomic<T>::value;
+
+		std::conditional_t<IsAtomic, std::atomic<T>, std::atomic<std::shared_ptr<const T>>> m_value;
+		std::mutex m_writeMtx;
 		const std::function<T(T)> m_sanitizer;
 
+		static auto MakeStorage(const T& value) {
+			if constexpr (IsAtomic)
+				return value;
+			else
+				return std::make_shared<const T>(value);
+		}
+
+		void Store(T value) {
+			{
+				const auto lock = std::lock_guard(m_writeMtx);
+				if constexpr (IsAtomic) {
+					if (!(m_value.load() != value))
+						return;
+					m_value.store(value);
+				} else {
+					if (!(*m_value.load() != value))
+						return;
+					m_value.store(std::make_shared<const T>(std::move(value)));
+				}
+			}
+			TriggerOnChange();
+		}
+
 	protected:
-		bool LoadFrom(const nlohmann::json& data) override;
+		void LoadFrom(const nlohmann::json& data) override;
 		void SaveTo(nlohmann::json& data) const override;
 
 	public:
@@ -99,35 +133,39 @@ namespace XivAlexander {
 
 		template<typename = std::enable_if_t<!std::is_base_of_v<ConfigItemBase, T>>>
 		ConfigItem& operator=(const T& rv) {
-			auto sanitized = m_sanitizer(rv);
-			if (m_value != sanitized) {
-				m_value = std::move(sanitized);
-				TriggerOnChange();
-			}
+			Store(m_sanitizer(rv));
 			return *this;
 		}
 
 		template<typename = std::enable_if_t<!std::is_base_of_v<ConfigItemBase, T>>>
 		ConfigItem& operator=(T&& rv) {
-			auto sanitized = m_sanitizer(std::move(rv));
-			if (m_value != sanitized) {
-				m_value = std::move(sanitized);
-				TriggerOnChange();
-			}
+			Store(m_sanitizer(std::move(rv)));
 			return *this;
 		}
 
 		[[nodiscard]] operator T() const & {
-			return m_value;
+			return Value();
 		}
 
-		[[nodiscard]] const T& Value() const {
-			return m_value;
+		/// Returns a copy, so that another thread assigning a new value cannot invalidate it.
+		[[nodiscard]] T Value() const {
+			if constexpr (IsAtomic)
+				return m_value.load();
+			else
+				return *m_value.load();
+		}
+
+		/// Returns the current value without copying it; it stays unchanged even if a new value gets assigned.
+		[[nodiscard]] std::shared_ptr<const T> Snapshot() const requires (!IsAtomic) {
+			return m_value.load();
 		}
 
 		template<typename = std::enable_if_t<std::is_same_v<T, bool>>>
 		ConfigItem& Toggle() {
-			m_value = !m_value;
+			{
+				const auto lock = std::lock_guard(m_writeMtx);
+				m_value.store(!m_value.load());
+			}
 			TriggerOnChange();
 			return *this;
 		}
@@ -140,19 +178,19 @@ namespace XivAlexander {
 			if (!onFalse)
 				onFalse = [] {};
 
-			if (m_value)
+			if (Value())
 				onTrue();
 			else
 				onFalse();
 
 			auto cb = [this, onTrue = std::move(onTrue), onFalse] {
-				if (m_value)
+				if (Value())
 					onTrue();
 				else
 					onFalse();
 			};
 			auto uncb = [this, onFalse = std::move(onFalse)] {
-				if (m_value)
+				if (Value())
 					onFalse();
 			};
 			return OnChange(std::move(cb), std::move(uncb));
@@ -165,7 +203,7 @@ namespace XivAlexander {
 		bool m_changedInBatch = false;
 
 	protected:
-		bool LoadFrom(const nlohmann::json& data) override;
+		void LoadFrom(const nlohmann::json& data) override;
 		void SaveTo(nlohmann::json& data) const override;
 		void OnItemChange() override;
 		[[nodiscard]] const ConfigItemBase* AsItem() const override { return this; }
@@ -192,7 +230,6 @@ namespace XivAlexander {
 			size_t SupressionCounter = 0;
 		} m_suppressSave;
 
-		const Config* m_pConfig;
 		const std::filesystem::path m_sConfigPath;
 		const std::string m_parentKey;
 
@@ -210,7 +247,7 @@ namespace XivAlexander {
 		static void MoveKey(nlohmann::json& config, const char* from, const ConfigItemBase& item);
 
 	public:
-		BaseConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+		BaseConfigRepository(std::filesystem::path path, std::string parentKey);
 		virtual ~BaseConfigRepository();
 
 		[[nodiscard]] auto Loaded() const { return m_loaded; }
@@ -230,7 +267,7 @@ namespace XivAlexander {
 	template<typename T>
 	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue)
 		: ConfigItemBase(pParent, pszName)
-		, m_value(std::move(defaultValue))
+		, m_value(MakeStorage(defaultValue))
 		, m_sanitizer([](T v) { return std::move(v); }) {
 		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
@@ -238,16 +275,16 @@ namespace XivAlexander {
 	template<typename T>
 	ConfigItem<T>::ConfigItem(ConfigNode* pParent, const char* pszName, const T& defaultValue, std::function<T(const T&)> validator)
 		: ConfigItemBase(pParent, pszName)
-		, m_value(std::move(defaultValue))
+		, m_value(MakeStorage(defaultValue))
 		, m_sanitizer(validator) {
 		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
 
 	// uint16_t is written as hex; its specializations are in the source file.
 	template<typename T>
-	bool ConfigItem<T>::LoadFrom(const nlohmann::json& data) {
+	void ConfigItem<T>::LoadFrom(const nlohmann::json& data) {
 		if (const auto it = data.find(Name); it != data.end()) {
-			T newValue;
+			std::optional<T> newValue;
 			try {
 				newValue = it->get<T>();
 			} catch (...) {
@@ -256,19 +293,19 @@ namespace XivAlexander {
 				throw;
 #endif
 			}
-			*this = newValue;
+			if (newValue)
+				*this = std::move(*newValue);
 		}
-		return false;
 	}
 
 	template<typename T>
 	void ConfigItem<T>::SaveTo(nlohmann::json& data) const {
-		data[Name] = m_value;
+		data[Name] = Value();
 	}
 
 
 	template<>
-	bool ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data);
+	void ConfigItem<uint16_t>::LoadFrom(const nlohmann::json& data);
 	template<>
 	void ConfigItem<uint16_t>::SaveTo(nlohmann::json& data) const;
 }

@@ -6,6 +6,7 @@
 #include "MainApp/Modding/FutureReservations.h"
 #include "MainApp/Windows/ProgressPopupWindow.h"
 #include "Misc/Logger.h"
+#include "Utils/StringUtils.h"
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
 	namespace {
@@ -48,8 +49,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				auto& pack = m_packs[sqpack.path()];
 				pack.IndexPath = sqpack.path();
 				pack.Creator = std::make_unique<xivres::sqpack::generator>(
-					xivres::util::unicode::convert<std::string>(expac.path().filename().wstring()),
-					xivres::util::unicode::convert<std::string>(sqpack.path().filename().replace_extension().replace_extension().wstring())
+					Utils::ToUtf8(expac.path().filename()),
+					Utils::ToUtf8(sqpack.path().filename().replace_extension().replace_extension())
 				);
 				pack.Key = FutureReservations::PackKey(*pack.Creator);
 			}

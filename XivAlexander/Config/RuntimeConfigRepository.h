@@ -18,8 +18,7 @@ namespace XivAlexander {
 		using BaseConfigRepository::BaseConfigRepository;
 
 	public:
-		// Each group and item is saved under its member's name. Migrate moves the keys 1.14.9.3 saved at the top level.
-
+		// Each group and item is saved under its member's name.
 		class UiGroup : public ConfigGroup {
 		public:
 			using ConfigGroup::ConfigGroup;
@@ -34,6 +33,7 @@ namespace XivAlexander {
 				ConfigItem<bool> Show{this, "Show", true};
 				ConfigItem<bool> AlwaysOnTop{this, "AlwaysOnTop", true};
 				ConfigItem<bool> HideOnMinimize{this, "HideOnMinimize", false};
+				ConfigItem<bool> NotifyWhenHidden{this, "NotifyWhenHidden", true};
 				ConfigItem<int> SettingsTreeWidth{this, "SettingsTreeWidth", 220, [](const int& v) { return std::clamp(v, 80, 2000); }};  // In pixels at 96 DPI.
 			} MainWindow{this, "MainWindow"};
 
@@ -83,9 +83,6 @@ namespace XivAlexander {
 			// If you lower this value to an unreasonable extent, expect to get called out and banned from ranking communities.
 			// SE probably doesn't care enough, but other players will.
 			ConfigItem<int64_t> ExpectedAnimationLockDurationUs{this, "ExpectedAnimationLockDurationUs", 75000LL};
-
-			// Should be the doubled value of the above.
-			ConfigItem<int64_t> MaximumAnimationLockDurationUs{this, "MaximumAnimationLockDurationUs", 150000LL};
 		} NetworkTiming{this, "NetworkTiming"};
 
 		class SocketGroup : public ConfigGroup {
@@ -112,7 +109,7 @@ namespace XivAlexander {
 
 				ConfigItem<uint64_t> Interval{
 					this, "Interval", 0, [](const uint64_t& val) {
-						return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
+						return std::min<uint64_t>(val, 1000000);
 					}
 				};
 				ConfigItem<bool> Automatic{this, "Automatic", false};
@@ -120,7 +117,7 @@ namespace XivAlexander {
 				ConfigItem<double> TargetFramerateRangeTo{this, "TargetFramerateRangeTo", 60.};
 				ConfigItem<uint64_t> MaximumRenderIntervalDeviation{
 					this, "MaximumRenderIntervalDeviation", 100, [](const uint64_t& val) {
-						return std::min<uint64_t>(std::max<uint64_t>(0, val), 1000000);
+						return std::min<uint64_t>(val, 1000000);
 					}
 				};
 				ConfigItem<uint64_t> GlobalCooldown{this, "GlobalCooldown", 250};
@@ -174,12 +171,13 @@ namespace XivAlexander {
 			using ConfigGroup::ConfigGroup;
 
 			// Defaults of the lists below, kept until the user removes them; they may start with a Config path token.
-			static std::vector<std::filesystem::path> DefaultGameResourceFileEntryRootDirectories() { return {LR"(<config>\ReplacementFileEntries)"}; }
-			static std::vector<std::filesystem::path> DefaultTtmpSearchDirectories() { return {LR"(<config>\TexToolsMods)", LR"(<sqpack>\TexToolsMods)"}; }
+			static std::vector<ToggledPath> DefaultGameResourceFileEntryRootDirectories() { return {{.Path = LR"(<config>\ReplacementFileEntries)"}}; }
+			static std::vector<ToggledPath> DefaultTtmpSearchDirectories() { return {{.Path = LR"(<config>\TexToolsMods)"}, {.Path = LR"(<sqpack>\TexToolsMods)"}}; }
 
 			ConfigItem<bool> Enabled{this, "Enabled", false};
-			ConfigItem<std::vector<std::filesystem::path>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
-			ConfigItem<std::vector<std::filesystem::path>> GameResourceFileEntryRootDirectories{this, "GameResourceFileEntryRootDirectories", DefaultGameResourceFileEntryRootDirectories()};
+			ConfigItem<std::vector<ToggledPath>> AdditionalSqpackRootDirectories{this, "AdditionalSqpackRootDirectories"};
+			ConfigItem<std::vector<ToggledPath>> TextTransformationFiles{this, "TextTransformationFiles"};
+			ConfigItem<std::vector<ToggledPath>> GameResourceFileEntryRootDirectories{this, "GameResourceFileEntryRootDirectories", DefaultGameResourceFileEntryRootDirectories()};
 			ConfigItem<std::vector<PathReplacementRule>> PathReplacements{this, "PathReplacements"};
 			ConfigItem<bool> UseAltCodecMusicSupport{this, "UseAltCodecMusicSupport", false};
 
@@ -187,12 +185,12 @@ namespace XivAlexander {
 			public:
 				using ConfigGroup::ConfigGroup;
 
+				// Also the language whose text rules (nouns, line breaking, dialogue boxes) the game follows while modding is on.
 				ConfigItem<xivres::game_language> ResourceOverride{this, "ResourceOverride", xivres::game_language::Unspecified};
+				// Also the language of cutscene mouth movements, when it is one of LipSyncLanguages.
 				ConfigItem<xivres::game_language> VoiceResourceOverride{this, "VoiceResourceOverride", xivres::game_language::Unspecified};
-				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
-				ConfigItem<std::vector<ForcedCharacterLanguage>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
 
-				// Languages with cutscene voices; the game's index is game_language - 1, for lip sync tables and voice file suffixes (only the client's own are sure to exist).
+				// Languages with cutscene voices; game index = game_language - 1, for lip sync tables and voice suffixes (only the client's own surely exist).
 				static constexpr xivres::game_language LipSyncLanguages[]{
 					xivres::game_language::Japanese,
 					xivres::game_language::English,
@@ -200,10 +198,10 @@ namespace XivAlexander {
 					xivres::game_language::French,
 				};
 
-				// Language of cutscene mouth movements; Unspecified leaves the game's own.
-				ConfigItem<xivres::game_language> LipSyncLanguage{this, "LipSyncLanguage", xivres::game_language::Unspecified, [](const xivres::game_language& value) {
-					return std::ranges::find(LipSyncLanguages, value) == std::end(LipSyncLanguages) ? xivres::game_language::Unspecified : value;
-				}};
+				ConfigItem<TalkLineCount> TalkLines{this, "TalkLines", TalkLineCount::Automatic};
+
+				ConfigItem<std::vector<xivres::game_language>> FallbackPriority{this, "FallbackPriority"};
+				ConfigItem<std::vector<ForcedCharacterLanguage>> ForcedCharacterLanguages{this, "ForcedCharacterLanguages"};
 			} Languages{this, "Languages"};
 
 			class TtmpGroup : public ConfigGroup {
@@ -211,7 +209,7 @@ namespace XivAlexander {
 				using ConfigGroup::ConfigGroup;
 
 				ConfigItem<std::vector<ChoicesProfile>> ChoicesFiles{this, "ChoicesFiles", std::vector<ChoicesProfile>{{.Name = "Default", .FileName = "choices.json"}}};
-				ConfigItem<std::vector<std::filesystem::path>> SearchDirectories{this, "SearchDirectories", DefaultTtmpSearchDirectories()};
+				ConfigItem<std::vector<ToggledPath>> SearchDirectories{this, "SearchDirectories", DefaultTtmpSearchDirectories()};
 			} Ttmp{this, "Ttmp"};
 
 			class LoggingGroup : public ConfigGroup {
@@ -223,6 +221,7 @@ namespace XivAlexander {
 				ConfigItem<bool> AllPaths{this, "AllPaths", false};
 				ConfigItem<bool> ReplacedPaths{this, "ReplacedPaths", false};
 				ConfigItem<bool> DialogueCharacterNames{this, "DialogueCharacterNames", false};
+				ConfigItem<bool> ExcelMerge{this, "ExcelMerge", false};
 				ConfigItem<std::vector<LogPathFilter>> PathFilters{this, "PathFilters"};
 			} Logging{this, "Logging"};
 
@@ -274,7 +273,7 @@ namespace XivAlexander {
 
 		FontReplacementConfigGroup FontReplacement{this, "FontReplacement"};
 
-		RuntimeConfigRepository(__in_opt const Config* pConfig, std::filesystem::path path, std::string parentKey);
+		RuntimeConfigRepository(std::filesystem::path path, std::string parentKey);
 		~RuntimeConfigRepository() override;
 
 		void Reload(const std::filesystem::path& from = {}) override;
@@ -295,7 +294,8 @@ namespace XivAlexander {
 		[[nodiscard]] std::wstring GetLanguageNameLocalized(xivres::game_language gameLanguage) const;
 		[[nodiscard]] std::wstring GetRegionNameLocalized(xivres::game_publisher gameRegion) const;
 		[[nodiscard]] std::vector<xivres::game_language> GetFallbackLanguageList() const;
-		[[nodiscard]] std::vector<std::pair<WORD, std::string>> GetDisplayLanguagePriorities() const;
+		// The UI language's locale, then the user's preferred UI languages, then en-US; each once.
+		[[nodiscard]] std::vector<std::wstring> GetUiLocalePreferences() const;
 
 		enum class VersionSensitiveFeaturesDecision {
 			Keep,
@@ -326,11 +326,5 @@ namespace XivAlexander {
 
 		/// Shortest and longest cooldown at intervalUs: until the frame after its end, or the next one if that frame may come too early to see it.
 		[[nodiscard]] static std::pair<uint64_t, uint64_t> EstimateLockedCooldownUs(uint64_t cooldownUs, uint64_t intervalUs, uint64_t maximumRenderIntervalDeviation);
-
-	private:
-		std::map<std::string, std::map<std::string, std::string>> m_musicDirectoryPurchaseWebsites;
-
-	public:
-		[[nodiscard]] const std::map<std::string, std::string>& GetMusicDirectoryPurchaseWebsites(std::string name) const;
 	};
 }

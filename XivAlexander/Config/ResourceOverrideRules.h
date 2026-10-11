@@ -1,7 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json_fwd.hpp>
 #include <srell.hpp>
@@ -53,4 +55,17 @@ namespace XivAlexander {
 
 	void to_json(nlohmann::json&, const ForcedCharacterLanguage&);
 	void from_json(const nlohmann::json&, ForcedCharacterLanguage&);
+
+	/// A listed file or folder that can be turned off without removing it; read from a plain path string too (enabled).
+	struct ToggledPath {
+		bool Enabled = true;
+		std::filesystem::path Path;
+
+		bool operator==(const ToggledPath&) const = default;
+
+		[[nodiscard]] static std::vector<std::filesystem::path> EnabledOf(const std::vector<ToggledPath>& list);
+	};
+
+	void to_json(nlohmann::json&, const ToggledPath&);
+	void from_json(const nlohmann::json&, ToggledPath&);
 }

@@ -14,7 +14,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	bool PathLogFilter::Wants(const std::string& path, bool replaced) const {
-		for (const auto& filter : m_config->Runtime.Modding.Logging.PathFilters.Value()) {
+		const auto filters = m_config->Runtime.Modding.Logging.PathFilters.Snapshot();
+		for (const auto& filter : *filters) {
 			if (!filter.Enabled || filter.Pattern.empty())
 				continue;
 			if (regex_search(path, filter.Regex()))

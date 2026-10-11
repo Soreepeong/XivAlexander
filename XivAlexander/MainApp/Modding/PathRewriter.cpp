@@ -19,7 +19,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	std::string PathRewriter::Rewrite(const std::string& original, std::string& description) const {
 		auto name = original;
 		std::string replacedFrom;
-		for (const auto& rule : m_config->Runtime.Modding.PathReplacements.Value()) {
+		const auto rules = m_config->Runtime.Modding.PathReplacements.Snapshot();
+		for (const auto& rule : *rules) {
 			if (!rule.Enabled || rule.From.empty())
 				continue;
 			auto replaced = srell::regex_replace(name, rule.Regex(), rule.To);
@@ -51,17 +52,13 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			}
 		}
 
-		const auto nameLower = [&name] {
-			auto val = xivres::util::unicode::convert<std::wstring>(name);
+		const auto toLower = [](const std::string& s) {
+			auto val = xivres::util::unicode::convert<std::wstring>(s);
 			CharLowerW(val.data());
 			return xivres::util::unicode::convert<std::string>(val);
-		}();
-
-		const auto extLower = [&ext] {
-			auto val = xivres::util::unicode::convert<std::wstring>(ext);
-			CharLowerW(val.data());
-			return xivres::util::unicode::convert<std::string>(val);
-		}();
+		};
+		const auto nameLower = toLower(name);
+		const auto extLower = toLower(ext);
 
 		auto overrideLanguage = xivres::game_language::Unspecified;
 		if (extLower == ".scd") {

@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "MainApp/Modding/VirtualSqPacks.h"
 
+#include "MainApp/Modding/ExcelMerger.h"
 #include "MainApp/Modding/FutureReservations.h"
 #include "MainApp/Modding/GamePause.h"
 #include "MainApp/Modding/SqpackRebuildLock.h"
@@ -24,6 +25,7 @@
 #include "Config.h"
 #include "Misc/Logger.h"
 #include "resource.h"
+#include "Utils/StringUtils.h"
 #include "XivAlexander.h"
 
 struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implementation {
@@ -52,7 +54,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 
 	xivres::util::on_dtor::multi Cleanup;
 
-	Implementation(MainApp::App& app, VirtualSqPacks* sqpacks, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate)
+	Implementation(MainApp::App& app, VirtualSqPacks* sqpacks, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate, HANDLE hCancelEvent)
 		: App(app)
 		, Sqpacks(*sqpacks)
 		, Config(Config::Acquire())
@@ -67,10 +69,24 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 			progressWindow.Show(std::chrono::milliseconds(5000));
 			progressWindow.UpdateMessage(xivres::util::unicode::convert<std::string>(Config->Runtime.GetStringRes(IDS_TITLE_DISCOVERINGFILES)));
 
+			// Forward the owner's cancel request to the progress window, which the scan polls.
+			HANDLE hCancelWait = nullptr;
+			if (hCancelEvent && !RegisterWaitForSingleObject(&hCancelWait, hCancelEvent, [](void* hProgressCancelEvent, BOOLEAN) {
+				SetEvent(static_cast<HANDLE>(hProgressCancelEvent));
+			}, static_cast<HANDLE>(progressWindow.GetCancelEvent()), INFINITE, WT_EXECUTEONLYONCE))
+				throw Utils::Win32::Error("RegisterWaitForSingleObject");
+			const auto unregisterCancelWait = xivres::util::on_dtor([hCancelWait] {
+				if (hCancelWait)
+					UnregisterWaitEx(hCancelWait, INVALID_HANDLE_VALUE);
+			});
+
 			Queue.Discover(progressWindow);
 			Library.Scan(progressWindow);
 
 			PackReservations = Library.CollectReservations(progressWindow);
+
+			if (progressWindow.GetCancelEvent().Wait(0) != WAIT_OBJECT_0)
+				Sources.SetExcelEntries(ExcelMerger::SetUp(SqpackPath, progressWindow));
 		}
 
 		DataViewBuffer = std::make_shared<xivres::sqpack::generator::sqpack_view_entry_cache>();
@@ -164,7 +180,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 		Sqpacks.OnTtmpSetsChanged();
 	}
 
-	/// Moving directories needs their data files kept closed, so reads are stopped and builders locked out; every pack is then reapplied so no entry refers to an old stream.
+	/// Moved directories need their data files kept closed, so reads stop and builders are locked out; then all packs are reapplied, dropping old streams.
 	/// \param change Sets changed once it changed anything, even if it throws afterwards.
 	void ChangeTtmpLayout(const std::function<void(bool& changed)>& change) {
 		auto changed = false;
@@ -217,7 +233,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				ReflectUsedEntries_FindPlaceholders(view, tempData, pathSpec);
 				if (const auto it = tempData.Replacements.find(pathSpec); it != tempData.Replacements.end()) {
 					std::get<1>(it->second) = file.Stream;
-					std::get<2>(it->second) = std::format("Replacement file {}", xivres::util::unicode::convert<std::string>(file.File.wstring()));
+					std::get<2>(it->second) = std::format("Replacement file {}", Utils::ToUtf8(file.File));
 				} else {
 					tempData.Unplaced.insert_or_assign(pathSpec, file.Stream);
 				}
@@ -447,8 +463,8 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 	}
 };
 
-XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::VirtualSqPacks(App& app, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate)
-	: m_pImpl(std::make_unique<Implementation>(app, this, std::move(sqpackPath), ioGate)) {}
+XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::VirtualSqPacks(App& app, std::filesystem::path sqpackPath, SqpackRebuildLock& ioGate, HANDLE hCancelEvent)
+	: m_pImpl(std::make_unique<Implementation>(app, this, std::move(sqpackPath), ioGate, hCancelEvent)) {}
 
 XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::~VirtualSqPacks() = default;
 
@@ -544,7 +560,7 @@ std::string XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Desc
 		if (!relative.empty() && !relative.native().starts_with(L".."))
 			return {};
 
-		text = xivres::util::unicode::convert<std::string>(source.Path.wstring());
+		text = Utils::ToUtf8(source.Path);
 		if (source.Offset)
 			text += std::format("@0x{:X}", source.Offset);
 	}

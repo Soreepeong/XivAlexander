@@ -11,15 +11,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				t->Traverse(traverseEnabledOnly, cb);
 	}
 
-	void NestedTtmp::Traverse(bool traverseEnabledOnly, const std::function<void(const NestedTtmp&)>& cb) const {
-		if (traverseEnabledOnly && !Enabled)
-			return;
-		cb(*this);
-		if (Children)
-			for (const auto& t : *Children)
-				const_cast<const NestedTtmp*>(t.get())->Traverse(traverseEnabledOnly, cb);
-	}
-
 	NestedTtmp::TraverseCallbackResult NestedTtmp::TraverseInterruptible(bool traverseEnabledOnly, const std::function<TraverseCallbackResult(NestedTtmp&)>& cb) {
 		if (traverseEnabledOnly && !Enabled)
 			return Continue;
@@ -59,12 +50,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return Continue;
 		}
 		return Continue;
-	}
-
-	size_t NestedTtmp::Count() const {
-		size_t i = Ttmp.has_value() ? 1 : 0;
-		Traverse(false, [&i](const auto&) { ++i; });
-		return i;
 	}
 
 	void NestedTtmp::Sort() {

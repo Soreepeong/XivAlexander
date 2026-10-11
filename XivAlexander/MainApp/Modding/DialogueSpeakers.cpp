@@ -52,7 +52,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::string DialogueSpeakers::ForceLanguageForSpeaker(const std::string& path) const {
-		if (m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Value().empty() && !m_config->Runtime.Modding.Logging.DialogueCharacterNames)
+		if (m_config->Runtime.Modding.Languages.ForcedCharacterLanguages.Snapshot()->empty() && !m_config->Runtime.Modding.Logging.DialogueCharacterNames)
 			return {};
 
 		const auto pathSpec = xivres::path_spec(path);
@@ -61,9 +61,14 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 		try {
 			const auto lock = std::lock_guard(m_mtx);
-			if (!m_installation) {
-				m_installation.emplace(m_gamePath);
-				m_excelList.emplace(*m_installation);
+			if (!m_excelList) {
+				try {
+					m_installation.emplace(m_gamePath);
+					m_excelList.emplace(*m_installation);
+				} catch (...) {
+					m_installation.reset();
+					throw;
+				}
 			}
 
 			const auto [sheetName, keyPrefix] = ResolveDialogueSheet(pathSpec);
@@ -71,6 +76,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				return {};
 
 			if (m_dialogueSheetName != sheetName) {
+				// emplace leaves the sheet empty if it throws, so the name must not match then.
+				m_dialogueSheetName.clear();
 				m_dialogueSheet.emplace(m_installation->get_excel(sheetName));
 				m_dialogueSheetName = sheetName;
 			}

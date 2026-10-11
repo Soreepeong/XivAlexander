@@ -74,3 +74,29 @@ void XivAlexander::from_json(const nlohmann::json& j, ForcedCharacterLanguage& v
 	v.Name = j.value("name", std::string());
 	v.Language = j.value("language", std::string());
 }
+
+std::vector<std::filesystem::path> XivAlexander::ToggledPath::EnabledOf(const std::vector<ToggledPath>& list) {
+	std::vector<std::filesystem::path> res;
+	for (const auto& entry : list) {
+		if (entry.Enabled && !entry.Path.empty())
+			res.push_back(entry.Path);
+	}
+	return res;
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const ToggledPath& v) {
+	j = nlohmann::json::object({
+		{"path", v.Path},
+		{"enabled", v.Enabled},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, ToggledPath& v) {
+	if (j.is_string()) {
+		v.Enabled = true;
+		v.Path = j.get<std::filesystem::path>();
+		return;
+	}
+	v.Enabled = j.value("enabled", true);
+	v.Path = j.value("path", std::filesystem::path());
+}
