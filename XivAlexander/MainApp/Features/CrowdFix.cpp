@@ -13,6 +13,7 @@
 
 #include <xivres/util.on_dtor.h>
 
+#include "Config.h"
 #include "Game/SignatureDefinitions.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
@@ -20,9 +21,12 @@
 namespace XivAlexander::Apps::MainApp::Features {
 	namespace {
 		namespace Resolved = Game::Resolved::CrowdFix;
+		using FixState = CrowdFix::FixState;
+		using FixStatus = CrowdFix::FixStatus;
 		using Game::Signatures::ComplexSignature;
 		using Game::Signatures::ResolveError;
 		using Misc::Hooks::PointerFunctionOf;
+		using Misc::Hooks::WriteAtomically;
 
 		// From FFXIVClientStructs (VisibilityFlags.Model); unlike the other layouts, the game has no single test to read it from. As of 7.56h.
 		constexpr uint64_t VisibilityFlagsModel = 1 << 1;
@@ -42,22 +46,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 			return reinterpret_cast<TFn>((*static_cast<void* const* const*>(object))[slot]);
 		}
 
+		// Throws if the code cannot be made writable.
 		void WriteCode(void* address, std::span<const uint8_t> bytes) {
-			DWORD oldProtect;
-			VirtualProtect(address, bytes.size(), PAGE_EXECUTE_READWRITE, &oldProtect);
-			std::memcpy(address, bytes.data(), bytes.size());
-			VirtualProtect(address, bytes.size(), oldProtect, &oldProtect);
-			FlushInstructionCache(GetCurrentProcess(), address, bytes.size());
-		}
-
-		// One store, so another thread runs either the old or the new instruction.
-		template<typename T>
-		void WriteCodeAtomically(void* address, T value) {
-			DWORD oldProtect;
-			VirtualProtect(address, sizeof value, PAGE_EXECUTE_READWRITE, &oldProtect);
-			*static_cast<volatile T*>(address) = value;
-			VirtualProtect(address, sizeof value, oldProtect, &oldProtect);
-			FlushInstructionCache(GetCurrentProcess(), address, sizeof value);
+			Utils::Win32::Process::Current().WriteMemory(address, bytes.data(), bytes.size(), true);
 		}
 
 		struct FrameState {
@@ -67,21 +58,30 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		class FixBase {
 			mutable std::mutex m_statusMtx;
-			std::string m_status = "Off";
+			FixStatus m_status;
+			std::function<void()> m_onStateChange;
 
 		protected:
 			bool m_available = false;
 			bool m_waiting = false;
 
-			void SetStatus(std::string status) {
-				const auto lock = std::lock_guard(m_statusMtx);
-				m_status = std::move(status);
+			void SetStatus(FixState state, std::string detail = {}) {
+				{
+					const auto lock = std::lock_guard(m_statusMtx);
+					if (m_status.State == state) {
+						m_status.Detail = std::move(detail);
+						return;
+					}
+					m_status = {state, std::move(detail)};
+				}
+				if (m_onStateChange)
+					m_onStateChange();
 			}
 
 			template<typename T>
 			bool Resolve(const ComplexSignature<T>& signature, T& out) {
 				if (const auto status = signature.Resolve(out); status != ResolveError::Ok) {
-					SetStatus(std::format("Unavailable: {}", status.Detail));
+					SetStatus(FixState::Unavailable, status.Detail);
 					return false;
 				}
 				return true;
@@ -93,12 +93,17 @@ namespace XivAlexander::Apps::MainApp::Features {
 			FixBase& operator=(const FixBase&) = delete;
 			virtual ~FixBase() = default;
 
+			/// Set once made, before the fix is toggled or updated.
+			void SetStateChangeCallback(std::function<void()> fn) {
+				m_onStateChange = std::move(fn);
+			}
+
 			[[nodiscard]] bool Available() const { return m_available; }
 
 			/// Whether the last SetEnabled(true) could not finish yet, because what it needs does not exist yet.
 			[[nodiscard]] bool Waiting() const { return m_waiting; }
 
-			[[nodiscard]] std::string Status() const {
+			[[nodiscard]] FixStatus Status() const {
 				const auto lock = std::lock_guard(m_statusMtx);
 				return m_status;
 			}
@@ -112,10 +117,31 @@ namespace XivAlexander::Apps::MainApp::Features {
 			virtual void Update(const FrameState& frame) {}
 		};
 
+		/// A fix turned on and off in one step, with nothing to wait for.
+		class ToggledFix : public FixBase {
+		protected:
+			bool m_enabled = false;
+
+			/// Throws, before m_enabled and the status change, if the change could not be made.
+			virtual void Apply(bool enabled) = 0;
+
+		public:
+			[[nodiscard]] bool Enabled() const final { return m_enabled; }
+
+			void SetEnabled(bool enabled, const FrameState&) final {
+				if (!m_available || enabled == m_enabled)
+					return;
+
+				Apply(enabled);
+				m_enabled = enabled;
+				SetStatus(enabled ? FixState::On : FixState::Off);
+			}
+		};
+
 		class UnavailableFix final : public FixBase {
 		public:
 			explicit UnavailableFix(std::string reason) {
-				SetStatus(std::format("Unavailable: {}", reason));
+				SetStatus(FixState::Unavailable, reason);
 			}
 
 			[[nodiscard]] bool Enabled() const override { return false; }
@@ -150,7 +176,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (m_list.PrePresentLoopLength < CallCodeLength || m_list.PostKickLoopLength < CallCodeLength) {
-					SetStatus("Unavailable: the notifier loops are too short to patch");
+					SetStatus(FixState::Unavailable, "the notifier loops are too short to patch");
 					return;
 				}
 
@@ -169,7 +195,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (enabled)
 					Enable();
 				else
-					Disable("Off");
+					Disable(FixState::Off);
 			}
 
 			/// Periodically re-walks the whole list and drops the patch if the set ever drifted.
@@ -196,7 +222,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				LeaveCriticalSection(m_list.Lock);
 
 				if (missing || stale) {
-					Disable(std::format("Disabled: verification found {} missing and {} stale notifiers", missing, stale));
+					Disable(FixState::Failed, std::format("verification found {} missing and {} stale notifiers", missing, stale));
 					m_logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix: idle notifier filter disabled: verification found {} missing and {} stale notifiers", missing, stale);
 				}
 			}
@@ -215,13 +241,19 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_hooks += m_unlink->SetHook([this](void* node) { UnlinkDetour(node); });
 				LeaveCriticalSection(m_list.Lock);
 
-				m_prePresentOriginal = WriteCall(m_list.PrePresentLoop, m_list.PrePresentLoopLength, &CallActivePrePresent);
-				m_postKickOriginal = WriteCall(m_list.PostKickLoop, m_list.PostKickLoopLength, &CallActivePostKick);
+				try {
+					m_prePresentOriginal = WriteCall(m_list.PrePresentLoop, m_list.PrePresentLoopLength, &CallActivePrePresent);
+					m_postKickOriginal = WriteCall(m_list.PostKickLoop, m_list.PostKickLoopLength, &CallActivePostKick);
+				} catch (const std::exception& e) {
+					m_logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix: idle notifier filter could not patch the notifier loops: {}", e.what());
+					Disable(FixState::Failed, e.what());
+					return;
+				}
 				m_nextVerify = std::chrono::steady_clock::now() + VerifyInterval;
-				SetStatus("On");
+				SetStatus(FixState::On);
 			}
 
-			void Disable(std::string status) {
+			void Disable(FixState state, std::string detail = {}) {
 				if (!m_prePresentOriginal.empty())
 					WriteCode(m_list.PrePresentLoop, m_prePresentOriginal);
 				if (!m_postKickOriginal.empty())
@@ -230,7 +262,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_prePresentOriginal.clear();
 				m_postKickOriginal.clear();
 				m_hooks.clear();
-				SetStatus(std::move(status));
+				SetStatus(state, std::move(detail));
 			}
 
 			[[nodiscard]] bool CanDoWork(void* node) const {
@@ -319,7 +351,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				self->CallActive(self->m_list.PostKickSlot);
 			}
 
-			// mov rcx, this; mov rax, target; call rax; jmp rel8 to the end of the original loop
+			// Stub: call target, jump to the loop end.
 			std::vector<uint8_t> WriteCall(uint8_t* site, size_t length, void(*target)(IdleNotifierFilter*)) {
 				std::vector<uint8_t> original(site, site + length);
 
@@ -338,7 +370,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Instead of the stock wake-all, a job submit wakes one sleeping worker, and each woken worker wakes the next while work remains, using the game's own counters.
+		/// Instead of waking all, a job submit wakes one sleeping worker, and each woken worker wakes the next while work remains (game's own counters).
 		class JobWakeChain final : public FixBase {
 			static constexpr int32_t MaxWorkers = 256;  // a larger count is from a pool that is not set up yet
 
@@ -358,7 +390,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (!m_wait) {
-					SetStatus("Unavailable: WaitForSingleObject is not imported");
+					SetStatus(FixState::Unavailable, "WaitForSingleObject is not imported");
 					return;
 				}
 
@@ -379,14 +411,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 					// Sleeping workers are still inside the wait detour; a stock wake-all gets them out.
 					(*m_wakeAll)(m_pool);
 					m_pool = nullptr;
-					SetStatus("Off");
+					SetStatus(FixState::Off);
 					return;
 				}
 
 				const auto pool = frame.TaskManager ? static_cast<uint8_t*>(frame.TaskManager) + m_functions.Layout.TaskManagerJobPool : nullptr;
 				if (!pool || !PoolReady(pool)) {
 					m_waiting = true;
-					SetStatus("Waiting for the job pool");
+					SetStatus(FixState::Waiting, "the job pool");
 					return;
 				}
 
@@ -400,7 +432,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_pool = pool;
 				m_hooks += m_wait.SetHook([this](HANDLE handle, DWORD milliseconds) { return WaitDetour(handle, milliseconds); });
 				m_hooks += m_wakeAll->SetHook([this](void* jobPool) { WakeOne(jobPool, true); });
-				SetStatus(std::format("On, {} workers", m_workerEvents.size()));
+				SetStatus(FixState::On, std::format("{} workers", m_workerEvents.size()));
 			}
 
 		private:
@@ -456,7 +488,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// Only the first pose sync walk of a frame is let through; the later ones, from each RenderView, find nothing dirtied in between.
-		class SkeletonSyncDedupe final : public FixBase {
+		class SkeletonSyncDedupe final : public ToggledFix {
 			std::optional<PointerFunctionOf<Resolved::SkeletonPoseSyncWalkFn>> m_syncWalk;
 
 			// the walks run on the main thread too
@@ -464,7 +496,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 			uint64_t m_lastSyncedFrame = UINT64_MAX;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			SkeletonSyncDedupe() {
@@ -476,26 +507,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
-				if (enabled)
-					m_hooks += m_syncWalk->SetHook([this](void* skeletonList) { SyncWalkDetour(skeletonList); });
-				else
-					m_hooks.clear();
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
-			}
-
 			void Update(const FrameState& frame) override {
 				m_frame = frame.Index;
 			}
 
 		private:
+			void Apply(bool enabled) override {
+				if (enabled)
+					m_hooks += m_syncWalk->SetHook([this](void* skeletonList) { SyncWalkDetour(skeletonList); });
+				else
+					m_hooks.clear();
+			}
+
 			void SyncWalkDetour(void* skeletonList) {
 				if (m_lastSyncedFrame == m_frame)
 					return;
@@ -506,13 +529,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// The culling setup's clear of the view visibility table is cut to the highest object slot ever used; slots above it were never written.
-		class CullingClearTrim final : public FixBase {
+		class CullingClearTrim final : public ToggledFix {
 			static constexpr int ObjectsPerWord = 32;
 
-			// The bitmask is read from the culling manager's slot allocator, which also checks that it covers every slot.
+			// Checks that the bitmask covers every slot.
 			Resolved::TrimCullingClearFunctions m_clear;
 			int m_highestWord = -1;
-			bool m_enabled = false;
 
 		public:
 			CullingClearTrim() {
@@ -520,25 +542,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (*m_clear.ClearCount != m_clear.FullCount || m_clear.ObjectMaskWords * ObjectsPerWord != m_clear.FullCount) {
-					SetStatus("Unavailable: unexpected clear count");
+					SetStatus(FixState::Unavailable, "unexpected clear count");
 					return;
 				}
 
 				m_available = true;
-			}
-
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
-			/// The culling setup only runs on the main thread too.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
-				m_enabled = enabled;
-				if (!enabled)
-					WriteCodeAtomically(m_clear.ClearCount, m_clear.FullCount);
-
-				SetStatus(enabled ? "On" : "Off");
 			}
 
 			void Update(const FrameState&) override {
@@ -564,20 +572,34 @@ namespace XivAlexander::Apps::MainApp::Features {
 				// One spare word of margin for objects added later in the frame.
 				const auto count = static_cast<uint32_t>(std::min((m_highestWord + 2) * ObjectsPerWord, static_cast<int>(m_clear.FullCount)));
 				if (count != *m_clear.ClearCount) {
-					WriteCodeAtomically(m_clear.ClearCount, count);
-					SetStatus(std::format("On, clearing {} of {} slots", count, m_clear.FullCount));
+					try {
+						WriteAtomically(m_clear.ClearCount, count);
+					} catch (const std::exception& e) {
+						// The count cannot follow new objects anymore; leave it at full if that still works.
+						m_enabled = false;
+						SetStatus(FixState::Failed, e.what());
+						WriteAtomically(m_clear.ClearCount, m_clear.FullCount);
+						return;
+					}
+					SetStatus(FixState::On, std::format("clearing {} of {} slots", count, m_clear.FullCount));
 				}
+			}
+
+		private:
+			/// The culling setup only runs on the main thread too.
+			void Apply(bool enabled) override {
+				if (!enabled)
+					WriteAtomically(m_clear.ClearCount, m_clear.FullCount);
 			}
 		};
 
 		/// The graphics small-object allocator's backing frees of non-slab blocks happen after the slab check releases its lock, instead of under it.
-		class AllocatorFreeLock final : public FixBase {
-			// Read and cross-checked from the original Free: a wrong layout would hand slab blocks to the backing allocator and corrupt the heap.
+		class AllocatorFreeLock final : public ToggledFix {
+			// A wrong layout would hand slab blocks to the backing allocator and corrupt the heap.
 			Resolved::GraphicsAllocatorLayout m_layout;
 			std::optional<PointerFunctionOf<Resolved::GraphicsAllocatorFreeFn>> m_free;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			AllocatorFreeLock() {
@@ -590,22 +612,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+		private:
+			void Apply(bool enabled) override {
 				if (enabled)
 					m_hooks += m_free->SetHook([this](void* allocator, void* block) { FreeDetour(allocator, block); });
 				else
 					m_hooks.clear();
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			void FreeDetour(void* allocator, void* block) {
 				if (!block)
 					return;
@@ -636,7 +650,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Staging blocks freed to the graphics allocator are pooled in power-of-two buckets via its vtable, and stay genuine allocations valid for the original Free after disabling.
+		/// Staging blocks freed to the graphics allocator are pooled in power-of-two buckets via its vtable; they stay valid for the original Free after disabling.
 		class StagingPool final : public FixBase {
 			// Header marker of blocks the backing allocator hands out directly (no size); unvalidated, as that allocator is only known at run time. As of 7.56h.
 			static constexpr ptrdiff_t DirectMarkerOffset = -0x10;
@@ -725,7 +739,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!enabled) {
 					Restore();
 					Drain();
-					SetStatus("Off");
+					SetStatus(FixState::Off);
 					return;
 				}
 
@@ -733,7 +747,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				const auto allocator = manager ? At<void*>(manager, m_allocatorManager.AllocatorOffset) : nullptr;
 				if (!allocator) {
 					m_waiting = true;
-					SetStatus("Waiting for the graphics allocator");
+					SetStatus(FixState::Waiting, "the graphics allocator");
 					return;
 				}
 
@@ -741,7 +755,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				const auto table = *static_cast<void***>(allocator);
 				if (table != m_allocatorManager.Vtable) {
 					m_available = false;
-					SetStatus("Unavailable: unexpected allocator class");
+					SetStatus(FixState::Unavailable, "unexpected allocator class");
 					return;
 				}
 
@@ -752,19 +766,22 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_originalFree = reinterpret_cast<FreeFn>(table[slots.FreeSlot]);
 				m_blockSize = reinterpret_cast<SizeFn>(table[slots.SizeSlot]);
 				m_vtable = table;
-				WriteSlot(table, slots.TerminateSlot, &TerminateDetour);
-				WriteSlot(table, slots.FreeSlot, &FreeDetour);
-				WriteSlot(table, slots.AllocSlot, &AllocDetour);
-				SetStatus("On");
+				try {
+					WriteSlot(table, slots.TerminateSlot, &TerminateDetour);
+					WriteSlot(table, slots.FreeSlot, &FreeDetour);
+					WriteSlot(table, slots.AllocSlot, &AllocDetour);
+				} catch (const std::exception& e) {
+					Restore();
+					SetStatus(FixState::Failed, e.what());
+					return;
+				}
+				SetStatus(FixState::On);
 			}
 
 		private:
 			template<typename TFn>
 			static void WriteSlot(void** table, size_t slot, TFn function) {
-				DWORD oldProtect;
-				VirtualProtect(&table[slot], sizeof function, PAGE_READWRITE, &oldProtect);
-				std::atomic_ref(table[slot]).store(reinterpret_cast<void*>(function));
-				VirtualProtect(&table[slot], sizeof function, oldProtect, &oldProtect);
+				WriteAtomically(&table[slot], reinterpret_cast<void*>(function), PAGE_READWRITE);
 			}
 
 			static void* AllocDetour(void* allocator, uint64_t size, uint64_t alignment) {
@@ -816,7 +833,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					m_target = nullptr;
 					for (const auto& bucket : m_buckets)
 						bucket->Clear();
-					SetStatus("Off (allocator terminated)");
+					SetStatus(FixState::Off, "allocator terminated");
 				}
 
 				m_originalTerminate(allocator);
@@ -846,13 +863,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// Minion follow AI is skipped for hidden minions, which Companion::Update still warps back to their owner when too far behind.
-		class HiddenMinionFreeze final : public FixBase {
+		class HiddenMinionFreeze final : public ToggledFix {
 			// where Companion::Update reads the render flags
 			size_t m_renderFlagsOffset{};
 			std::optional<PointerFunctionOf<Resolved::CompanionFollowFn>> m_follow;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			HiddenMinionFreeze() {
@@ -865,22 +881,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+		private:
+			void Apply(bool enabled) override {
 				if (enabled)
 					m_hooks += m_follow->SetHook([this](void* companion) { FollowDetour(companion); });
 				else
 					m_hooks.clear();
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			void FollowDetour(void* companion) {
 				if (At<uint64_t>(companion, m_renderFlagsOffset) & VisibilityFlagsModel)
 					return;
@@ -890,34 +898,26 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// Jumps over job list Prepare's second wait on its manual-reset event (both variants): only Prepare resets the event, so that wait always returns at once.
-		class PrepareWaitSkip final : public FixBase {
+		class PrepareWaitSkip final : public ToggledFix {
 			static constexpr uint16_t CallIndirect = 0x15FF;  // FF 15
 			static constexpr uint16_t JumpOver = 0x04EB;  // EB 04: skips the rest of the 6 byte call
 
 			Resolved::SkipPrepareWaitFunctions m_sites;
-			bool m_enabled = false;
 
 		public:
 			PrepareWaitSkip() {
 				m_available = Resolve(Resolved::SkipPrepareWait, m_sites);
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// Any thread would do: a thread in Prepare runs either the call or the jump.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
-				m_enabled = enabled;
+			void Apply(bool enabled) override {
 				for (const auto site : {m_sites.ArrayList, m_sites.SingleItemList})
-					WriteCodeAtomically(site, enabled ? JumpOver : CallIndirect);
-
-				SetStatus(enabled ? "On" : "Off");
+					WriteAtomically(site, enabled ? JumpOver : CallIndirect);
 			}
 		};
 
-		/// RenderView's single-item BG instancing prep job runs inline at kick time via the list's own claim and task functions, leaving the list as a worker would.
+		/// RenderView's single-item BG instancing prep job runs inline at kick time via the list's claim and task functions, leaving the list as a worker would.
 		class BgPrepInline final : public FixBase {
 			/// Queue entry as filled by the job list's describe and read by the workers; the state's size is not read from the game. As of 7.56h.
 			struct JobDescriptor {
@@ -959,14 +959,14 @@ namespace XivAlexander::Apps::MainApp::Features {
 				if (!enabled) {
 					m_hooks.clear();
 					m_enabled = false;
-					SetStatus("Off");
+					SetStatus(FixState::Off);
 					return;
 				}
 
 				const auto manager = *m_prep.RenderManager;
 				if (!manager) {
 					m_waiting = true;
-					SetStatus("Waiting for the render manager");
+					SetStatus(FixState::Waiting, "the render manager");
 					return;
 				}
 
@@ -976,13 +976,13 @@ namespace XivAlexander::Apps::MainApp::Features {
 				const auto threads = jobPool ? At<uint8_t* const*>(jobPool, pool.Threads) : nullptr;
 				if (!threads || At<int32_t>(jobPool, pool.ThreadCount) <= 0 || !threads[0]) {
 					m_waiting = true;
-					SetStatus("Waiting for the job pool");
+					SetStatus(FixState::Waiting, "the job pool");
 					return;
 				}
 
 				if (At<uint8_t*>(threads[0], m_prep.Run.ThreadPool) != jobPool) {
 					m_available = false;
-					SetStatus("Unavailable: the job pool workers belong to another pool");
+					SetStatus(FixState::Unavailable, "the job pool workers belong to another pool");
 					return;
 				}
 
@@ -992,7 +992,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_mainThreadId = GetCurrentThreadId();
 				m_hooks += m_kick->SetHook([this](void* taskManager, void* jobList) { return KickDetour(taskManager, jobList); });
 				m_enabled = true;
-				SetStatus("On");
+				SetStatus(FixState::On);
 			}
 
 		private:
@@ -1032,11 +1032,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// Both hidden-bar sites of the hotbar update jump over PrepareSlotForRender, whose output is unread for them; a bar shown later is prepared that frame.
-		class HiddenHotbarSkip final : public FixBase {
+		class HiddenHotbarSkip final : public ToggledFix {
 			Resolved::SkipHiddenHotbarsFunctions m_sites;
 			uint16_t m_barOriginal{};
 			uint16_t m_crossBarOriginal{};
-			bool m_enabled = false;
 
 		public:
 			HiddenHotbarSkip() {
@@ -1044,7 +1043,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (m_sites.Length < 2 || m_sites.Length - 2 > 0x7F) {
-					SetStatus("Unavailable: unexpected code");
+					SetStatus(FixState::Unavailable, "unexpected code");
 					return;
 				}
 
@@ -1053,24 +1052,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// The hotbar update runs on the main thread too, so the code is never mid-execution while it changes.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
-				// jmp rel8 to the slot index increment after the prepare call
+			void Apply(bool enabled) override {
+				// Jumps past the prepare call.
 				const auto jump = static_cast<uint16_t>(0xEB | (m_sites.Length - 2) << 8);
-				m_enabled = enabled;
-				WriteCodeAtomically(m_sites.Bar, enabled ? jump : m_barOriginal);
-				WriteCodeAtomically(m_sites.CrossBar, enabled ? jump : m_crossBarOriginal);
-				SetStatus(enabled ? "On" : "Off");
+				WriteAtomically(m_sites.Bar, enabled ? jump : m_barOriginal);
+				WriteAtomically(m_sites.CrossBar, enabled ? jump : m_crossBarOriginal);
 			}
 		};
 
-		/// Each attach depth level of the animation tail runs on the animation submit's parallel-for group, joined between levels; same-depth skeletons are independent.
-		class AnimTailParallel final : public FixBase {
+		/// Each attach depth level of the animation tail runs on the submit's parallel-for group, joined between levels; same-depth skeletons are independent.
+		class AnimTailParallel final : public ToggledFix {
 			static constexpr int32_t MinParallel = 16;  // smaller depth levels run serially
 
 			// The animation update's tail entries; nothing reads their stride in a way that can be captured. As of 7.56h.
@@ -1085,7 +1078,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 			static inline thread_local bool s_inUpdate;
 			static inline thread_local int s_tailCalls;
 
-			// All layouts (the parallel-for group above all) are read and cross-checked from the animation submit, its append and the tail.
 			Resolved::ParallelAnimTailFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::AnimationUpdateFn>> m_update;
 			std::optional<PointerFunctionOf<Resolved::AnimationTailFn>> m_tail;
@@ -1094,7 +1086,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 			std::vector<void*> m_mainOnly;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			AnimTailParallel() {
@@ -1115,25 +1106,17 @@ namespace XivAlexander::Apps::MainApp::Features {
 					s_instance = nullptr;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// The animation update runs on the main thread too, so a toggle never lands inside the tail loop.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+			void Apply(bool enabled) override {
 				if (enabled) {
 					m_hooks += m_tail->SetHook([this](void* skeleton, float deltaTime) { TailDetour(skeleton, deltaTime); });
 					m_hooks += m_update->SetHook([this](void* skeletons, float deltaTime) { UpdateDetour(skeletons, deltaTime); });
 				} else {
 					m_hooks.clear();
 				}
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			void UpdateDetour(void* skeletons, float deltaTime) {
 				s_inUpdate = true;
 				s_tailCalls = 0;
@@ -1273,8 +1256,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Camera culling's single character item is split into chunks that its owner and every thread finishing its own item work through; the job only reads its item.
-		class CharacterCullSplit final : public FixBase {
+		/// Camera culling's single character item is split into chunks for its owner and every thread done with its own item; the job only reads its item.
+		class CharacterCullSplit final : public ToggledFix {
 			static constexpr size_t MaxItemSize = 0x80;
 			static constexpr int32_t Chunk = 16;
 
@@ -1287,13 +1270,11 @@ namespace XivAlexander::Apps::MainApp::Features {
 				std::atomic<int32_t> Active;
 			};
 
-			// The item type and size are read from the culling's item building, the range fields from the job.
 			Resolved::SplitCharacterCullingFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::CameraCullJobFn>> m_cullJob;
 			Shared m_shared;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			CharacterCullSplit() {
@@ -1301,7 +1282,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					return;
 
 				if (m_functions.ItemSize > MaxItemSize) {
-					SetStatus(std::format("Unavailable: unexpected item size {}", m_functions.ItemSize));
+					SetStatus(FixState::Unavailable, std::format("unexpected item size {}", m_functions.ItemSize));
 					return;
 				}
 
@@ -1309,23 +1290,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// An owner already inside the detour finishes every chunk, so disabling mid-frame only stops new help.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+			void Apply(bool enabled) override {
 				if (enabled)
 					m_hooks += m_cullJob->SetHook([this](void* cullingManager, uint8_t* item) { return CullJobDetour(cullingManager, item); });
 				else
 					m_hooks.clear();
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			/// Job workers and the main thread's help loop.
 			int64_t CullJobDetour(void* cullingManager, uint8_t* item) {
 				if (item[0] == m_functions.CharacterItemType && At<uint32_t>(item, m_functions.CountOffset) > Chunk && !m_shared.Active.load()) {
@@ -1364,13 +1337,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 		};
 
 		/// The cell culling and culling setup tail groups' block help is routed to the engine's existing per-item claim variant, spreading their few items wider.
-		class CullPerItemClaim final : public FixBase {
+		class CullPerItemClaim final : public ToggledFix {
 			Resolved::PerItemCullingClaimsFunctions m_groups;
 			std::optional<PointerFunctionOf<Resolved::ParallelForHelpFn>> m_cellHelp;
 			std::optional<PointerFunctionOf<Resolved::ParallelForHelpFn>> m_setupHelp;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			CullPerItemClaim() {
@@ -1382,25 +1354,17 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// All threads in a fork-join must use the same claim mode; these groups only run, fully joined, inside rendering, which is not running now.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+			void Apply(bool enabled) override {
 				if (enabled) {
 					m_hooks += m_cellHelp->SetHook([this](void* group) { HelpDetour(group, m_groups.CellGroupOffset, m_groups.CellHelpPerItem, *m_cellHelp); });
 					m_hooks += m_setupHelp->SetHook([this](void* group) { HelpDetour(group, m_groups.SetupGroupOffset, m_groups.SetupHelpPerItem, *m_setupHelp); });
 				} else {
 					m_hooks.clear();
 				}
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			void HelpDetour(void* group, size_t groupOffset, Resolved::ParallelForHelpFn perItem, PointerFunctionOf<Resolved::ParallelForHelpFn>& blocks) {
 				if (const auto cullingManager = *m_groups.CullingManager; cullingManager && group == static_cast<uint8_t*>(cullingManager) + groupOffset)
 					perItem(group);
@@ -1409,14 +1373,12 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
-		/// Replaces PostTick's command list gather: copies only used entries and skips the (stable) sort when already in key order, matching the game's output byte for byte.
-		class GatherUsedBytes final : public FixBase {
-			// Read from the gather itself, the context size above all.
+		/// PostTick's command list gather, copying only used entries and skipping the stable sort when already in key order; output matches the game's exactly.
+		class GatherUsedBytes final : public ToggledFix {
 			Resolved::GatherUsedCommandsFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::CommandListGatherFn>> m_gather;
 
 			xivres::util::on_dtor::multi m_hooks;
-			bool m_enabled = false;
 
 		public:
 			GatherUsedBytes() {
@@ -1427,13 +1389,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 				m_available = true;
 			}
 
-			[[nodiscard]] bool Enabled() const override { return m_enabled; }
-
+		private:
 			/// Output is identical either way, so a toggle in the middle of PostTick would be harmless.
-			void SetEnabled(bool enabled, const FrameState&) override {
-				if (!m_available || enabled == m_enabled)
-					return;
-
+			void Apply(bool enabled) override {
 				if (enabled) {
 					m_hooks += m_gather->SetHook([this](void* device, uint32_t list, uint8_t** cursor, uint32_t* remaining, uint8_t** results, uint32_t* counts, uint32_t* total) {
 						return GatherDetour(device, list, cursor, remaining, results, counts, total);
@@ -1441,12 +1399,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 				} else {
 					m_hooks.clear();
 				}
-
-				m_enabled = enabled;
-				SetStatus(enabled ? "On" : "Off");
 			}
 
-		private:
 			/// Main thread, PostTick, after every producer has been joined.
 			uint64_t GatherDetour(void* device, uint32_t list, uint8_t** cursor, uint32_t* remaining, uint8_t** results, uint32_t* counts, uint32_t* total) {
 				if (!*cursor)
@@ -1516,31 +1470,15 @@ namespace XivAlexander::Apps::MainApp::Features {
 struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 	static constexpr auto FixCount = static_cast<size_t>(Fix::Count);
 
-	static constexpr std::array<bool, FixCount> DefaultEnabled{
-		true,  // SkipIdleNotifiers
-		true,  // ChainWorkerWakeups
-		true,  // DedupeSkeletonSyncs
-		true,  // TrimCullingClear
-		false,  // ShortenAllocatorLock
-		false,  // PoolStagingBlocks
-		true,  // FreezeHiddenMinions
-		false,  // SkipPrepareWait
-		false,  // InlineBgPrep
-		true,  // SkipHiddenHotbars
-		true,  // ParallelAnimTail
-		false,  // SplitCharacterCulling
-		false,  // PerItemCullingClaims
-		true,  // GatherUsedCommands
-	};
-
 	const std::shared_ptr<Misc::Logger> Logger;
+	const std::function<void()> NotifyStatusChange;
 
 	std::array<std::unique_ptr<FixBase>, FixCount> Fixes;
 	std::optional<Misc::Hooks::PointerFunctionOf<Resolved::TaskManagerExecuteAllTasksFn>> ExecuteAllTasks;
-	std::string Unusable;
+	std::optional<std::string> Unusable;
 
 	mutable std::mutex DesiredMtx;
-	std::array<bool, FixCount> Desired = DefaultEnabled;
+	std::array<bool, FixCount> Desired{};
 	std::array<bool, FixCount> Pending{};
 	std::atomic_bool AnyPending = true;
 
@@ -1552,8 +1490,12 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 
 	xivres::util::on_dtor::multi Cleanup;
 
-	Implementation()
-		: Logger(Misc::Logger::Acquire()) {
+	// The overall status is settled here, before anything can listen.
+	Implementation(const std::function<bool(Fix)>& initiallyEnabled, std::function<void()> notifyStatusChange)
+		: Logger(Misc::Logger::Acquire())
+		, NotifyStatusChange(std::move(notifyStatusChange)) {
+		for (size_t i = 0; i < FixCount; i++)
+			Desired[i] = initiallyEnabled(static_cast<Fix>(i));
 		Pending.fill(true);
 
 		Create<IdleNotifierFilter>(Fix::SkipIdleNotifiers, Logger);
@@ -1574,7 +1516,7 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 		// Like CrowdFix's Framework.Update: main thread, before the frame's tasks, so outside DeviceDX11::PostTick, which some fixes patch.
 		Resolved::FixDriverFunctions driver;
 		if (const auto status = Resolved::FixDriver.Resolve(driver); status != ResolveError::Ok) {
-			Unusable = std::format("Unavailable: {}", status.Detail);
+			Unusable = status.Detail;
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix fixes are left off: {}", status.Detail);
 			return;
 		}
@@ -1606,7 +1548,7 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 				Apply();
 		}
 
-		// Job and render threads can still be inside a detour, a patched loop or a pool vtable slot; let them leave.
+		// Threads may still be inside a detour or patched code; let them leave.
 		if (EverEnabled)
 			Sleep(200);
 
@@ -1624,6 +1566,7 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 			Logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix: fix {} is unavailable: {}", static_cast<size_t>(fix), e.what());
 			slot = std::make_unique<UnavailableFix>(e.what());
 		}
+		slot->SetStateChangeCallback(NotifyStatusChange);
 	}
 
 	void OnFrame(void* taskManager, float* deltaTime) {
@@ -1635,8 +1578,13 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 			if (AnyPending.exchange(false))
 				Apply();
 
-			for (const auto& fix : Fixes)
-				fix->Update(Frame);
+			for (size_t i = 0; i < FixCount; i++) {
+				try {
+					Fixes[i]->Update(Frame);
+				} catch (const std::exception& e) {
+					Logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix: fix {} failed to update: {}", i, e.what());
+				}
+			}
 		}
 
 		ExecuteAllTasks->bridge(taskManager, deltaTime);
@@ -1657,7 +1605,12 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 				continue;
 
 			auto& fix = *Fixes[i];
-			fix.SetEnabled(desired[i], Frame);
+			try {
+				fix.SetEnabled(desired[i], Frame);
+			} catch (const std::exception& e) {
+				// The fixes change their state only once their writes went through.
+				Logger->Format<LogLevel::Warning>(LogCategory::General, "CrowdFix: fix {} could not be turned {}: {}", i, desired[i] ? "on" : "off", e.what());
+			}
 			EverEnabled |= fix.Enabled();
 
 			// The job pool and the graphics allocator may not exist yet right after login; keep retrying until they do.
@@ -1670,11 +1623,32 @@ struct XivAlexander::Apps::MainApp::Features::CrowdFix::Implementation {
 	}
 };
 
-XivAlexander::Apps::MainApp::Features::CrowdFix::CrowdFix()
-	: m_pImpl(std::make_unique<Implementation>()) {
+XivAlexander::Apps::MainApp::Features::CrowdFix::CrowdFix(const std::function<bool(Fix)>& initiallyEnabled)
+	: m_pImpl(std::make_unique<Implementation>(initiallyEnabled, [this] { OnStatusChange(); })) {
 }
 
 XivAlexander::Apps::MainApp::Features::CrowdFix::~CrowdFix() = default;
+
+XivAlexander::ConfigItem<bool>& XivAlexander::Apps::MainApp::Features::CrowdFix::ConfigItemOf(RuntimeConfigRepository& runtime, Fix fix) {
+	auto& fixes = runtime.CrowdFix.Fixes;
+	switch (fix) {
+		case Fix::SkipIdleNotifiers: return fixes.SkipIdleNotifiers;
+		case Fix::ChainWorkerWakeups: return fixes.ChainWorkerWakeups;
+		case Fix::DedupeSkeletonSyncs: return fixes.DedupeSkeletonSyncs;
+		case Fix::TrimCullingClear: return fixes.TrimCullingClear;
+		case Fix::ShortenAllocatorLock: return fixes.ShortenAllocatorLock;
+		case Fix::PoolStagingBlocks: return fixes.PoolStagingBlocks;
+		case Fix::FreezeHiddenMinions: return fixes.FreezeHiddenMinions;
+		case Fix::SkipPrepareWait: return fixes.SkipPrepareWait;
+		case Fix::InlineBgPrep: return fixes.InlineBgPrep;
+		case Fix::SkipHiddenHotbars: return fixes.SkipHiddenHotbars;
+		case Fix::ParallelAnimTail: return fixes.ParallelAnimTail;
+		case Fix::SplitCharacterCulling: return fixes.SplitCharacterCulling;
+		case Fix::PerItemCullingClaims: return fixes.PerItemCullingClaims;
+		case Fix::GatherUsedCommands: return fixes.GatherUsedCommands;
+		default: throw std::out_of_range("CrowdFix::ConfigItemOf: invalid fix");
+	}
+}
 
 void XivAlexander::Apps::MainApp::Features::CrowdFix::SetEnabled(Fix fix, bool enabled) {
 	const auto lock = std::lock_guard(m_pImpl->DesiredMtx);
@@ -1689,11 +1663,17 @@ bool XivAlexander::Apps::MainApp::Features::CrowdFix::IsEnabled(Fix fix) const {
 }
 
 bool XivAlexander::Apps::MainApp::Features::CrowdFix::IsAvailable(Fix fix) const {
-	return m_pImpl->Unusable.empty() && m_pImpl->Fixes[static_cast<size_t>(fix)]->Available();
+	return !m_pImpl->Unusable && m_pImpl->Fixes[static_cast<size_t>(fix)]->Available();
 }
 
-std::string XivAlexander::Apps::MainApp::Features::CrowdFix::GetStatus(Fix fix) const {
-	if (!m_pImpl->Unusable.empty())
-		return m_pImpl->Unusable;
+auto XivAlexander::Apps::MainApp::Features::CrowdFix::GetStatus(Fix fix) const -> FixStatus {
+	if (m_pImpl->Unusable)
+		return GetStatus();
 	return m_pImpl->Fixes[static_cast<size_t>(fix)]->Status();
+}
+
+auto XivAlexander::Apps::MainApp::Features::CrowdFix::GetStatus() const -> FixStatus {
+	if (m_pImpl->Unusable)
+		return {FixState::Unavailable, *m_pImpl->Unusable};
+	return {FixState::On};
 }

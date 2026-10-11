@@ -97,6 +97,78 @@ namespace XivAlexander::Game::Resolved {
 		SwapChainPresentFn Present{};
 	};
 
+	// ExcelModuleInterface::GetLanguage: the 0-based language the sheets are loaded in, through a static it updates.
+	using ExcelLanguageGetterFn = const int32_t*(*)(void* excelModuleInterface);
+	// Localize::ProcessNoun: formats a noun with the sheet's handler, made for the language of the moment and kept per sheet name.
+	using LocalizeProcessNounFn = bool(*)(void* localize, void* sheetName, void* output);
+	// TextModule::ProcessNoun, the noun macros' handler: Localize for a macro in the sheets' language, the plain cell for any other.
+	using TextModuleProcessNounFn = int32_t(*)(void* textModule, const uint8_t* macro, int32_t length, void* parameters, uint8_t hasCase, int32_t language, void* output);
+	// The text wrapper's per-text entry, which also sets its language flags.
+	using TextWrapFn = int32_t(*)(void* wrapper, void* text, void* lines, void* style, uint8_t paging);
+
+	struct DisplayLanguageNouns {
+		ExcelLanguageGetterFn GetLanguage{};
+		LocalizeProcessNounFn ProcessNoun{};
+		uint8_t* LanguageCall{};  // ProcessNoun's call of GetLanguage, which picks the handler
+		size_t Interface{};  // the ExcelModuleInterface*, in Localize
+		size_t Map{};  // std::map<Utf8String, handler*>: head node, then size
+		size_t NodeIsNil{};  // uint8_t, after the colour
+		size_t NodeValue{};  // the handler*, in a node
+		size_t NodeSize{};
+
+		struct MacroHandler {
+			TextModuleProcessNounFn Function{};
+			uint8_t* LocalizeCall{};  // its call of ProcessNoun, made only for a macro in the sheets' language
+			size_t Interface{};  // the ExcelModuleInterface*, in the text module
+		};
+
+		std::vector<MacroHandler> MacroHandlers;
+	};
+
+	struct DisplayLanguageWrap {
+		ExcelLanguageGetterFn GetLanguage{};
+		TextWrapFn Wrap{};
+		uint8_t* LanguageCall{};  // Wrap's call of GetLanguage, which sets the CJK flag
+		size_t Interface{};  // the ExcelModuleInterface*, in the wrapper
+		size_t CjkFlag{};  // uint8_t: chs/cht/ko/tc rules
+		size_t KoreanFlag{};  // uint8_t: Korean breaks, set once by the set-up of AtkModule's wrapper
+		size_t ModuleWrapper{};  // the wrapper, in AtkModule
+		size_t ModuleFonts{};  // what the set-up stores in the wrapper, in AtkModule
+		size_t WrapperFonts{};  // where it stores it, in the wrapper
+	};
+
+	// A two byte instruction before a language branch, replaced with a short jmp to either side.
+	struct LanguageBranchPatch {
+		uint8_t* Instruction{};
+		uint16_t Original{};
+		uint16_t JumpToFirst{};
+		uint16_t JumpToSecond{};
+	};
+
+	struct DisplayLanguageFunctions {
+		std::optional<DisplayLanguageNouns> Nouns;
+		std::optional<DisplayLanguageWrap> Wrap;
+		// AddonTalk::OnRefresh: first 4 lines at the fixed size and spacing, second 3 lines at the ULD's.
+		std::optional<LanguageBranchPatch> TalkLines;
+		// AddonTalkSubtitle: first the enlarged scale, second the normal one.
+		std::optional<LanguageBranchPatch> SubtitleScale;
+	};
+
+	// PronounModule::ProcessShellCommandMessage: chat input to the form sent (flag 1) or logged (flag 0); returns a string the module keeps.
+	using ProcessShellCommandMessageFn = void*(*)(void* pronounModule, void* input, uint8_t flag);
+
+	struct OutgoingTextFunctions {
+		ProcessShellCommandMessageFn ProcessShellCommandMessage{};
+	};
+
+	[[nodiscard]] std::string to_string(const OutgoingTextFunctions& value);
+
+	[[nodiscard]] std::string to_string(const DisplayLanguageNouns::MacroHandler& value);
+	[[nodiscard]] std::string to_string(const DisplayLanguageNouns& value);
+	[[nodiscard]] std::string to_string(const DisplayLanguageWrap& value);
+	[[nodiscard]] std::string to_string(const LanguageBranchPatch& value);
+	[[nodiscard]] std::string to_string(const DisplayLanguageFunctions& value);
+
 	[[nodiscard]] std::string to_string(const SqpackLookupHooksFunctions& value);
 	[[nodiscard]] std::string to_string(const TextHooksFunctions& value);
 	[[nodiscard]] std::string to_string(const OpcodeGuesserCandidates& value);
@@ -117,6 +189,8 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<LoginSessionsFunctions> LoginSessions;
 	extern const Signatures::ComplexSignature<ImeModeIndicatorFunctions> ImeModeIndicator;
 	extern const Signatures::ComplexSignature<FontReplacementFunctions> FontReplacement;
+	extern const Signatures::ComplexSignature<DisplayLanguageFunctions> DisplayLanguage;
+	extern const Signatures::ComplexSignature<OutgoingTextFunctions> OutgoingText;
 }
 
 // Every CrowdFix fix is a feature of its own, which keeps working when what another fix needs is not found.
@@ -144,11 +218,11 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 
 	// What Kernel::Notifier callbacks test of their u32 flags before doing any work; one of them failing means the callback returns at once.
 	enum class NotifierWorkTest {
-		BufferFlags,  // any of Mask
-		IndexBufferFlags,  // any of Mask but none of SecondMask
-		TextureMappedFlags,  // all of Mask
-		TextureMappedOrUploadFlags,  // all of Mask, or any of SecondMask
-		ConstantBufferFlags,  // any of Mask
+		BufferFlags,
+		IndexBufferFlags,
+		TextureMappedFlags,
+		TextureMappedOrUploadFlags,
+		ConstantBufferFlags,
 	};
 
 	// Where TaskManager::JobPool and its InnerThreads keep what the wake-all reads, as read by the wake-all itself.

@@ -40,7 +40,7 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature MssAsiOpen(R"([\x44\x45]\x8B[\x40-\x43\x45-\x47]\x20\x48\x8D\x15(....)[\x48\x49]\x8B[\xC8-\xCF]\xE8(....))");
 	// The open allocating the stream.
 	const Signatures::RegexSignature MssAsiOpenAllocation(R"(\xB9(....)(?:\xFF\xD0|\xFF\x15....))");
-	// The process (or a function it calls) fetching what is pending: callback(user, cursor, bytes, pending offset), then adding to the fetched bytes and clearing the pending offset.
+	// The process fetching what is pending, then adding to the fetched bytes.
 	const Signatures::RegexSignature MssAsiProcessFetch(R"(\x44\x8B[\x48-\x4B\x4D-\x4F](.).{0,12}?[\x48\x49]\x8B[\x48-\x4B\x4D-\x4F](.).{0,12}?\x41?\xFF[\x50-\x53\x55-\x57](.)\x41?\x01[\x40-\x43\x45-\x47](.).{0,4}?\x41?\xC7[\x40-\x43\x45-\x47]\1\xFF\xFF\xFF\xFF)");
 	// The decoder set-up storing the source buffer, then fetching its first bytes into it: callback(user, source, bytes, 0).
 	const Signatures::RegexSignature MssAsiSetUpFetch(R"([\x48\x49]\x89[\x40-\x43\x45-\x47](.)[\x48\x4D]\x85\xC0(?:\x75.|\x0F\x85....).{0,96}?[\x48\x49]\x8B[\x48-\x4B\x4D-\x4F](.)\x45\x33\xC9\x41\xB8(....).{0,8}?[\x48\x49]\x8B[\xD0-\xD7]\x41?\xFF[\x50-\x53\x55-\x57](.))");
@@ -71,7 +71,7 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature LobbyErrorDialog(R"(\x40\x53\x48\x83\xEC\x30\x48\x8B\xD9\x49\x8B\xC8\xE8(....)\x8B\xD0)");
 	// What it reads the code with: zero unless the AtkValue has a type, else the u32 value.
 	const Signatures::RegexSignature AtkValueUIntGetter(R"(\xF6\x01(.)\x75.\x33\xC0\xC3\x8B\x41(.)\xC3)");
-	// The Utf8String copy constructor reading the source: used size (to reserve, then to copy from the string pointer), length, then the empty flag.
+	// The Utf8String copy constructor reading the source's size, length and empty flag.
 	const Signatures::RegexSignature Utf8StringCopy(R"([\x48\x49]\x8B[\x50-\x57](.)\xE8....[\x4C\x4D]\x8B[\x40-\x47](.)[\x48\x49]\x8B[\x10-\x17][\x48\x49]\x8B[\x08-\x0F]\xE8....[\x48\x49]\x8B[\x40-\x47](.)[\x48\x49]\x89[\x40-\x47]\3[\x40-\x4F]?\x0F\xB6[\x40-\x47](.))");
 
 	// The IME mode getter's ImmGetOpenStatus, then ImmGetConversionStatus, on a global HIMC, with either form of its early return.
@@ -83,6 +83,43 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature SwapChainPresentCall(R"([\x48\x49]\x8B[\x48-\x4B\x4D-\x4F]\x70\xE8(....)\x41?\xC6[\x40-\x47]\x79\x00\xEB)");
 	// The pre-present notifier walk before that call: the game's, or SkipIdleNotifiers' rewrite of it.
 	const Signatures::RegexSignature PrePresentNotifierWalk(R"(\x48\x8D\x0D....\xFF\x15....(?:\x48\x8B\x1D....\x48\x85\xDB\x74.\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10|\x48\xB9.{8}\x48\xB8.{8}\xFF\xD0\xEB))");
+
+	// ExcelModuleInterface::GetLanguage's end: the module's language minus one into a static, and its address returned.
+	const Signatures::RegexSignature ExcelLanguageGetterBody(R"(\xE8....\xFF\xC8\x89\x05(....)\x48\x8D\x05(....))");
+	// Localize::ProcessNoun loading the Attributive sheet once: the interface, the name, then where it keeps the sheet.
+	const Signatures::RegexSignature LocalizeAttributiveLoad(R"([\x48\x49]\x8B[\x48-\x4F](.)\x48\x8D\x15(....)\x48\x8B\x49\x08\xE8....[\x48\x49]\x89[\x40-\x47](.)\x48\x85\xC0)");
+	// Then the language it picks the handler by: the interface, the call, and the switch over eight languages.
+	const Signatures::RegexSignature LocalizeLanguageSwitch(R"([\x48\x49]\x8B[\x48-\x4F](.).{0,24}?\xE8(....).{0,4}?[\x48\x4C]\x63[\x00-\x3F]\x83[\xF8-\xFF]\x07\x0F\x87)");
+	// Its map lookup at the start: the head from the map, then the map itself.
+	const Signatures::RegexSignature LocalizeMapLoad(R"([\x48\x4C]\x8B[\x41\x49\x51\x59\x61\x69\x71\x79](.)[\x48\x4C]\x8D[\x41\x49\x51\x59\x61\x69\x71\x79]\1)");
+	const Signatures::RegexSignature MapNodeIsNilTest(R"(\x80[\x78-\x7F](.)\x00)");
+	// A found node's handler formatting the noun: its vtable slot 1.
+	const Signatures::RegexSignature LocalizeNodeHandlerCall(R"(\x48\x8B[\x88-\x8F](....)(?:[\x48\x49\x4C\x4D]\x8B[\xC0-\xFF]){0,3}\x48\x8B\x01\xFF\x50\x08)");
+	// A new node: allocated, then its colour and nil flag cleared together.
+	const Signatures::RegexSignature LocalizeNodeAllocation(R"(\xB9(....)\x41\xB8....\xE8)");
+	const Signatures::RegexSignature LocalizeNodeColourClear(R"(\x66\x41?\xC7[\x40-\x47](.)\x00\x00)");
+	// The noun macro handler comparing the macro's language with the sheets'.
+	const Signatures::RegexSignature NounMacroLanguageTest(R"([\x48\x49]\x8B(?:[\x48-\x4B\x4D-\x4F](.)|\x4C\x24(.))\xE8(....)\x8B([\x85\x8D\x95\x9D\xA5\xAD\xB5\xBD])(....)\x39([\x00-\x3F])\x74(.))");
+	// The wrapper setting its CJK flag from the language (chs and later).
+	const Signatures::RegexSignature TextWrapCjkFlag(R"([\x48\x49]\x8B[\x48-\x4F](.).{0,24}?\xE8(....).{0,16}?\x83\x38\x04\x0F\x9D\xC0\x88[\x80-\x83\x85-\x87](....))");
+	// Its test of what the set-up stores, first thing.
+	const Signatures::RegexSignature TextWrapFontsTest(R"(\x48\x83\x79(.)\x00)");
+	// The wrapper set-up setting the Korean flag (ko only), and storing its argument first.
+	const Signatures::RegexSignature TextWrapKoreanFlag(R"([\x48\x49]\x8B[\x48-\x4F](.)\xE8(....).{0,8}?\x83\x38\x06\x0F\x94\xC0\x88[\x80-\x83\x85-\x87](....))");
+	const Signatures::RegexSignature TextWrapSetupStore(R"(\x48\x89\x51(.))");
+	// AtkModule::Initialize calling the set-up for its wrapper with what it stores, both inside AtkModule.
+	const Signatures::RegexSignature TextWrapSetupCall(R"(\x48\x8D([\x88-\x8F])(....).{0,16}?\x48\x8D([\x90-\x97])(....)\xE8(....))");
+	// AddonTalk::OnRefresh: 3 into a register, then the language from the number array tested for en, de and fr.
+	const Signatures::RegexSignature TalkLanguageBranch(R"(\x41([\xB8-\xBF])\x03\x00\x00\x00.{0,12}?\x8B([\x40-\x7F])\x0C(\x8B[\xC8-\xCF])\x83\xE9\x01\x74(.)\x83\xE9\x01\x74(.)\x83\xF9\x01\x74(.))");
+	// Their side: 4 lines into the line count, font size 14, line spacing 20.
+	const Signatures::RegexSignature TalkFourLines(R"([\x48\x49]\x8B[\x88-\x8F]....\xB8\x04\x00\x00\x00(?:\x45\x33\xC0)?\x66\x89[\x80-\x87](....)\xB2\x0E\xE8(....)\xB2\x14)");
+	// The other side: the register's 3 into the line count, then the ULD's font size.
+	const Signatures::RegexSignature TalkThreeLines(R"(\x66\x44\x89([\x80-\xBF])(....)\xE8(....))");
+	// AddonTalkSubtitle: scale 1, then for ja, chs, cht and tc the other scale.
+	const Signatures::RegexSignature SubtitleLanguageScale(R"(\xF3\x0F\x10([\x05\x0D\x15\x1D\x25\x2D\x35\x3D])(....).{0,24}?\x8B[\x40-\x7F]\x0C(\x85[\xC0-\xFF])\x74(.)(?:\x2B[\xC0-\xFF]|\x83[\xE8-\xEF]\x04)\x74(.)\x83[\xE8-\xEF]\x01\x74(.)\x83[\xF8-\xFF]\x02\x75(.)(\xF3\x0F\x10\1(....))\xF3\x0F\x11)");
+
+	// PronounModule::ProcessShellCommandMessage's byte limit for the text checker.
+	const Signatures::RegexSignature ShellCommandMessageLimit(R"(\xC7\x44\x24.\xFF\x03\x00\x00\x48\x8D[\x81\x89\x91\x99\xA1\xA9\xB1\xB9](....)\x4C\x89\x44\x24.)");
 
 	// The signatures below are from CrowdFix (SheepGoMeh).
 
@@ -100,7 +137,7 @@ namespace XivAlexander::Game {
 	// Link and Unlink, which take the notifier lock; then Link reads the head, Unlink [rbx+8].
 	const Signatures::RegexSignature NotifierLinkBody(R"(\x48\x8B\xD9\x48\x8D\x0D(....)\xFF\x15....\x48\x8B\x05(....)\x33\xC9)");
 	const Signatures::RegexSignature NotifierUnlinkBody(R"(\x48\x8B\xD9\x48\x8D\x0D(....)\xFF\x15....\x48\x8B\x4B\x08)");
-	// Notifier callbacks (buffer, vertex/index buffer, texture, constant buffer) up to the flag test that jumps to their return: the flags, then the masks.
+	// Notifier callbacks (buffer, vertex/index buffer, texture, constant buffer) up to their flag test.
 	// The texture pre-present one also does work for another flag, which it tests at the jne target.
 	const Signatures::RegexSignature BufferNotifierPostKick(R"(\x40\x53\x48\x83\xEC\x40\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\x8B\x49(.)\xF6\xC1(.)\x74)");
 	const Signatures::RegexSignature BufferNotifierPrePresent(R"(\x40\x53\x48\x83\xEC\x20\x8B\x05....\x48\x8B\xD9\x48\x8B\x54\xC1\x20\x48\x85\xD2\x74.\xF6\x41(.)(.)\x74)");
@@ -209,12 +246,12 @@ namespace XivAlexander::Game {
 	// The partial skeleton update ends by applying pending animation control removals: the list, then its count.
 	const Signatures::RegexSignature PartialPendingRemovals(R"([\x48\x49\x4C\x4D]\x8D[\x88-\x8F](....)\xE8....[\x48\x49]\x83[\xB8-\xBF](....)\x00\x75.)");
 
-	// A parallel-for group being armed: the job stored at +0x28, after the context at +0x20.
+	// A parallel-for group being armed: the context, then the job.
 	const Signatures::RegexSignature ParallelForJobStore(R"(\x48\x8D\x05(....)[\x4C\x48]\x89[\x40-\x7F]\x20\x48\x89[\x40-\x7F]\x28)");
-	// What the camera culling job reads of its item (rdx) first: the type byte, and u32 fields (REX.R, modrm, disp8).
+	// What the camera culling job reads of its item first.
 	const Signatures::RegexSignature CameraCullItemType(R"([\x40-\x4F]?\x0F\xB6[\x02\x0A\x12\x1A\x32\x3A])");
 	const Signatures::RegexSignature CameraCullItemField(R"(([\x40\x44]?)\x8B([\x42\x4A\x52\x5A\x62\x6A\x72\x7A])(.))");
-	// Then the end of its range, start + count (lea r32, [base+index]), and the start compared with it (cmp r32, r32).
+	// Then the end of its range, and the start compared with it.
 	const Signatures::RegexSignature CameraCullRangeEnd(R"(([\x40-\x4F]?)\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])([\x00-\x3F]))");
 	const Signatures::RegexSignature CameraCullRangeCompare(R"(([\x40-\x4F]?)([\x39\x3B])([\xC0-\xFF]))");
 	// Where the culling builds its items: the object type tests that sort visible objects into lists,
@@ -222,7 +259,6 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature CameraCullObjectTypeTest(R"(\x41\x80[\xF8-\xFF](.)\x75)");
 	const Signatures::RegexSignature CameraCullSingleItem(R"(\xE8(....).{0,32}?\x48\x89[\x40-\x7F]\x08\xC6[\x00-\x03\x06\x07](.))");
 	// The item allocator returns the item at the writer's cursor: the block header, the cursor and the item shift.
-	// ...; mov eax, ebx (index); shl rax, item shift; add rax, [writer+cursor]
 	const Signatures::RegexSignature CameraCullItemAddress(R"([\x48\x49]\x8D[\x40-\x47](.)[\x48\x4C]\x89[\x40-\x7F](.).{0,24}?[\x48\x49]\xC1[\xE0-\xE7](.)[\x48\x49]\x03[\x40-\x7F](.))");
 
 	// The cell group's parallel-for call (instructions in any order, then register restores).
@@ -238,7 +274,7 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature CommandListContextCount(R"(\x8B\x40(.)\x89\x44\x24.)");
 	// The context size and the contexts, in the device.
 	const Signatures::RegexSignature CommandListContextArray(R"([\x48\x4C]\x69[\xC0-\xFF](....)[\x48\x4C]\x8B[\x44\x4C\x54\x5C]\x24.[\x48\x4C]\x03[\x40-\x7F](.))");
-	// The start of the gather of one context's blocks: the list index scaled to a list (inc; x3; then x8 as an index), its block count and the block shift.
+	// The start of the gather of one context's blocks.
 	const Signatures::RegexSignature CommandListBlocks(R"(\x48\xFF\xC0.{0,12}?\x48\x8D\x04([\x40\x80\xC0]).{0,8}?\x4C\x8D([\x04\x0C\x14\x1C\x24\x2C\x34\x3C])([\x01\x41\x81\xC1])\x8B\x44(.)(.)\x8B[\xE8-\xEF]\xC1[\xE0-\xE7](.))");
 	// Then, before copying, it loads the first block from that list, through whichever register holds it.
 	const Signatures::RegexSignature CommandListFirstBlock(R"([\x48-\x4F]\x8B)");
@@ -555,7 +591,282 @@ namespace XivAlexander::Game::Resolved {
 				"the AtkValue getter tests the type with 0x{:X} and reads +0x{:X}, not as AtkValue has them", read->Get<uint8_t>(1), ByteAt(*read, 2));
 			return Address(ctx.FunctionStartingAt(&match.Get<const uint8_t>(0), "lobby error dialog").data());
 		}
+
+		ExcelLanguageGetterFn FindExcelLanguageGetter(const ResolveContext& ctx) {
+			const void* found = nullptr;
+			for (const auto& m : ctx.All(ExcelLanguageGetterBody, ctx.Text())) {
+				// It returns where it stored the language.
+				if (m.ResolveAddress<const void*>(1) != m.ResolveAddress<const void*>(2) || !ctx.InSection(m.ResolveAddress<const void*>(1), ".data"))
+					continue;
+				const auto fn = ctx.FunctionContaining(m.begin(0), "language getter").data();
+				ctx.Require(!found || found == fn, ResolveError::Ambiguous, "language getters at {} and {}", Signatures::Describe(found), Signatures::Describe(fn));
+				found = fn;
+			}
+			ctx.Require(found != nullptr, ResolveError::NotFound, "language getter not found");
+			return Address(found);
+		}
+
+		void RequireNoEarlier(const ResolveContext& ctx, const std::optional<ScanResult>& earlier, const ScanResult& m, std::string_view what) {
+			if (earlier)
+				ctx.Fail(ResolveError::Ambiguous, std::format("{} at {} and {}", what, Signatures::Describe(earlier->begin(0)), Signatures::Describe(m.begin(0))));
+		}
+
+		const uint8_t* CallTarget(const ScanResult& m, size_t group) {
+			return m.ResolveAddress<const uint8_t*>(group);
+		}
+
+		uint8_t* MatchStart(const ScanResult& m, size_t group) {
+			return static_cast<uint8_t*>(m.begin(group));
+		}
+
+		// Where a jcc rel8 whose displacement is the group goes.
+		const uint8_t* ShortJumpTarget(const ScanResult& m, size_t group) {
+			return MatchStart(m, group) + 1 + m.Get<int8_t>(group);
+		}
+
+		uint16_t ShortJumpFrom(const ResolveContext& ctx, const uint8_t* instruction, const uint8_t* target) {
+			const auto displacement = target - (instruction + 2);
+			ctx.Require(-128 <= displacement && displacement < 128, ResolveError::Invalid, "a short jmp at {} cannot reach {}", Signatures::Describe(instruction), Signatures::Describe(target));
+			return static_cast<uint16_t>(0xEB | static_cast<uint8_t>(displacement) << 8);
+		}
+
+		std::optional<ScanResult> FindInParts(const ResolveContext& ctx, const RegexSignature& signature, const std::vector<std::span<const uint8_t>>& parts) {
+			for (const auto& part : parts) {
+				if (auto m = ctx.Find(signature, part))
+					return m;
+			}
+			return std::nullopt;
+		}
+
+		// The stack argument number index (from 0 for rcx) as [rbp+displacement] in a function that pushes registers and then sets rbp with lea rbp, [rsp+disp].
+		std::optional<int32_t> FramePointerArgumentDisplacement(std::span<const uint8_t> fn, size_t index) {
+			size_t i = 0, pushes = 0;
+			while (i + 5 <= fn.size() && fn[i] == 0x48 && fn[i + 1] == 0x89 && (fn[i + 2] & 0xC7) == 0x44 && fn[i + 3] == 0x24)
+				i += 5;  // saves into the home space
+			for (;; ++pushes) {
+				if (i < fn.size() && 0x50 <= fn[i] && fn[i] <= 0x57)
+					i += 1;
+				else if (i + 1 < fn.size() && (fn[i] == 0x40 || fn[i] == 0x41) && 0x50 <= fn[i + 1] && fn[i + 1] <= 0x57)
+					i += 2;
+				else
+					break;
+			}
+			int32_t lea;
+			if (i + 8 <= fn.size() && fn[i] == 0x48 && fn[i + 1] == 0x8D && fn[i + 2] == 0xAC && fn[i + 3] == 0x24)
+				lea = *reinterpret_cast<const int32_t*>(&fn[i + 4]);
+			else if (i + 5 <= fn.size() && fn[i] == 0x48 && fn[i + 1] == 0x8D && fn[i + 2] == 0x6C && fn[i + 3] == 0x24)
+				lea = static_cast<int8_t>(fn[i + 4]);
+			else
+				return std::nullopt;
+			return static_cast<int32_t>(8 + 8 * index + 8 * pushes) - lea;
+		}
+
+		DisplayLanguageNouns FindDisplayLanguageNouns(const ResolveContext& ctx, ExcelLanguageGetterFn getter) {
+			DisplayLanguageNouns r{.GetLanguage = getter};
+
+			std::optional<ScanResult> load;
+			for (const auto& m : ctx.All(LocalizeAttributiveLoad, ctx.Text())) {
+				const auto name = m.ResolveAddress<const char*>(2);
+				if (!ctx.InSection(name, ".rdata") || std::string_view(name, 12) != std::string_view("Attributive", 12))
+					continue;
+				RequireNoEarlier(ctx, load, m, "Attributive is loaded");
+				load = m;
+			}
+			ctx.Require(load.has_value(), ResolveError::NotFound, "Localize::ProcessNoun not found");
+			r.Interface = ByteAt(*load, 1);
+
+			// The handler is picked by the language right after.
+			const auto language = ctx.Find(LocalizeLanguageSwitch, CodeFrom(ctx, load->end(0), 0x40));
+			ctx.Require(language.has_value(), ResolveError::NotFound, "Localize::ProcessNoun does not switch over the language after loading Attributive");
+			ctx.Require(ByteAt(*language, 1) == r.Interface && CallTarget(*language, 2) == reinterpret_cast<const uint8_t*>(getter), ResolveError::Mismatch,
+				"Localize::ProcessNoun picks its handler by {} on +0x{:X}, not the language getter on its interface at +0x{:X}",
+				Signatures::Describe(CallTarget(*language, 2)), ByteAt(*language, 1), r.Interface);
+			r.LanguageCall = MatchStart(*language, 2) - 1;
+
+			const auto fn = ctx.FunctionContaining(load->begin(0), "Localize::ProcessNoun");
+			r.ProcessNoun = Address(fn.data());
+			const auto parts = FunctionParts(ctx, fn.data());
+
+			// The shadow handler maps imitate the game's: a std::map node with its colour before the nil flag, the key, then the handler as its last member.
+			const auto map = ctx.Find(LocalizeMapLoad, fn.first((std::min)(fn.size(), static_cast<size_t>(0x40))));
+			ctx.Require(map.has_value(), ResolveError::NotFound, "Localize::ProcessNoun does not start by loading its map");
+			r.Map = ByteAt(*map, 1);
+			ctx.Require(r.Map > r.Interface, ResolveError::Mismatch, "the map at +0x{:X} is not after the interface at +0x{:X}", r.Map, r.Interface);
+			const auto isNil = ctx.Find(MapNodeIsNilTest, fn.first((std::min)(fn.size(), static_cast<size_t>(0x60))));
+			ctx.Require(isNil.has_value(), ResolveError::NotFound, "Localize::ProcessNoun does not test a node's nil flag");
+			r.NodeIsNil = ByteAt(*isNil, 1);
+			const auto handler = FindInParts(ctx, LocalizeNodeHandlerCall, parts);
+			ctx.Require(handler.has_value(), ResolveError::NotFound, "Localize::ProcessNoun does not call a found node's handler");
+			r.NodeValue = FieldOffset(ctx, *handler, 1, "node handler offset");
+			for (const auto& part : parts) {
+				for (const auto& m : ctx.All(LocalizeNodeAllocation, part)) {
+					if (std::cmp_equal(m.Get<int32_t>(1), r.NodeValue + sizeof(void*)))
+						r.NodeSize = r.NodeValue + sizeof(void*);
+				}
+			}
+			ctx.Require(r.NodeSize != 0, ResolveError::Mismatch, "Localize::ProcessNoun allocates no 0x{:X} byte node ending with the handler", r.NodeValue + sizeof(void*));
+			const auto colour = FindInParts(ctx, LocalizeNodeColourClear, parts);
+			ctx.Require(colour.has_value() && ByteAt(*colour, 1) + 1 == r.NodeIsNil && r.NodeIsNil < r.NodeValue, ResolveError::Mismatch,
+				"Localize::ProcessNoun's new nodes do not clear the colour right before the nil flag at +0x{:X}", r.NodeIsNil);
+
+			// The macro handlers that take Localize for their own language; their language argument is the sixth.
+			for (const auto& m : ctx.All(NounMacroLanguageTest, ctx.Text())) {
+				if (CallTarget(m, 3) != reinterpret_cast<const uint8_t*>(getter))
+					continue;
+				const auto loaded = m.Get<uint8_t>(4);
+				const auto compared = m.Get<uint8_t>(6);
+				if ((compared & 0xC7) != 0 || (compared >> 3 & 7) != (loaded >> 3 & 7))
+					continue;
+				uint8_t* localizeCall = nullptr;
+				for (const auto& call : RelativeCall.Lookup(CodeFrom(ctx, ShortJumpTarget(m, 7), 0x40), RegexSignature::FromNextByte)) {
+					if (CallTarget(call, 1) == fn.data()) {
+						localizeCall = MatchStart(call, 1) - 1;
+						break;
+					}
+				}
+				if (!localizeCall)
+					continue;
+				const auto handlerFn = ctx.FunctionContaining(m.begin(0), "noun macro handler");
+				const auto argument = FramePointerArgumentDisplacement(handlerFn, 5);
+				ctx.Require(argument.has_value() && *argument == m.Get<int32_t>(5), ResolveError::Mismatch,
+					"the noun macro handler {} compares [rbp+0x{:X}], not its language argument", Signatures::Describe(handlerFn.data()), m.Get<int32_t>(5));
+				r.MacroHandlers.push_back({
+					.Function = Address(handlerFn.data()),
+					.LocalizeCall = localizeCall,
+					.Interface = static_cast<size_t>(m.Match()[1].matched ? ByteAt(m, 1) : ByteAt(m, 2)),
+				});
+			}
+			ctx.Require(!r.MacroHandlers.empty(), ResolveError::NotFound, "no noun macro handler compares the language before calling Localize::ProcessNoun");
+			return r;
+		}
+
+		DisplayLanguageWrap FindDisplayLanguageWrap(const ResolveContext& ctx, ExcelLanguageGetterFn getter) {
+			DisplayLanguageWrap r{.GetLanguage = getter};
+			const auto getterAddress = reinterpret_cast<const uint8_t*>(getter);
+
+			std::optional<ScanResult> cjk;
+			for (const auto& m : ctx.All(TextWrapCjkFlag, ctx.Text())) {
+				if (CallTarget(m, 2) != getterAddress)
+					continue;
+				RequireNoEarlier(ctx, cjk, m, "CJK flags set");
+				cjk = m;
+			}
+			ctx.Require(cjk.has_value(), ResolveError::NotFound, "the wrapper's CJK flag not found");
+			r.Interface = ByteAt(*cjk, 1);
+			r.LanguageCall = MatchStart(*cjk, 2) - 1;
+			r.CjkFlag = FieldOffset(ctx, *cjk, 3, "CJK flag offset");
+			const auto wrap = ctx.FunctionContaining(cjk->begin(0), "wrapper");
+			r.Wrap = Address(wrap.data());
+			const auto fonts = ctx.Find(TextWrapFontsTest, wrap.first((std::min)(wrap.size(), static_cast<size_t>(0x20))));
+			ctx.Require(fonts.has_value(), ResolveError::Mismatch, "the wrapper {} does not test its set-up first", Signatures::Describe(wrap.data()));
+			r.WrapperFonts = ByteAt(*fonts, 1);
+
+			std::optional<ScanResult> korean;
+			for (const auto& m : ctx.All(TextWrapKoreanFlag, ctx.Text())) {
+				if (CallTarget(m, 2) != getterAddress || ByteAt(m, 1) != r.Interface)
+					continue;
+				RequireNoEarlier(ctx, korean, m, "Korean flags set");
+				korean = m;
+			}
+			ctx.Require(korean.has_value(), ResolveError::NotFound, "the wrapper's Korean flag not found");
+			r.KoreanFlag = FieldOffset(ctx, *korean, 3, "Korean flag offset");
+			ctx.Require(r.KoreanFlag == r.CjkFlag + 1, ResolveError::Mismatch, "the Korean flag +0x{:X} does not follow the CJK flag +0x{:X}", r.KoreanFlag, r.CjkFlag);
+			const auto setup = ctx.FunctionContaining(korean->begin(0), "wrapper set-up");
+			const auto store = ctx.Find(TextWrapSetupStore, setup.first((std::min)(setup.size(), static_cast<size_t>(0x10))));
+			ctx.Require(store.has_value() && ByteAt(*store, 1) == r.WrapperFonts, ResolveError::Mismatch,
+				"the wrapper set-up {} does not store its argument at +0x{:X} first", Signatures::Describe(setup.data()), r.WrapperFonts);
+
+			// Only AtkModule's wrapper is set up, which tells it apart from the others.
+			std::optional<ScanResult> call;
+			for (const auto& m : ctx.All(TextWrapSetupCall, ctx.Text())) {
+				if (CallTarget(m, 5) != setup.data() || (m.Get<uint8_t>(1) & 7) != (m.Get<uint8_t>(3) & 7))
+					continue;
+				RequireNoEarlier(ctx, call, m, "the wrapper set-up is called");
+				call = m;
+			}
+			ctx.Require(call.has_value(), ResolveError::NotFound, "the call of the wrapper set-up not found");
+			r.ModuleWrapper = static_cast<size_t>(ctx.InRange<int32_t>(call->Get<int32_t>(2), 1, 0x100000, "wrapper offset"));
+			r.ModuleFonts = static_cast<size_t>(ctx.InRange<int32_t>(call->Get<int32_t>(4), 1, 0x100000, "set-up argument offset"));
+			return r;
+		}
+
+		LanguageBranchPatch FindTalkLines(const ResolveContext& ctx) {
+			const auto m = ctx.Unique(TalkLanguageBranch, ctx.Text(), "Talk language branch");
+			const auto threeRegister = ByteAt(m, 1) - 0xB8;
+			const auto languageLoad = ByteAt(m, 2);
+			const auto instruction = MatchStart(m, 3);
+			ctx.Require((languageLoad >> 3 & 7) == (instruction[1] & 7), ResolveError::Mismatch, "the Talk language branch tests another register than the language it loads");
+
+			const auto four = ShortJumpTarget(m, 4);
+			ctx.Require(ShortJumpTarget(m, 5) == four && ShortJumpTarget(m, 6) == four, ResolveError::Mismatch, "the Talk language branch does not take en, de and fr to one side");
+			const auto three = static_cast<const uint8_t*>(m.end(0));
+
+			const auto fourLines = ctx.TryMatchAt(TalkFourLines, CodeFrom(ctx, four, 0x40));
+			ctx.Require(fourLines.has_value(), ResolveError::Mismatch, "the en/de/fr side at {} does not set 4 lines, size 14 and spacing 20", Signatures::Describe(four));
+			const auto threeLines = ctx.Find(TalkThreeLines, CodeFrom(ctx, three, 0x30));
+			ctx.Require(threeLines.has_value() && (ByteAt(*threeLines, 1) >> 3 & 7) == threeRegister, ResolveError::Mismatch,
+				"the other side at {} does not set the 3 lines", Signatures::Describe(three));
+			ctx.Require(threeLines->Get<int32_t>(2) == fourLines->Get<int32_t>(1) && CallTarget(*threeLines, 3) == CallTarget(*fourLines, 2), ResolveError::Mismatch,
+				"the sides set the line count at +0x{:X} and +0x{:X}, or the font size through {} and {}",
+				threeLines->Get<int32_t>(2), fourLines->Get<int32_t>(1), Signatures::Describe(CallTarget(*threeLines, 3)), Signatures::Describe(CallTarget(*fourLines, 2)));
+
+			return {
+				.Instruction = instruction,
+				.Original = *reinterpret_cast<const uint16_t*>(instruction),
+				.JumpToFirst = ShortJumpFrom(ctx, instruction, four),
+				.JumpToSecond = ShortJumpFrom(ctx, instruction, three),
+			};
+		}
+
+		LanguageBranchPatch FindSubtitleScale(const ResolveContext& ctx) {
+			const auto m = ctx.Unique(SubtitleLanguageScale, ctx.Text(), "TalkSubtitle scale");
+			const auto enlarged = MatchStart(m, 8);
+			const auto normal = static_cast<const uint8_t*>(m.end(8));
+			for (const auto group : {4, 5, 6})
+				ctx.Require(ShortJumpTarget(m, group) == enlarged, ResolveError::Mismatch, "the TalkSubtitle language test does not take ja, chs, cht and tc to one side");
+			ctx.Require(ShortJumpTarget(m, 7) == normal, ResolveError::Mismatch, "the TalkSubtitle language test does not skip the other scale");
+
+			const auto scale = [&ctx, &m](size_t group) {
+				return *static_cast<const float*>(ctx.RequireInSection(m.ResolveAddress<const float*>(group), ".rdata", "scale"));
+			};
+			ctx.Require(scale(2) == 1.f && scale(9) == 1.5f, ResolveError::Mismatch, "the TalkSubtitle scales are {} and {} instead of 1 and 1.5", scale(2), scale(9));
+
+			const auto instruction = MatchStart(m, 3);
+			return {
+				.Instruction = instruction,
+				.Original = *reinterpret_cast<const uint16_t*>(instruction),
+				.JumpToFirst = ShortJumpFrom(ctx, instruction, enlarged),
+				.JumpToSecond = ShortJumpFrom(ctx, instruction, normal),
+			};
+		}
+
+		ProcessShellCommandMessageFn FindProcessShellCommandMessage(const ResolveContext& ctx) {
+			const auto m = ctx.Unique(ShellCommandMessageLimit, ctx.Text(), "shell command message limit");
+			const auto fn = ctx.FunctionContaining(m.begin(0), "ProcessShellCommandMessage");
+			ctx.Require(fn.size() <= 0x100, ResolveError::Mismatch, "ProcessShellCommandMessage {} is 0x{:X} bytes long", Signatures::Describe(fn.data()), fn.size());
+
+			// The hook hands callers a string of its own, which works only while every caller copies the result right away.
+			const auto text = ctx.Text();
+			size_t calls = 0;
+			for (size_t i = 0; i + 8 <= text.size(); i++) {
+				if (text[i] != 0xE8 || text.data() + i + 5 + *reinterpret_cast<const int32_t*>(&text[i + 1]) != fn.data())
+					continue;
+				ctx.Require(text[i + 5] == 0x48 && text[i + 6] == 0x8B && text[i + 7] == 0xD0, ResolveError::Mismatch,
+					"the caller at {} does not pass the result on right away", Signatures::Describe(&text[i]));
+				calls++;
+			}
+			ctx.Require(calls >= 12, ResolveError::Mismatch, "ProcessShellCommandMessage has {} callers instead of every chat channel's", calls);
+			return Address(fn.data());
+		}
 	}
+
+	std::string to_string(const OutgoingTextFunctions& value) {
+		return std::format("ProcessShellCommandMessage {}", Signatures::Describe(value.ProcessShellCommandMessage));
+	}
+
+	const Signatures::ComplexSignature<OutgoingTextFunctions> OutgoingText("OutgoingText", [](ResolveContext& ctx) {
+		return OutgoingTextFunctions{.ProcessShellCommandMessage = FindProcessShellCommandMessage(ctx)};
+	});
 
 	std::string to_string(const SqpackLookupHooksFunctions& value) {
 		return std::format("index lookups {}", Signatures::Describe(value.IndexLookups));
@@ -625,13 +936,51 @@ namespace XivAlexander::Game::Resolved {
 			Signatures::Describe(value.Present));
 	}
 
+	std::string to_string(const DisplayLanguageNouns::MacroHandler& value) {
+		return std::format("{} (Localize call {}, interface +0x{:X})", Signatures::Describe(value.Function), Signatures::Describe(value.LocalizeCall), value.Interface);
+	}
+
+	std::string to_string(const DisplayLanguageNouns& value) {
+		return std::format("getter {}, ProcessNoun {}, language call {}, interface +0x{:X}, map +0x{:X}, node nil +0x{:X}, value +0x{:X}, size 0x{:X}, macro handlers {}",
+			Signatures::Describe(value.GetLanguage), Signatures::Describe(value.ProcessNoun), Signatures::Describe(value.LanguageCall),
+			value.Interface, value.Map, value.NodeIsNil, value.NodeValue, value.NodeSize, Signatures::Describe(value.MacroHandlers));
+	}
+
+	std::string to_string(const DisplayLanguageWrap& value) {
+		return std::format("getter {}, wrap {}, language call {}, interface +0x{:X}, CJK flag +0x{:X}, Korean flag +0x{:X}, module wrapper +0x{:X}, module fonts +0x{:X}, wrapper fonts +0x{:X}",
+			Signatures::Describe(value.GetLanguage), Signatures::Describe(value.Wrap), Signatures::Describe(value.LanguageCall),
+			value.Interface, value.CjkFlag, value.KoreanFlag, value.ModuleWrapper, value.ModuleFonts, value.WrapperFonts);
+	}
+
+	std::string to_string(const LanguageBranchPatch& value) {
+		return std::format("{} {:04X} -> {:04X} / {:04X}", Signatures::Describe(value.Instruction), value.Original, value.JumpToFirst, value.JumpToSecond);
+	}
+
+	std::string to_string(const DisplayLanguageFunctions& value) {
+		return std::format("nouns: {}; wrap: {}; talk lines: {}; subtitle scale: {}",
+			Signatures::Describe(value.Nouns), Signatures::Describe(value.Wrap), Signatures::Describe(value.TalkLines), Signatures::Describe(value.SubtitleScale));
+	}
+
+	const Signatures::ComplexSignature<DisplayLanguageFunctions> DisplayLanguage("DisplayLanguage", [](ResolveContext& ctx) {
+		const auto getter = OptionalPart("DisplayLanguage", "language getter", [&ctx] { return FindExcelLanguageGetter(ctx); });
+		DisplayLanguageFunctions r;
+		if (getter) {
+			r.Nouns = OptionalPart("DisplayLanguage", "nouns", [&] { return FindDisplayLanguageNouns(ctx, *getter); });
+			r.Wrap = OptionalPart("DisplayLanguage", "wrap", [&] { return FindDisplayLanguageWrap(ctx, *getter); });
+		}
+		r.TalkLines = OptionalPart("DisplayLanguage", "talk lines", [&ctx] { return FindTalkLines(ctx); });
+		r.SubtitleScale = OptionalPart("DisplayLanguage", "subtitle scale", [&ctx] { return FindSubtitleScale(ctx); });
+		ctx.Require(r.Nouns || r.Wrap || r.TalkLines || r.SubtitleScale, ResolveError::NotFound, "none of the language rules found");
+		return r;
+	});
+
 	const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks("SqpackLookupHooks", [](ResolveContext& ctx) {
 		// Each SqPackManager keeps its index kind's lookup in a member; LoadSqPack sets it to either function, then compares it against one of them.
 		const auto count = ctx.Unique(SqPackIndexEntryCount, ctx.Text(), "index entry count");
 		const auto member = FieldOffset(ctx, count, 1, "lookup member");
 		const auto loadSqPack = ctx.FunctionContaining(count.begin(0), "LoadSqPack");
 
-		// lea reg, [rip+fn], then mov [base+member], reg within the next few instructions.
+		// The lookup function stored into a member.
 		std::vector<SqPackIndexLookupFn> result;
 		for (const auto& lea : ctx.All(RipRelativeLea, loadSqPack)) {
 			const auto leaBytes = static_cast<const uint8_t*>(lea.begin(0));
@@ -674,7 +1023,6 @@ namespace XivAlexander::Game::Resolved {
 		const auto text = ctx.Text();
 
 		const auto init = ctx.First(OodleInit, text, "OodleInit");
-		init.ResolveAddressInto(r.SetMallocFree, 1);
 		init.GetInto(r.HtBits, 2);
 		init.ResolveAddressInto(r.SharedSize, 3);
 		init.GetInto(r.WindowSize, 4);
@@ -703,7 +1051,7 @@ namespace XivAlexander::Game::Resolved {
 		r.C2S_ActionRequest = FindActionRequest(text);
 		r.C2S_ActionRequestGroundTargeted = FindActionRequestGroundTargeted(ctx, text);
 
-		// In order: (ActionEffect01,) 08, 16, 24, 32, with payload sizes growing by the same step, then ActorCast, ActorControl, ActorControlTarget, ActorControlSelf.
+		// In order: (ActionEffect01,) 08, 16, 24, 32 with sizes growing by one step, then ActorCast, ActorControl, ActorControlTarget, ActorControlSelf.
 		r.PayloadWriters = FindDutyRecorderPayloadWriters(ctx, text);
 		const auto& writers = r.PayloadWriters;
 		const auto opcodeAt = [&writers](size_t i) -> std::optional<uint16_t> {
@@ -891,7 +1239,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			const void* Kick{};
 		};
 
-		// The function most callers call: mov rdx, [group+0x18]; mov rcx, [g_TaskManager]; call kick.
+		// The kick that most JobListKickCaller matches call.
 		JobListKickCallers FindJobListKick(const ResolveContext& ctx) {
 			std::map<std::pair<const void*, const void*>, size_t> counts;
 			for (const auto& m : ctx.All(JobListKickCaller, ctx.Text()))
@@ -971,7 +1319,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			return m.Get<int8_t>(group);
 		}
 
-		// From its first part's start to its last part's end: code after a shrink-wrapped register save, or rarely run code, gets its own part; patterns may span parts.
+		// First part's start to last part's end: shrink-wrapped register saves and cold code get parts of their own, which patterns may span.
 		std::span<const uint8_t> WholeFunctionContaining(const ResolveContext& ctx, const void* p, std::string_view what) {
 			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
 			const auto image = xivres::pe_image::from_loaded(base);
@@ -986,7 +1334,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			return {begin, last.data() + last.size()};
 		}
 
-		// Where the camera culling job reads the start and count of its item's range: the two fields it adds for the end, and which of them it compares with that end.
+		// The camera culling job's item range fields: the two it adds for the end, and which of them it compares with that end.
 		std::optional<std::pair<size_t, size_t>> FindCullItemRange(const ResolveContext& ctx, const void* job) {
 			std::map<uint8_t, size_t> fields;  // register -> field it was loaded from
 			for (const auto& m : ctx.All(CameraCullItemField, CodeFrom(ctx, job, 0x60))) {
@@ -1464,7 +1812,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(std::has_single_bit(r.PageMask + 1) && r.PageMask >= 0xFF && r.PageMask < 0x100000, ResolveError::Invalid,
 			"page mask 0x{:X} is not a power of two minus one", r.PageMask);
 
-		// The chunk entry address: lea rcx, [rax+rax*2] (x3); add rcx, rcx (x2); then [table+rcx*scale+base].
+		// The chunk entry address computation.
 		const auto lea = m->begin<const uint8_t>(6);
 		const auto add = m->begin<const uint8_t>(8);
 		const auto sib = m->Get<uint8_t>(9);
@@ -1942,7 +2290,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 		ctx.Require(prologue.has_value(), ResolveError::Mismatch, "command list gather of blocks {} does not start as expected", Signatures::Describe(blocks));
 		const auto copy = ctx.First(CommandListBlockCopy, After(blocksFn, *prologue), "block copy");
 		const auto entryCount = ctx.First(CommandListEntryCount, After(blocksFn, copy), "entry count");
-		// The list index plus one is scaled to a list in two steps, the same for the list address and the block count read: the lists start one list in.
+		// The lists start one list in.
 		const auto tripling = prologue->Get<uint8_t>(1);
 		const auto listSib = prologue->Get<uint8_t>(3);
 		ctx.Require((tripling & 0x3F) == 0 && (listSib & 0x38) == 0 && listSib == prologue->Get<uint8_t>(4), ResolveError::Mismatch,

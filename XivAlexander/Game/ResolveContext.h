@@ -82,11 +82,6 @@ namespace XivAlexander::Game::Signatures {
 			Fail(ResolveError::Dependency, std::get<ResolveStatus>(result).Detail);
 		}
 
-		template<typename T>
-		const T* TryGet(const ComplexSignature<T>& dependency) const {
-			return std::get_if<T>(&dependency.Cached(m_module));
-		}
-
 		template<typename TPredicate>
 		auto UniqueSlot(std::span<const void* const> slots, std::string_view what, TPredicate&& predicate) const {
 			using TValue = std::invoke_result_t<TPredicate&, size_t, std::span<const uint8_t>>::value_type;
