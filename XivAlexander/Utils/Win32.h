@@ -29,7 +29,6 @@ namespace Utils::Win32 {
 
 	std::filesystem::path TranslatePath(const std::filesystem::path& path, const std::filesystem::path& relativeTo);
 	std::filesystem::path EnsureDirectory(const std::filesystem::path& path);
-	std::filesystem::path ResolvePathFromFileName(const std::filesystem::path& path, const std::filesystem::path& ext = {});
 
 	template <typename ... Args>
 	int MessageBoxF(HWND hWnd, UINT uType, const wchar_t* lpCaption, const wchar_t* format, Args&& ... args) {
@@ -43,6 +42,8 @@ namespace Utils::Win32 {
 
 	void SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText = {});
 
+	[[nodiscard]] std::wstring GetWindowString(HWND hWnd);
+
 	std::string FormatWindowsErrorMessage(unsigned int errorCode, int languageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT));
 
 	std::pair<std::string, std::string> FormatModuleVersionString(const void* pBlock);
@@ -53,15 +54,6 @@ namespace Utils::Win32 {
 	void AddDebugPrivilege();
 	bool IsUserAnAdmin();
 
-	inline uint32_t GetCoreCount() noexcept {
-		SYSTEM_INFO si;
-		GetSystemInfo(&si);
-		return std::max<uint32_t>(1, si.dwNumberOfProcessors);
-	}
-
-	std::filesystem::path GetMappedImageNativePath(HANDLE hProcess, void* lpMem);
-	std::filesystem::path ToNativePath(const std::filesystem::path& path);
-	std::filesystem::path GetSystem32Path();
 	std::filesystem::path EnsureKnownFolderPath(_In_ REFKNOWNFOLDERID rfid);
 
 	struct RunProgramParams {

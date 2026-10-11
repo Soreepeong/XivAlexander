@@ -18,7 +18,6 @@ namespace XivAlexander {
 		IpcTypeFinder,
 		GameResourceOverrider,
 		VirtualSqPacks,
-		MusicImporter,
 		PatchCode,
 		OpcodeGuesser,
 		AltCodecMusic,
@@ -65,7 +64,6 @@ namespace XivAlexander::Misc {
 		virtual ~Logger();
 
 		void Log(LogCategory category, const char* s, LogLevel level = LogLevel::Info);
-		void Log(LogCategory category, const char8_t* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const wchar_t* s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const std::string& s, LogLevel level = LogLevel::Info);
 		void Log(LogCategory category, const std::wstring& s, LogLevel level = LogLevel::Info);

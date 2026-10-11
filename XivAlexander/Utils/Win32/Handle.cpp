@@ -66,13 +66,6 @@ Utils::Win32::Handle Utils::Win32::Handle::FromCreateFile(
 	return { hFile, true };
 }
 
-std::pair<Utils::Win32::Handle, Utils::Win32::Handle> Utils::Win32::Handle::FromCreatePipe(LPSECURITY_ATTRIBUTES lpPipeAttributes, DWORD nSize) {
-	HANDLE hReadPipe, hWritePipe;
-	if (!CreatePipe(&hReadPipe, &hWritePipe, lpPipeAttributes, nSize))
-		throw Error("CreatePipe");
-	return {{hReadPipe, true}, {hWritePipe, true}};
-}
-
 size_t Utils::Win32::Handle::Read(uint64_t offset, void* buf, size_t len, PartialIoMode readMode) const {
 	const uint64_t ChunkSize = 0x10000000UL;
 	if (len > ChunkSize) {
@@ -168,25 +161,6 @@ uint64_t Utils::Win32::Handle::GetFileSize() const {
 	if (!GetFileSizeEx(m_object, &fs))
 		throw Error("GetFileSizeEx");
 	return fs.QuadPart;
-}
-
-std::filesystem::path Utils::Win32::Handle::GetPathName(bool bOpenedPath, bool bNtPath) const {
-	std::wstring result;
-	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetFinalPathNameByHandleW(m_object, result.data(), static_cast<DWORD>(result.size()), 
-		(bNtPath ? VOLUME_NAME_NT : VOLUME_NAME_DOS) |
-		(bOpenedPath ? FILE_NAME_OPENED : FILE_NAME_NORMALIZED)
-	));
-	if (result.empty())
-		throw Error("GetFinalPathNameByHandleW");
-
-	if (bNtPath) {
-		if (!result.starts_with(LR"(\Device\)"))
-			throw std::runtime_error(std::format("Path unprocessable: {}", result));
-		return LR"(\\?\)" + result.substr(8);
-	}
-
-	return { std::move(result) };
 }
 
 Utils::Win32::ActivationContext::ActivationContext(const ACTCTXW & actctx)

@@ -18,7 +18,6 @@ namespace XivAlexander::Game::Oodle {
 		bool(*TcpDecode)(void* state, void* shared, const void* compressed, size_t compressedSize, void* raw, size_t rawSize) {};
 		size_t(*TcpEncode)(void* state, const void* shared, const void* raw, size_t rawSize, void* compressed) {};
 		size_t(*TcpStateSize)() {};
-		void(*SetMallocFree)(void*(*pfnMalloc)(size_t size, size_t align), void(*pfnFree)(void* p)) {};
 		int HtBits{};
 		int WindowSize{};
 	};

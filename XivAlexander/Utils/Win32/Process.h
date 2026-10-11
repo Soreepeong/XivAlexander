@@ -41,11 +41,13 @@ namespace Utils::Win32 {
 			FileNameWithoutExtension = 2,
 		};
 
+		/// For a 32-bit process seen from a 64-bit one, lists its 32-bit modules, not the WOW64 ones.
 		[[nodiscard]] std::vector<HMODULE> EnumModules() const;
 		[[nodiscard]] HMODULE AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode = ModuleNameCompareMode::FullPath, bool require = true) const;
 		[[nodiscard]] std::filesystem::path PathOf(HMODULE hModule = nullptr) const;
 		[[nodiscard]] bool IsCurrentProcessPseudoHandle() const;
 		[[nodiscard]] bool IsProcess64Bits() const;
+		[[nodiscard]] bool IsSameBitnessAsCurrent() const;
 		DWORD GetId() const;
 
 		void Terminate(DWORD dwExitCode, bool errorIfAlreadyTerminated = false) const;
@@ -55,11 +57,12 @@ namespace Utils::Win32 {
 
 		[[nodiscard]] std::pair<void*, void*> FindImportedFunction(HMODULE hModule, const std::filesystem::path& dllName, const char* pszFunctionName, uint32_t hintOrOrdinal = 0) const;
 		[[nodiscard]] void* FindExportedFunction(HMODULE hModule, const char* pszFunctionName, USHORT ordinal = 0, bool require = true) const;
+
+		/// Address of a kernel32 export in this process's address space, for either bitness; works on a suspended new
+		/// 32-bit process too, whose kernel32 is not mapped yet.
+		[[nodiscard]] void* FindKernel32Function(const char* pszFunctionName) const;
 		HMODULE LoadModule(const std::filesystem::path& path) const;
 		int UnloadModule(HMODULE hModule) const;
-
-		std::vector<MEMORY_BASIC_INFORMATION> GetCommittedImageAllocation(const std::filesystem::path& path) const;
-		std::vector<MEMORY_BASIC_INFORMATION> GetCommittedImageAllocation() const;
 
 		ModuleMemoryBlocks& GetModuleMemoryBlockManager(HMODULE hModule) const;
 
@@ -128,35 +131,20 @@ namespace Utils::Win32 {
 
 	class ProcessBuilder {
 		bool m_bPrependPathToArgument = true;
-		bool m_bUseShowWindow = false;
-		bool m_bUseSize = false;
-		bool m_bUsePosition = false;
-		WORD m_wShowWindow = 0;
-		DWORD m_dwWidth = 0;
-		DWORD m_dwHeight = 0;
-		DWORD m_dwX = 0;
-		DWORD m_dwY = 0;
 
 		std::filesystem::path m_path;
 		std::filesystem::path m_dir;
 		std::wstring m_args;
 		std::vector<Handle> m_inheritedHandles;
 		Process m_parentProcess;
-		bool m_bNoWindow = false;
 
 		bool m_environInitialized = false;
 		std::map<std::wstring, std::wstring> m_environ;
 
-		Handle m_hStdin;
-		Handle m_hStdout;
-		Handle m_hStderr;
-
 	public:
 		ProcessBuilder();
 		ProcessBuilder(ProcessBuilder&&) noexcept;
-		ProcessBuilder(const ProcessBuilder&);
 		ProcessBuilder& operator=(ProcessBuilder&&) noexcept;
-		ProcessBuilder& operator=(const ProcessBuilder&);
 		~ProcessBuilder();
 
 		std::pair<Process, Thread> Run();
@@ -182,21 +170,8 @@ namespace Utils::Win32 {
 			return WithAppendArgument(std::vformat(format, std::make_wformat_args(std::forward<Args&>(args)...)));
 		}
 
-		ProcessBuilder& WithSize(DWORD width, DWORD height, bool use = true);
-		ProcessBuilder& WithUnspecifiedSize();
-		ProcessBuilder& WithPosition(DWORD x, DWORD y, bool use = true);
-		ProcessBuilder& WithUnspecifiedPosition();
-		ProcessBuilder& WithShow(WORD show, bool use = true);
-		ProcessBuilder& WithUnspecifiedShow();
 		ProcessBuilder& WithEnviron(std::wstring_view key, std::wstring value);
 		ProcessBuilder& WithoutEnviron(const std::wstring& key);
-		ProcessBuilder& WithStdin(Handle);
-		ProcessBuilder& WithStdin(HANDLE = nullptr);
-		ProcessBuilder& WithStdout(Handle);
-		ProcessBuilder& WithStdout(HANDLE = nullptr);
-		ProcessBuilder& WithStderr(Handle);
-		ProcessBuilder& WithStderr(HANDLE = nullptr);
-		ProcessBuilder& WithNoWindow(bool noWindow = true);
 
 		Handle Inherit(HANDLE hSource);
 

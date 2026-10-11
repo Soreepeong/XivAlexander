@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 #include <xivres/util.unicode.h>
 
@@ -14,6 +16,36 @@ namespace Utils {
 	std::string ToString(const struct sockaddr_in6& sa);
 	std::string ToString(const struct sockaddr& sa);
 	std::string ToString(const struct sockaddr_storage& sa);
+
+	[[nodiscard]] inline std::string ToUtf8(const std::filesystem::path& path) {
+		return xivres::util::unicode::convert<std::string>(path.wstring());
+	}
+
+	// Narrow strings fold ASCII letters only; wide strings compare as the file system does.
+	[[nodiscard]] inline bool EqualsI(std::string_view a, std::string_view b) {
+		const auto lower = [](char c) { return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c; };
+		return std::ranges::equal(a, b, [&lower](char x, char y) { return lower(x) == lower(y); });
+	}
+
+	[[nodiscard]] inline bool EqualsI(std::wstring_view a, std::wstring_view b) {
+		return CompareStringOrdinal(a.data(), static_cast<int>(a.size()), b.data(), static_cast<int>(b.size()), TRUE) == CSTR_EQUAL;
+	}
+
+	[[nodiscard]] inline bool StartsWithI(std::string_view s, std::string_view prefix) {
+		return s.size() >= prefix.size() && EqualsI(s.substr(0, prefix.size()), prefix);
+	}
+
+	[[nodiscard]] inline bool StartsWithI(std::wstring_view s, std::wstring_view prefix) {
+		return s.size() >= prefix.size() && EqualsI(s.substr(0, prefix.size()), prefix);
+	}
+
+	[[nodiscard]] inline bool EndsWithI(std::string_view s, std::string_view suffix) {
+		return s.size() >= suffix.size() && EqualsI(s.substr(s.size() - suffix.size()), suffix);
+	}
+
+	[[nodiscard]] inline bool EndsWithI(std::wstring_view s, std::wstring_view suffix) {
+		return s.size() >= suffix.size() && EqualsI(s.substr(s.size() - suffix.size()), suffix);
+	}
 }
 
 template<>

@@ -52,8 +52,6 @@ namespace Utils::Win32 {
 			_In_opt_ HANDLE hTemplateFile = nullptr
 		);
 
-		static std::pair<Handle, Handle> FromCreatePipe(LPSECURITY_ATTRIBUTES lpPipeAttributes = nullptr, DWORD nSize = 0);
-
 		enum class PartialIoMode {
 			AlwaysFull,
 			AllowPartial,
@@ -90,7 +88,6 @@ namespace Utils::Win32 {
 		}
 
 		[[nodiscard]] uint64_t GetFileSize() const;
-		[[nodiscard]] std::filesystem::path GetPathName(bool bOpenedPath = false, bool bNtPath = false) const;
 	};
 
 	class ActivationContext : public Closeable<HANDLE, ReleaseActCtx> {
@@ -171,26 +168,6 @@ namespace Utils::Win32 {
 
 			static View Create(const FileMapping& mapping, DWORD dwDesiredAccess = FILE_MAP_READ, uint64_t fileOffset = 0, SIZE_T dwNumberOfBytesToMap = 0) {	
 				return View(MapViewOfFile(mapping, dwDesiredAccess, static_cast<DWORD>(fileOffset >> 32), static_cast<DWORD>(fileOffset), dwNumberOfBytesToMap), nullptr, "MapViewOfFile");
-			}
-
-			[[nodiscard]] size_t Size() const {
-				MEMORY_BASIC_INFORMATION mbi{};
-				if (const auto res = VirtualQuery(m_object, &mbi, sizeof mbi);
-					!res)
-					throw Error("VirtualQuery");
-				else if (res != sizeof mbi)
-					throw std::runtime_error("VirtualQuery returned not enough bytes");
-				return mbi.RegionSize;
-			}
-			
-			template<typename T>
-			[[nodiscard]] std::span<T> AsSpan(size_t truncateAt = SIZE_MAX) {
-				return {static_cast<T*>(m_object), std::min(truncateAt, Size() / sizeof(T))};
-			}
-
-			template<typename T>
-			[[nodiscard]] std::span<const T> AsSpan(size_t truncateAt = SIZE_MAX) const {
-				return {static_cast<const T*>(m_object), std::min(truncateAt, Size() / sizeof(T))};
 			}
 		};
 	};

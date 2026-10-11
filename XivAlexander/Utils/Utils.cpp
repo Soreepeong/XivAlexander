@@ -78,28 +78,30 @@ int Utils::CompareSockaddr(const void* x, const void* y) {
 	return 0;
 }
 
-in_addr Utils::ParseIp(const std::string& s) {
-	in_addr addr{};
-	switch (const auto res = inet_pton(AF_INET, s.data(), &addr); res) {
-		case 1:
-			return addr;
-		case 0:
-			throw std::runtime_error(std::format("\"{}\" is an invalid IP address.", s));
-		case -1:
-			throw Win32::Error(WSAGetLastError(), "Failed to parse IP address \"{}\".", s);
-		default:
-			throw std::runtime_error(std::format("Invalid result from inet_pton: {}", res));
+namespace {
+	in_addr ParseIp(const std::string& s) {
+		in_addr addr{};
+		switch (const auto res = inet_pton(AF_INET, s.data(), &addr); res) {
+			case 1:
+				return addr;
+			case 0:
+				throw std::runtime_error(std::format("\"{}\" is an invalid IP address.", s));
+			case -1:
+				throw Utils::Win32::Error(WSAGetLastError(), "Failed to parse IP address \"{}\".", s);
+			default:
+				throw std::runtime_error(std::format("Invalid result from inet_pton: {}", res));
+		}
 	}
-}
 
-uint16_t Utils::ParsePort(const std::string& s) {
-	size_t i = 0;
-	const auto parsed = std::stoul(s, &i);
-	if (parsed > UINT16_MAX)
-		throw std::out_of_range("Not in uint16 range");
-	if (i != s.length())
-		throw std::out_of_range("Incomplete conversion");
-	return static_cast<uint16_t>(parsed);
+	uint16_t ParsePort(const std::string& s) {
+		size_t i = 0;
+		const auto parsed = std::stoul(s, &i);
+		if (parsed > UINT16_MAX)
+			throw std::out_of_range("Not in uint16 range");
+		if (i != s.length())
+			throw std::out_of_range("Incomplete conversion");
+		return static_cast<uint16_t>(parsed);
+	}
 }
 
 std::vector<std::pair<uint32_t, uint32_t>> Utils::ParseIpRange(const std::string& s, bool allowAll, bool allowPrivate, bool allowLoopback) {

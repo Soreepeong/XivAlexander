@@ -21,10 +21,6 @@ namespace XivAlexander::Game::Signatures {
 		ScanResult(srell::cmatch match)
 			: m_match(std::move(match)) {}
 
-		bool ready() const {
-			return m_match.ready();
-		}
-
 		[[nodiscard]] const srell::cmatch& Match() const {
 			return m_match;
 		}
@@ -140,13 +136,6 @@ namespace XivAlexander::Game::Signatures {
 		template<typename T>
 		[[nodiscard]] LookupResult Lookup(std::span<T> data, LookupFrom lookupFrom = FromMatchEnd) const {
 			return Lookup(data.data(), data.size_bytes(), lookupFrom);
-		}
-
-		bool Lookup(const void* data, size_t length, ScanResult& result, LookupFrom lookupFrom = FromNextByte) const;
-
-		template<typename T>
-		bool Lookup(std::span<T> data, ScanResult& result, LookupFrom lookupFrom = FromNextByte) const {
-			return Lookup(data.data(), data.size_bytes(), result, lookupFrom);
 		}
 
 		bool MatchAt(const void* data, size_t length, ScanResult& result) const;

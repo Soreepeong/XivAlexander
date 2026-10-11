@@ -6,8 +6,6 @@
 #include <cstring>
 #include <limits>
 #include <span>
-#include <string_view>
-#include <type_traits>
 
 namespace Utils {
 	template<typename T, size_t Capacity_>
@@ -73,20 +71,6 @@ namespace Utils {
 			return m_storage[(m_head + index) % Capacity()];
 		}
 
-		template<typename TValue>
-			requires ((sizeof(TValue) % sizeof(T) == 0) && std::is_trivially_copyable_v<TValue>)
-		[[nodiscard]] TValue ReadAs(size_t index) const {
-			constexpr auto count = sizeof(TValue) / sizeof(T);
-			TValue value;
-			auto* out = reinterpret_cast<uint8_t*>(&value);
-			const auto start = (m_head + index) % Capacity();
-			const auto first = std::min(count, Capacity() - start);
-			std::memcpy(out, m_storage.data() + start, first * sizeof(T));
-			if (first < count)
-				std::memcpy(out + first * sizeof(T), m_storage.data(), (count - first) * sizeof(T));
-			return value;
-		}
-
 		bool ReadExactlyAt(size_t index, std::span<T> dst) const {
 			if (index >= Readable() || dst.size() > Readable() - index)
 				return false;
@@ -96,36 +80,6 @@ namespace Utils {
 			if (first < dst.size())
 				std::memcpy(dst.data() + first, m_storage.data(), (dst.size() - first) * sizeof(T));
 			return true;
-		}
-
-		size_t ReadAt(size_t index, std::span<T> dst) const {
-			if (index >= Readable())
-				return 0;
-			if (dst.size() > Readable() - index)
-				dst = dst.subspan(0, Readable() - index);
-			if (dst.empty())
-				return 0;
-			const auto start = (m_head + index) % Capacity();
-			const auto first = std::min(dst.size(), static_cast<size_t>(Capacity() - start));
-			std::memcpy(dst.data(), m_storage.data() + start, first * sizeof(T));
-			if (first < dst.size())
-				std::memcpy(dst.data() + first, m_storage.data(), (dst.size() - first) * sizeof(T));
-			return static_cast<size_t>(dst.size());
-		}
-
-		[[nodiscard]] bool StartsWith(size_t index, std::span<const T> text) const {
-			if (text.empty())
-				return true;
-			const auto start = (m_head + index) % Capacity();
-			const auto first = std::min(text.size(), static_cast<size_t>(Capacity() - start));
-			if (std::memcmp(m_storage.data() + start, text.data(), first * sizeof(T)) != 0)
-				return false;
-			return first == text.size()
-				|| std::memcmp(m_storage.data(), text.data() + first, (text.size() - first) * sizeof(T)) == 0;
-		}
-
-		[[nodiscard]] bool StartsWith(size_t index, std::string_view text) const requires (sizeof(T) == 1) {
-			return StartsWith(index, std::span(reinterpret_cast<const T*>(text.data()), text.size()));
 		}
 
 	private:

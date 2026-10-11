@@ -54,35 +54,10 @@ namespace Utils::Win32 {
 
 		[[nodiscard]] const IMAGE_DOS_HEADER& DosHeader() const;
 		[[nodiscard]] const IMAGE_NT_HEADERS& NtHeaders() const;
-		[[nodiscard]] std::span<const IMAGE_SECTION_HEADER> SectionHeaders() const;
 
-		[[nodiscard]] std::span<const uint8_t> DataDirectoryAt(size_t index) const;
-		
 		[[nodiscard]] std::span<const uint8_t> FunctionAt(const void* ptr) const;
 
-		[[nodiscard]] std::span<const uint8_t> SectionFrom(const IMAGE_SECTION_HEADER& section) const;
-
 		[[nodiscard]] std::span<const uint8_t> SectionFrom(std::string_view name) const;
-
-		[[nodiscard]] std::span<const uint8_t> SectionAt(size_t index) const;
-
-		template<typename T>
-		[[nodiscard]] std::span<const T> SectionFrom(const IMAGE_SECTION_HEADER& section) const {
-			const auto body = SectionFrom(section);
-			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
-		}
-		
-		template<typename T>
-		[[nodiscard]] std::span<const uint8_t> SectionFrom(std::string_view name) const {
-			const auto body = SectionFrom(name);
-			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
-		}
-
-		template<typename T>
-		[[nodiscard]] std::span<const T> SectionAt(size_t index) const {
-			const auto body = SectionAt(index);
-			return std::span(reinterpret_cast<const T*>(body.data()), body.size() / sizeof(T));
-		}
 
 		void SetPinned() const;
 

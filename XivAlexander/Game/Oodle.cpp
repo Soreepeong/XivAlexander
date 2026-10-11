@@ -6,24 +6,14 @@
 
 #include "XivAlexander.h"
 
-namespace {
-	void* OodleAlignedAlloc(size_t size, size_t align) {
-		return _aligned_malloc(size, align);
-	}
-
-	void OodleAlignedFree(void* ptr){
-		return _aligned_free(ptr);
-	}
-}
-
 std::string XivAlexander::Game::Oodle::to_string(const OodleNetworkFunctions& value) {
 	using xivres::util::module_relative;
 	return std::format(
-		"htbits {}, window 0x{:X}, set malloc/free {}, shared size {}, shared set window {}, "
+		"htbits {}, window 0x{:X}, shared size {}, shared set window {}, "
 		"udp state size {}, udp train {}, udp decode {}, udp encode {}, "
 		"tcp state size {}, tcp train {}, tcp decode {}, tcp encode {}",
 		value.HtBits, value.WindowSize,
-		module_relative(value.SetMallocFree), module_relative(value.SharedSize), module_relative(value.SharedSetWindow),
+		module_relative(value.SharedSize), module_relative(value.SharedSetWindow),
 		module_relative(value.UdpStateSize), module_relative(value.UdpTrain), module_relative(value.UdpDecode), module_relative(value.UdpEncode),
 		module_relative(value.TcpStateSize), module_relative(value.TcpTrain), module_relative(value.TcpDecode), module_relative(value.TcpEncode));
 }

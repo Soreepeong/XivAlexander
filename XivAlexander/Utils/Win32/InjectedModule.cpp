@@ -58,11 +58,12 @@ int Utils::Win32::InjectedModule::Call(void* rpfn, void* rpParam, const char* pc
 }
 
 int Utils::Win32::InjectedModule::Call(const char* name, void* rpParam, const char* pcszDescription) const {
+	const auto pointerSize = m_hProcess.IsProcess64Bits() ? 8 : 4;
 	auto addr = m_hProcess.FindExportedFunction(m_rpModule, name, 0, false);
 	if (!addr)
-		addr = m_hProcess.FindExportedFunction(m_rpModule, std::format("{}@{}", name, sizeof size_t).c_str(), 0, false);
+		addr = m_hProcess.FindExportedFunction(m_rpModule, std::format("{}@{}", name, pointerSize).c_str(), 0, false);
 	if (!addr)
-		addr = m_hProcess.FindExportedFunction(m_rpModule, std::format("_{}@{}", name, sizeof size_t).c_str(), 0, false);
+		addr = m_hProcess.FindExportedFunction(m_rpModule, std::format("_{}@{}", name, pointerSize).c_str(), 0, false);
 	if (!addr)
 		throw std::out_of_range("function not found");
 	return Call(addr, rpParam, pcszDescription);

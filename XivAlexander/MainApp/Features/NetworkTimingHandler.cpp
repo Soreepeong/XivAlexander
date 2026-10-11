@@ -14,7 +14,6 @@ using namespace xivres::network;
 struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementation {
 	static constexpr int64_t AutoAttackDelayUs = 100000;
 
-	static constexpr auto SecondToMicrosecondMultiplier = 1000000;
 
 	std::map<uint32_t, CooldownGroup> LastCooldownGroup;
 
@@ -76,8 +75,8 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 								pMessage->Data.Ipc.SubType,
 								actionRequest.ActionId,
 								actionRequest.Sequence,
-								delayUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" delay={}s", static_cast<double>(delayUs) / SecondToMicrosecondMultiplier),
-								prevRelativeUs > 10 * SecondToMicrosecondMultiplier ? "" : std::format(" prevRelative={}s", static_cast<double>(prevRelativeUs) / SecondToMicrosecondMultiplier));
+								delayUs > 10 * Utils::SecondToMicrosecondMultiplier ? "" : std::format(" delay={}s", static_cast<double>(delayUs) / Utils::SecondToMicrosecondMultiplier),
+								prevRelativeUs > 10 * Utils::SecondToMicrosecondMultiplier ? "" : std::format(" prevRelative={}s", static_cast<double>(prevRelativeUs) / Utils::SecondToMicrosecondMultiplier));
 						}
 
 						// If there was no action queued to begin with before the current one, update the base lock time to now.
@@ -93,7 +92,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 				if (pMessage->Type == message_type::Ipc && pMessage->Data.Ipc.Type == ipc_type::CustomType) {
 					if (pMessage->Data.Ipc.SubType == static_cast<uint16_t>(ipc_custom_subtype::OriginalWaitTime)) {
 						const auto& data = pMessage->Data.Ipc.Data.S2C_Custom_OriginalWaitTime;
-						OriginalWaitUsMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * SecondToMicrosecondMultiplier);
+						OriginalWaitUsMap[data.SourceSequence] = static_cast<uint64_t>(static_cast<double>(data.OriginalWaitTime) * Utils::SecondToMicrosecondMultiplier);
 					}
 
 					// Don't relay custom Ipc data to game.
@@ -200,7 +199,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 							description << std::format(" next={:%H:%M:%S}", std::chrono::system_clock::now() + std::chrono::microseconds(waitUs));
 
 							if (Config->Runtime.FramerateControl.SynchronizeProcessing) {
-								if (auto& handler = Impl.App.GetMainThreadTimingHelper()) {
+								if (const auto handler = Impl.App.GetMainThreadTimingHelper()) {
 									handler->GuaranteePumpBeginCounterAt(*LastAnimationLockEndsAtUs + (LatestSuccessfulRequest ? LatestSuccessfulRequest->CastTimeUs : 0));
 								}
 							}
@@ -227,7 +226,7 @@ struct XivAlexander::Apps::MainApp::Features::NetworkTimingHandler::Implementati
 
 									if (Config->Runtime.FramerateControl.SynchronizeProcessing) {
 										if (group.Id != CooldownGroup::Id_Gcd || !(Config->Runtime.FramerateControl.Lock.Automatic || Config->Runtime.FramerateControl.Lock.Interval)) {
-											if (auto& handler = Impl.App.GetMainThreadTimingHelper())
+											if (const auto handler = Impl.App.GetMainThreadTimingHelper())
 												handler->GuaranteePumpBeginCounterAt(PendingActions.front().RequestUs + cooldown.DurationUs());
 										}
 									}

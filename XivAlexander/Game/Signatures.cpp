@@ -68,28 +68,6 @@ RegexSignature::LookupResult RegexSignature::Lookup(const void* data, size_t len
 	return LookupResult(LookupResult::Iterator(m_pattern, begin, begin + length, begin, lookupFrom));
 }
 
-bool RegexSignature::Lookup(const void* data, size_t length, ScanResult& result, LookupFrom lookupFrom) const {
-	const auto begin = static_cast<const char*>(data);
-	const auto end = begin + length;
-	auto from = begin;
-	if (result.ready()) {
-		const auto prevBegin = static_cast<const char*>(result.begin(0));
-		const auto prevEnd = static_cast<const char*>(result.end(0));
-
-		if (prevBegin < begin || prevBegin >= end || prevEnd < prevBegin || prevEnd > end)
-			return false;
-
-		from = begin + byte_regex::resume_offset(result.Match(), Bytes(begin, end), ToResume(lookupFrom));
-	}
-
-	const LookupResult::Iterator it(m_pattern, begin, end, from, lookupFrom);
-	if (it == std::default_sentinel)
-		return false;
-
-	result = *it;
-	return true;
-}
-
 bool RegexSignature::MatchAt(const void* data, size_t length, ScanResult& result) const {
 	const auto begin = static_cast<const char*>(data);
 	srell::cmatch match;

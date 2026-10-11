@@ -92,19 +92,8 @@ HRESULT Utils::Win32::TaskDialog::TaskDialogProc(HWND hwnd, UINT msg, WPARAM wPa
 					.lpFile = link.c_str(),
 					.nShow = SW_SHOW,
 				};
-				if (!ShellExecuteExW(&shex)) {
-					std::wstring title(64, L'\0');
-					while (true) {
-						const size_t copied = GetWindowTextW(hwnd, title.data(), static_cast<int>(title.size()));
-						if (copied + 1 == title.size())
-							title.resize(title.size() * 2);
-						else {
-							title.resize(copied);
-							break;
-						}
-					}
-					MessageBoxF(hwnd, MB_ICONERROR | MB_OK, title.c_str(), std::format(L"Error: {}", Error("ShellExecuteW").what()));
-				}
+				if (!ShellExecuteExW(&shex))
+					MessageBoxF(hwnd, MB_ICONERROR | MB_OK, GetWindowString(hwnd).c_str(), std::format(L"Error: {}", Error("ShellExecuteW").what()));
 			}
 			break;
 		}

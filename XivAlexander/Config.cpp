@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Config.h"
 
+#include "Utils/StringUtils.h"
 #include "Utils/Win32/Process.h"
 #include "XivAlexander.h"
 
@@ -35,15 +36,12 @@ std::filesystem::path XivAlexander::Config::TranslatePath(const std::filesystem:
 
 std::filesystem::path XivAlexander::Config::TranslateDirectoryPath(const std::filesystem::path& path, const std::filesystem::path& sqpackPath) {
 	const auto str = path.wstring();
-	const auto startsWith = [&str](std::wstring_view token) {
-		return str.size() >= token.size() && _wcsnicmp(str.c_str(), token.data(), token.size()) == 0;
-	};
 	const auto rest = [&str](std::wstring_view token) {
 		return std::filesystem::path(std::wstring_view(str).substr(token.size())).relative_path();
 	};
-	if (startsWith(ConfigDirectoryToken))
+	if (Utils::StartsWithI(str, ConfigDirectoryToken))
 		return (Init.ResolveConfigStorageDirectoryPath() / rest(ConfigDirectoryToken)).lexically_normal();
-	if (startsWith(SqpackDirectoryToken)) {
+	if (Utils::StartsWithI(str, SqpackDirectoryToken)) {
 		const auto base = sqpackPath.empty() ? Utils::Win32::Process::Current().PathOf().parent_path() / L"sqpack" : sqpackPath;
 		return (base / rest(SqpackDirectoryToken)).lexically_normal();
 	}
@@ -51,9 +49,9 @@ std::filesystem::path XivAlexander::Config::TranslateDirectoryPath(const std::fi
 }
 
 XivAlexander::Config::Config(std::filesystem::path initializationConfigPath)
-	: Init(this, std::move(initializationConfigPath), "")
-	, Runtime(this, Init.ResolveRuntimeConfigPath(), xivres::util::unicode::convert<std::string>(Utils::Win32::Process::Current().PathOf().wstring()))
-	, Game(this, Init.ResolveGameOpcodeConfigPath(), "")
+	: Init(std::move(initializationConfigPath), "")
+	, Runtime(Init.ResolveRuntimeConfigPath(), xivres::util::unicode::convert<std::string>(Utils::Win32::Process::Current().PathOf().wstring()))
+	, Game(Init.ResolveGameOpcodeConfigPath(), "")
 	, PatchCode(Init.ResolvePatchCodeDirectoryPath()) {
 	Runtime.Reload();
 	Game.Reload();

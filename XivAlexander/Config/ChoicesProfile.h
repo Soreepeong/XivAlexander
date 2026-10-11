@@ -6,12 +6,13 @@
 
 namespace XivAlexander {
 	struct ChoicesProfile {
+		static constexpr auto DefaultName = "Default";
+
 		std::string Name;
 		std::string FileName;
 		bool Active = true;
 
 		bool operator==(const ChoicesProfile& r) const;
-		bool operator!=(const ChoicesProfile& r) const { return !operator==(r); }
 	};
 
 	void to_json(nlohmann::json&, const ChoicesProfile&);

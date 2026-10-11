@@ -19,7 +19,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		[[nodiscard]] const Utils::NumericStatisticsTracker& GetMessagePumpIntervalTrackerUs() const;
 
-		void GuaranteePumpBeginCounterIn(int64_t nextInUs);
 		void GuaranteePumpBeginCounterAt(int64_t counterUs);
 	};
 }

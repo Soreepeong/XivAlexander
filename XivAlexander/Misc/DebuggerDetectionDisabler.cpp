@@ -8,7 +8,9 @@ struct XivAlexander::Misc::DebuggerDetectionDisabler::Implementation {
 
 	Implementation() {
 		Utils::Win32::DebugPrint(L"DebuggerDetectionDisabler: New");
-		m_cleanup += IsDebuggerPresent.SetHook([] { return FALSE; });
+		// Not every process imports it from kernel32 (e.g. Windows tools use API sets); there is no slot to hook then.
+		if (IsDebuggerPresent)
+			m_cleanup += IsDebuggerPresent.SetHook([] { return FALSE; });
 	}
 
 	~Implementation() {
@@ -33,10 +35,6 @@ std::shared_ptr<XivAlexander::Misc::DebuggerDetectionDisabler> XivAlexander::Mis
 			s_instance = r = std::make_shared<DebuggerDetectionDisablerCreator>();
 	}
 	return r;
-}
-
-bool XivAlexander::Misc::DebuggerDetectionDisabler::IsDebuggerActuallyPresent() const {
-	return m_pImpl->IsDebuggerPresent.bridge();
 }
 
 std::weak_ptr<XivAlexander::Misc::DebuggerDetectionDisabler> XivAlexander::Misc::DebuggerDetectionDisabler::s_instance;

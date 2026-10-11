@@ -57,7 +57,6 @@ struct XivAlexander::Misc::IcmpPingTracker::Implementation {
 
 	private:
 		void Run() {
-			static constexpr auto SecondToMicrosecondMultiplier = 1000000;
 
 			const auto& logger = IcmpPingTracker.m_pImpl->Logger;
 			const auto& config = IcmpPingTracker.m_pImpl->Config;
@@ -74,7 +73,7 @@ struct XivAlexander::Misc::IcmpPingTracker::Implementation {
 					Utils::ToString(Pair.Destination));
 				size_t consecutiveFailureCount = 0;
 				do {
-					const auto intervalUs = std::max<DWORD>(SecondToMicrosecondMultiplier, static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankInUs())));
+					const auto intervalUs = std::max<DWORD>(static_cast<DWORD>(Utils::SecondToMicrosecondMultiplier), static_cast<DWORD>(std::min<uint64_t>(INT32_MAX, Tracker->NextBlankInUs())));
 					const auto startUs = Utils::QpcUs();
 					const auto ok = IcmpSendEcho2Ex(hIcmp, nullptr, nullptr, nullptr, Pair.Source.s_addr, Pair.Destination.s_addr, sendBuf, sizeof sendBuf, nullptr, replyBuf, sizeof replyBuf, 5000);  // wait up to 5s
 					const auto endUs = Utils::QpcUs();

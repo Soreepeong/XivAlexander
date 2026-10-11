@@ -63,23 +63,7 @@ Utils::Win32::ProcessBuilder::ProcessBuilder() = default;
 
 Utils::Win32::ProcessBuilder::ProcessBuilder(ProcessBuilder&&) noexcept = default;
 
-Utils::Win32::ProcessBuilder::ProcessBuilder(const ProcessBuilder& r) {
-	*this = r;
-}
-
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(ProcessBuilder&&) noexcept = default;
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::operator=(const ProcessBuilder& r) {
-	m_path = r.m_path;
-	m_dir = r.m_dir;
-	m_args = r.m_args;
-	m_inheritedHandles.reserve(r.m_inheritedHandles.size());
-	std::ranges::transform(r.m_inheritedHandles,
-		std::back_inserter(m_args), [](const Handle& h) {
-			return Handle::DuplicateFrom<Handle>(h, true);
-		});
-	return *this;
-}
 
 Utils::Win32::ProcessBuilder::~ProcessBuilder() = default;
 
@@ -87,36 +71,10 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	const auto MaxLengthOfProcThreadAttributeList = 2UL;
 	STARTUPINFOEXW siex{};
 	siex.StartupInfo.cb = sizeof siex;
-	if (m_bUseSize) {
-		siex.StartupInfo.dwFlags |= STARTF_USESIZE;
-		siex.StartupInfo.dwXSize = m_dwWidth;
-		siex.StartupInfo.dwYSize = m_dwHeight;
-	}
-	if (m_bUsePosition) {
-		siex.StartupInfo.dwFlags |= STARTF_USEPOSITION;
-		siex.StartupInfo.dwX = m_dwX;
-		siex.StartupInfo.dwY = m_dwY;
-	}
-	if (m_bUseShowWindow) {
-		siex.StartupInfo.dwFlags |= STARTF_USESHOWWINDOW;
-		siex.StartupInfo.wShowWindow = m_wShowWindow;
-	}
-	if (m_hStdin || m_hStdout || m_hStderr) {
-		siex.StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
-		siex.StartupInfo.hStdInput = m_hStdin ? *m_hStdin : GetStdHandle(STD_INPUT_HANDLE);
-		siex.StartupInfo.hStdOutput = m_hStdout ? *m_hStdout : GetStdHandle(STD_OUTPUT_HANDLE);
-		siex.StartupInfo.hStdError = m_hStderr ? *m_hStderr : GetStdHandle(STD_ERROR_HANDLE);
-	}
 
 	std::vector<HANDLE> handles;  // this needs to be here, as ProcThreadAttribute only points here instead of copying the contents
-	handles.reserve(3 + m_inheritedHandles.size());
+	handles.reserve(m_inheritedHandles.size());
 	std::ranges::transform(m_inheritedHandles, std::back_inserter(handles), [](const auto& v) { return static_cast<HANDLE>(v); });
-	if (m_hStdin)
-		handles.push_back(m_hStdin);
-	if (m_hStdout)
-		handles.push_back(m_hStdout);
-	if (m_hStderr)
-		handles.push_back(m_hStderr);
 
 	std::vector<char> attributeListBuf;
 	if (SIZE_T size = 0; !InitializeProcThreadAttributeList(nullptr, MaxLengthOfProcThreadAttributeList, 0, &size)) {
@@ -167,7 +125,7 @@ std::pair<Utils::Win32::Process, Utils::Win32::Thread> Utils::Win32::ProcessBuil
 	if (!CreateProcessW(m_path.c_str(), args.data(),
 		nullptr, nullptr,
 		handles.empty() ? FALSE : TRUE,
-		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT | (m_bNoWindow ? CREATE_NO_WINDOW : 0),
+		CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT,
 		environString.empty() ? nullptr : environString.data(),
 		m_dir.empty() ? nullptr : m_dir.c_str(),
 		&siex.StartupInfo,
@@ -243,38 +201,6 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithAppendArgument(s
 	return *this;
 }
 
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithSize(DWORD width, DWORD height, bool use) {
-	m_dwWidth = use ? width : 0;
-	m_dwHeight = use ? height : 0;
-	m_bUseSize = use;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedSize() {
-	return WithSize(0, 0, false);
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithPosition(DWORD x, DWORD y, bool use) {
-	m_dwX = use ? x : 0;
-	m_dwY = use ? y : 0;
-	m_bUsePosition = use;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedPosition() {
-	return WithPosition(0, 0, false);
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithShow(WORD show, bool use) {
-	m_wShowWindow = use ? show : 0;
-	m_bUseShowWindow = use;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithUnspecifiedShow() {
-	return WithShow(0, false);
-}
-
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithEnviron(std::wstring_view key, std::wstring value) {
 	InitializeEnviron();
 	m_environ.emplace(key, std::move(value));
@@ -284,56 +210,6 @@ Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithEnviron(std::wst
 Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithoutEnviron(const std::wstring& key) {
 	InitializeEnviron();
 	m_environ.erase(key);
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(Handle h) {
-	m_hStdin = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdin(HANDLE h) {
-	if (h == INVALID_HANDLE_VALUE)
-		m_hStdin = nullptr;
-	else if (h == nullptr)
-		m_hStdin = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
-	else
-		m_hStdin = Handle::DuplicateFrom<Handle>(h, true);
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(Handle h) {
-	m_hStdout = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStdout(HANDLE h) {
-	if (h == INVALID_HANDLE_VALUE)
-		m_hStdout = nullptr;
-	else if (h == nullptr)
-		m_hStdout = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
-	else
-		m_hStdout = Handle::DuplicateFrom<Handle>(h, true);
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(Handle h) {
-	m_hStderr = h ? Handle::DuplicateFrom<Handle>(h, true) : nullptr;
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithStderr(HANDLE h) {
-	if (h == INVALID_HANDLE_VALUE)
-		m_hStderr = nullptr;
-	else if (h == nullptr)
-		m_hStderr = Handle::DuplicateFrom<Handle>(Handle::FromCreateFile("nul", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0), true);
-	else
-		m_hStderr = Handle::DuplicateFrom<Handle>(h, true);
-	return *this;
-}
-
-Utils::Win32::ProcessBuilder& Utils::Win32::ProcessBuilder::WithNoWindow(bool noWindow) {
-	m_bNoWindow = noWindow;
 	return *this;
 }
 
@@ -483,48 +359,48 @@ void Utils::Win32::Process::Clear() noexcept {
 }
 
 std::vector<HMODULE> Utils::Win32::Process::EnumModules() const {
-	std::vector<HMODULE> hModules;
-	DWORD cbNeeded;
-	do {
-		hModules.resize(hModules.size() + std::min<size_t>(1024, std::max<size_t>(32768, hModules.size())));
-		cbNeeded = static_cast<DWORD>(hModules.size());
-		if (!EnumProcessModules(m_object, &hModules[0], static_cast<DWORD>(hModules.size() * sizeof(HMODULE)), &cbNeeded))
-			throw Error(std::format("EnumProcessModules(pid={})", GetProcessId(m_object)));
-	} while (cbNeeded == hModules.size() * sizeof(HMODULE));
-	hModules.resize(cbNeeded / sizeof(HMODULE));
+	// Plain EnumProcessModules from x64 lists only the exe, the 64-bit ntdll and the WOW64 DLLs of a 32-bit process.
+	const auto filter = IsSameBitnessAsCurrent() ? LIST_MODULES_DEFAULT : LIST_MODULES_32BIT;
 
-	return hModules;
+	std::vector<HMODULE> hModules(256);
+	while (true) {
+		DWORD cbNeeded = 0;
+		if (!EnumProcessModulesEx(m_object, hModules.data(), static_cast<DWORD>(hModules.size() * sizeof(HMODULE)), &cbNeeded, filter))
+			throw Error(std::format("EnumProcessModulesEx(pid={})", GetProcessId(m_object)));
+		if (cbNeeded <= hModules.size() * sizeof(HMODULE)) {
+			hModules.resize(cbNeeded / sizeof(HMODULE));
+			return hModules;
+		}
+		hModules.resize(cbNeeded / sizeof(HMODULE) + 64);
+	}
 }
 
 HMODULE Utils::Win32::Process::AddressOf(std::filesystem::path path, ModuleNameCompareMode compareMode, bool require) const {
-	switch (compareMode) {
-		case ModuleNameCompareMode::FullPath:
-			path = canonical(path);
-			break;
-		case ModuleNameCompareMode::FileNameWithExtension:
-			path = path.filename();
-			break;
-		case ModuleNameCompareMode::FileNameWithoutExtension:
-			path = path.filename().replace_extension();
-			break;
-	}
-
-	std::wstring sModName;
-	sModName.resize(PATHCCH_MAX_CCH);
-	for (const auto hModule : EnumModules()) {
-		auto remoteModulePath = PathOf(hModule);
+	const auto normalize = [compareMode](std::filesystem::path p) {
 		switch (compareMode) {
-			case ModuleNameCompareMode::FullPath:
-				remoteModulePath = canonical(remoteModulePath);
-				break;
+			case ModuleNameCompareMode::FullPath: {
+				std::error_code ec;
+				if (auto c = canonical(p, ec); !ec)
+					return c;
+				return p;
+			}
 			case ModuleNameCompareMode::FileNameWithExtension:
-				remoteModulePath = remoteModulePath.filename();
-				break;
+				return p.filename();
 			case ModuleNameCompareMode::FileNameWithoutExtension:
-				remoteModulePath = remoteModulePath.filename().replace_extension();
-				break;
+				return p.filename().replace_extension();
 		}
-		if (remoteModulePath == path)
+		return p;
+	};
+	path = normalize(std::move(path));
+
+	for (const auto hModule : EnumModules()) {
+		std::filesystem::path remoteModulePath;
+		try {
+			remoteModulePath = normalize(PathOf(hModule));
+		} catch (const Error&) {
+			continue;  // unloaded meanwhile
+		}
+		if (_wcsicmp(remoteModulePath.c_str(), path.c_str()) == 0)
 			return hModule;
 	}
 	if (require)
@@ -565,6 +441,10 @@ bool Utils::Win32::Process::IsProcess64Bits() const {
 	return si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64;
 }
 
+bool Utils::Win32::Process::IsSameBitnessAsCurrent() const {
+	return IsProcess64Bits() == (INTPTR_MAX == INT64_MAX);
+}
+
 DWORD Utils::Win32::Process::GetId() const {
 	return GetProcessId(m_object);
 }
@@ -588,6 +468,9 @@ DWORD Utils::Win32::Process::WaitAndGetExitCode() const {
 }
 
 int Utils::Win32::Process::CallRemoteFunction(void* rpfn, void* rpParam, const char* pcszDescription) const {
+	if (!IsProcess64Bits() && (reinterpret_cast<uintptr_t>(rpfn) > UINT32_MAX || reinterpret_cast<uintptr_t>(rpParam) > UINT32_MAX))
+		throw std::out_of_range(std::format("{}: address out of range for a 32-bit process", pcszDescription));
+
 	const auto hLoadLibraryThread = Handle(CreateRemoteThread(m_object, nullptr, 0, static_cast<LPTHREAD_START_ROUTINE>(rpfn), rpParam, 0, nullptr),
 		Null,
 		"Failed to call remote function {}@{:p}({:p})", pcszDescription, rpfn, rpParam);
@@ -664,7 +547,6 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 		const auto rvaAddress = pFunctions[pOrdinals[i]];
 
 		if (mem.AddressInDataDirectory(rvaAddress, IMAGE_DIRECTORY_ENTRY_EXPORT)) {
-			// Forwarder RVA
 			const auto forwardedNameRead = mem.ReadAligned<char>(rvaAddress);
 			std::string forwardedName(forwardedNameRead.data(), std::min<size_t>(512, forwardedNameRead.size()));
 			forwardedName.resize(strlen(forwardedName.data()));
@@ -683,7 +565,6 @@ void* Utils::Win32::Process::FindExportedFunction(HMODULE hModule, const char* p
 				break;  // invalid; will result in infinite recursion
 			return FindExportedFunction(hForwardedToModule, functionName, 0, require);
 		} else {
-			// Export RVA
 			return reinterpret_cast<char*>(hModule) + rvaAddress;
 		}
 	}
@@ -697,37 +578,108 @@ HMODULE Utils::Win32::Process::LoadModule(const std::filesystem::path& path) con
 	pathBuf.resize(pathBuf.size() + 1, L'\0');  // ensure null terminated
 
 	const auto rpszDllPath = WithVirtualAlloc(nullptr, MEM_COMMIT | MEM_RESERVE, PAGE_READONLY, std::span(pathBuf));
-	CallRemoteFunction(LoadLibraryW, rpszDllPath, "LoadLibraryW");
-	OutputDebugStringW(L"LoadLibraryW\n");
+	CallRemoteFunction(FindKernel32Function("LoadLibraryW"), rpszDllPath, "LoadLibraryW");
 	return AddressOf(path);
 }
 
 int Utils::Win32::Process::UnloadModule(HMODULE hModule) const {
-	return CallRemoteFunction(FreeLibrary, hModule, "FreeLibrary");
+	return CallRemoteFunction(FindKernel32Function("FreeLibrary"), hModule, "FreeLibrary");
 }
 
-std::vector<MEMORY_BASIC_INFORMATION> Utils::Win32::Process::GetCommittedImageAllocation(const std::filesystem::path& path) const {
-	std::vector<MEMORY_BASIC_INFORMATION> regions;
-	for (MEMORY_BASIC_INFORMATION mbi{};
-		VirtualQueryEx(m_object, mbi.BaseAddress, &mbi, sizeof mbi);
-		mbi.BaseAddress = static_cast<char*>(mbi.BaseAddress) + mbi.RegionSize) {
-		if (!(mbi.State & MEM_COMMIT) || mbi.Type != MEM_IMAGE)
-			continue;
+namespace {
+#if INTPTR_MAX == INT64_MAX
+	// The 32-bit kernel32 has one base per boot; mapping its KnownDlls32 section here reveals it (as STATUS_IMAGE_MACHINE_TYPE_MISMATCH).
+	void* FindKnownDlls32Kernel32Function(const char* pszFunctionName) {
+		using NtOpenSectionFn = NTSTATUS(NTAPI*)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES);
+		using NtMapViewOfSectionFn = NTSTATUS(NTAPI*)(HANDLE, HANDLE, PVOID*, ULONG_PTR, SIZE_T, PLARGE_INTEGER, PSIZE_T, DWORD, ULONG, ULONG);
+		using NtUnmapViewOfSectionFn = NTSTATUS(NTAPI*)(HANDLE, PVOID);
+		constexpr NTSTATUS StatusImageNotAtBase = 0x40000003;
+		constexpr DWORD ViewUnmap = 2;
 
-		std::filesystem::path imagePath;
-		try {
-			imagePath = GetMappedImageNativePath(m_object, mbi.BaseAddress);
-		} catch (const std::filesystem::filesystem_error&) {
-			continue;
+		const auto hNtdll = GetModuleHandleW(L"ntdll.dll");
+		const auto pNtOpenSection = reinterpret_cast<NtOpenSectionFn>(GetProcAddress(hNtdll, "NtOpenSection"));
+		const auto pNtMapViewOfSection = reinterpret_cast<NtMapViewOfSectionFn>(GetProcAddress(hNtdll, "NtMapViewOfSection"));
+		const auto pNtUnmapViewOfSection = reinterpret_cast<NtUnmapViewOfSectionFn>(GetProcAddress(hNtdll, "NtUnmapViewOfSection"));
+		if (!pNtOpenSection || !pNtMapViewOfSection || !pNtUnmapViewOfSection)
+			throw std::runtime_error("ntdll section functions not found");
+
+		std::wstring name = L"\\KnownDlls32\\kernel32.dll";
+		UNICODE_STRING us{
+			.Length = static_cast<USHORT>(name.size() * sizeof(wchar_t)),
+			.MaximumLength = static_cast<USHORT>(name.size() * sizeof(wchar_t)),
+			.Buffer = name.data(),
+		};
+		OBJECT_ATTRIBUTES oa{};
+		InitializeObjectAttributes(&oa, &us, OBJ_CASE_INSENSITIVE, nullptr, nullptr);
+
+		HANDLE hSection{};
+		if (const auto status = pNtOpenSection(&hSection, SECTION_MAP_READ | SECTION_QUERY, &oa); !NT_SUCCESS(status))
+			throw std::runtime_error(std::format("NtOpenSection(\\KnownDlls32\\kernel32.dll) failed: 0x{:08X}", static_cast<uint32_t>(status)));
+		const auto closeSection = Utils::Win32::Handle(hSection, true);
+
+		void* base{};
+		SIZE_T viewSize{};
+		const auto status = pNtMapViewOfSection(hSection, GetCurrentProcess(), &base, 0, 0, nullptr, &viewSize, ViewUnmap, 0, PAGE_READONLY);
+		if (!NT_SUCCESS(status) || !base)
+			throw std::runtime_error(std::format("NtMapViewOfSection(\\KnownDlls32\\kernel32.dll) failed: 0x{:08X}", static_cast<uint32_t>(status)));
+		const auto unmap = xivres::util::on_dtor([&] { pNtUnmapViewOfSection(GetCurrentProcess(), base); });
+		if (status == StatusImageNotAtBase)
+			throw std::runtime_error("\\KnownDlls32\\kernel32.dll was relocated");
+
+		const auto view = std::span(static_cast<const uint8_t*>(base), viewSize);
+		const auto at = [&view]<typename T>(size_t offset, std::type_identity<T>) -> const T& {
+			if (offset > view.size() || view.size() - offset < sizeof(T))
+				throw std::out_of_range("kernel32 (32-bit) image is truncated");
+			return *reinterpret_cast<const T*>(&view[offset]);
+		};
+
+		const auto& dos = at(0, std::type_identity<IMAGE_DOS_HEADER>{});
+		const auto& nt = at(dos.e_lfanew, std::type_identity<IMAGE_NT_HEADERS32>{});
+		if (nt.Signature != IMAGE_NT_SIGNATURE || nt.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+			throw std::runtime_error("kernel32 (32-bit) is not a PE32 image");
+		const auto& dir = nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+		const auto& exports = at(dir.VirtualAddress, std::type_identity<IMAGE_EXPORT_DIRECTORY>{});
+		for (DWORD i = 0; i < exports.NumberOfNames; ++i) {
+			const auto nameRva = at(exports.AddressOfNames + i * sizeof(DWORD), std::type_identity<DWORD>{});
+			const auto maxLength = view.size() > nameRva ? view.size() - nameRva : 0;
+			if (strnlen(reinterpret_cast<const char*>(&view[nameRva]), maxLength) == maxLength
+				|| strcmp(reinterpret_cast<const char*>(&view[nameRva]), pszFunctionName) != 0)
+				continue;
+
+			const auto ordinal = at(exports.AddressOfNameOrdinals + i * sizeof(WORD), std::type_identity<WORD>{});
+			if (ordinal >= exports.NumberOfFunctions)
+				break;
+			const auto rva = at(exports.AddressOfFunctions + ordinal * sizeof(DWORD), std::type_identity<DWORD>{});
+			if (dir.VirtualAddress <= rva && rva < dir.VirtualAddress + dir.Size)
+				throw std::runtime_error(std::format("kernel32 (32-bit) forwards {}", pszFunctionName));
+			return static_cast<char*>(base) + rva;
 		}
-		if (equivalent(imagePath, path))
-			regions.emplace_back(mbi);
+		throw std::out_of_range(std::format("kernel32 (32-bit) does not export {}", pszFunctionName));
 	}
-	return regions;
+#endif
 }
 
-std::vector<MEMORY_BASIC_INFORMATION> Utils::Win32::Process::GetCommittedImageAllocation() const {
-	return GetCommittedImageAllocation(PathOf());
+void* Utils::Win32::Process::FindKernel32Function(const char* pszFunctionName) const {
+	if (IsSameBitnessAsCurrent()) {
+		// The system DLLs are mapped at the same base in every process of the same bitness.
+		if (const auto pfn = ::GetProcAddress(GetModuleHandleW(L"kernel32.dll"), pszFunctionName))
+			return reinterpret_cast<void*>(pfn);
+		throw Error(std::format("GetProcAddress(kernel32, {})", pszFunctionName));
+	}
+
+#if INTPTR_MAX == INT64_MAX
+	try {
+		for (const auto hModule : EnumModules()) {
+			if (_wcsicmp(PathOf(hModule).filename().c_str(), L"kernel32.dll") == 0)
+				return FindExportedFunction(hModule, pszFunctionName);
+		}
+	} catch (const Error&) {
+		// A process that has not run yet may not be enumerable at all.
+	}
+	return FindKnownDlls32Kernel32Function(pszFunctionName);
+#else
+	throw std::runtime_error("A 32-bit process cannot resolve functions of a 64-bit process.");
+#endif
 }
 
 Utils::Win32::ModuleMemoryBlocks& Utils::Win32::Process::GetModuleMemoryBlockManager(HMODULE hModule) const {
@@ -744,7 +696,7 @@ Utils::Win32::ModuleMemoryBlocks& Utils::Win32::Process::GetModuleMemoryBlockMan
 }
 
 size_t Utils::Win32::Process::ReadMemory(void* lpBase, size_t offset, void* buf, size_t len, bool readFull) const {
-	SIZE_T read;
+	SIZE_T read = 0;
 	if (ReadProcessMemory(m_object, static_cast<char*>(lpBase) + offset, buf, len, &read))
 		return read;
 
@@ -764,10 +716,8 @@ void Utils::Win32::Process::WriteMemory(void* lpTarget, const void* lpSource, si
 	if (!WriteProcessMemory(m_object, lpTarget, lpSource, len, &written) || written != len)
 		throw Error("Process::WriteMemory");
 
-	if ((protect & PAGE_EXECUTE)
-		|| (protect & PAGE_EXECUTE_READ)
-		|| (protect & PAGE_EXECUTE_READWRITE)
-		|| (protect & PAGE_EXECUTE_WRITECOPY))
+	// Without forceWrite the previous protection is unknown, and the target may still be code.
+	if (!forceWrite || (protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)))
 		FlushInstructionsCache(lpTarget, len);
 }
 

@@ -98,19 +98,6 @@ const IMAGE_NT_HEADERS& Utils::Win32::LoadedModule::NtHeaders() const {
 	return *reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const uint8_t*>(m_object) + DosHeader().e_lfanew);
 }
 
-std::span<const IMAGE_SECTION_HEADER> Utils::Win32::LoadedModule::SectionHeaders() const {
-	const auto& nt = NtHeaders();
-	return std::span<const IMAGE_SECTION_HEADER>(IMAGE_FIRST_SECTION(&nt), nt.FileHeader.NumberOfSections);
-}
-
-std::span<const uint8_t> Utils::Win32::LoadedModule::DataDirectoryAt(size_t index) const {
-	const auto& edh = NtHeaders().OptionalHeader.DataDirectory[index];
-	if (!edh.Size || !edh.VirtualAddress)
-		return {};
-	
-	return {reinterpret_cast<const uint8_t*>(m_object) + edh.VirtualAddress, edh.Size};
-}
-
 namespace {
 	bool DecodeAt(const ZydisDecoder& decoder, const uint8_t* p, const uint8_t* end, ZydisDecodedInstruction& inst, ZydisDecodedOperand* operands) {
 		return ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, p, static_cast<ZyanUSize>(end - p), &inst, operands));
@@ -188,17 +175,9 @@ std::span<const uint8_t> Utils::Win32::LoadedModule::FunctionAt(const void* ptr)
 	return {};
 }
 
-std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(const IMAGE_SECTION_HEADER& section) const {
-	return std::span(reinterpret_cast<const uint8_t*>(m_object) + section.VirtualAddress, section.Misc.VirtualSize);
-}
-
 std::span<const uint8_t> Utils::Win32::LoadedModule::SectionFrom(std::string_view name) const {
 	const auto image = xivres::pe_image::from_loaded(m_object);
 	if (const auto section = image.find_section(name))
 		return image.section_data(*section);
 	throw std::runtime_error(std::format("LoadedModule::SectionFrom: section \"{}\" not found", name));
-}
-
-std::span<const uint8_t> Utils::Win32::LoadedModule::SectionAt(size_t index) const {
-	return SectionFrom(SectionHeaders()[index]);
 }

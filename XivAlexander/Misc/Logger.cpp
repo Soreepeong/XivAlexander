@@ -18,7 +18,6 @@ const std::map<XivAlexander::LogCategory, const char*> XivAlexander::Misc::Logge
 	{LogCategory::IpcTypeFinder, "IpcTypeFinder"},
 	{LogCategory::GameResourceOverrider, "GameResourceOverrider"},
 	{LogCategory::VirtualSqPacks, "VirtualSqPacks"},
-	{LogCategory::MusicImporter, "MusicImporter"},
 	{LogCategory::PatchCode, "PatchCode"},
 	{LogCategory::OpcodeGuesser, "OpcodeGuesser"},
 	{LogCategory::AltCodecMusic, "AltCodecMusic"},
@@ -171,10 +170,6 @@ XivAlexander::Misc::Logger::~Logger() {
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, const char* s, LogLevel level) {
 	Log(category, std::string(s), level);
-}
-
-void XivAlexander::Misc::Logger::Log(LogCategory category, const char8_t* s, LogLevel level) {
-	Log(category, reinterpret_cast<const char*>(s), level);
 }
 
 void XivAlexander::Misc::Logger::Log(LogCategory category, const wchar_t* s, LogLevel level) {

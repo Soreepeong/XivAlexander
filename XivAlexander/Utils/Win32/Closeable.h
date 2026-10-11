@@ -105,12 +105,6 @@ namespace Utils::Win32 {
 		virtual operator T() const { return m_object; }
 		
 		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
-		[[nodiscard]] auto Value64() const { return static_cast<uint64_t>(Value()); }
-
-		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
-		[[nodiscard]] auto Value32() const { return static_cast<uint32_t>(Value()); }
-		
-		template<typename = std::enable_if_t<std::is_pointer_v<T>>>
 		[[nodiscard]] auto Value() const { return reinterpret_cast<size_t>(m_object); }
 
 		[[nodiscard]] bool HasOwnership() const { return m_object && m_bOwnership; }

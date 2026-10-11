@@ -10,10 +10,6 @@
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
 
-namespace {
-	constexpr auto SecondToMicrosecondMultiplier = 1000000ULL;
-}
-
 struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implementation {
 	App& App;
 	const std::shared_ptr<Config> Config;
@@ -112,7 +108,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		auto recordPumpInterval = false;
 		if (!waitUntilCounterUs) {
 			uint64_t waitForUs, waitForDrift;
-			if (const auto& networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.FramerateControl.Lock.Automatic) {
+			if (const auto networkingHelper = App.GetNetworkTimingHandler(); networkingHelper && rt.FramerateControl.Lock.Automatic) {
 				const auto& group = networkingHelper->GetCooldownGroup(NetworkTimingHandler::CooldownGroup::Id_Gcd);
 				if (group.DurationUs != UINT64_MAX) {
 					const auto frameInterval = static_cast<int64_t>(RuntimeConfigRepository::CalculateLockFramerateIntervalUs(
@@ -170,7 +166,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		}
 		if (recordPumpInterval && LastMessagePumpCounterUs.size() >= 2)
 			MessagePumpIntervalTrackerUs.AddValue(LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 1] - LastMessagePumpCounterUs[LastMessagePumpCounterUs.size() - 2]);
-		if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= SecondToMicrosecondMultiplier)
+		if (LastMessagePumpCounterUs.size() > 2 && LastMessagePumpCounterUs.back() - LastMessagePumpCounterUs.front() >= Utils::SecondToMicrosecondMultiplier)
 			LastMessagePumpCounterUs.pop_front();
 	}
 };
@@ -182,11 +178,6 @@ XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::MainThreadTiming
 
 const Utils::NumericStatisticsTracker& XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::GetMessagePumpIntervalTrackerUs() const {
 	return m_pImpl->MessagePumpIntervalTrackerUs;
-}
-
-void XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::GuaranteePumpBeginCounterIn(int64_t nextInUs) {
-	if (nextInUs > 0)
-		m_pImpl->MessagePumpGuaranteeCounterUs.insert(Utils::QpcUs() + nextInUs);
 }
 
 void XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::GuaranteePumpBeginCounterAt(int64_t counterUs) {

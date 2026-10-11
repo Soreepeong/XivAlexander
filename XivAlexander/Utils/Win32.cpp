@@ -209,13 +209,10 @@ std::filesystem::path Utils::Win32::EnsureDirectory(const std::filesystem::path&
 	return canonical(path);
 }
 
-std::filesystem::path Utils::Win32::ResolvePathFromFileName(const std::filesystem::path& path, const std::filesystem::path& ext) {
-	std::wstring buf;
-	buf.resize(PATHCCH_MAX_CCH);
-	buf.resize(SearchPathW(nullptr, path.c_str(), ext.empty() ? nullptr : ext.c_str(), PATHCCH_MAX_CCH, buf.data(), nullptr));
-	if (buf.empty())
-		throw Error("SearchPathW");
-	return buf;
+std::wstring Utils::Win32::GetWindowString(HWND hWnd) {
+	std::wstring text(static_cast<size_t>(GetWindowTextLengthW(hWnd)) + 1, L'\0');
+	text.resize(GetWindowTextW(hWnd, text.data(), static_cast<int>(text.size())));
+	return text;
 }
 
 void Utils::Win32::SetMenuState(HMENU hMenu, DWORD nMenuId, bool bChecked, bool bEnabled, std::wstring newText) {
@@ -269,28 +266,6 @@ bool Utils::Win32::IsUserAnAdmin() {
 	if (BOOL b = FALSE; CheckTokenMembership(nullptr, adminGroup, &b) && b)
 		return true;
 	return false;
-}
-
-std::filesystem::path Utils::Win32::GetMappedImageNativePath(HANDLE hProcess, void* lpMem) {
-	std::wstring result;
-	result.resize(PATHCCH_MAX_CCH);
-	result.resize(GetMappedFileNameW(hProcess, lpMem, result.data(), static_cast<DWORD>(result.size())));
-	if (result.starts_with(LR"(\Device\)"))
-		return LR"(\\?\)" + result.substr(8);
-	throw std::runtime_error(std::format("Path unprocessable: {}", result));
-}
-
-std::filesystem::path Utils::Win32::ToNativePath(const std::filesystem::path& path) {
-	return Handle::FromCreateFile(path.wstring().c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0).GetPathName(false, true);
-}
-
-std::filesystem::path Utils::Win32::GetSystem32Path() {
-	std::wstring sysDir;
-	sysDir.resize(PATHCCH_MAX_CCH);  // assume
-	sysDir.resize(GetSystemDirectoryW(sysDir.data(), static_cast<UINT>(sysDir.size())));
-	if (sysDir.empty())
-		throw Error("GetSystemWindowsDirectoryW");
-	return {std::move(sysDir)};
 }
 
 std::filesystem::path Utils::Win32::EnsureKnownFolderPath(_In_ REFKNOWNFOLDERID rfid) {
@@ -353,97 +328,78 @@ std::pair<std::wstring, std::wstring> Utils::Win32::SplitCommandLineIntoNameAndA
 	return {std::move(namePart), ptr};
 }
 
-// https://docs.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
-std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
-	std::wstring res;
-	if (!arg.empty() && arg.find_first_of(L" \t\n\v\"") == std::wstring::npos)
-		res.append(arg);
-	else {
-		res.push_back(L'"');
-		for (auto it = arg.begin(); ; ++it) {
-			size_t bsCount = 0;
+namespace {
+	// https://docs.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
+	template<typename TChar>
+	std::basic_string<TChar> QuoteArgument(const std::basic_string<TChar>& arg) {
+		constexpr TChar Quote = '"';
+		constexpr TChar Backslash = '\\';
+		constexpr TChar Special[]{' ', '\t', '\n', '\v', Quote, 0};
 
-			while (it != arg.end() && *it == L'\\') {
-				++it;
-				++bsCount;
+		std::basic_string<TChar> res;
+		if (!arg.empty() && arg.find_first_of(Special) == std::basic_string<TChar>::npos)
+			res.append(arg);
+		else {
+			res.push_back(Quote);
+			for (auto it = arg.begin(); ; ++it) {
+				size_t bsCount = 0;
+
+				while (it != arg.end() && *it == Backslash) {
+					++it;
+					++bsCount;
+				}
+
+				if (it == arg.end()) {
+					res.append(bsCount * 2, Backslash);
+					break;
+				} else if (*it == Quote) {
+					res.append(bsCount * 2 + 1, Backslash);
+					res.push_back(*it);
+				} else {
+					res.append(bsCount, Backslash);
+					res.push_back(*it);
+				}
 			}
 
-			if (it == arg.end()) {
-				res.append(bsCount * 2, L'\\');
-				break;
-			} else if (*it == L'"') {
-				res.append(bsCount * 2 + 1, L'\\');
-				res.push_back(*it);
-			} else {
-				res.append(bsCount, L'\\');
-				res.push_back(*it);
-			}
+			res.push_back(Quote);
 		}
-
-		res.push_back(L'"');
+		return res;
 	}
-	return res;
+
+	template<typename TChar>
+	std::basic_string<TChar> QuoteArguments(std::span<const std::basic_string<TChar>> argv) {
+		std::basic_string<TChar> res;
+		for (const auto& arg : argv) {
+			if (!res.empty())
+				res.push_back(' ');
+			res += QuoteArgument(arg);
+		}
+		return res;
+	}
+}
+
+std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::wstring& arg) {
+	return QuoteArgument(arg);
 }
 
 std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::wstring>& argv) {
-	std::wostringstream ss;
-	for (const auto& arg : argv) {
-		if (ss.tellp())
-			ss << L" ";
-
-		ss << ReverseCommandLineToArgv(arg);
-	}
-	return ss.str();
+	return QuoteArguments(argv);
 }
 
 std::wstring Utils::Win32::ReverseCommandLineToArgv(const std::initializer_list<const std::wstring>& argv) {
-	return ReverseCommandLineToArgv(std::vector(argv.begin(), argv.end()));
+	return QuoteArguments(std::span(argv.begin(), argv.end()));
 }
 
 std::string Utils::Win32::ReverseCommandLineToArgv(const std::string& arg) {
-	std::string res;
-	if (!arg.empty() && arg.find_first_of(" \t\n\v\"") == std::string::npos)
-		res.append(arg);
-	else {
-		res.push_back('"');
-		for (auto it = arg.begin(); ; ++it) {
-			size_t bsCount = 0;
-
-			while (it != arg.end() && *it == '\\') {
-				++it;
-				++bsCount;
-			}
-
-			if (it == arg.end()) {
-				res.append(bsCount * 2, '\\');
-				break;
-			} else if (*it == '"') {
-				res.append(bsCount * 2 + 1, '\\');
-				res.push_back(*it);
-			} else {
-				res.append(bsCount, '\\');
-				res.push_back(*it);
-			}
-		}
-
-		res.push_back('"');
-	}
-	return res;
+	return QuoteArgument(arg);
 }
 
 std::string Utils::Win32::ReverseCommandLineToArgv(const std::span<const std::string>& argv) {
-	std::ostringstream ss;
-	for (const auto& arg : argv) {
-		if (ss.tellp())
-			ss << " ";
-
-		ss << ReverseCommandLineToArgv(arg);
-	}
-	return ss.str();
+	return QuoteArguments(argv);
 }
 
 std::string Utils::Win32::ReverseCommandLineToArgv(const std::initializer_list<const std::string>& argv) {
-	return ReverseCommandLineToArgv(std::vector(argv.begin(), argv.end()));
+	return QuoteArguments(std::span(argv.begin(), argv.end()));
 }
 
 std::vector<DWORD> Utils::Win32::GetProcessList() {

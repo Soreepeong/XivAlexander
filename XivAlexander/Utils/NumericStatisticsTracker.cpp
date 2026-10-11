@@ -45,10 +45,6 @@ std::deque<Utils::NumericStatisticsTracker::Entry> Utils::NumericStatisticsTrack
 	return m_values;
 }
 
-int64_t Utils::NumericStatisticsTracker::InvalidValue() const {
-	return m_emptyValue;
-}
-
 int64_t Utils::NumericStatisticsTracker::Latest() const {
 	const auto vals = RemoveExpired();
 	if (vals.empty())
@@ -107,19 +103,6 @@ int64_t Utils::NumericStatisticsTracker::Median(int64_t sinceUs) const {
 	}
 }
 
-int64_t Utils::NumericStatisticsTracker::Mean(int64_t sinceUs) const {
-	const auto vals = RemoveExpired();
-	int64_t count = 0;
-	int64_t acc{};
-	for (const auto& v : std::ranges::reverse_view(vals)) {
-		if (v.TimestampUs < sinceUs)
-			break;
-		acc += v.Value;
-		++count;
-	}
-	return count ? acc / count : m_emptyValue;
-}
-
 std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(int64_t sinceUs) const {
 	const auto vals = RemoveExpired();
 
@@ -146,10 +129,6 @@ std::pair<int64_t, int64_t> Utils::NumericStatisticsTracker::MeanAndDeviation(in
 	}
 
 	return {mean, static_cast<int64_t>(std::sqrt(diffSquaredSum / count))};
-}
-
-int64_t Utils::NumericStatisticsTracker::Deviation(int64_t sinceUs) const {
-	return MeanAndDeviation(sinceUs).second;
 }
 
 size_t Utils::NumericStatisticsTracker::Count(int64_t sinceUs) const {
