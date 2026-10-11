@@ -1,0 +1,150 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://xivalexander/texttransformation.schema.json",
+	"title": "Text transformation",
+	"description": "Changes the text merged from another regional client into this client's sheets. \"name\" and \"description\" with a string value describe the file; each other key not starting with _ is a regular expression matched against sheet names (ECMAScript, case-insensitive, matching anywhere in the name; e.g. \"^Item$\", \"^quest/\", or \"\" for every sheet). Every matching entry applies, in file order.",
+	"type": "object",
+	"properties": {
+		"name": {
+			"oneOf": [
+				{
+					"description": "Name shown in XivAlexander's settings instead of the file name.",
+					"type": "string"
+				},
+				{
+					"$ref": "#/$defs/sheetRule"
+				}
+			]
+		},
+		"description": {
+			"oneOf": [
+				{
+					"description": "What the file does, shown in XivAlexander's settings.",
+					"type": "string"
+				},
+				{
+					"$ref": "#/$defs/sheetRule"
+				}
+			]
+		}
+	},
+	"patternProperties": {
+		"^_": {
+			"description": "Ignored; use for comments (e.g. \"_comment\")."
+		}
+	},
+	"additionalProperties": {
+		"$ref": "#/$defs/sheetRule"
+	},
+	"$defs": {
+		"sheetRule": {
+			"description": "What to do with the sheets whose names match the key. A sheet's string columns, sorted by their offset in this client's sheet, are numbered 0, 1, 2...",
+			"type": "object",
+			"properties": {
+				"*": {
+					"description": "Steps for every string column of the sheet.",
+					"$ref": "#/$defs/steps"
+				},
+				"keep": {
+					"description": "Cells kept in the client's language; steps do not change them.",
+					"$ref": "#/$defs/cells"
+				},
+				"unkeep": {
+					"description": "Undoes \"keep\", including cells kept automatically (such as quest phrases typed in /say).",
+					"$ref": "#/$defs/cells"
+				}
+			},
+			"patternProperties": {
+				"^_": {
+					"description": "Ignored; use for comments."
+				},
+				"^[0-9]{1,5}$": {
+					"description": "A string column of this client's sheet.",
+					"oneOf": [
+						{
+							"description": "Keeps the client's own language in this column.",
+							"type": "null"
+						},
+						{
+							"description": "Takes this column from that string column of the other client's sheet, instead of the one found by offset.",
+							"type": "integer",
+							"minimum": 0
+						},
+						{
+							"$ref": "#/$defs/steps"
+						}
+					]
+				}
+			},
+			"additionalProperties": false
+		},
+		"steps": {
+			"description": "Steps run in order on \"<merged text>\\u001F<client text>\", with the merged text empty where it is the same as the client's; afterwards, the cell is the text before the first \\u001F if one is left, otherwise all of it. Line breaks are \\n; other macros are single placeholder characters that must stay whole: keep or drop all of one side's macros, and never repeat one. Step lists of every matching entry add up per column, in file order.",
+			"type": "array",
+			"items": {
+				"$ref": "#/$defs/step"
+			}
+		},
+		"step": {
+			"oneOf": [
+				{
+					"description": "[pattern, replacement]: replaces every match of the pattern (ECMAScript regular expression, per Unicode character; \\n and \\uXXXX escapes work in both; $1, $& in the replacement).",
+					"type": "array",
+					"prefixItems": [
+						{
+							"description": "Pattern.",
+							"type": "string"
+						},
+						{
+							"description": "Replacement.",
+							"type": "string"
+						}
+					],
+					"minItems": 2,
+					"maxItems": 2
+				},
+				{
+					"description": "Normalizes the text to Unicode NFD or NFC.",
+					"type": "string",
+					"enum": [
+						"to-nfd",
+						"to-nfc"
+					]
+				}
+			]
+		},
+		"cells": {
+			"type": "array",
+			"items": {
+				"description": "One cell, by row id or by the text key in string column 0. Without \"column\", the cell is in string column 1 if string column 0 holds text keys (only A-Z, 0-9, _; quest and dialogue sheets), otherwise in string column 0.",
+				"type": "object",
+				"properties": {
+					"row": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"key": {
+						"type": "string"
+					},
+					"column": {
+						"description": "String column index.",
+						"type": "integer",
+						"minimum": 0
+					}
+				},
+				"anyOf": [
+					{
+						"required": [
+							"row"
+						]
+					},
+					{
+						"required": [
+							"key"
+						]
+					}
+				]
+			}
+		}
+	}
+}

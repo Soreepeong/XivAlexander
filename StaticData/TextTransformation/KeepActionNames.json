@@ -1,0 +1,8 @@
+{
+	"name": "Keep action names",
+	"description": "Keeps action names (including enemy casts, crafting, pet, general and companion actions) in the client's language; descriptions are still merged.",
+	"_comment": "Keeps action names (yours and enemies' casts, crafting, pet, general and companion actions) in the client's language; their descriptions are still merged.",
+	"^(Action|CraftAction|PetAction|GeneralAction|BuddyAction)$": {
+		"0": null
+	}
+}

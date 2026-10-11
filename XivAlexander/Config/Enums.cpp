@@ -126,3 +126,30 @@ void XivAlexander::from_json(const nlohmann::json& it, GameWindowTitleMode& valu
 		value = GameWindowTitleMode::None;
 	}
 }
+
+void XivAlexander::to_json(nlohmann::json& j, const TalkLineCount& value) {
+	switch (value) {
+		case TalkLineCount::Three:
+			j = "Three";
+			break;
+
+		case TalkLineCount::Four:
+			j = "Four";
+			break;
+
+		case TalkLineCount::Automatic:
+		default:
+			j = "Automatic";
+			break;
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& it, TalkLineCount& value) {
+	const auto s = it.is_string() ? it.get<std::string>() : std::string();
+	if (s == "Three")
+		value = TalkLineCount::Three;
+	else if (s == "Four")
+		value = TalkLineCount::Four;
+	else
+		value = TalkLineCount::Automatic;
+}

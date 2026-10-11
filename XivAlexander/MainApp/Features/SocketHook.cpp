@@ -113,8 +113,52 @@ public:
 		return (m_buffer.size() - m_pointer) / sizeof(T);
 	}
 
-	void TunnelXivStream(SingleStream& target, const MessageMangler& messageMangler) {
+	enum class TunnelAction {
+		Keep,
+		Drop,
+		Hold,
+	};
+
+	using TunnelHandler = std::function<TunnelAction(message*)>;
+
+private:
+	// The decoders' state has moved past a decoded bundle, so its messages are kept until all are handled.
+	struct PendingBundle {
+		std::vector<uint8_t> Raw;
+		std::vector<std::vector<uint8_t>> Messages;
+		size_t Next = 0;
+		bool Held = false;
+	};
+
+	std::optional<PendingBundle> m_pending;
+
+public:
+	[[nodiscard]] bool HasPending() const {
+		return m_pending.has_value();
+	}
+
+	[[nodiscard]] bool IsHolding() const {
+		return m_pending && m_pending->Held;
+	}
+
+	/// Keeps or drops the message a handler held; the next tunnel goes on from the message after it.
+	void ReleaseHeld(bool keep) {
+		if (!IsHolding())
+			return;
+		if (!keep)
+			reinterpret_cast<message*>(m_pending->Messages[m_pending->Next].data())->Length = 0;
+		m_pending->Next++;
+		m_pending->Held = false;
+	}
+
+	void TunnelXivStream(SingleStream& target, const TunnelHandler& handler) {
 		while (true) {
+			if (m_pending) {
+				if (!FinishPending(target, handler))
+					break;
+				continue;
+			}
+
 			auto buf = Peek();
 			if (buf.empty())
 				break;
@@ -146,51 +190,10 @@ public:
 				auto messages = pGamePacket->get_messages(
 					[this](std::span<const uint8_t> src) { return m_inflater(src); },
 					[this](std::span<const uint8_t> src, size_t decodedLength) { return m_unoodler.Decode(src, decodedLength); });
-				auto header = *pGamePacket;
-				header.TotalLength = static_cast<uint32_t>(sizeof bundle_header);
-				header.MessageCount = 0;
-				header.CompressionType = pGamePacket->CompressionType;
-				header.DecodedBodyLength = 0;
-
-				for (auto& msg : messages) {
-					const auto pMessage = reinterpret_cast<message*>(&msg[0]);
-
-					if (!messageMangler(pMessage))
-						pMessage->Length = 0;
-
-					if (!pMessage->Length)
-						continue;
-
-					header.DecodedBodyLength += pMessage->Length;
-					header.MessageCount += 1;
-				}
-
-				std::vector<uint8_t> body;
-				body.reserve(header.DecodedBodyLength);
-				for (const auto& msg : messages) {
-					if (!reinterpret_cast<const message*>(&msg[0])->Length)
-						continue;
-					body.insert(body.end(), msg.begin(), msg.end());
-				}
-
-				std::span<uint8_t> encoded;
-				switch (header.CompressionType) {
-					case compression_type::None:
-						encoded = { body };
-						break;
-					case compression_type::Deflate:
-						encoded = m_deflater(body);
-						break;
-					case compression_type::Oodle:
-						encoded = m_oodler.Encode(body);
-						break;
-					default:
-						throw std::runtime_error("Unsupported compression method");
-				}
-
-				header.TotalLength += static_cast<uint32_t>(encoded.size());
-				target.Write(&header, sizeof bundle_header);
-				target.Write(encoded);
+				m_pending.emplace(PendingBundle{
+					.Raw = std::vector<uint8_t>(buf.begin(), buf.begin() + pGamePacket->TotalLength),
+					.Messages = std::move(messages),
+				});
 			} catch (const std::exception& e) {
 				m_logger.Format<LogLevel::Warning>(LogCategory::SocketHook, "{}: Error: {}\n{}", m_name, e.what(), pGamePacket->represent());
 				target.Write(pGamePacket, pGamePacket->TotalLength);
@@ -198,6 +201,68 @@ public:
 
 			Consume(pGamePacket->TotalLength);
 		}
+	}
+
+private:
+	/// Whether the pending bundle went out; false while a handler holds one of its messages.
+	bool FinishPending(SingleStream& target, const TunnelHandler& handler) {
+		auto& pending = *m_pending;
+		for (; pending.Next < pending.Messages.size(); pending.Next++) {
+			const auto pMessage = reinterpret_cast<message*>(pending.Messages[pending.Next].data());
+			if (!pMessage->Length)
+				continue;
+			switch (handler(pMessage)) {
+				case TunnelAction::Keep:
+					break;
+				case TunnelAction::Drop:
+					pMessage->Length = 0;
+					break;
+				case TunnelAction::Hold:
+					pending.Held = true;
+					return false;
+			}
+		}
+
+		const auto* pGamePacket = reinterpret_cast<const bundle*>(pending.Raw.data());
+		try {
+			auto header = static_cast<bundle_header>(*pGamePacket);
+			header.TotalLength = static_cast<uint32_t>(sizeof bundle_header);
+			header.MessageCount = 0;
+			header.DecodedBodyLength = 0;
+
+			std::vector<uint8_t> body;
+			for (const auto& msg : pending.Messages) {
+				if (const auto length = reinterpret_cast<const message*>(msg.data())->Length) {
+					header.DecodedBodyLength += length;
+					header.MessageCount += 1;
+					body.insert(body.end(), msg.begin(), msg.end());
+				}
+			}
+
+			std::span<uint8_t> encoded;
+			switch (header.CompressionType) {
+				case compression_type::None:
+					encoded = { body };
+					break;
+				case compression_type::Deflate:
+					encoded = m_deflater(body);
+					break;
+				case compression_type::Oodle:
+					encoded = m_oodler.Encode(body);
+					break;
+				default:
+					throw std::runtime_error("Unsupported compression method");
+			}
+
+			header.TotalLength += static_cast<uint32_t>(encoded.size());
+			target.Write(&header, sizeof bundle_header);
+			target.Write(encoded);
+		} catch (const std::exception& e) {
+			m_logger.Format<LogLevel::Warning>(LogCategory::SocketHook, "{}: Error: {}\n{}", m_name, e.what(), pGamePacket->represent());
+			target.Write(pending.Raw.data(), pending.Raw.size());
+		}
+		m_pending.reset();
+		return true;
 	}
 };
 
@@ -208,6 +273,7 @@ struct XivAlexander::Apps::MainApp::Features::SingleConnection::Implementation {
 
 	std::map<size_t, std::vector<MessageMangler>> IncomingHandlers{};
 	std::map<size_t, std::vector<MessageMangler>> OutgoingHandlers{};
+	std::map<size_t, std::vector<OutgoingInspector>> OutgoingInspectors{};
 
 	std::deque<uint64_t> KeepAliveRequestTimestampsUs{};
 	std::deque<uint64_t> ObservedServerResponseList{};
@@ -275,6 +341,7 @@ struct XivAlexander::Apps::MainApp::Features::SingleConnection::Implementation {
 
 	void ProcessRecvData() {
 		RecvRaw.TunnelXivStream(RecvProcessed, [&](auto* pMessage) {
+			using enum SingleStream::TunnelAction;
 			auto use = true;
 
 			switch (pMessage->Type) {
@@ -301,12 +368,13 @@ struct XivAlexander::Apps::MainApp::Features::SingleConnection::Implementation {
 					}
 			}
 
-			return use;
+			return use ? Keep : Drop;
 			});
 	}
 
 	void ProcessSendData() {
 		SendRaw.TunnelXivStream(SendProcessed, [&](auto* pMessage) {
+			using enum SingleStream::TunnelAction;
 			auto use = true;
 
 			switch (pMessage->Type) {
@@ -320,14 +388,24 @@ struct XivAlexander::Apps::MainApp::Features::SingleConnection::Implementation {
 							use &= cb(pMessage);
 						}
 					}
+					if (!use)
+						return Drop;
+					for (const auto& cbs : OutgoingInspectors) {
+						for (const auto& cb : cbs.second) {
+							if (cb(pMessage) == OutgoingVerdict::Hold)
+								return Hold;
+						}
+					}
 			}
 
-			return use;
+			return use ? Keep : Drop;
 			});
 	}
 
 	bool CanCompleteDetach() const {
-		return !RecvRaw.Available() && !RecvProcessed.Available() && !SendRaw.Available() && !SendProcessed.Available() && Detaching;
+		return !RecvRaw.Available() && !RecvProcessed.Available() && !RecvRaw.HasPending()
+			&& !SendRaw.Available() && !SendProcessed.Available() && !SendRaw.HasPending()
+			&& Detaching;
 	}
 };
 
@@ -413,9 +491,10 @@ struct XivAlexander::Apps::MainApp::Features::SocketHook::Implementation {
 			}
 		}
 		if (!AllowedPortRange.empty()) {
+			const uint16_t port = ntohs(addr.sin_port);
 			bool pass = false;
 			for (const auto& range : AllowedPortRange) {
-				if (range.first <= addr.sin_port && addr.sin_port <= range.second) {
+				if (range.first <= port && port <= range.second) {
 					pass = true;
 					break;
 				}
@@ -522,9 +601,26 @@ void XivAlexander::Apps::MainApp::Features::SingleConnection::AddOutgoingFFXIVMe
 	m_pImpl->OutgoingHandlers[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
 }
 
+void XivAlexander::Apps::MainApp::Features::SingleConnection::AddOutgoingFFXIVMessageInspector(void* token, OutgoingInspector cb) {
+	m_pImpl->OutgoingInspectors[reinterpret_cast<size_t>(token)].emplace_back(std::move(cb));
+}
+
 void XivAlexander::Apps::MainApp::Features::SingleConnection::RemoveMessageHandlers(void* token) {
 	m_pImpl->IncomingHandlers.erase(reinterpret_cast<size_t>(token));
 	m_pImpl->OutgoingHandlers.erase(reinterpret_cast<size_t>(token));
+	m_pImpl->OutgoingInspectors.erase(reinterpret_cast<size_t>(token));
+}
+
+bool XivAlexander::Apps::MainApp::Features::SingleConnection::IsHoldingOutgoing() const {
+	return m_pImpl->SendRaw.IsHolding();
+}
+
+void XivAlexander::Apps::MainApp::Features::SingleConnection::ReleaseHeldOutgoing(bool send) {
+	if (!m_pImpl->SendRaw.IsHolding())
+		return;
+	m_pImpl->SendRaw.ReleaseHeld(send);
+	m_pImpl->ProcessSendData();
+	m_pImpl->AttemptSend();
 }
 
 void XivAlexander::Apps::MainApp::Features::SingleConnection::ResolveAddresses() {
@@ -749,10 +845,6 @@ void XivAlexander::Apps::MainApp::Features::SocketHook::ResetAllConnections() co
 	sockets.reserve(m_pImpl->Sockets.size() + m_pImpl->NonGameSockets.size());
 	std::ranges::copy(m_pImpl->Sockets | std::views::keys, std::back_inserter(sockets));
 	std::ranges::copy(m_pImpl->NonGameSockets, std::back_inserter(sockets));
-	for (const auto& entry : m_pImpl->Sockets | std::views::keys)
-		sockets.push_back(entry);
-	for (const auto& entry : m_pImpl->NonGameSockets)
-		sockets.push_back(entry);
 
 	for (const auto& entry : sockets) {
 		m_logger->Format(
@@ -768,7 +860,8 @@ std::wstring XivAlexander::Apps::MainApp::Features::SocketHook::Describe() const
 	if (!m_pImpl)
 		return {};
 
-	while (true) {
+	// Sockets is modified by the game thread without a lock; retry a few times if iteration breaks.
+	for (int attempt = 0; attempt < 5; ++attempt) {
 		try {
 			std::wstring result;
 			for (const auto& entry : m_pImpl->Sockets) {
@@ -803,4 +896,5 @@ std::wstring XivAlexander::Apps::MainApp::Features::SocketHook::Describe() const
 			// ignore
 		}
 	}
+	return {};
 }

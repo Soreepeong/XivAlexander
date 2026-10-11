@@ -28,6 +28,12 @@ namespace XivAlexander {
 		Suffix,
 	};
 
+	enum class TalkLineCount : uint8_t {
+		Automatic,
+		Three,
+		Four,
+	};
+
 	void to_json(nlohmann::json&, const Language&);
 	void from_json(const nlohmann::json&, Language&);
 	void to_json(nlohmann::json&, const ThemeMode&);
@@ -36,4 +42,6 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, HighLatencyMitigationMode&);
 	void to_json(nlohmann::json&, const GameWindowTitleMode&);
 	void from_json(const nlohmann::json&, GameWindowTitleMode&);
+	void to_json(nlohmann::json&, const TalkLineCount&);
+	void from_json(const nlohmann::json&, TalkLineCount&);
 }

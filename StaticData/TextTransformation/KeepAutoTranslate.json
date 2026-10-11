@@ -1,0 +1,10 @@
+{
+	"name": "Keep auto-translate",
+	"description": "Keeps the auto-translate dictionary's own categories and phrases in the client's language.",
+	"_comment": "Keeps the auto-translate dictionary's own categories and phrases in the client's language. Entries that list another sheet's rows (actions, items, places...) show that sheet's text; combine with the other Keep* files for those.",
+	"^Completion$": {
+		"0": null,
+		"1": null,
+		"2": null
+	}
+}

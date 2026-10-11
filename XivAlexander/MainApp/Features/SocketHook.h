@@ -14,7 +14,6 @@ namespace XivAlexander::Apps::MainApp {
 }
 
 namespace xivres::network {
-	struct bundle;
 	struct message;
 }
 
@@ -38,7 +37,19 @@ namespace XivAlexander::Apps::MainApp::Features {
 		typedef std::function<bool(xivres::network::message*)> MessageMangler;
 		void AddIncomingFFXIVMessageHandler(void* token, MessageMangler cb);
 		void AddOutgoingFFXIVMessageHandler(void* token, MessageMangler cb);
+
+		enum class OutgoingVerdict {
+			Pass,
+			Hold,  // the connection sends nothing more until ReleaseHeldOutgoing; what it receives is unaffected
+		};
+		typedef std::function<OutgoingVerdict(const xivres::network::message*)> OutgoingInspector;
+		/// Sees outgoing IPC messages after every MessageMangler kept them.
+		void AddOutgoingFFXIVMessageInspector(void* token, OutgoingInspector cb);
 		void RemoveMessageHandlers(void* token);
+
+		[[nodiscard]] bool IsHoldingOutgoing() const;
+		/// Sends or drops the held message, then what queued up behind it; on the game's main thread, like every socket call.
+		void ReleaseHeldOutgoing(bool send);
 		void ResolveAddresses();
 
 		[[nodiscard]] auto Socket() const { return m_socket; }

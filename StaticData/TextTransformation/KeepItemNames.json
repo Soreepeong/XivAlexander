@@ -1,0 +1,15 @@
+{
+	"name": "Keep item names",
+	"description": "Keeps item and key item names in the client's language; descriptions are still merged.",
+	"_comment": "Keeps item and key item names in the client's language (singular, plural and the shown name); their descriptions are still merged.",
+	"^Item$": {
+		"0": null,
+		"1": null,
+		"3": null
+	},
+	"^EventItem$": {
+		"0": null,
+		"1": null,
+		"2": null
+	}
+}

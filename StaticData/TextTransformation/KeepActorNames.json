@@ -1,0 +1,14 @@
+{
+	"name": "Keep actor names",
+	"description": "Keeps the names of NPCs, monsters, objects, minions and mounts in the client's language.",
+	"_comment": "Keeps the names of NPCs, monsters, objects, minions and mounts in the client's language (singular, plural, and NPC titles).",
+	"^(BNpcName|EObjName|Companion|Mount)$": {
+		"0": null,
+		"1": null
+	},
+	"^ENpcResident$": {
+		"0": null,
+		"1": null,
+		"2": null
+	}
+}

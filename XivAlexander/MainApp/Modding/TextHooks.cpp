@@ -32,10 +32,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			if (functions.CutSceneLanguageGetter) {
 				CutSceneLanguageGetter.emplace("FFXIV::GetCutSceneLanguage", *functions.CutSceneLanguageGetter);
-				// The game's language index is game_language - 1. The item only holds LipSyncLanguages; others may lack lip sync or voices here, so recheck.
+				// The game's language index is game_language - 1; other voice languages have no lip sync, so the game's own stays.
 				Cleanup += CutSceneLanguageGetter->SetHook([this](void* p) -> int {
 					using Languages = RuntimeConfigRepository::ModdingGroup::LanguagesGroup;
-					if (const auto language = Config->Runtime.Modding.Languages.LipSyncLanguage.Value();
+					if (const auto language = Config->Runtime.Modding.Languages.VoiceResourceOverride.Value();
 						std::ranges::find(Languages::LipSyncLanguages, language) != std::end(Languages::LipSyncLanguages))
 						return static_cast<int>(language) - 1;
 					return CutSceneLanguageGetter->bridge(p);
@@ -56,7 +56,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 					Logger->Format<LogLevel::Warning>(LogCategory::GameResourceOverrider, "Invalid ptr to string indirection resolving function(0x{:X}); trying again with -0xE", reinterpret_cast<size_t>(ptr));
 					__try {
-						// A fallback for pointers past a string's start, found by trial in 6.1x; no instruction gives it.
 						s = self->bridge(s - 0x0e);
 						goto done;
 					} __except (EXCEPTION_EXECUTE_HANDLER) {

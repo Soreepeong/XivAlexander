@@ -1,0 +1,98 @@
+{
+	"name": "Sample",
+	"description": "Examples of every kind of rule; not meant to be used as is.",
+	"_comment": [
+		"Sample text transformation file for merging another regional client's text into the client's sheets. Not used unless added to the settings.",
+		"Keys are regular expressions matched against sheet names (case-insensitive, e.g. \"^Item$\", \"^quest/\"); every matching entry applies, in file order. Keys starting with _ are ignored, as are \"name\" and \"description\" with a string value (shown in the settings).",
+		"A sheet's string columns, sorted by their offset, are numbered 0, 1, 2...; report.json in the ExcelMerge cache folder lists them with a sample of each.",
+		"\"<index>\": <source index> takes the column from that string column of the other client's sheet; \"<index>\": null keeps the client's own language in it.",
+		"\"<index>\": [steps] or \"*\": [steps] (every string column) changes the text of each cell. Steps run in order on \"<merged text>\\u001F<client text>\", with the merged text empty where it is the same as the client's:",
+		"  [\"<pattern>\", \"<replacement>\"] replaces every match (ECMAScript regular expression, per Unicode character; $1, $& in the replacement; \\n and \\uXXXX escapes work in both).",
+		"  \"to-nfd\" and \"to-nfc\" normalize the text.",
+		"  Afterwards, the cell is the text before the first \\u001F if one is left, otherwise all of it; so steps that match nothing change nothing.",
+		"  Line breaks are \\n; other macros are single characters from U+F0000 on, and must stay whole: keep or drop all of one side's macros, never repeat one.",
+		"  Cells kept in the client's language (below, and quest phrases typed in /say) are not changed by steps.",
+		"\"keep\": [{\"row\": 12}, {\"key\": \"TEXT_..._000\", \"column\": 1}] keeps cells in the client's language; \"unkeep\" undoes it. \"key\" looks up the text of string column 0.",
+		"  Without \"column\", the cell is in string column 1 if string column 0 holds text keys (only A-Z, 0-9, _; quest and dialogue sheets), otherwise in string column 0."
+	],
+	"": {
+		"_comment": "Korean Mamool Ja names, only in cells whose English names a Ja: (syllable)(syllable without final)쟈[쟈] -> the second syllable gets ㄹ as final, and 쟈 becomes 자; an optional 족/풍 and particle may follow.",
+		"*": [
+			"to-nfd",
+			[
+				"(?<![ᄀ-ᇿ])([ᄀ-ᄒ][ᅡ-ᅵ][ᆨ-ᇂ]?)([ᄀ-ᄒ][ᅡ-ᅵ])쟈쟈((?:족|풍)?(?:가|를|는|로|의|와|도|에게)?)(?![ᄀ-ᇿ])(?=[^\\u001F]*\\u001F[\\s\\S]*\\bJa\\b)",
+				"$1$2ᆯ자자$3"
+			],
+			[
+				"(?<![ᄀ-ᇿ])([ᄀ-ᄒ][ᅡ-ᅵ][ᆨ-ᇂ]?)([ᄀ-ᄒ][ᅡ-ᅵ])쟈((?:족|풍)?(?:가|를|는|로|의|와|도|에게)?)(?![ᄀ-ᇿ])(?=[^\\u001F]*\\u001F[\\s\\S]*\\bJa\\b)",
+				"$1$2ᆯ자$3"
+			],
+			"to-nfc"
+		]
+	},
+	"^(Item|BNpcName|PlaceName)$": {
+		"_comment": "Names as \"merged (client)\": the client's text alone when the merged one is empty, and once when both are the same.",
+		"0": [
+			[
+				"^\\u001F([\\s\\S]*)$",
+				"$1"
+			],
+			[
+				"^([\\s\\S]*)\\u001F\\1$",
+				"$1"
+			],
+			[
+				"^([\\s\\S]+)\\u001F([\\s\\S]+)$",
+				"$1 ($2)"
+			]
+		]
+	},
+	"^Item$": {
+		"_comment": "Item string column 3 is the name the English client shows; string column 0 is the singular used in sentences.",
+		"3": [
+			[
+				"^\\u001F([\\s\\S]*)$",
+				"$1"
+			],
+			[
+				"^([\\s\\S]*)\\u001F\\1$",
+				"$1"
+			],
+			[
+				"^([\\s\\S]+)\\u001F([\\s\\S]+)$",
+				"$1 ($2)"
+			]
+		]
+	},
+	"^quest/": {
+		"_comment": "Quest text: the merged text, then the client's text on the next line.",
+		"1": [
+			[
+				"^([\\s\\S]*)\\u001F\\1$",
+				"$1"
+			],
+			[
+				"^([\\s\\S]+)\\u001F([\\s\\S]+)$",
+				"$1\\n$2"
+			]
+		]
+	},
+	"^(ENpcResident|EObjName)$": {
+		"_comment": "Trims spaces around the merged name.",
+		"0": [
+			[
+				"^[ \\t　]+|[ \\t　]+(?=\\u001F)",
+				""
+			]
+		]
+	},
+	"^Status$": {
+		"_comment": "Status descriptions on one line.",
+		"1": [
+			[
+				"\\n",
+				" "
+			]
+		]
+	}
+}
