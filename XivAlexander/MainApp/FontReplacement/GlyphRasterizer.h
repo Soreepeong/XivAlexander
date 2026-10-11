@@ -56,7 +56,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Scaled about the pen, shifted right and down by a fraction of a pixel.
 		static void ScaledBounds(int left, int top, int width, int height, float scale, float shiftX, float shiftY, int& x0, int& y0, int& w, int& h);
 
-		// About the pen, shifted by a fraction of a pixel; each pixel averages 4 x 4 bilinear samples, so it both enlarges and shrinks.
+		// About the pen, shifted by a fraction of a pixel; shrunk, a pixel averages the source area it covers, enlarged, 4 x 4 bilinear samples.
 		[[nodiscard]] RasterGlyph Scaled(float scale, float shiftX, float shiftY) const;
 
 		// About the pen; each pixel averages the source columns it covers.
@@ -67,7 +67,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// The pieces share one pen; overlaps keep the larger coverage.
 		static RasterGlyph Merge(std::vector<RasterGlyph> pieces, int advance);
 
-		// Keeps the larger value where it overlaps.
 		static void BlitMax(std::span<uint8_t> buffer, int width, int height, const RasterGlyph& g, int x, int y);
 
 		// Maps coverage to coverage^exponent.
@@ -76,6 +75,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] RasterGlyph WithCoverage(const std::vector<uint8_t>& table) const;
 
 	private:
+		// Per destination pixel from first, the source pixels it covers and by how much (summing to 1 / scale).
+		static std::vector<std::vector<std::pair<int, float>>> AreaWeights(int first, int count, float origin, float scale, int sourceSize);
+
 		[[nodiscard]] float Bilinear(float u, float v) const;
 		[[nodiscard]] float At(int x, int y) const;
 	};
@@ -104,7 +106,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		}
 	};
 
-	// Rasterizes with DirectWrite, grayscale antialiased.
 	class GlyphRasterizer {
 		IDWriteFactory2Ptr m_factory;
 		IDWriteFontCollectionPtr m_systemFonts;
@@ -119,8 +120,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		~GlyphRasterizer();
 
 		[[nodiscard]] IDWriteFactory2* Factory() const { return m_factory; }
-
-		[[nodiscard]] IDWriteFontCollection* SystemFonts() const { return m_systemFonts; }
 
 		// nullptr if FreeType can't be used.
 		[[nodiscard]] FreeTypeFonts* FreeType() const { return m_freeType.get(); }
@@ -148,19 +147,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			int advance,
 			const DirectWriteParams& parameters,
 			const GlyphTransform& transform,
-			float originY = 0) const;
-
-		// As RasterizeRun draws it.
-		[[nodiscard]] RECT GetRunBounds(
-			IDWriteFontFace* face,
-			float px,
-			const uint16_t* glyphs,
-			const float* advances,
-			const DWRITE_GLYPH_OFFSET* offsets,
-			uint32_t count,
-			const DirectWriteParams& parameters,
-			const GlyphTransform& transform,
-			float originX = 0,
 			float originY = 0) const;
 
 	private:

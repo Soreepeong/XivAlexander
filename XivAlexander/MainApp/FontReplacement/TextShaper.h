@@ -5,6 +5,7 @@
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontReplacer;
 	struct GameGlyph;
+	struct GlyphSource;
 	struct SizedFont;
 
 	enum class ItalicMode {
@@ -21,10 +22,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Grapheme cluster length in code units; 0 for empty text.
 	[[nodiscard]] int GetNextTextElementLength(std::wstring_view text);
 
-	// Answers the game's per-character glyph lookup (LayOutCharacter) from a DirectWrite shaping of the run from that character
-	// to the line end, macros skipped.
-	// Each cluster becomes one cell at its subpixel origin on its first character (others get a zero-width glyph); RTL runs
-	// and missing glyphs stay per character. Text is laid out several times a frame, so runs are cached by content and size.
+	// Answers LayOutCharacter's per-character glyph lookup from a DirectWrite shaping to the line end: a cluster is one cell on its first character.
+	// RTL runs and missing glyphs stay per character. Text is laid out several times a frame, so runs are cached by content and size.
 	class TextShaper final {
 	public:
 		// Private-use characters go to it before the system fallback, which would pick Windows' Segoe Fluent Icons.
@@ -71,7 +70,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			int TextStart{};
 			int TextEnd{};
 
-			// Of the first character; nullptr for the system's fonts.
+			// Of the first character; Element is nullptr for the system's fonts.
+			const GlyphSource* Source{};
 			const FaceElement* Element{};
 
 			// A glyph is missing or the game draws it: the cluster is left per character.
@@ -137,7 +137,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// The run being shaped, per code unit.
 		std::vector<wchar_t> m_text = std::vector<wchar_t>(256);
 		std::vector<int> m_textToByte = std::vector<int>(256);
-		std::vector<const FaceElement*> m_textElement = std::vector<const FaceElement*>(256);
+		std::vector<const GlyphSource*> m_textSource = std::vector<const GlyphSource*>(256);
 		std::vector<uint8_t> m_textItalic = std::vector<uint8_t>(256);
 		uint8_t m_byteItalic[MaxRunBytes]{};
 		const uint8_t* m_shapingBytes = nullptr;
@@ -206,7 +206,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// DirectWrite has no Hangul shaping (no composition, no ljmo/vjmo/tjmo) and draws each jamo full-width; composes as NFC does.
 		int ComposeHangul(int count);
 
-		// A low surrogate gets its high one's element; codepoint replacements are put in where the UTF-16 length allows.
+		// SizedFont::Pick per character (a low surrogate gets its high one's); codepoint replacements go in where the UTF-16 length allows.
 		void AssignElements(const SizedFont& sized, int count);
 
 		// Text no element draws keeps the format's font: the face's first, with the system fallback if the face has it.

@@ -3,6 +3,7 @@
 
 #include "Config.h"
 #include "MainApp/FontReplacement/GameFontNames.h"
+#include "Utils/StringUtils.h"
 #include "Utils/Win32.h"
 #include "resource.h"
 
@@ -18,7 +19,6 @@ namespace {
 		return nlohmann::json::parse(file, nullptr, true, true).get<FontChanger::Structs::MultiFontSet>();
 	}
 
-	// Gets the first of name, "stem (2).ext", "stem (3).ext", ... that isn't in the folder.
 	std::filesystem::path UnusedName(const std::filesystem::path& folder, const std::filesystem::path& name) {
 		std::error_code ec;
 		if (!exists(folder / name, ec))
@@ -121,10 +121,56 @@ void Presets::Combine(Faces& into, const Faces& from) {
 		into.insert_or_assign(name, face);
 }
 
+void Presets::Overlay(Faces& into, const Faces& from) {
+	using FontChanger::FixedSizeFont::codepoint_merge_mode;
+	using FontChanger::Structs::RendererEnum;
+
+	for (const auto& [name, top] : from) {
+		const auto it = into.find(name);
+		if (it == into.end() || it->second->Elements.empty()) {
+			into.insert_or_assign(name, top);
+			continue;
+		}
+		if (top->Elements.empty())
+			continue;
+
+		auto merged = std::make_shared<FontChanger::Structs::Face>(*it->second);
+		const auto bottomSize = merged->Elements.front()->Size;
+		const auto topSize = top->Elements.front()->Size;
+		const auto factor = bottomSize > 0 && topSize > 0 ? bottomSize / topSize : 1.f;
+		const auto append = [&](const FontChanger::Structs::FaceElement& element, codepoint_merge_mode mode) {
+			auto& copy = *merged->Elements.emplace_back(std::make_unique<FontChanger::Structs::FaceElement>(element));
+			copy.MergeMode = mode;
+			if (factor != 1.f) {
+				copy.OnFontCreateParametersChange();
+				copy.Scale(factor);
+			}
+		};
+
+		// Leading AddNew fonts would only fill the gaps below; as AddAll in reverse, they take what they have and the first still wins.
+		const auto& elements = top->Elements;
+		const auto firstGame = std::ranges::find_if(elements, [](const auto& e) { return e->Renderer == RendererEnum::PrerenderedGameInstallation; });
+		const auto leading = static_cast<size_t>(firstGame - elements.begin());
+		for (auto i = leading; i-- > 0;) {
+			if (elements[i]->MergeMode == codepoint_merge_mode::AddNew)
+				append(*elements[i], codepoint_merge_mode::AddAll);
+		}
+
+		// A system font face's game element (AddNew) then fills only gaps, and its Replace elements draw over where their font has the glyph.
+		for (size_t i = 0; i < elements.size(); i++) {
+			if (i >= leading || elements[i]->MergeMode != codepoint_merge_mode::AddNew)
+				append(*elements[i], elements[i]->MergeMode);
+		}
+
+		merged->OnElementChange();
+		into.insert_or_assign(name, std::move(merged));
+	}
+}
+
 Presets::Faces Presets::FacesOfFamily(const Faces& faces, std::string_view family) {
 	Faces res;
 	for (const auto& [name, face] : faces) {
-		if (EqualsIgnoringCase(GameFontNames::FamilyOf(name), family))
+		if (Utils::EqualsI(GameFontNames::FamilyOf(name), family))
 			res.emplace(name, face);
 	}
 	return res;

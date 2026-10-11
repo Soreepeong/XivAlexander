@@ -17,6 +17,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// nullopt if the font isn't one of the font manager's.
 		[[nodiscard]] std::optional<std::string> GetFaceName(GameFont* font);
 
+		// The font manager's font of the name (the lobby's while the lobby's fonts are loaded); nullptr if none.
+		[[nodiscard]] GameFont* FindFont(std::string_view faceName);
+
 		// The game font's family (AXIS of AXIS_12, JupiterN of Jupiter_45), else the name before the last underscore (FontChanger.Presets' Preset.FamilyOf).
 		[[nodiscard]] std::string FamilyOf(std::string_view faceName);
 	}

@@ -61,6 +61,7 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementEdgeConfig& v
 		{"Scale", v.Scale},
 		{"Min", v.Min},
 		{"Max", v.Max},
+		{"Softness", v.Softness},
 	});
 }
 
@@ -69,4 +70,5 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 	Read(j, "Scale", v.Scale);
 	Read(j, "Min", v.Min);
 	Read(j, "Max", v.Max);
+	Read(j, "Softness", v.Softness);
 }

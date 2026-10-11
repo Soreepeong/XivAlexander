@@ -45,7 +45,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFontSet {
 		GameFontSet() = delete;
 
-		// The stride of GameFontManager::FontSets.
 		static int StructSize;
 
 		// The font size requested for the current run after the node's scale.
@@ -96,7 +95,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 	static_assert(sizeof(GameKerningEntry) == 0x0C);
 
-	// MSVC std::unordered_map<uint, GameGlyph*>: a doubly linked list of all nodes, per bucket its run's first and last; FNV-1a of the key (GlyphMapFind).
+	// MSVC std::unordered_map layout.
 	struct GameGlyphMap {
 		struct Node {
 			Node* Next;
@@ -128,7 +127,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFont {
 		GameFont() = delete;
 
-		// The stride of GameFontManager::Fonts.
 		static int StructSize;
 
 		// The text renderer keeps vertex counts and buffers for this many textures.

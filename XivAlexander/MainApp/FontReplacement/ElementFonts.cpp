@@ -416,23 +416,6 @@ FontReplacement::RasterGlyph FontReplacement::OutlineElementFont::RasterizeRun(
 	return m_gamma ? glyph.WithCoverage(*m_gamma) : glyph;
 }
 
-std::optional<std::pair<int, int>> FontReplacement::OutlineElementFont::MeasureGlyph(IDWriteFontFace* face, float size, uint16_t glyph, DWRITE_GLYPH_OFFSET offset, const GlyphTransform& transform) {
-	const auto advance = 0.f;
-	RECT bounds;
-	if (m_freeTypeFace && SameFont(m_font->GetFace(size), face)) {
-		const auto axes = m_font->GetAxisValues(size);
-		const auto g = m_rasterizer.FreeType()->RasterizeRun(m_freeTypeFace, size, &glyph, &advance, &offset, 1, 0, 0, FreeTypeParams::Of(m_def.RendererSpecific.FreeType), transform, &axes, m_font->Embolden());
-		bounds = {g.Left, g.Top, g.Left + g.Width, g.Top + g.Height};
-	} else {
-		auto parameters = DirectWriteParams::Of(m_def.RendererSpecific.DirectWrite);
-		parameters.MeasureMode = MeasureMode;
-		bounds = m_rasterizer.GetRunBounds(face, size, &glyph, &advance, &offset, 1, parameters, transform);
-	}
-	if (bounds.right <= bounds.left || bounds.bottom <= bounds.top)
-		return std::nullopt;
-	return std::make_pair(static_cast<int>(bounds.top), static_cast<int>(bounds.bottom));
-}
-
 std::pair<float, float> FontReplacement::OutlineElementFont::GetInkExtent(IDWriteFontFace* face, float size, uint16_t glyph, const GlyphTransform& transform) {
 	DWRITE_GLYPH_METRICS gm;
 	if (FAILED(face->GetDesignGlyphMetrics(&glyph, 1, &gm, FALSE)))
@@ -498,6 +481,17 @@ IDWriteTypography* FontReplacement::OutlineElementFont::GetTypography() {
 	if (features.empty())
 		return nullptr;
 	ThrowOnError(m_rasterizer.Factory()->CreateTypography(&m_typography), "CreateTypography");
+
+	// A typography replaces the features that are on by default instead of adding to them; those stay on unless the font's features say otherwise.
+	for (const auto tag : {
+		     DWRITE_FONT_FEATURE_TAG_STANDARD_LIGATURES,
+		     DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_LIGATURES,
+		     DWRITE_FONT_FEATURE_TAG_CONTEXTUAL_ALTERNATES,
+		     DWRITE_FONT_FEATURE_TAG_KERNING,
+	     }) {
+		if (!features.contains(tag))
+			ThrowOnError(m_typography->AddFontFeature({tag, 1}), "AddFontFeature");
+	}
 	for (const auto& [tag, value] : features)
 		ThrowOnError(m_typography->AddFontFeature({tag, value}), "AddFontFeature");
 	return m_typography;

@@ -37,7 +37,7 @@ namespace XivAlexander {
 		/// Uses the system font's tabular figures (tnum) if it has them, else puts each digit in a cell as wide as its 0.
 		bool MonospacedDigits = true;
 
-		/// In order: of a preset only the family's faces are used, and of a face several give, the last one's.
+		/// In order: of a preset only the family's faces are used, and later sources draw over earlier ones glyph by glyph.
 		std::vector<FontReplacementFamilySource> Sources;
 
 		bool operator==(const FontReplacementFamily&) const = default;
@@ -50,18 +50,23 @@ namespace XivAlexander {
 		float Min = 1;
 		float Max = 1;
 
+		/// 0 is solid with a 1 px rim; up to 1, solid then a linear falloff; above 1, a falloff from the glyph, k * width wide (8 px at most).
+		float Softness = 0;
+
 		[[nodiscard]] float GetWidth(float px) const { return std::clamp(Scale * px, Min, Max); }
 
-		/// Within what the edge can do: 0.25 to 8 px.
+		/// How far the edge reaches past the glyph, as the edge shader keeps it.
+		[[nodiscard]] float GetReach(float px) const { return (std::min)(GetWidth(px) * (std::max)(Softness, 1.f), 8.f); }
+
+		/// Within what the edge can do: 0.25 to 8 px, softness 0 to 8.
 		[[nodiscard]] FontReplacementEdgeConfig Clamped() const {
 			const auto min = std::clamp(Min, 0.25f, 8.f);
-			return {std::clamp(Scale, 0.f, 1.f), min, std::clamp(Max, min, 8.f)};
+			return {std::clamp(Scale, 0.f, 1.f), min, std::clamp(Max, min, 8.f), std::clamp(Softness, 0.f, 8.f)};
 		}
 
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
 	};
 
-	/// Saved as one object.
 	class FontReplacementConfigGroup : public ConfigGroup {
 	public:
 		using ConfigGroup::ConfigGroup;

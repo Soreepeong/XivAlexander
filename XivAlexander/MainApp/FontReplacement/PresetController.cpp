@@ -20,6 +20,12 @@ namespace {
 	FolderWatch WatchFolder(const std::filesystem::path& folder, bool subtree) {
 		return {FindFirstChangeNotificationW(folder.c_str(), subtree ? TRUE : FALSE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE), INVALID_HANDLE_VALUE};
 	}
+
+	std::optional<std::filesystem::file_time_type> LastWriteTime(const std::filesystem::path& path) {
+		std::error_code ec;
+		const auto time = last_write_time(path, ec);
+		return ec ? std::nullopt : std::optional(time);
+	}
 }
 
 FontReplacement::PresetController::PresetController(std::shared_ptr<Config> config, Apply apply)
@@ -61,6 +67,7 @@ void FontReplacement::PresetController::Schedule(bool edited, std::chrono::milli
 void FontReplacement::PresetController::ThreadBody() {
 	auto presetWatch = WatchFolder(m_presetFolder, true);
 	std::map<std::filesystem::path, FolderWatch> glyphWatches;
+	std::map<std::filesystem::path, FolderWatch> externalWatches;
 
 	while (true) {
 		bool load = false, keepOnFailure = false;
@@ -87,14 +94,24 @@ void FontReplacement::PresetController::ThreadBody() {
 		}
 
 		std::vector<std::filesystem::path> wantedGlyphFolders;
+		std::vector<std::filesystem::path> wantedExternalFolders;
 		{
 			const auto lock = std::scoped_lock(m_mutex);
 			wantedGlyphFolders = m_glyphFolders;
+			for (const auto& path : m_externalPresets | std::views::keys) {
+				if (std::ranges::find(wantedExternalFolders, path.parent_path()) == wantedExternalFolders.end())
+					wantedExternalFolders.push_back(path.parent_path());
+			}
 		}
 		std::erase_if(glyphWatches, [&](const auto& w) { return std::ranges::find(wantedGlyphFolders, w.first) == wantedGlyphFolders.end(); });
 		for (const auto& f : wantedGlyphFolders) {
 			if (!glyphWatches.contains(f) && is_directory(f))
 				glyphWatches.emplace(f, WatchFolder(f, false));
+		}
+		std::erase_if(externalWatches, [&](const auto& w) { return std::ranges::find(wantedExternalFolders, w.first) == wantedExternalFolders.end(); });
+		for (const auto& f : wantedExternalFolders) {
+			if (!externalWatches.contains(f) && is_directory(f))
+				externalWatches.emplace(f, WatchFolder(f, false));
 		}
 
 		std::vector<HANDLE> handles;
@@ -111,6 +128,14 @@ void FontReplacement::PresetController::ThreadBody() {
 				FindNextChangeNotification(*watch);
 				FontChanger::GlyphFiles::InvalidateFolder(path);
 			});
+		}
+		std::vector<size_t> externalSignals;
+		for (const auto& watch : externalWatches | std::views::values) {
+			if (!watch)
+				continue;
+			externalSignals.push_back(handles.size());
+			handles.push_back(*watch);
+			onSignal.emplace_back([&watch] { FindNextChangeNotification(*watch); });
 		}
 
 		// Polls every so often too, as settings changes and the stop request don't signal the handles.
@@ -131,8 +156,16 @@ void FontReplacement::PresetController::ThreadBody() {
 
 		const auto result = WaitForMultipleObjects(static_cast<DWORD>(handles.size()), handles.data(), FALSE, timeout);
 		if (result >= WAIT_OBJECT_0 && result < WAIT_OBJECT_0 + handles.size()) {
-			onSignal[result - WAIT_OBJECT_0]();
-			Schedule(true, ReloadDelay);
+			const auto index = static_cast<size_t>(result - WAIT_OBJECT_0);
+			onSignal[index]();
+			// Other files in a preset's own folder change too; only its own change reloads.
+			auto changed = true;
+			if (std::ranges::find(externalSignals, index) != externalSignals.end()) {
+				const auto lock = std::scoped_lock(m_mutex);
+				changed = std::ranges::any_of(m_externalPresets, [](const auto& p) { return LastWriteTime(p.first) != p.second; });
+			}
+			if (changed)
+				Schedule(true, ReloadDelay);
 		}
 	}
 }
@@ -177,10 +210,18 @@ void FontReplacement::PresetController::Load(bool keepOnFailure) {
 		status += std::format("; loading failed ({})", failureText);
 	Host::Information("{}", status);
 
+	std::map<std::filesystem::path, std::optional<std::filesystem::file_time_type>> externalPresets;
+	for (const auto& path : read.Paths()) {
+		if (const auto rel = path.lexically_normal().lexically_relative(m_presetFolder.lexically_normal()); !rel.empty() && *rel.begin() != L"..")
+			continue;
+		externalPresets.emplace(path, LastWriteTime(path));
+	}
+
 	{
 		const auto lock = std::scoped_lock(m_mutex);
 		m_status = std::move(status);
 		m_glyphFolders = Presets::GlyphImageFolders(preset);
+		m_externalPresets = std::move(externalPresets);
 	}
 
 	m_apply(std::move(preset), systemFallback);
@@ -195,7 +236,9 @@ const std::optional<FontReplacement::Presets::Faces>& FontReplacement::PresetCon
 	if (const auto it = m_loaded.find(preset); it != m_loaded.end())
 		return it->second;
 	try {
-		return m_loaded.emplace(preset, Presets::Load(Presets::Resolve(m_folder, preset))).first->second;
+		const auto path = Presets::Resolve(m_folder, preset);
+		m_paths.push_back(path);
+		return m_loaded.emplace(preset, Presets::Load(path)).first->second;
 	} catch (const std::exception& e) {
 		Host::Error("Loading the preset {} failed: {}", preset, e.what());
 		m_failures.push_back(std::format("{}: {}", preset, e.what()));
@@ -216,9 +259,9 @@ FontReplacement::Presets::Faces FontReplacement::PresetController::MakeFamilyFac
 			continue;
 		if (source.IsPreset()) {
 			if (const auto& faces = read(source.Preset))
-				Presets::Combine(combined, Presets::FacesOfFamily(*faces, family));
+				Presets::Overlay(combined, Presets::FacesOfFamily(*faces, family));
 		} else if (const auto generated = MakeFaces(family, source.Font, settings.MonospacedDigits, failures)) {
-			Presets::Combine(combined, *generated);
+			Presets::Overlay(combined, *generated);
 			if (usesFont)
 				*usesFont = true;
 		}

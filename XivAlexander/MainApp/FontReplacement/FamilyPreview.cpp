@@ -118,6 +118,55 @@ namespace {
 			return font;
 		return std::make_shared<ScaledFont>(std::move(font), size);
 	}
+
+	class SubsetFont final : public FixedSizeFont::default_abstract_fixed_size_font {
+		std::shared_ptr<FixedSizeFont::fixed_size_font> m_base;
+		std::set<char32_t> m_codepoints;
+
+	public:
+		SubsetFont(std::shared_ptr<FixedSizeFont::fixed_size_font> base, std::set<char32_t> codepoints)
+			: m_base(std::move(base))
+			, m_codepoints(std::move(codepoints)) {}
+
+		[[nodiscard]] std::string family_name() const override { return m_base->family_name(); }
+		[[nodiscard]] std::string subfamily_name() const override { return m_base->subfamily_name(); }
+		[[nodiscard]] float font_size() const override { return m_base->font_size(); }
+		[[nodiscard]] int ascent() const override { return m_base->ascent(); }
+		[[nodiscard]] int line_height() const override { return m_base->line_height(); }
+		[[nodiscard]] const std::set<char32_t>& all_codepoints() const override { return m_codepoints; }
+		[[nodiscard]] const std::map<std::pair<char32_t, char32_t>, int>& all_kerning_pairs() const override { return m_base->all_kerning_pairs(); }
+		[[nodiscard]] std::optional<float> get_baseline(uint32_t baselineTag) const override { return m_base->get_baseline(baselineTag); }
+
+		[[nodiscard]] bool try_get_glyph_metrics(char32_t codepoint, FixedSizeFont::glyph_metrics& gm) const override {
+			return m_codepoints.contains(codepoint) && m_base->try_get_glyph_metrics(codepoint, gm);
+		}
+
+		bool draw(char32_t codepoint, xivres::util::b8g8r8a8* pBuf, int drawX, int drawY, int destWidth, int destHeight, xivres::util::b8g8r8a8 fgColor, xivres::util::b8g8r8a8 bgColor) const override {
+			return m_codepoints.contains(codepoint) && m_base->draw(codepoint, pBuf, drawX, drawY, destWidth, destHeight, fgColor, bgColor);
+		}
+
+		bool draw(char32_t codepoint, uint8_t* pBuf, size_t stride, int drawX, int drawY, int destWidth, int destHeight, uint8_t fgColor, uint8_t bgColor, uint8_t fgOpacity, uint8_t bgOpacity) const override {
+			return m_codepoints.contains(codepoint) && m_base->draw(codepoint, pBuf, stride, drawX, drawY, destWidth, destHeight, fgColor, bgColor, fgOpacity, bgOpacity);
+		}
+
+		[[nodiscard]] std::shared_ptr<FixedSizeFont::fixed_size_font> get_threadsafe_view() const override {
+			return std::make_shared<SubsetFont>(m_base->get_threadsafe_view(), m_codepoints);
+		}
+
+		[[nodiscard]] const FixedSizeFont::fixed_size_font* get_base_font(char32_t codepoint) const override {
+			return m_codepoints.contains(codepoint) ? m_base->get_base_font(codepoint) : nullptr;
+		}
+	};
+
+	// FontChanger silently makes an unloadable font (not installed, or an unreadable game font) as one without glyphs; reported here instead.
+	void NoteIfEmpty(const FontChanger::Structs::FaceElement& element, const FixedSizeFont::fixed_size_font& base, std::vector<std::string>& failures) {
+		if (element.Renderer == FontChanger::Structs::RendererEnum::Empty || !base.all_codepoints().empty())
+			return;
+		const auto& name = element.Lookup.Name.empty() ? element.RendererSpecific.GlyphImages.Path : element.Lookup.Name;
+		auto failure = XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_EMPTYELEMENT, xivres::util::unicode::convert<std::wstring>(name));
+		if (std::ranges::find(failures, failure) == failures.end())
+			failures.emplace_back(std::move(failure));
+	}
 }
 
 FontReplacement::FamilyPreview::FamilyPreview(Notify notify)
@@ -200,53 +249,109 @@ void FontReplacement::FamilyPreview::ThreadBody() {
 	}
 }
 
-std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::MakeFont(const std::string& faceName, float px, std::vector<std::string>& failures) const {
-	std::vector<std::pair<std::shared_ptr<FixedSizeFont::fixed_size_font>, FixedSizeFont::codepoint_merge_mode>> fonts;
-
-	// FontChanger silently makes an unloadable font (not installed, or an unreadable game font) as one without glyphs; report it here instead.
-	const auto noteIfEmpty = [&failures](const FontChanger::Structs::FaceElement& element, const FixedSizeFont::fixed_size_font& base) {
-		if (element.Renderer == FontChanger::Structs::RendererEnum::Empty || !base.all_codepoints().empty())
-			return;
-		const auto& name = element.Lookup.Name.empty() ? element.RendererSpecific.GlyphImages.Path : element.Lookup.Name;
-		auto failure = XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_EMPTYELEMENT, xivres::util::unicode::convert<std::wstring>(name));
-		if (std::ranges::find(failures, failure) == failures.end())
-			failures.emplace_back(std::move(failure));
-	};
+std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::MakeFace(const std::string& faceName, float px, std::vector<std::string>& failures, std::set<char32_t>* own) const {
+	const auto it = m_faces.find(faceName);
+	if (it == m_faces.end() || it->second->Elements.empty())
+		return nullptr;
 
 	// Scaled as ReplacementFace does: sizes and pixel values relative to the first element's size.
-	if (const auto it = m_faces.find(faceName); it != m_faces.end() && !it->second->Elements.empty()) {
-		const auto& face = *it->second;
-		const auto reference = face.Elements[0]->Size > 0 ? face.Elements[0]->Size : 1.f;
-		const auto factor = px / reference;
-		std::vector<std::pair<std::shared_ptr<FixedSizeFont::fixed_size_font>, FixedSizeFont::codepoint_merge_mode>> elements;
-		for (const auto& element : face.Elements) {
-			FontChanger::Structs::FaceElement scaled = *element;
-			scaled.OnFontCreateParametersChange();
-			scaled.Scale(factor);
-			if (element->Renderer == FontChanger::Structs::RendererEnum::PrerenderedGameInstallation) {
-				// The game's glyphs, of the game's font nearest the element's own size, scaled.
-				noteIfEmpty(*element, *element->GetBaseFont());
-				elements.emplace_back(std::make_shared<FixedSizeFont::wrapping_fixed_size_font>(AtSize(element->GetBaseFont(), scaled.Size), scaled.WrapModifiers), element->MergeMode);
-			} else {
-				noteIfEmpty(*element, *scaled.GetBaseFont());
-				elements.emplace_back(scaled.GetWrappedFont(), element->MergeMode);
+	const auto& face = *it->second;
+	const auto reference = face.Elements[0]->Size > 0 ? face.Elements[0]->Size : 1.f;
+	const auto factor = px / reference;
+	std::vector<std::pair<std::shared_ptr<FixedSizeFont::fixed_size_font>, FixedSizeFont::codepoint_merge_mode>> elements;
+	std::map<char32_t, bool> drawsGame;
+	for (const auto& element : face.Elements) {
+		FontChanger::Structs::FaceElement scaled = *element;
+		scaled.OnFontCreateParametersChange();
+		scaled.Scale(factor);
+		const auto game = element->Renderer == FontChanger::Structs::RendererEnum::PrerenderedGameInstallation;
+		if (game) {
+			// The game's glyphs, of the game's font nearest the element's own size, scaled.
+			NoteIfEmpty(*element, *element->GetBaseFont(), failures);
+			elements.emplace_back(std::make_shared<FixedSizeFont::wrapping_fixed_size_font>(AtSize(element->GetBaseFont(), scaled.Size), scaled.WrapModifiers), element->MergeMode);
+		} else {
+			NoteIfEmpty(*element, *scaled.GetBaseFont(), failures);
+			elements.emplace_back(scaled.GetWrappedFont(), element->MergeMode);
+		}
+
+		// Which element draws a codepoint, as merged_fixed_size_font decides it.
+		for (const auto c : elements.back().first->all_codepoints()) {
+			switch (element->MergeMode) {
+				case FixedSizeFont::codepoint_merge_mode::AddNew:
+					drawsGame.try_emplace(c, game);
+					break;
+				case FixedSizeFont::codepoint_merge_mode::Replace:
+					if (const auto d = drawsGame.find(c); d != drawsGame.end())
+						d->second = game;
+					break;
+				default:
+					drawsGame.insert_or_assign(c, game);
+					break;
 			}
 		}
-		fonts.emplace_back(std::make_shared<FixedSizeFont::merged_fixed_size_font>(std::move(elements), face.VerticalAlignment), FixedSizeFont::codepoint_merge_mode::AddNew);
 	}
 
-	// Then the game's glyphs, as the replacer falls back to them; a wrapped font has only the codepoints in its ranges, so take all.
-	if (const auto game = FontChanger::FaceFromFont::GetGameFontFamilyAndSize(faceName)) {
+	if (own) {
+		own->clear();
+		for (const auto& [c, game] : drawsGame) {
+			if (!game)
+				own->insert(own->end(), c);
+		}
+	}
+	return std::make_shared<FixedSizeFont::merged_fixed_size_font>(std::move(elements), face.VerticalAlignment);
+}
+
+std::shared_ptr<FixedSizeFont::fixed_size_font> FontReplacement::FamilyPreview::MakeFont(std::vector<std::pair<std::string, float>> faces, float px, std::vector<std::string>& failures) const {
+	if (faces.empty())
+		throw std::runtime_error("The family has no faces.");
+	std::ranges::stable_sort(faces, std::ranges::greater{}, [](const auto& f) { return f.second; });
+
+	// The game's glyphs of a face, all of them (a wrapped font has only the codepoints in its ranges), scaled to px.
+	const auto gameGlyphs = [&](const std::string& faceName) -> std::shared_ptr<FixedSizeFont::fixed_size_font> {
+		const auto game = FontChanger::FaceFromFont::GetGameFontFamilyAndSize(faceName);
+		if (!game)
+			return nullptr;
 		FontChanger::Structs::FaceElement element;
 		element.Renderer = FontChanger::Structs::RendererEnum::PrerenderedGameInstallation;
 		element.Lookup.Name = std::string(game->first);
 		element.Size = game->second;
 		element.WrapModifiers.Codepoints = {{0, 0x10FFFF}};
-		noteIfEmpty(element, *element.GetBaseFont());
-		fonts.emplace_back(AtSize(element.GetWrappedFont(), px), FixedSizeFont::codepoint_merge_mode::AddNew);
+		NoteIfEmpty(element, *element.GetBaseFont(), failures);
+		return AtSize(element.GetWrappedFont(), px);
+	};
+
+	std::vector<std::pair<std::shared_ptr<FixedSizeFont::fixed_size_font>, FixedSizeFont::codepoint_merge_mode>> fonts;
+	if (const auto exact = FontReplacer::GetExactFace(faces, px)) {
+		// The face of the size alone, then its game font's glyphs.
+		const auto& name = faces[*exact].first;
+		if (auto face = MakeFace(name, px, failures, nullptr))
+			fonts.emplace_back(std::move(face), FixedSizeFont::codepoint_merge_mode::AddNew);
+		if (auto game = gameGlyphs(name))
+			fonts.emplace_back(std::move(game), FixedSizeFont::codepoint_merge_mode::AddNew);
+	} else {
+		// As SizedFont::Pick: faces largest first, own glyphs only, then the largest game font; lines of the face drawing the most itself.
+		std::vector<std::shared_ptr<FixedSizeFont::fixed_size_font>> made(faces.size());
+		std::vector<std::set<char32_t>> own(faces.size());
+		size_t best = 0;
+		for (size_t i = 0; i < faces.size(); i++) {
+			made[i] = MakeFace(faces[i].first, px, failures, &own[i]);
+			if (own[i].size() > own[best].size())
+				best = i;
+		}
+
+		auto lines = made[best] ? made[best] : gameGlyphs(faces[best].first);
+		if (lines)
+			fonts.emplace_back(std::make_shared<FixedSizeFont::empty_fixed_size_font>(px, FixedSizeFont::empty_fixed_size_font::create_struct{static_cast<float>(lines->ascent()), static_cast<float>(lines->line_height())}), FixedSizeFont::codepoint_merge_mode::AddNew);
+		for (size_t i = 0; i < faces.size(); i++) {
+			if (made[i] && !own[i].empty())
+				fonts.emplace_back(std::make_shared<SubsetFont>(made[i], std::move(own[i])), FixedSizeFont::codepoint_merge_mode::AddNew);
+		}
+		if (auto game = gameGlyphs(faces.front().first))
+			fonts.emplace_back(std::move(game), FixedSizeFont::codepoint_merge_mode::AddNew);
 	}
+
 	if (fonts.empty())
-		throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_NOFACE, xivres::util::unicode::convert<std::wstring>(faceName)));
+		throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_NOFACE, xivres::util::unicode::convert<std::wstring>(faces.front().first)));
 	return std::make_shared<FixedSizeFont::merged_fixed_size_font>(std::move(fonts));
 }
 
@@ -275,11 +380,11 @@ FontReplacement::FamilyPreview::Image FontReplacement::FamilyPreview::Draw(const
 		}
 		failures = m_faceFailures;
 
-		if (!m_font || m_fontFace != request.FaceName || m_fontSize != px) {
+		if (!m_font || m_fontFaces != request.Faces || m_fontSize != px) {
 			m_font.reset();
 			m_fontFailures.clear();
-			m_font = MakeFont(request.FaceName, px, m_fontFailures);
-			m_fontFace = request.FaceName;
+			m_font = MakeFont(request.Faces, px, m_fontFailures);
+			m_fontFaces = request.Faces;
 			m_fontSize = px;
 		}
 		failures.insert(failures.end(), m_fontFailures.begin(), m_fontFailures.end());
@@ -314,7 +419,7 @@ FontReplacement::FamilyPreview::Image FontReplacement::FamilyPreview::Draw(const
 			});
 			const auto drawnInk = std::ranges::any_of(glyphs, [](const auto& g) { return std::ranges::any_of(g.Alpha, [](uint8_t a) { return a != 0; }); });
 			if (hasInk && !drawnInk)
-				failures.push_back(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_NOGLYPHS, xivres::util::unicode::convert<std::wstring>(request.FaceName)));
+				failures.push_back(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPREVIEW_ERROR_NOGLYPHS, xivres::util::unicode::convert<std::wstring>(request.Family)));
 		}
 	} catch (const std::exception& e) {
 		failures.emplace_back(e.what());
@@ -335,7 +440,7 @@ FontReplacement::FamilyPreview::Image FontReplacement::FamilyPreview::Draw(const
 			// The radius the edge shader gets in the game: the atlas's size over the texture width the font claims.
 			const auto atlasSize = FontReplacer::GetAtlasSize(request.Family);
 			const auto radius = static_cast<float>(atlasSize) / FontReplacer::GetClaimedTextureWidth(edge, atlasSize, px);
-			m_renderer->Draw(glyphs, radius, colors, image.Width, image.Height, image.Pixels);
+			m_renderer->Draw(glyphs, radius, edge.Softness, colors, image.Width, image.Height, image.Pixels);
 			return image;
 		} catch (const std::exception& e) {
 			image.EdgeFailure = e.what();

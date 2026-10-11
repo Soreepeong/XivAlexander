@@ -3,16 +3,15 @@
 
 #include <FontChanger.Presets/DirectWriteUtil.h>
 #include <icu.h>
+#include <xivres/xivstring.h>
 
 #include "MainApp/FontReplacement/FontReplacer.h"
-#include "MainApp/FontReplacement/GameText.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The <italic> macro.
 	constexpr uint8_t ItalicMacro = 0x1A;
 
 	constexpr size_t MaxActiveRuns = 8;
@@ -110,11 +109,16 @@ FontReplacement::GameGlyph* FontReplacement::TextShaper::TryGetGlyph(const Sized
 			return run.Shaped->Glyphs[p - run.Start];
 	}
 
-	auto run = m_active.size() == MaxActiveRuns ? std::move(m_active.front()) : std::make_unique<ActiveRun>();
-	const auto shaped = ShapeFrom(sized, p, italic, *run);
-	if (m_active.size() == MaxActiveRuns)
+	// The oldest run is reused when all are taken; it leaves m_active first, so a throw from ShapeFrom leaves no empty slot.
+	std::unique_ptr<ActiveRun> run;
+	if (m_active.size() == MaxActiveRuns) {
+		run = std::move(m_active.front());
 		m_active.erase(m_active.begin());
-	if (!shaped) {
+	} else {
+		run = std::make_unique<ActiveRun>();
+	}
+
+	if (!ShapeFrom(sized, p, italic, *run)) {
 		// ShapeFrom leaves the run untouched when it doesn't shape.
 		if (run->Shaped)
 			m_active.insert(m_active.begin(), std::move(run));
@@ -156,7 +160,8 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 
 		// Characters the game draws, and those of elements not drawn from their fonts (merged glyphs, glyph images), stay per character.
 		const auto& sized = *m_shapingSized;
-		const auto element = m_textElement[start + k];
+		const auto source = m_textSource[start + k];
+		const auto element = source->Element;
 		const auto font = element ? element->Shaped() : nullptr;
 		auto missing = element && !font;
 
@@ -210,7 +215,7 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 		// The transformation scales advances; the cell (ReplacementFace::Wrap) widens them by monospacing and letter spacing.
 		const auto x0 = std::round(pen);
 		const auto width = advance * (font ? font->Transform().M11 : 1.f);
-		const auto spacing = sized.Face->GetLetterSpacing(element && !element->DrawsGame() ? element : nullptr, sized.Px);
+		const auto spacing = source->Face->GetLetterSpacing(element && !element->DrawsGame() ? element : nullptr, sized.Px);
 		Cluster cluster{
 			.Face = face,
 			.EmSize = run->fontEmSize,
@@ -221,6 +226,7 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 			.X0 = static_cast<int>(x0),
 			.TextStart = start + k,
 			.TextEnd = start + k2,
+			.Source = source,
 			.Element = element,
 			.Missing = missing,
 			.AfterGap = m_clusterGap,
@@ -231,7 +237,7 @@ void FontReplacement::TextShaper::OnGlyphRun(float baselineX, const DWRITE_GLYPH
 		float next;
 		if (!missing && font && element->Def().WrapModifiers.Monospacing.is_enabled()) {
 			const auto rawAdvance = static_cast<int>(std::round(width));
-			cluster.Cell = sized.Face->Wrap(*element, RasterizeCluster(cluster, rawAdvance, 1), sized.Px, sized.Game, [&](float s) { return RasterizeCluster(cluster, rawAdvance, s); });
+			cluster.Cell = source->Face->Wrap(*element, RasterizeCluster(cluster, rawAdvance, 1), sized.Px, source->Game, [&](float s) { return RasterizeCluster(cluster, rawAdvance, s); });
 			cluster.X1 = cluster.X0 + cluster.Cell->Advance;
 			next = static_cast<float>(cluster.X1);
 		} else {
@@ -387,30 +393,33 @@ IDWriteFontFallbackPtr FontReplacement::TextShaper::CreateSystemFallback(GlyphRa
 }
 
 bool FontReplacement::TextShaper::ShapeFrom(const SizedFont& sized, const uint8_t* p, ItalicMode italic, ActiveRun& run) {
-	// To the line end, as UTF-16 (byte offset -1 for low surrogates); italic macros switch italics mid-run so a line is laid
-	// out whole, but end an ItalicMode::Images run.
+	// To the line end or MaxRunBytes, as UTF-16 (byte offset -1 for low surrogates); italic macros switch italics mid-run
+	// so a line is laid out whole, but end an ItalicMode::Images run.
+	const std::span text(p, strnlen(reinterpret_cast<const char*>(p), MaxRunBytes));
 	auto count = 0;
 	auto i = 0;
 	auto hash = 0xCBF29CE484222325ull;
 	auto inItalic = italic != ItalicMode::Upright;
-	while (i < MaxRunBytes) {
-		const auto b = p[i];
-		if (b == 0 || b == 0x0A || b == 0x0D)
+	while (static_cast<size_t>(i) < text.size()) {
+		const auto b = text[i];
+		if (b == 0x0A || b == 0x0D)
 			break;
 
-		if (b == GameText::MacroStart) {
-			// A line break macro ends the run.
-			if (p[i + 1] == 0x10 || (p[i + 1] == ItalicMacro && italic == ItalicMode::Images))
-				break;
-			const auto total = GameText::MacroLength(p + i);
-			if (total == 0 || i + total > MaxRunBytes)
+		if (b == static_cast<uint8_t>(xivres::xivstring::StartOfText)) {
+			const auto macro = xivres::xivstring::read_macro(text.subspan(i));
+			if (!macro)
 				break;
 
+			// A line break macro ends the run.
+			const auto type = static_cast<uint8_t>(macro->type);
+			if (type == 0x10 || (type == ItalicMacro && italic == ItalicMode::Images))
+				break;
+			const auto total = static_cast<int>(macro->size);
+
 			// The argument is a plain integer (1 on, 0 off); anything else ends the run.
-			if (p[i + 1] == ItalicMacro) {
-				int payload, on;
-				const auto n = GameText::ReadInteger(p + i + 2, payload);
-				if (payload == 0 || GameText::ReadInteger(p + i + 2 + n, on) != payload)
+			if (type == ItalicMacro) {
+				uint32_t on;
+				if (macro->payload.empty() || xivres::xivstring::read_integer(macro->payload, on) != macro->payload.size())
 					break;
 				inItalic = on != 0;
 			}
@@ -424,8 +433,8 @@ bool FontReplacement::TextShaper::ShapeFrom(const SizedFont& sized, const uint8_
 		m_byteItalic[i] = inItalic ? 1 : 0;
 
 		// Stepped as the game does; the run ends before a sequence that would run into the end of the text.
-		const auto length = GameText::CharacterLength(p + i);
-		if (length == 0 || i + length > MaxRunBytes)
+		const auto length = static_cast<int>(xivres::xivstring::character_length(text.subspan(i)));
+		if (length == 0)
 			break;
 
 		auto codepoint = -1;
@@ -481,7 +490,7 @@ void FontReplacement::TextShaper::EnsureCapacity(int n) {
 	const auto size = (std::max)(static_cast<size_t>(n), m_text.size() * 2);
 	m_text.resize(size);
 	m_textToByte.resize(size);
-	m_textElement.resize(size);
+	m_textSource.resize(size);
 	m_textItalic.resize(size);
 }
 
@@ -627,12 +636,11 @@ void FontReplacement::TextShaper::GetBreaks(std::wstring_view text, std::span<ui
 }
 
 void FontReplacement::TextShaper::AssignElements(const SizedFont& sized, int count) {
-	const auto face = sized.Face;
-	const auto game = sized.Game;
 	for (auto i = 0; i < count;) {
 		const auto n = IS_HIGH_SURROGATE(m_text[i]) && i + 1 < count && IS_LOW_SURROGATE(m_text[i + 1]) ? 2 : 1;
 		const auto codepoint = n == 2 ? static_cast<char32_t>(0x10000 + ((m_text[i] - 0xD800) << 10) + (m_text[i + 1] - 0xDC00)) : static_cast<char32_t>(m_text[i]);
-		const auto element = face->GetElement(codepoint, game);
+		const auto& source = sized.Pick(codepoint);
+		const auto element = source.Element;
 		if (element && !element->DrawsGame()) {
 			const auto drawn = ReplacementFace::GetDrawnCodepoint(*element, codepoint);
 			if (drawn != codepoint && xivres::util::unicode::encode<wchar_t>(nullptr, drawn) == static_cast<size_t>(n))
@@ -640,22 +648,22 @@ void FontReplacement::TextShaper::AssignElements(const SizedFont& sized, int cou
 		}
 
 		for (auto j = 0; j < n; j++)
-			m_textElement[i + j] = element;
+			m_textSource[i + j] = &source;
 		i += n;
 	}
 }
 
 void FontReplacement::TextShaper::ApplyElements(IDWriteTextLayout* layout, const SizedFont& sized, int count) {
-	const auto& face = *sized.Face;
 	for (auto start = 0; start < count;) {
-		const auto element = m_textElement[start];
+		const auto& source = *m_textSource[start];
+		const auto element = source.Element;
 		auto end = start + 1;
-		while (end < count && m_textElement[end] == element)
+		while (end < count && m_textSource[end]->Element == element)
 			end++;
 
 		// Elements not drawn from their fonts are left per character anyway.
 		if (const auto font = element ? element->Shaped() : nullptr)
-			font->ApplyTo(layout, {static_cast<UINT32>(start), static_cast<UINT32>(end - start)}, face.GetElementPx(*element, sized.Px));
+			font->ApplyTo(layout, {static_cast<UINT32>(start), static_cast<UINT32>(end - start)}, source.Face->GetElementPx(*element, sized.Px));
 
 		start = end;
 	}
@@ -706,7 +714,7 @@ const FontReplacement::RasterGlyph& FontReplacement::TextShaper::GetRaster(Clust
 
 	auto raster = c.Cell ? *c.Cell : RasterizeCluster(c, 0, 1);
 	if (!c.Cell && c.Element)
-		raster = sized.Face->Wrap(*c.Element, std::move(raster), sized.Px, sized.Game, [&](float s) { return RasterizeCluster(c, 0, s); });
+		raster = c.Source->Face->Wrap(*c.Element, std::move(raster), sized.Px, c.Source->Game, [&](float s) { return RasterizeCluster(c, 0, s); });
 
 	// An edge margin makes ink left of the pen: the cell then starts earlier (PlaceClusters), keeping the spacing.
 	raster = m_replacer.FinishGlyph(sized, std::move(raster));

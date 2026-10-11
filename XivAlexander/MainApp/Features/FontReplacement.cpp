@@ -89,25 +89,35 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			throw;
 		}
 
-		// Subscribed before the controller loads the settings, so a change in between is loaded or reloaded; the edge and nameplates apply before the next frame.
-		auto& settings = Config->Runtime.FontReplacement;
-		Cleanup += settings.Faces.OnChange([this] {
-			const auto lock = std::scoped_lock(PendingMutex);
-			if (Controller)
-				Controller->Reload();
-		});
-		const auto markPending = [this] {
-			const auto lock = std::scoped_lock(PendingMutex);
-			PendingSettings = true;
-		};
-		Cleanup += settings.Edge.OnChange(markPending);
+		try {
+			// Subscribed before the controller loads the settings, so a change in between isn't lost; edge and nameplates apply before the next frame.
+			auto& settings = Config->Runtime.FontReplacement;
+			Cleanup += settings.Faces.OnChange([this] {
+				const auto lock = std::scoped_lock(PendingMutex);
+				if (Controller)
+					Controller->Reload();
+			});
+			const auto markPending = [this] {
+				const auto lock = std::scoped_lock(PendingMutex);
+				PendingSettings = true;
+			};
+			Cleanup += settings.Edge.OnChange(markPending);
 
-		auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
+			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
+				const auto lock = std::scoped_lock(PendingMutex);
+				PendingPreset.emplace(std::move(faces), systemFallback);
+			});
 			const auto lock = std::scoped_lock(PendingMutex);
-			PendingPreset.emplace(std::move(faces), systemFallback);
-		});
-		const auto lock = std::scoped_lock(PendingMutex);
-		Controller = std::move(controller);
+			Controller = std::move(controller);
+		} catch (...) {
+			// As the destructor does: unsubscribe and unhook first, so nothing reaches the replacer while it's torn down.
+			Cleanup.clear();
+			Controller.reset();
+			PresentCall.reset();
+			Present.reset();
+			App.RunOnGameLoop([this] { TearDown(); });
+			throw;
+		}
 	}
 
 	~Implementation() {

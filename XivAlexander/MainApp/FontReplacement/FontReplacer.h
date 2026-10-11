@@ -23,7 +23,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		float Scale;
 	};
 
-	// A face's glyphs at one size, shared by its copies of game fonts (a font and its lobby version); Game is the first, for glyphs and metrics.
+	// Where a SizedFont's glyph of a codepoint comes from: Face's Element (nullptr: the system's fonts), with Game for the face's game glyphs.
+	struct GlyphSource {
+		ReplacementFace* Face;
+		GameFont* Game;
+		FaceElement* Element;
+	};
+
+	// A family's glyphs at one size, shared by its fonts' copies of that size; Face (with Game, its game font) gives line metrics and layout defaults.
 	struct SizedFont {
 		ReplacementFace* Face;
 		float Px;
@@ -31,19 +38,29 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int LineHeight;
 		GameFont* Game;
 
-		// The atlas of the font's family.
 		GlyphAtlas* Atlas;
+
+		// Faces glyphs may come from with their game fonts, largest first: only Face at a size of one of the family's faces.
+		std::vector<std::pair<ReplacementFace*, GameFont*>> Faces;
+
+		// Game fonts the game's glyphs are copied from, largest first.
+		std::vector<GameFont*> Sources;
 
 		// By packed UTF-8 value; nullptr for a glyph left to the game.
 		std::unordered_map<uint32_t, GameGlyph*> Glyphs;
+
+		// Copied from Sources, by packed UTF-8 value; nullptr if none could be.
+		std::unordered_map<uint32_t, GameGlyph*> GameGlyphs;
+
+		// Pick's, by codepoint.
+		mutable std::unordered_map<char32_t, GlyphSource> Picks;
+
+		// Of several faces, the largest whose element other than the game's has it, else one leaving it to the system's fonts, else the game's.
+		[[nodiscard]] const GlyphSource& Pick(char32_t codepoint) const;
 	};
 
-	// Makes the game's text renderer draw glyphs rasterized at their drawn size. Two hooks, both on the game's thread:
-	// 1. Font picker (PickFont): the requested size includes the node's screen scale; swap in a copy of exactly that size (half px) so the
-	//    renderer's scale is 1. The copy keeps the game font's glyph map and textures, with the atlas pages after them.
-	// 2. Glyph lookup (GetGlyph): answered from the copy's glyphs, rasterized on first use; codepoints no family has and private-use icons
-	//    fall through to the game's glyph, drawn from the game's textures at the game font's size.
-	// Text is laid out every frame, so no glyph pointers survive a frame; borrowed parts are retaken when the game rebuilds the font (BuildFont only).
+	// Hooks PickFont (swaps in a copy at the exact on-screen half-px size so the renderer doesn't scale) and GetGlyph (the copy's glyphs, else the game's).
+	// Copies borrow the game font's glyph map and textures, retaken after BuildFont; game thread; no glyph pointer outlives a frame.
 	class FontReplacer {
 		enum class CellState : uint8_t {
 			// No pixels: an empty glyph, a blank, or one whose pixels couldn't be placed.
@@ -85,12 +102,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			FontReplacer::Cell Cell;
 		};
 
-		// A game font copy at a size in half pixels; GameGlyphs are made from the game font's, by packed UTF-8 value (nullptr if drawn as is).
+		// In half pixels.
 		struct CopyInfo {
 			GameFont* Original;
 			int HalfPx;
 			SizedFont* Sized;
-			std::unordered_map<uint32_t, GameGlyph*> GameGlyphs;
 		};
 
 		// The character being laid out on this thread, for GetGlyph's shaped-run lookup. MeasuringOnly: no pixels needed yet; State's flags hold
@@ -189,10 +205,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// boxes get empty margins, as the edge is only drawn within a glyph's box and one pixel around it.
 		[[nodiscard]] const FontReplacementEdgeConfig& Edge() const { return m_edge; }
 
-		// Game thread; glyphs are made again.
+		// Game thread; glyphs are made again if a size's edge margin changed.
 		void SetEdge(FontReplacementEdgeConfig edge);
 
-		// Page size of a game font family's atlas.
 		[[nodiscard]] static int GetAtlasSize(std::string_view family);
 
 		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it; settings previews match it.
@@ -200,6 +215,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Rounded to half pixels, clamped to 4..255 px.
 		[[nodiscard]] static float GetDrawnPx(float size);
+
+		// Of a family's faces (name, size), the one text at px is made with alone; nullopt if none is of that size, so glyphs come from all.
+		[[nodiscard]] static std::optional<size_t> GetExactFace(std::span<const std::pair<std::string, float>> faces, float px);
 
 		[[nodiscard]] static int GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px);
 
@@ -224,8 +242,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		void DisposePresetFaces();
 
-		// With the game font's metrics; shared by the fonts of one name (a font and its lobby version), going to its family's atlas.
+		// Shared by the family's fonts at the size, going to its family's atlas.
 		SizedFont* GetSized(GameFont* original, int halfPx);
+
+		// The preset's face of the name, else the game's.
+		ReplacementFace& FaceOf(const std::string& faceName);
 
 		GlyphAtlas* GetAtlas(const std::string& family);
 
@@ -249,17 +270,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Italic macros are seen by measuring too; text node italics only by drawing (the bit is in the font set's own flags, before any macro).
 		ItalicMode GetItalicMode(GameFontSet* set) const;
 
-		// LayOutCharacter takes the geta mark (U+3013), else '-', else U+3400 straight from the font's glyph map, bypassing GetGlyph, so it would get
-		// the game font's glyph at its size and texture edge; the copy's own glyphs are given instead.
+		// The geta mark (U+3013), '-' and U+3400 bypass GetGlyph in the game, so the copy's own glyphs are given instead.
 		GameGlyph* GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, GameFont* font);
 
 		GameGlyph* GetGlyphDetour(GameFontSet* set, uint32_t utf8Value, GameFont* font);
 
 		// Drawn from the game's texture, the edge would step by atlas-width texels (a font's textures share one width), so the game glyph is copied
-		// into the atlas, scaled; pixels are read at the next upload. nullptr to draw the game's glyph as is.
-		GameGlyph* GetGameGlyph(CopyInfo& info, GameGlyph* game, uint32_t utf8Value);
+		// into the atlas, scaled; pixels are read at the next upload. nullptr if no source has it readable.
+		GameGlyph* GetGameGlyph(SizedFont& sized, uint32_t utf8Value);
 
-		// sourceAlpha: the game texture's pixels read as 8-bit coverage.
 		static RasterGlyph WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha);
 
 		// Borrows the game font's glyph map, glyphs, textures and flags, keeping the copy's size, metrics and pages; redone after BuildFont frees them.
@@ -284,8 +303,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Same advance, draws nothing; for a glyph whose pixels found no room yet.
 		GameGlyph* GetBlank(GameGlyph* glyph);
 
-		// Empties the plane whose glyphs not drawn in the last KeepDrawnMs take the most room; glyphs drawn since are re-placed (most recent first),
-		// others keep their pixels for when next drawn. If all were drawn recently, the least recently drawn leave until half the plane is free.
+		// Empties the plane where glyphs undrawn for KeepDrawnMs take the most room (if none, evicts least recent until half is free); recent ones are re-placed.
 		// Present thread, after this frame's layout: the next frame lays out with the new places and the following upload writes them.
 		void EvictPlane(GlyphAtlas* atlas);
 

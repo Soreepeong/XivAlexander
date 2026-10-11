@@ -38,6 +38,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// On screen, unrounded (monospacing's reference glyph); 0 if none.
 		virtual float GetAdvance(char32_t codepoint, float px) = 0;
+
+		// What it may draw, before the element's ranges; nullptr if not known (the game's).
+		virtual const std::set<char32_t>* Codepoints() { return nullptr; }
 	};
 
 	// xivres fontdata_fixed_size_font; the game draws these itself.
@@ -97,18 +100,17 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] LookupFont& Font() const { return *m_font; }
 
-		// Layouts ask for it (with its language and features).
 		[[nodiscard]] const FontChanger::Structs::LookupStruct& Lookup() const { return m_def.Lookup; }
 
 		// On screen: synthesis first, then the element's.
 		[[nodiscard]] const GlyphTransform& Transform() const { return m_transform; }
 
-		// The face's, which its text is laid out with.
 		DWRITE_MEASURING_MODE MeasureMode = DWRITE_MEASURING_MODE_NATURAL;
 
 		[[nodiscard]] const std::set<char32_t>& AllCodepoints();
 
 		bool Has(char32_t codepoint, GameFont* game) override;
+		const std::set<char32_t>* Codepoints() override { return &AllCodepoints(); }
 		LineMetrics GetLineMetrics(float px, GameFont* game) override { return GetLineMetrics(px, m_transform); }
 
 		// Scaled vertically as glyphs transformed by transform are.
@@ -139,9 +141,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			float squeezeX = 1,
 			const GlyphTransform* transform = nullptr,
 			float originY = 0);
-
-		// Vertical ink extent in pixels, with its shaped-run offset, as RasterizeRun draws it; nullopt if it has no ink.
-		[[nodiscard]] std::optional<std::pair<int, int>> MeasureGlyph(IDWriteFontFace* face, float size, uint16_t glyph, DWRITE_GLYPH_OFFSET offset, const GlyphTransform& transform);
 
 		// Horizontal, in pixels from the origin, from the outline's side bearings.
 		[[nodiscard]] static std::pair<float, float> GetInkExtent(IDWriteFontFace* face, float size, uint16_t glyph, const GlyphTransform& transform);
@@ -175,6 +174,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		ImageElementFont(FontChanger::Structs::GlyphImagesStruct settings, float gamma, const GlyphTransform& transform);
 
 		bool Has(char32_t codepoint, GameFont* game) override { return m_codepoints.contains(codepoint); }
+		const std::set<char32_t>* Codepoints() override { return &m_codepoints; }
 		LineMetrics GetLineMetrics(float px, GameFont* game) override;
 		std::optional<float> GetBaseline(uint32_t tag, float px) override { return std::nullopt; }
 		std::optional<RasterGlyph> Rasterize(char32_t codepoint, float px) override;
@@ -197,10 +197,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	public:
 		MergingElementFont(GlyphRasterizer& rasterizer, std::unique_ptr<IElementFont> baseFont, const FontChanger::Structs::FaceElement& def, std::unique_ptr<OutlineElementFont> ownTextOutline);
 
-		// Its own and its texts'.
 		[[nodiscard]] std::vector<OutlineElementFont*> OutlineFonts() const;
 
 		bool Has(char32_t codepoint, GameFont* game) override { return m_codepoints.contains(codepoint); }
+		const std::set<char32_t>* Codepoints() override { return &m_codepoints; }
 		LineMetrics GetLineMetrics(float px, GameFont* game) override { return m_baseFont->GetLineMetrics(px, game); }
 		std::optional<float> GetBaseline(uint32_t tag, float px) override { return m_baseFont->GetBaseline(tag, px); }
 		std::optional<RasterGlyph> Rasterize(char32_t codepoint, float px) override;

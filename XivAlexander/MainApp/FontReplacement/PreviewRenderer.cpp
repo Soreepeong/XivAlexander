@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/PreviewRenderer.h"
 
+#include "MainApp/FontReplacement/EdgeShaderCode.h"
 #include "MainApp/FontReplacement/Utilities.h"
 #include "resource.h"
 #include "XivAlexander.h"
@@ -61,10 +62,9 @@ FontReplacement::PreviewRenderer::PreviewRenderer() {
 	ThrowOnError(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED, levels, static_cast<UINT>(std::size(levels)), D3D11_SDK_VERSION, &m_device, nullptr, &m_context), "Making a WARP device");
 
 	const auto vs = GetShaderCode(IDR_FONTPREVIEWVS, "FontPreviewVS.cso");
-	const auto edge = GetShaderCode(IDR_FONTEDGEPS, "FontEdgePS.cso");
 	const auto text = GetShaderCode(IDR_FONTPREVIEWTEXTPS, "FontPreviewTextPS.cso");
 	ThrowOnError(m_device->CreateVertexShader(vs.data(), vs.size(), nullptr, &m_vertexShader), "Making the preview's vertex shader");
-	ThrowOnError(m_device->CreatePixelShader(edge.data(), edge.size(), nullptr, &m_edgeShader), "Making the edge shader");
+	MakeEdgeShader(0);
 	ThrowOnError(m_device->CreatePixelShader(text.data(), text.size(), nullptr, &m_textShader), "Making the preview's text shader");
 	ThrowOnError(m_device->CreateInputLayout(InputElements, static_cast<UINT>(std::size(InputElements)), vs.data(), vs.size(), &m_inputLayout), "Making the preview's input layout");
 
@@ -108,6 +108,17 @@ FontReplacement::PreviewRenderer::~PreviewRenderer() {
 	}
 }
 
+void FontReplacement::PreviewRenderer::MakeEdgeShader(float softness) {
+	std::string failure;
+	const auto code = EdgeShaderCode::Get(softness, failure);
+	if (!failure.empty())
+		throw std::runtime_error(failure);
+	ID3D11PixelShaderPtr shader;
+	ThrowOnError(m_device->CreatePixelShader(code.data(), code.size(), nullptr, &shader), "Making the edge shader");
+	m_edgeShader = std::move(shader);
+	m_edgeSoftness = softness;
+}
+
 void FontReplacement::PreviewRenderer::EnsureTarget(int width, int height) {
 	if (m_target && m_targetSize.cx == width && m_targetSize.cy == height)
 		return;
@@ -134,7 +145,7 @@ void FontReplacement::PreviewRenderer::EnsureTarget(int width, int height) {
 	m_targetSize = {width, height};
 }
 
-void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float radius, const Colors& colors, int width, int height, std::span<xivres::util::b8g8r8a8> pixels) {
+void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float radius, float softness, const Colors& colors, int width, int height, std::span<xivres::util::b8g8r8a8> pixels) {
 	if (width <= 0 || height <= 0 || pixels.size() < static_cast<size_t>(width) * height)
 		throw std::invalid_argument("The preview's image is of another size");
 	if (glyphs.empty()) {
@@ -172,7 +183,6 @@ void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float
 	if (atlasHeight > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION)
 		throw std::runtime_error("The preview's glyphs don't fit in a texture");
 
-	// R8G8B8A8: channel c of a texel is byte c.
 	std::vector<uint8_t> atlas(static_cast<size_t>(atlasWidth) * atlasHeight * 4);
 	for (size_t i = 0; i < glyphs.size(); i++) {
 		const auto& glyph = glyphs[i];
@@ -251,6 +261,8 @@ void FontReplacement::PreviewRenderer::Draw(std::span<const Glyph> glyphs, float
 	ID3D11BufferPtr buffer;
 	ThrowOnError(m_device->CreateBuffer(&bufferDesc, &bufferData, &buffer), "Making the preview's vertices");
 
+	if (softness != m_edgeSoftness)
+		MakeEdgeShader(softness);
 	EnsureTarget(width, height);
 	const auto background = ToFloat4(colors.Background);
 	m_context->ClearRenderTargetView(m_targetView, background.data());

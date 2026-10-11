@@ -99,6 +99,27 @@ FontReplacement::FaceElement* FontReplacement::ReplacementFace::GetElement(char3
 	return assigned;
 }
 
+size_t FontReplacement::ReplacementFace::OwnGlyphCount() {
+	if (m_ownGlyphCount)
+		return *m_ownGlyphCount;
+
+	std::vector<bool> drawn(0x110000);
+	size_t count = 0;
+	for (const auto& e : m_elements) {
+		const auto codepoints = e->DrawsGame() ? nullptr : e->Font().Codepoints();
+		if (!codepoints)
+			continue;
+		for (const auto c : *codepoints) {
+			if (c < drawn.size() && !drawn[c] && e->Contains(c)) {
+				drawn[c] = true;
+				count++;
+			}
+		}
+	}
+	m_ownGlyphCount = count;
+	return count;
+}
+
 char32_t FontReplacement::ReplacementFace::GetDrawnCodepoint(const FaceElement& element, char32_t codepoint) {
 	const auto& replacements = element.Def().WrapModifiers.CodepointReplacements;
 	const auto it = replacements.find(codepoint);

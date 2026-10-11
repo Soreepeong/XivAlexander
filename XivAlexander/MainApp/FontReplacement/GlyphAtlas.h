@@ -3,9 +3,8 @@
 #include "MainApp/FontReplacement/Host.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Pages are square B8G8R8A8 textures with one glyph plane per channel, like the game's; glyphs go to a CPU copy, the changed rect to the GPU in Upload.
-	// Font shaders take UVs as texels over the bound texture's size, so pages may be smaller than the game's; only the edge and glare shaders' texel
-	// step comes from the font's claimed texture width. Pages take indices FirstTextureIndex and up; the game's textures stay below (private-use icons).
+	// Square B8G8R8A8 pages, a glyph plane per channel; may be smaller than the game's as shaders divide UVs by the bound texture's size.
+	// Only the edge/glare texel step follows the font's claimed texture width. Indices start at FirstTextureIndex, above the game's textures.
 	class GlyphAtlas {
 	public:
 		static constexpr int PlanesPerPage = 4;
@@ -17,11 +16,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] static int MaxPlanes() { return MaxPages() * PlanesPerPage; }
 
-		// Including the padding.
 		[[nodiscard]] static int PaddedArea(int width, int height);
 
 	private:
-		// Glyphs go left to right from (X, Y); the next shelf starts below the tallest.
 		struct Shelf {
 			int X = 0;
 			int Y = 0;
@@ -33,7 +30,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			Host::Texture Texture;
 			std::vector<uint8_t> Shadow;
 
-			// The current shelf of each plane.
 			Shelf Shelves[PlanesPerPage]{};
 
 			int DirtyLeft;
@@ -49,7 +45,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		const int m_size;
 		const std::string m_name;
-		std::vector<std::unique_ptr<Page>> m_pages;
+
+		// Slots never move and a page is stored before the count that publishes it, so pages below PageCount() can be read without the lock.
+		const int m_maxPages;
+		const std::unique_ptr<std::unique_ptr<Page>[]> m_pages;
+		std::atomic<int> m_pageCount = 0;
+
+		// Guards the pages' contents, shelves and dirty rects, m_current, m_frontier and m_context.
 		std::mutex m_mutex;
 		ID3D11DeviceContextPtr m_context;
 
@@ -64,16 +66,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GlyphAtlas& operator=(const GlyphAtlas&) = delete;
 		~GlyphAtlas();
 
-		// Called on the thread that allocates, after a page was added.
+		// Called on the thread that allocates, after a page was added, without the atlas's lock held.
 		std::function<void()> PageAdded;
 
-		// The pages' side length.
 		[[nodiscard]] int Size() const { return m_size; }
 
 		[[nodiscard]] const std::string& Name() const { return m_name; }
 
-		[[nodiscard]] int PageCount() const { return static_cast<int>(m_pages.size()); }
+		[[nodiscard]] int PageCount() const { return m_pageCount.load(std::memory_order_acquire); }
 
+		// page < PageCount().
 		[[nodiscard]] uintptr_t GetKernelTexture(int page) const { return m_pages[page]->Texture.Kernel(); }
 
 		// The renderer only has vertex buffers for texture indices below a font's texture count, so a page must exist before the first glyph.
@@ -82,7 +84,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Keeps the textures (fonts refer to them). Game thread, between frames: no glyph referring to the old contents may be drawn afterwards.
 		void Clear();
 
-		// Glyphs are allocated in it from now on. Between frames, as for Clear; the page is uploaded whole.
+		// Between frames, as for Clear; the page is uploaded whole.
 		void ClearPlane(int page, int plane);
 
 		// In the current plane or the next unused one (adding a page if needed); x, y are inside the padding. false if neither has room.
@@ -97,6 +99,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		void Upload();
 
 	private:
-		bool TryAddPage();
+		// Adds pages up to count; the textures are made without the lock. false if count is past MaxPages().
+		bool TryEnsurePages(int count);
 	};
 }

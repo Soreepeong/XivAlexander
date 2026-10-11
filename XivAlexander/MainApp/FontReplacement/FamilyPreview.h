@@ -12,14 +12,13 @@ namespace FontChanger::FixedSizeFont {
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class PreviewRenderer;
 
-	// Settings-page preview of a font family, apart from the live replacement: faces as PresetController::MakeFamilyFaces makes them,
-	// elements merged as Face::GetMergedFont and scaled as ReplacementFace, the game's glyphs (from its installation) for what's missing.
+	// Settings-page font family preview, apart from the live replacement but made and scaled as it is, with the installation's game glyphs for the rest.
 	// Opening fonts can take hundreds of ms, so drawing runs on its own thread once requests stop coming; only the latest request's image is kept.
 	class FamilyPreview {
 	public:
 		struct DrawRequest {
 			std::string Family;
-			std::string FaceName;  // The face of the family the game picks for the size (AXIS_12).
+			std::vector<std::pair<std::string, float>> Faces;  // Of the family, with their sizes (GameFontNames::FacesOf).
 			float Size = 0;  // Drawn at, rounded as the replacement rounds it (FontReplacer::GetDrawnPx).
 			FontReplacementFamily Settings;
 			std::filesystem::path PresetFolder;  // Presets::Folder, which relative presets are in.
@@ -60,8 +59,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		Presets::Faces m_faces;
 		std::vector<std::string> m_faceFailures;
 
-		// Drawing thread only: the last request's face font at its size, kept while the faces are, and its glyphless elements.
-		std::string m_fontFace;
+		// Drawing thread only: the last request's font at its size, kept while the faces are, and its glyphless elements.
+		std::vector<std::pair<std::string, float>> m_fontFaces;
 		float m_fontSize = 0;
 		std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> m_font;
 		std::vector<std::string> m_fontFailures;
@@ -91,7 +90,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		Image Draw(const DrawRequest& request);
 
-		// The face's elements scaled, then the game's glyphs; elements with no glyphs at all (not installed, or unreadable) are added to failures.
-		[[nodiscard]] std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> MakeFont(const std::string& faceName, float px, std::vector<std::string>& failures) const;
+		// The family's glyphs at px as FontReplacer::GetSized and SizedFont::Pick choose them; glyphless elements are added to failures.
+		[[nodiscard]] std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> MakeFont(std::vector<std::pair<std::string, float>> faces, float px, std::vector<std::string>& failures) const;
+
+		// The face's elements scaled to px, or nullptr if no preset has it; own gets the codepoints its elements other than the game's draw.
+		[[nodiscard]] std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> MakeFace(const std::string& faceName, float px, std::vector<std::string>& failures, std::set<char32_t>* own) const;
 	};
 }

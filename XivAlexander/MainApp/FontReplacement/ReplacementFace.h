@@ -24,11 +24,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] bool Contains(char32_t codepoint) const;
 	};
 
-	// A preset face made usable (xivres merged_fixed_size_font). Sizes are relative to the first element, which gives the line metrics: an element
-	// draws at px * element.Size / first.Size; face pixel values (letter spacing, offsets, Empty metrics) scale by px / first.Size.
-	// Codepoints go to elements in order (has = in ranges and in its font): AddNew if none has it yet, AddAll always, Replace only over an earlier one.
-	// The rest are the game's, or with SystemFallback the system fonts' (DirectWrite's fallback when shaped, else the built-in face's).
-	// Glyph merging elements have only merged codepoints, glyph image elements only those with files; both are drawn glyph by glyph, not shaped.
+	// A preset face (xivres merged_fixed_size_font): elements draw at px * element.Size / first.Size; face pixel values scale by px / first.Size.
+	// Codepoints go to elements in order (AddNew, AddAll, Replace), the rest to the game (or system fonts); merged and image elements aren't shaped.
 	class ReplacementFace {
 		GlyphRasterizer& m_rasterizer;
 		std::shared_ptr<const FontChanger::Structs::Face> m_def;
@@ -42,6 +39,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		DWRITE_MEASURING_MODE m_measureMode = DWRITE_MEASURING_MODE_NATURAL;
 		std::map<std::pair<GameFont*, char32_t>, FaceElement*> m_elementCache;
 		std::map<std::pair<const FaceElement*, float>, float> m_referenceAdvances;
+		std::optional<size_t> m_ownGlyphCount;
 
 	public:
 		// With systemFallback, characters no element has are drawn with system fonts: fallback's glyph by glyph.
@@ -57,9 +55,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] bool SystemFallback() const { return m_systemFallback; }
 
-		// The first element's size, which the face's sizes are relative to.
-		[[nodiscard]] float ReferenceSize() const { return m_referenceSize; }
-
 		// The first shaped element (whose font text is laid out in by default), or nullptr.
 		[[nodiscard]] FaceElement* Primary() const { return m_primary; }
 
@@ -73,6 +68,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// One that DrawsGame if the game's glyph is used; nullptr if the system's fonts draw it.
 		[[nodiscard]] FaceElement* GetElement(char32_t codepoint, GameFont* game);
+
+		// Codepoints in its elements' ranges that elements not drawing the game's glyphs have; overrides between elements aren't counted.
+		[[nodiscard]] size_t OwnGlyphCount();
 
 		// Applies the element's replacements.
 		[[nodiscard]] static char32_t GetDrawnCodepoint(const FaceElement& element, char32_t codepoint);
@@ -127,7 +125,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// glyph's advance is on screen, unadjusted; non-advancing glyphs stay. Ink wider than a limited cell is redrawn by squeezed(scaleX).
 		[[nodiscard]] RasterGlyph Monospace(const FaceElement& element, float px, RasterGlyph glyph, const std::function<RasterGlyph(float)>& squeezed);
 
-		// Cached by size.
 		[[nodiscard]] float GetReferenceAdvance(const FaceElement& element, float px, char32_t codepoint);
 	};
 }

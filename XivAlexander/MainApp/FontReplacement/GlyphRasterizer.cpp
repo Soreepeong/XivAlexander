@@ -20,6 +20,31 @@ FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Scaled(float scale, f
 	const auto left = static_cast<float>(Left) * scale + shiftX;
 	const auto top = static_cast<float>(Top) * scale + shiftY;
 	RasterGlyph res{Advance, x0, y0, w, h, std::vector<uint8_t>(static_cast<size_t>(w) * h)};
+	if (scale < 1) {
+		const auto columns = AreaWeights(x0, w, left, scale, Width);
+		const auto rows = AreaWeights(y0, h, top, scale, Height);
+		std::vector<float> horizontal(static_cast<size_t>(w) * Height);
+		for (auto y = 0; y < Height; y++) {
+			const auto src = &Alpha[static_cast<size_t>(y) * Width];
+			for (auto x = 0; x < w; x++) {
+				auto sum = 0.f;
+				for (const auto& [i, weight] : columns[x])
+					sum += weight * static_cast<float>(src[i]);
+				horizontal[static_cast<size_t>(y) * w + x] = sum;
+			}
+		}
+		const auto norm = scale * scale;
+		for (auto y = 0; y < h; y++) {
+			for (auto x = 0; x < w; x++) {
+				auto sum = 0.f;
+				for (const auto& [j, weight] : rows[y])
+					sum += weight * horizontal[static_cast<size_t>(j) * w + x];
+				res.Alpha[static_cast<size_t>(y) * w + x] = static_cast<uint8_t>(std::clamp(std::round(sum * norm), 0.f, 255.f));
+			}
+		}
+		return res;
+	}
+
 	constexpr int Samples = 4;
 	for (auto y = 0; y < h; y++) {
 		for (auto x = 0; x < w; x++) {
@@ -33,6 +58,22 @@ FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Scaled(float scale, f
 				}
 			}
 			res.Alpha[static_cast<size_t>(y) * w + x] = static_cast<uint8_t>(std::round(sum / (Samples * Samples)));
+		}
+	}
+	return res;
+}
+
+std::vector<std::vector<std::pair<int, float>>> FontReplacement::RasterGlyph::AreaWeights(int first, int count, float origin, float scale, int sourceSize) {
+	std::vector<std::vector<std::pair<int, float>>> res(count);
+	for (auto d = 0; d < count; d++) {
+		const auto u0 = (static_cast<float>(first + d) - origin) / scale;
+		const auto u1 = (static_cast<float>(first + d + 1) - origin) / scale;
+		const auto i0 = (std::max)(0, static_cast<int>(std::floor(u0)));
+		const auto i1 = (std::min)(sourceSize, static_cast<int>(std::ceil(u1)));
+		for (auto i = i0; i < i1; i++) {
+			const auto weight = (std::min)(u1, static_cast<float>(i + 1)) - (std::max)(u0, static_cast<float>(i));
+			if (weight > 0)
+				res[d].emplace_back(i, weight);
 		}
 	}
 	return res;
@@ -215,23 +256,6 @@ FontReplacement::RasterGlyph FontReplacement::GlyphRasterizer::RasterizeRun(
 		w = h = 0;
 	}
 	return {advance, bounds.left, bounds.top, w, h, std::move(alpha)};
-}
-
-RECT FontReplacement::GlyphRasterizer::GetRunBounds(
-	IDWriteFontFace* face,
-	float px,
-	const uint16_t* glyphs,
-	const float* advances,
-	const DWRITE_GLYPH_OFFSET* offsets,
-	uint32_t count,
-	const DirectWriteParams& parameters,
-	const GlyphTransform& transform,
-	float originX,
-	float originY) const {
-	const auto analysis = CreateAnalysis(face, px, glyphs, advances, offsets, count, originX, originY, parameters, transform);
-	RECT bounds;
-	ThrowOnError(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, &bounds), "GetAlphaTextureBounds");
-	return bounds;
 }
 
 IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(

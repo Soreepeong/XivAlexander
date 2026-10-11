@@ -32,6 +32,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Presets {
 	// For a face in several, the last preset's wins.
 	void Combine(Faces& into, const Faces& from);
 
+	// A face in both gets from's elements after into's, drawn over them glyph by glyph; sizes scaled to into's first element.
+	void Overlay(Faces& into, const Faces& from);
+
 	[[nodiscard]] Faces FacesOfFamily(const Faces& faces, std::string_view family);
 
 	// To watch them for changes.

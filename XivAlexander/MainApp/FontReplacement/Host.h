@@ -110,7 +110,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		Texture& operator=(const Texture&) = delete;
 		~Texture();
 
-		// A Kernel::Texture*.
 		[[nodiscard]] uintptr_t Kernel() const { return m_kernel; }
 
 		[[nodiscard]] ID3D11Resource* Resource() const { return m_resource.GetInterfacePtr(); }

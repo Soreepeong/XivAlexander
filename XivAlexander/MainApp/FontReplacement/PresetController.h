@@ -9,7 +9,6 @@ namespace XivAlexander {
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Presets are selected per game font family, which takes faces only from its own presets (the last wins). Loads on its own thread, after settings changes and quiet file changes.
-	// Only the presets folder and the glyph image folders are watched: an edit of a preset outside the folder goes unnoticed until another load.
 	class PresetController {
 	public:
 		// Called on the game's thread, between frames.
@@ -20,6 +19,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			const std::filesystem::path m_folder;
 			std::vector<std::string>& m_failures;
 			std::map<std::string, std::optional<Presets::Faces>, LessIgnoringCase> m_loaded;
+			std::vector<std::filesystem::path> m_paths;
 
 		public:
 			PresetReader(std::filesystem::path folder, std::vector<std::string>& failures);
@@ -27,6 +27,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			const std::optional<Presets::Faces>& operator()(const std::string& preset);
 
 			[[nodiscard]] size_t ReadCount() const;
+
+			// Of every preset asked for, read or not.
+			[[nodiscard]] const std::vector<std::filesystem::path>& Paths() const { return m_paths; }
 		};
 
 		// Later sources win; of a preset, only the family's faces are taken. None if the family is off, so the game's font stays.
@@ -44,6 +47,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		bool m_pendingSettingsLoad = false;
 		std::optional<std::chrono::steady_clock::time_point> m_due;
 		std::vector<std::filesystem::path> m_glyphFolders;
+		// Presets outside the presets folder, by when they were last written as of the last load (nullopt if missing then).
+		std::map<std::filesystem::path, std::optional<std::filesystem::file_time_type>> m_externalPresets;
 		std::string m_status;
 		std::thread m_thread;
 

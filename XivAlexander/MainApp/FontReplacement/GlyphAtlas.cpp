@@ -47,25 +47,29 @@ void FontReplacement::GlyphAtlas::Page::ClearDirty() {
 
 FontReplacement::GlyphAtlas::GlyphAtlas(int size, std::string name)
 	: m_size(size)
-	, m_name(std::move(name)) {
+	, m_name(std::move(name))
+	, m_maxPages((std::max)(0, MaxPages()))
+	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages)) {
 }
 
 FontReplacement::GlyphAtlas::~GlyphAtlas() {
 	const auto lock = std::scoped_lock(m_mutex);
-	m_pages.clear();
+	for (auto i = m_pageCount.exchange(0); i-- > 0;)
+		m_pages[i].reset();
 }
 
 void FontReplacement::GlyphAtlas::EnsurePage() {
-	if (m_pages.empty() && !TryAddPage())
+	if (!TryEnsurePages(1))
 		throw std::runtime_error("Could not add an atlas page.");
 }
 
 void FontReplacement::GlyphAtlas::Clear() {
 	const auto lock = std::scoped_lock(m_mutex);
-	for (const auto& p : m_pages) {
-		std::ranges::fill(p->Shadow, 0);
-		std::ranges::fill(p->Shelves, Shelf{});
-		p->MarkDirty(0, 0, m_size, m_size);
+	for (auto i = 0, count = PageCount(); i < count; i++) {
+		auto& p = *m_pages[i];
+		std::ranges::fill(p.Shadow, 0);
+		std::ranges::fill(p.Shelves, Shelf{});
+		p.MarkDirty(0, 0, m_size, m_size);
 	}
 	m_current = 0;
 	m_frontier = 1;
@@ -93,9 +97,10 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, 
 	if (w > m_size || h > m_size)
 		return false;
 
-	if (m_pages.empty() && !TryAddPage())
+	if (!TryEnsurePages(1))
 		return false;
 
+	auto lock = std::unique_lock(m_mutex);
 	while (true) {
 		page = m_current / PlanesPerPage;
 		plane = m_current % PlanesPerPage;
@@ -110,19 +115,26 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, 
 			return true;
 		}
 
-		if (m_frontier >= MaxPlanes())
+		if (m_frontier >= m_maxPages * PlanesPerPage)
 			return false;
-		if (m_frontier / PlanesPerPage >= static_cast<int>(m_pages.size()) && !TryAddPage())
-			return false;
+
+		// A new page is made without the lock; Clear may have run meanwhile, so the shelves are looked at again.
+		if (const auto needed = m_frontier / PlanesPerPage + 1; needed > PageCount()) {
+			lock.unlock();
+			if (!TryEnsurePages(needed))
+				return false;
+			lock.lock();
+			continue;
+		}
 		m_current = m_frontier++;
 	}
 }
 
 void FontReplacement::GlyphAtlas::Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX) {
-	auto& p = *m_pages[page];
 	const auto columns = (std::min)(alphaStride, width - alphaX);
 	const auto pitch = m_size * 4;
 	const auto lock = std::scoped_lock(m_mutex);
+	auto& p = *m_pages[page];
 	const auto dst = &p.Shadow[static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4 + ChannelOffsets[plane]];
 	for (auto row = 0; row < height; row++) {
 		const auto src = &alpha[static_cast<size_t>(row) * alphaStride];
@@ -147,11 +159,12 @@ std::vector<uint8_t> FontReplacement::GlyphAtlas::Read(int page, int plane, int 
 }
 
 void FontReplacement::GlyphAtlas::Upload() {
-	if (!m_context)
-		return;
 	const auto pitch = m_size * 4;
 	const auto lock = std::scoped_lock(m_mutex);
-	for (const auto& p : m_pages) {
+	if (!m_context)
+		return;
+	for (auto i = 0, count = PageCount(); i < count; i++) {
+		const auto& p = m_pages[i];
 		if (p->DirtyRight <= p->DirtyLeft)
 			continue;
 		const D3D11_BOX box{
@@ -173,23 +186,34 @@ void FontReplacement::GlyphAtlas::Upload() {
 	}
 }
 
-bool FontReplacement::GlyphAtlas::TryAddPage() {
-	if (static_cast<int>(m_pages.size()) >= MaxPages())
+bool FontReplacement::GlyphAtlas::TryEnsurePages(int count) {
+	if (count > m_maxPages)
 		return false;
 
-	auto page = std::make_unique<Page>(m_size);
-	{
-		const auto lock = std::scoped_lock(m_mutex);
-		if (!m_context) {
-			ID3D11DevicePtr device;
-			page->Texture.Resource()->GetDevice(&device);
-			device->GetImmediateContext(&m_context);
-		}
-		m_pages.push_back(std::move(page));
-	}
+	while (PageCount() < count) {
+		auto page = std::make_unique<Page>(m_size);
+		ID3D11DevicePtr device;
+		ID3D11DeviceContextPtr context;
+		page->Texture.Resource()->GetDevice(&device);
+		device->GetImmediateContext(&context);
 
-	Host::Information("Added {} atlas page {} ({} x {})", m_name, m_pages.size(), m_size, m_size);
-	if (PageAdded)
-		PageAdded();
+		int added;
+		{
+			const auto lock = std::scoped_lock(m_mutex);
+
+			// Another thread may have added it meanwhile; the page made here is then dropped.
+			added = PageCount();
+			if (added >= count)
+				break;
+			if (!m_context)
+				m_context = std::move(context);
+			m_pages[added] = std::move(page);
+			m_pageCount.store(added + 1, std::memory_order_release);
+		}
+
+		Host::Information("Added {} atlas page {} ({} x {})", m_name, added + 1, m_size, m_size);
+		if (PageAdded)
+			PageAdded();
+	}
 	return true;
 }

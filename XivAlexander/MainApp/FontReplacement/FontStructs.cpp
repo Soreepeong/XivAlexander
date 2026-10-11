@@ -287,7 +287,6 @@ void FontReplacement::GameFont::Resolve() {
 	s_font.LineHeight = GameLayout::Get("GameFont.LineHeight");
 	s_font.Ascent = GameLayout::Get("GameFont.Ascent");
 
-	// The glyph map replaced a sorted glyph array in 7.40; only glyphs of the map are looked up.
 	s_font.GlyphMap = GameLayout::Get("GameFont.GlyphMap");
 	s_font.Secondary = GameLayout::Get("GameFont.Secondary");
 	s_font.SecondaryRatio = GameLayout::Get("GameFont.SecondaryRatio");

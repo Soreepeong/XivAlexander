@@ -1,13 +1,13 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/EdgeShader.h"
 
+#include "MainApp/FontReplacement/EdgeShaderCode.h"
 #include "MainApp/FontReplacement/FontStructs.h"
 #include "MainApp/FontReplacement/GameLayout.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Utilities.h"
+#include "Utils/StringUtils.h"
 #include "Utils/Win32/LoadedModule.h"
-#include "resource.h"
-#include "XivAlexander.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -16,7 +16,7 @@ FontReplacement::EdgeShader::~EdgeShader() {
 	Restore();
 }
 
-void FontReplacement::EdgeShader::Set(bool use) {
+void FontReplacement::EdgeShader::Set(bool use, float softness) {
 	m_used = use;
 	if (!use) {
 		Restore();
@@ -41,14 +41,25 @@ void FontReplacement::EdgeShader::Set(bool use) {
 		m_resolved = true;
 	}
 
-	if (!m_shader) {
-		const auto target = GetEdgeShaderObject(true);
-		if (!target)
-			throw std::runtime_error("The game's edge shader isn't there.");
-		m_shader = Create(*reinterpret_cast<ID3D11PixelShader**>(target + m_d3dShader));
+	if (m_shader && softness != m_softness) {
+		Restore();
+		m_shader = nullptr;
 	}
+	m_softness = softness;
+
+	// Before the game has loaded its shaders, LoadShadersDetour installs it once it does.
+	if (!m_shader && !CreateFromGame())
+		return;
 
 	Install();
+}
+
+bool FontReplacement::EdgeShader::CreateFromGame() {
+	const auto target = GetEdgeShaderObject(true);
+	if (!target)
+		return false;
+	m_shader = Create(*reinterpret_cast<ID3D11PixelShader**>(target + m_d3dShader), m_softness);
+	return true;
 }
 
 void FontReplacement::EdgeShader::Install() {
@@ -70,7 +81,7 @@ uintptr_t FontReplacement::EdgeShader::GetEdgeShaderObject(bool check) const {
 	if (!server)
 		return 0;
 	const auto file = *reinterpret_cast<const uintptr_t*>(server + m_pixelShaderFiles + static_cast<size_t>(m_edgePass) * 8);
-	if (check && (!file || !EndsWithIgnoringCase(GameUi::GetFileName(file), m_shaderFile)))
+	if (check && (!file || !Utils::EndsWithI(GameUi::GetFileName(file), m_shaderFile)))
 		return 0;
 	return *reinterpret_cast<const uintptr_t*>(server + m_pixelShaders + static_cast<size_t>(m_edgePass) * 8);
 }
@@ -85,7 +96,7 @@ uint8_t FontReplacement::EdgeShader::LoadShadersDetour(uintptr_t server) {
 			m_original = nullptr;
 		}
 
-		if (m_used && m_shader)
+		if (m_used && (m_shader || CreateFromGame()))
 			Install();
 	} catch (const std::exception& e) {
 		Host::Error("Installing the edge shader again failed: {}", e.what());
@@ -93,18 +104,16 @@ uint8_t FontReplacement::EdgeShader::LoadShadersDetour(uintptr_t server) {
 	return result;
 }
 
-ID3D11PixelShaderPtr FontReplacement::EdgeShader::Create(ID3D11PixelShader* game) {
-	const auto module = static_cast<HMODULE>(Dll::Module());
-	const auto resource = FindResourceW(module, MAKEINTRESOURCEW(IDR_FONTEDGEPS), RT_RCDATA);
-	if (!resource)
-		throw std::runtime_error("FontEdgePS.cso isn't embedded.");
-	const auto code = LockResource(LoadResource(module, resource));
-	const auto size = SizeofResource(module, resource);
+ID3D11PixelShaderPtr FontReplacement::EdgeShader::Create(ID3D11PixelShader* game, float softness) {
+	std::string failure;
+	const auto code = EdgeShaderCode::Get(softness, failure);
+	if (!failure.empty())
+		Host::Error("{}", failure);
 
 	ID3D11DevicePtr device;
 	game->GetDevice(&device);
 	ID3D11PixelShaderPtr shader;
-	ThrowOnError(device->CreatePixelShader(code, size, nullptr, &shader), "Making the edge shader");
+	ThrowOnError(device->CreatePixelShader(code.data(), code.size(), nullptr, &shader), "Making the edge shader");
 	return shader;
 }
 

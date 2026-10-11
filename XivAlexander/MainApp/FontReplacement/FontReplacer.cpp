@@ -5,6 +5,7 @@
 #include "MainApp/FontReplacement/GameLayout.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Host.h"
+#include "Utils/StringUtils.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -152,23 +153,96 @@ void FontReplacement::FontReplacer::DisposePresetFaces() {
 }
 
 FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx) {
-	auto& face = GetFace(original);
-	const auto fontName = GameFontNames::GetFaceName(original).value_or(std::format("0x{:X}", reinterpret_cast<uintptr_t>(original)));
-	const auto key = std::make_tuple(&face, halfPx, fontName);
+	const auto px = static_cast<float>(halfPx) / 2.f;
+	const auto originalName = GameFontNames::GetFaceName(original);
+
+	// The family's built fonts, largest first.
+	std::vector<std::pair<std::string, float>> names;
+	std::vector<std::pair<ReplacementFace*, GameFont*>> faces;
+	if (originalName) {
+		auto family = GameFontNames::FacesOf(GameFontNames::FamilyOf(*originalName));
+		std::ranges::stable_sort(family, std::ranges::greater{}, [](const auto& f) { return f.second; });
+		for (auto& [name, size] : family) {
+			const auto font = Utils::EqualsI(name, *originalName) ? original : GameFontNames::FindFont(name);
+			if (!font || !font->IsReady() || font->Size() <= 0)
+				continue;
+			faces.emplace_back(&FaceOf(name), font);
+			names.emplace_back(std::move(name), size);
+		}
+	}
+
+	std::string name;
+	ReplacementFace* face;
+	GameFont* game;
+	if (faces.empty()) {
+		name = originalName.value_or(std::format("0x{:X}", reinterpret_cast<uintptr_t>(original)));
+		face = &GetFace(original);
+		game = original;
+		faces = {{face, original}};
+	} else if (const auto exact = GetExactFace(names, px)) {
+		name = names[*exact].first;
+		std::tie(face, game) = faces[*exact];
+		faces = {{face, game}};
+	} else {
+		// Lines are of the face drawing the most glyphs itself (the largest of those as many).
+		size_t best = 0;
+		for (size_t i = 1; i < faces.size(); i++) {
+			if (faces[i].first->OwnGlyphCount() > faces[best].first->OwnGlyphCount())
+				best = i;
+		}
+		name = names[best].first;
+		std::tie(face, game) = faces[best];
+	}
+
+	const auto key = std::make_tuple(face, halfPx, name);
 	auto it = m_sizedFonts.find(key);
 	if (it == m_sizedFonts.end()) {
-		const auto px = static_cast<float>(halfPx) / 2.f;
-		const auto metrics = face.GetLineMetrics(px, original);
-		it = m_sizedFonts.emplace(key, std::make_unique<SizedFont>(SizedFont{
-			.Face = &face,
+		const auto metrics = face->GetLineMetrics(px, game);
+		auto sized = std::make_unique<SizedFont>(SizedFont{
+			.Face = face,
 			.Px = px,
 			.Ascent = metrics.Ascent,
 			.LineHeight = metrics.LineHeight,
-			.Game = original,
-			.Atlas = GetAtlas(GameFontNames::FamilyOf(fontName)),
-		})).first;
+			.Game = game,
+			.Atlas = GetAtlas(GameFontNames::FamilyOf(name)),
+			.Faces = faces,
+		});
+		for (const auto font : faces | std::views::values)
+			sized->Sources.push_back(font);
+		it = m_sizedFonts.emplace(key, std::move(sized)).first;
 	}
 	return it->second.get();
+}
+
+FontReplacement::ReplacementFace& FontReplacement::FontReplacer::FaceOf(const std::string& faceName) {
+	const auto it = m_presetFaces.find(faceName);
+	return it != m_presetFaces.end() ? *it->second : *m_gameFace;
+}
+
+const FontReplacement::GlyphSource& FontReplacement::SizedFont::Pick(char32_t codepoint) const {
+	if (const auto it = Picks.find(codepoint); it != Picks.end())
+		return it->second;
+
+	GlyphSource pick{Face, Game, Face->GetElement(codepoint, Game)};
+	if (Faces.size() > 1) {
+		std::optional<GlyphSource> system, game;
+		auto found = false;
+		for (const auto& [face, font] : Faces) {
+			const auto element = face->GetElement(codepoint, font);
+			if (element && !element->DrawsGame()) {
+				pick = {face, font, element};
+				found = true;
+				break;
+			}
+			if (!element && !system)
+				system = GlyphSource{face, font, nullptr};
+			else if (element && !game)
+				game = GlyphSource{face, font, element};
+		}
+		if (!found && (system || game))
+			pick = system ? *system : *game;
+	}
+	return Picks.emplace(codepoint, pick).first->second;
 }
 
 FontReplacement::GlyphAtlas* FontReplacement::FontReplacer::GetAtlas(const std::string& family) {
@@ -189,12 +263,17 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 	edge = edge.Clamped();
 	if (edge == m_edge)
 		return;
+
+	// Glyphs made since show only from the frame after (Upload), so remaking them blanks text for a frame: only when a size's margin changes.
+	const auto marginChanged = std::ranges::any_of(m_sizedFonts | std::views::values, [&](const auto& sized) {
+		return GetEdgeMargin(edge, sized->Px) != GetEdgeMargin(m_edge, sized->Px);
+	});
 	m_edge = edge;
 
 	// Round edge of any width, set per font by its claimed texture width, unless edges are the game's own (1 px). Fallback: the game's fixed
 	// pattern, widened only by claiming a narrower texture (blocky past ~1.5 px).
 	try {
-		m_edgeShader.Set(edge != FontReplacementEdgeConfig{});
+		m_edgeShader.Set(edge != FontReplacementEdgeConfig{}, edge.Softness);
 	} catch (const std::exception& e) {
 		Host::Error("Using the edge shader failed; edges are widened with the game's: {}", e.what());
 		m_edgeShader.Set(false);
@@ -203,11 +282,14 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 	// Copies claim their texture width by the edge.
 	for (const auto& [copy, info] : m_copies)
 		Sync(copy, info);
-	RebuildGlyphs();
+	if (marginChanged)
+		RebuildGlyphs();
+	else if (TextInvalidated)
+		TextInvalidated();
 }
 
 int FontReplacement::FontReplacer::GetAtlasSize(std::string_view family) {
-	return EqualsIgnoringCase(family, "AXIS") ? AxisAtlasSize : OtherAtlasSize;
+	return Utils::EqualsI(family, "AXIS") ? AxisAtlasSize : OtherAtlasSize;
 }
 
 uint16_t FontReplacement::FontReplacer::GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px) {
@@ -218,8 +300,16 @@ float FontReplacement::FontReplacer::GetDrawnPx(float size) {
 	return static_cast<float>(std::clamp(static_cast<int>(std::round(size * 2)), MinHalfPx, MaxHalfPx)) / 2.f;
 }
 
+std::optional<size_t> FontReplacement::FontReplacer::GetExactFace(std::span<const std::pair<std::string, float>> faces, float px) {
+	for (size_t i = 0; i < faces.size(); i++) {
+		if (std::abs(faces[i].second - px) < 0.01f)
+			return i;
+	}
+	return std::nullopt;
+}
+
 int FontReplacement::FontReplacer::GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px) {
-	return (std::max)(0, static_cast<int>(std::ceil(edge.GetWidth(px))) - 1);
+	return (std::max)(0, static_cast<int>(std::ceil(edge.GetReach(px))) - 1);
 }
 
 FontReplacement::RasterGlyph FontReplacement::FontReplacer::FinishGlyph(const SizedFont& sized, RasterGlyph r) const {
@@ -238,10 +328,10 @@ void FontReplacement::FontReplacer::RebuildGlyphs() {
 	m_shaper->Clear();
 	m_fullAtlases.clear();
 	m_gameReads.clear();
-	for (auto& info : m_copies | std::views::values)
-		info.GameGlyphs.clear();
-	for (const auto& sized : m_sizedFonts | std::views::values)
+	for (const auto& sized : m_sizedFonts | std::views::values) {
 		sized->Glyphs.clear();
+		sized->GameGlyphs.clear();
+	}
 	FreeGlyphs();
 	for (const auto& atlas : m_atlases | std::views::values)
 		atlas->Clear();
@@ -323,11 +413,18 @@ int FontReplacement::FontReplacer::BuildFontDetour(uintptr_t manager, uint16_t i
 void FontReplacement::FontReplacer::OnFontBuilt(GameFont* font) {
 	m_faceByFont.erase(font);
 	auto any = false;
+	for (const auto& sized : m_sizedFonts | std::views::values) {
+		if (std::ranges::find(sized->Sources, font) == sized->Sources.end())
+			continue;
+		sized->GameGlyphs.clear();
+		sized->Picks.clear();
+		any = true;
+	}
+
 	for (auto& [copy, info] : m_copies) {
 		if (info.Original != font)
 			continue;
 		info.Sized = GetSized(font, info.HalfPx);
-		info.GameGlyphs.clear();
 		Sync(copy, info);
 		any = true;
 	}
@@ -448,40 +545,46 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 	if (it->second)
 		return WithPixels(it->second);
 
-	// Looked up in the game font, whose glyph map the copy borrows.
+	try {
+		if (const auto own = GetGameGlyph(sized, utf8Value))
+			return WithPixels(own);
+	} catch (const std::exception& e) {
+		Host::Error("Copying the game's glyph 0x{:X} failed: {}", utf8Value, e.what());
+	}
+
+	// Not copied: the game font's own, drawn from the textures the copy borrows.
 	const auto game = m_getGlyphHook->Original(set, utf8Value, info.Original);
 	if (!game)
 		return s_current.Character ? GetMissingGlyph(set, utf8Value, font) : nullptr;
-
-	try {
-		const auto own = GetGameGlyph(info, game, utf8Value);
-		return own ? WithPixels(own) : game;
-	} catch (const std::exception& e) {
-		Host::Error("Copying the game's glyph 0x{:X} failed: {}", utf8Value, e.what());
-		return game;
-	}
+	return game;
 }
 
-FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGameGlyph(CopyInfo& info, GameGlyph* game, uint32_t utf8Value) {
-	if (const auto it = info.GameGlyphs.find(utf8Value); it != info.GameGlyphs.end())
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGameGlyph(SizedFont& sized, uint32_t utf8Value) {
+	if (const auto it = sized.GameGlyphs.find(utf8Value); it != sized.GameGlyphs.end())
 		return it->second;
 
-	const auto original = info.Original;
-	const auto textureIndex = game->TextureIndex();
-	const auto texture = textureIndex < GlyphAtlas::FirstTextureIndex ? original->GetTexture(textureIndex) : 0;
 	GameGlyph* glyph = nullptr;
-	if (texture && GameTextureReader::CanRead(texture)) {
-		const auto& sized = *info.Sized;
-		const auto scale = sized.Px / original->Size();
-		const auto top = game->OffsetY - original->Ascent();
+	const auto codepoint = GameUtf8::Unpack(utf8Value);
+	for (const auto font : codepoint < 0 ? std::span<GameFont* const>() : std::span<GameFont* const>(sized.Sources)) {
+		const auto game = font->IsReady() ? font->FindGlyph(static_cast<char32_t>(codepoint)) : nullptr;
+		if (!game)
+			continue;
+		const auto textureIndex = game->TextureIndex();
+		const auto texture = textureIndex < GlyphAtlas::FirstTextureIndex ? font->GetTexture(textureIndex) : 0;
+		if (!texture || !GameTextureReader::CanRead(texture))
+			continue;
+
+		const auto scale = sized.Px / font->Size();
+		const auto top = game->OffsetY - font->Ascent();
 		int left, t, w, h;
 		RasterGlyph::ScaledBounds(0, top, game->Width, game->Height, scale, 0, 0, left, t, w, h);
 		RasterGlyph r{static_cast<int>(std::round(static_cast<float>(game->Width + game->OffsetX) * scale)), left, t, w, h, std::vector<uint8_t>(static_cast<size_t>(w) * h)};
 		const GameTextureSource source{texture, game->X(), game->Y(), game->Width, game->Height, game->Channel(), 0, top, scale};
 		glyph = PlaceCell(sized, FinishGlyph(sized, std::move(r)), utf8Value, source);
+		break;
 	}
 
-	info.GameGlyphs.emplace(utf8Value, glyph);
+	sized.GameGlyphs.emplace(utf8Value, glyph);
 	return glyph;
 }
 
@@ -560,7 +663,7 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::GetOrCreateCopy(GameFo
 	const auto copy = static_cast<GameFont*>(std::malloc(GameFont::StructSize));
 	if (!copy)
 		throw std::bad_alloc();
-	CopyInfo info{original, halfPx, GetSized(original, halfPx), {}};
+	CopyInfo info{original, halfPx, GetSized(original, halfPx)};
 	Sync(copy, info);
 	m_copies.emplace(copy, std::move(info));
 	m_copiesByKey.emplace(std::make_pair(original, halfPx), copy);
@@ -586,17 +689,20 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::CreateGlyph(SizedFont
 	// A broken sequence, or a codepoint the face leaves to the game, stays the game's.
 	if (codepoint < 0)
 		return nullptr;
-	auto r = sized.Face->TryRasterize(static_cast<char32_t>(codepoint), sized.Px, sized.Game);
+	// The game's glyphs are copied from the largest font having them (GetGameGlyph).
+	const auto& pick = sized.Pick(static_cast<char32_t>(codepoint));
+	if (pick.Element && pick.Element->DrawsGame())
+		return nullptr;
+	auto r = pick.Face->TryRasterize(static_cast<char32_t>(codepoint), sized.Px, pick.Game);
 	return r ? PlaceCell(sized, FinishGlyph(sized, std::move(*r)), utf8Value) : nullptr;
 }
 
 FontReplacement::GameGlyph* FontReplacement::FontReplacer::PlaceCell(const SizedFont& sized, RasterGlyph r, uint32_t utf8Value, std::optional<GameTextureSource> source) {
-	// The game has no left bearing (boxes start at the pen): overhanging ink moves right into the box; past the byte-sized width it's cut on the right.
+	// The game has no left bearing: overhanging ink moves right into the box; past 255 wide it's cut.
 	const auto boxLeft = (std::min)(r.Left, 0);
 	const auto width = r.Width == 0 ? 0 : (std::min)(r.Left + r.Width - boxLeft, 255);
 
-	// Boxes are a full line high like the game's: italics shift each quad's top edge by a line-height-based amount, slanting alike only if quads
-	// span the same rows. Ink beyond the line (stacked marks, taller fallback scripts) grows the box, slanting a bit less; measuring uses the line height.
+	// Boxes are a full line high like the game's, so that italics slant alike; ink beyond the line grows the box.
 	const auto inkTop = sized.Ascent + r.Top;
 	auto top = 0;
 	auto height = sized.LineHeight;

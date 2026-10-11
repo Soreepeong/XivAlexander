@@ -18,6 +18,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		std::optional<Host::Hook<uint8_t, uintptr_t>> m_loadShadersHook;
 		ID3D11PixelShaderPtr m_shader;
+		float m_softness = 0;
 		bool m_used = false;
 
 		// m_original is the reference the slot held, kept raw because it goes back into the slot.
@@ -30,11 +31,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		EdgeShader& operator=(const EdgeShader&) = delete;
 		~EdgeShader();
 
-		// Game thread. Throws if the shader can't be made.
-		void Set(bool use);
+		// Game thread. Throws if the shader can't be made; a new softness makes it again.
+		void Set(bool use, float softness = 0);
 
 	private:
 		void Install();
+		// False while the game hasn't loaded its edge shader.
+		bool CreateFromGame();
 
 		// With check, only if it is made from FontEdgePS; 0 if absent.
 		uintptr_t GetEdgeShaderObject(bool check) const;
@@ -42,7 +45,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// A UI shader/font reload drops the patched object, so the old object's game shader is ours to release.
 		uint8_t LoadShadersDetour(uintptr_t server);
 
-		static ID3D11PixelShaderPtr Create(ID3D11PixelShader* game);
+		static ID3D11PixelShaderPtr Create(ID3D11PixelShader* game, float softness);
 
 		void Restore();
 	};
