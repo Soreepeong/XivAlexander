@@ -110,7 +110,8 @@
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
 xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(TargetDir)PatchCode\" || cd.
 xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(APPDATA)\XivAlexander\PatchCode\" || cd.
-copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)\d3d11.dll" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\TextTransformation\*.json" "$(TargetDir)TextTransformation\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\TextTransformation\*.json" "$(APPDATA)\XivAlexander\TextTransformation\" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
@@ -160,7 +161,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 copy /y "$(SolutionDir)StaticData\OpcodeDefinition\*.json" "$(APPDATA)\XivAlexander\" || cd.
 xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(TargetDir)PatchCode\" || cd.
 xcopy /y /i /q "$(SolutionDir)StaticData\PatchCode\*.json" "$(APPDATA)\XivAlexander\PatchCode\" || cd.
-copy /y "$(TargetPath)" "$(LocalDebuggerWorkingDirectory)\d3d11.dll" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\TextTransformation\*.json" "$(TargetDir)TextTransformation\" || cd.
+xcopy /y /i /q "$(SolutionDir)StaticData\TextTransformation\*.json" "$(APPDATA)\XivAlexander\TextTransformation\" || cd.
 copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
 </Command>
     </PostBuildEvent>
@@ -173,21 +175,13 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="EntryPointApp\App.cpp" />
-    <ClCompile Include="LoaderApp\App.cpp" />
-    <ClCompile Include="LoaderApp\Actions\Inject.cpp" />
-    <ClCompile Include="LoaderApp\Actions\InstallUninstall.cpp" />
-    <ClCompile Include="LoaderApp\Actions\Interactive.cpp" />
-    <ClCompile Include="LoaderApp\Actions\LoadUnload.cpp" />
-    <ClCompile Include="LoaderApp\Actions\RunLauncher.cpp" />
-    <ClCompile Include="LoaderApp\Actions\Update.cpp" />
-    <ClCompile Include="LoaderApp\Arguments.cpp" />
     <ClCompile Include="MainApp\AltCodecMusicDecoders\FlacDecoder.cpp" />
     <ClCompile Include="MainApp\AltCodecMusicDecoders\WavDecoder.cpp" />
     <ClCompile Include="MainApp\App.cpp" />
     <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp" />
     <ClCompile Include="MainApp\Features\CrowdFix.cpp" />
     <ClCompile Include="MainApp\FontReplacement\EdgeShader.cpp" />
+    <ClCompile Include="MainApp\FontReplacement\EdgeShaderCode.cpp" />
     <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp" />
     <ClCompile Include="MainApp\FontReplacement\FamilyPreview.cpp" />
     <ClCompile Include="MainApp\Features\FontReplacement.cpp" />
@@ -211,12 +205,17 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp" />
     <ClCompile Include="MainApp\FontReplacement\TextShaper.cpp" />
     <ClCompile Include="Config\FontReplacementConfigs.cpp" />
+    <ClCompile Include="MainApp\Features\DisplayLanguage.cpp" />
     <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp" />
+    <ClCompile Include="MainApp\Features\OutgoingText.cpp" />
     <ClCompile Include="MainApp\Features\LoginSessions.cpp" />
     <ClCompile Include="MainApp\Features\MainThreadTimingHandler.cpp" />
     <ClCompile Include="MainApp\Features\PatchCode.cpp" />
     <ClCompile Include="MainApp\Modding\DialogueSpeakers.cpp" />
     <ClCompile Include="MainApp\Modding\FutureReservations.cpp" />
+    <ClCompile Include="MainApp\Modding\ExcelMerger.cpp" />
+    <ClCompile Include="MainApp\Modding\ExcelMerger.Setup.cpp" />
+    <ClCompile Include="MainApp\Modding\MergedText.cpp" />
     <ClCompile Include="MainApp\Modding\GamePause.cpp" />
     <ClCompile Include="MainApp\Modding\SqpackRebuildLock.cpp" />
     <ClCompile Include="MainApp\Modding\NestedTtmp.cpp" />
@@ -244,7 +243,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Game\SoundEngine.cpp" />
     <ClCompile Include="Utils\Win32\TaskDialogBuilder.cpp" />
     <ClCompile Include="Utils\Win32\LoadedModule.cpp" />
-    <ClCompile Include="Utils\Win32\RelocatedImageCopy.cpp" />
     <ClCompile Include="Utils\Win32\Handle.cpp" />
     <ClCompile Include="Utils\Win32\Process.cpp" />
     <ClCompile Include="Utils\Win32\Resource.cpp" />
@@ -255,8 +253,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="Utils\Win32\InjectedModule.cpp" />
     <ClCompile Include="Utils\Crypt.cpp" />
     <ClCompile Include="Utils\WinHttp.cpp" />
-    <ClCompile Include="ExportCompatibles.cpp" />
     <ClCompile Include="XivAlexander.cpp" />
+    <ClCompile Include="XivAlexander.Shared.cpp" />
     <ClCompile Include="Game\SignatureDefinitions.cpp" />
     <ClCompile Include="Config\ChoicesProfile.cpp" />
     <ClCompile Include="Game\CommandLine.cpp" />
@@ -283,6 +281,16 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\Windows\ConfigWindow.cpp" />
     <ClCompile Include="MainApp\Windows\LogWindow.cpp" />
     <ClCompile Include="MainApp\Windows\MainWindow.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.Configure.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.File.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.Help.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.Modding.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.Network.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.Restart.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Menu.View.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.TtmpInstall.cpp" />
+    <ClCompile Include="MainApp\Windows\MainWindow.Window.cpp" />
     <ClCompile Include="MainApp\Windows\GridView.cpp" />
     <ClCompile Include="MainApp\Windows\SettingsView.cpp" />
     <ClCompile Include="pch.cpp">
@@ -291,28 +299,17 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EntryPointApp\App.h" />
-    <ClInclude Include="EntryPointApp\x64.h" />
-    <ClInclude Include="EntryPointApp\x86.h" />
     <ClInclude Include="Game\Structs.h" />
-    <ClInclude Include="LoaderApp\App.h" />
-    <ClInclude Include="LoaderApp\Actions\Inject.h" />
-    <ClInclude Include="LoaderApp\Actions\InstallUninstall.h" />
-    <ClInclude Include="LoaderApp\Actions\Interactive.h" />
-    <ClInclude Include="LoaderApp\Actions\LoadUnload.h" />
-    <ClInclude Include="LoaderApp\Actions\RunLauncher.h" />
-    <ClInclude Include="LoaderApp\Actions\Update.h" />
-    <ClInclude Include="LoaderApp\Arguments.h" />
     <ClInclude Include="MainApp\AltCodecMusicDecoders\BufferedDecoder.h" />
     <ClInclude Include="MainApp\AltCodecMusicDecoders\Decoder.h" />
     <ClInclude Include="MainApp\AltCodecMusicDecoders\FlacDecoder.h" />
     <ClInclude Include="MainApp\AltCodecMusicDecoders\WavDecoder.h" />
     <ClInclude Include="MainApp\App.h" />
-    <ClInclude Include="MainApp\AudioResamplers\Resampler.h" />
     <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h" />
     <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h" />
     <ClInclude Include="MainApp\Features\CrowdFix.h" />
     <ClInclude Include="MainApp\FontReplacement\EdgeShader.h" />
+    <ClInclude Include="MainApp\FontReplacement\EdgeShaderCode.h" />
     <ClInclude Include="MainApp\FontReplacement\ElementFonts.h" />
     <ClInclude Include="MainApp\FontReplacement\FamilyPreview.h" />
     <ClInclude Include="MainApp\Features\FontReplacement.h" />
@@ -321,7 +318,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h" />
     <ClInclude Include="MainApp\FontReplacement\GameFontNames.h" />
     <ClInclude Include="MainApp\FontReplacement\GameLayout.h" />
-    <ClInclude Include="MainApp\FontReplacement\GameText.h" />
     <ClInclude Include="MainApp\FontReplacement\GameTextureReader.h" />
     <ClInclude Include="MainApp\FontReplacement\GameUi.h" />
     <ClInclude Include="MainApp\FontReplacement\GlyphAtlas.h" />
@@ -338,13 +334,17 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h" />
     <ClInclude Include="MainApp\FontReplacement\TextShaper.h" />
     <ClInclude Include="Config\FontReplacementConfigs.h" />
+    <ClInclude Include="MainApp\Features\DisplayLanguage.h" />
     <ClInclude Include="MainApp\Features\ImeModeIndicator.h" />
+    <ClInclude Include="MainApp\Features\OutgoingText.h" />
     <ClInclude Include="MainApp\Features\LoginSessions.h" />
     <ClInclude Include="MainApp\Features\PatchCode.h" />
     <ClInclude Include="MainApp\Modding\DialogueSpeakers.h" />
     <ClInclude Include="MainApp\Modding\FutureReservations.h" />
     <ClInclude Include="MainApp\Modding\GamePause.h" />
     <ClInclude Include="MainApp\Modding\SqpackRebuildLock.h" />
+    <ClInclude Include="MainApp\Modding\ExcelMerger.h" />
+    <ClInclude Include="MainApp\Modding\MergedText.h" />
     <ClInclude Include="MainApp\Modding\NestedTtmp.h" />
     <ClInclude Include="MainApp\Modding\PackQueue.h" />
     <ClInclude Include="MainApp\Modding\PackSources.h" />
@@ -397,6 +397,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\Windows\ConfigWindow.h" />
     <ClInclude Include="MainApp\Windows\LogWindow.h" />
     <ClInclude Include="MainApp\Windows\MainWindow.h" />
+    <ClInclude Include="MainApp\Windows\MainWindow.Internal.h" />
     <ClInclude Include="MainApp\Windows\GridView.h" />
     <ClInclude Include="MainApp\Windows\SettingsView.h" />
     <ClInclude Include="Game\Oodle.h" />
@@ -411,7 +412,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Utils\Win32\HeapAllocator.h" />
     <ClInclude Include="Utils\Win32\InjectedModule.h" />
     <ClInclude Include="Utils\Win32\LoadedModule.h" />
-    <ClInclude Include="Utils\Win32\RelocatedImageCopy.h" />
     <ClInclude Include="Utils\Win32\Process.h" />
     <ClInclude Include="Utils\Win32\Resource.h" />
     <ClInclude Include="Utils\Utils.h" />
@@ -420,6 +420,8 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="Utils\WinHttp.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="LoaderInterface.h" />
+    <ClInclude Include="Version.h" />
     <ClInclude Include="XivAlexander.h" />
   </ItemGroup>
   <ItemGroup>
@@ -464,6 +466,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
   <ItemGroup>
     <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgeSquares.hlsli" />
     <None Include="Exports_x64.def" />
+    <None Include="Version.rc2" />
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>

@@ -16,6 +16,7 @@ namespace XivAlexander::LoaderApp {
 	enum class InstallMode : int {
 		D3D,
 		DInput8,
+		Dxgi,
 		Count_,  // for internal use only
 	};
 
@@ -34,6 +35,15 @@ namespace XivAlexander::LoaderApp {
 		std::set<std::wstring> m_targetSuffix{};
 		std::wstring m_runProgram;
 		std::wstring m_runProgramArgs;
+
+		// Passed to an elevated child so that it uses the invoking user's folders, not those of the elevating account.
+		std::filesystem::path m_configDir;
+		std::filesystem::path m_programDir;
+		bool m_gameFilesOnly = false;
+
+		// For tests: show the cleanup dialog over fake data, or clean up fake folders without a window.
+		bool m_showCleanupDialogTest = false;
+		std::string m_testCleanupItems;
 		bool m_debugUpdate = (GetAsyncKeyState(VK_CONTROL) & 0x8000) && (GetAsyncKeyState(VK_MENU) & 0x8000) && (GetAsyncKeyState(VK_SHIFT) & 0x8000);
 
 		Arguments();

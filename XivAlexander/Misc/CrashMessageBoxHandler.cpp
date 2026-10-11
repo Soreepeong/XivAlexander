@@ -542,7 +542,7 @@ struct XivAlexander::Misc::CrashMessageBoxHandler::Implementation {
 
 				const auto useXivAlexander = nRadio == 2001;
 				auto builder = Utils::Win32::ProcessBuilder();
-				if (!Dll::IsLoadedAsDependency() && useXivAlexander)
+				if (useXivAlexander)
 					builder
 					.WithPath(Dll::Module().PathOf().parent_path() / Dll::XivAlexLoaderNameW)
 					.WithArgument(true, std::format(L"-a launcher -l select \"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Dll::GetOriginalCommandLine()));

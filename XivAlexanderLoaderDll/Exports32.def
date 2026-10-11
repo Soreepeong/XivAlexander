@@ -1,0 +1,7 @@
+LIBRARY XivAlexanderLoader32
+EXPORTS
+	XA_InjectEntryPoint=InjectEntryPoint				@100
+	InjectEntryPoint=InjectEntryPoint
+	EnableInjectOnCreateProcess=EnableInjectOnCreateProcess
+	DisableAllApps=DisableAllApps
+	CallFreeLibrary=CallFreeLibrary

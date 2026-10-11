@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Project Items">
+      <UniqueIdentifier>{083b45ea-4461-4ee6-b0ff-4cdde568ff65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{72946b18-89a9-4283-808d-ec49fdc153ed}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\XivAlexander\LoaderInterface.h" />
+    <ClInclude Include="Base.h" />
+    <ClInclude Include="Json.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="x86.h" />
+    <ClInclude Include="x64.h" />
+    <ClInclude Include="ProxyExports.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="Exports64.def">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="XivAlexanderLoader.props">
+      <Filter>Project Items</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Base.cpp" />
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Follow.cpp" />
+    <ClCompile Include="Json.cpp" />
+    <ClCompile Include="Runtime.cpp" />
+    <ClCompile Include="Feature.cpp" />
+    <ClCompile Include="Proxy.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="ProxyExports.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Loader.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

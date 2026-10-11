@@ -1,0 +1,15 @@
+{
+  "name": "xivalexanderloader",
+  "version-string": "1.10",
+  "homepage": "https://github.com/Soreepeong/XivAlexander",
+  "description": "XivAlexanderLoader64.exe: the loader app (dialog, install, update, inject, launch).",
+  "builtin-baseline": "5f96cd15fd745122cf27e0524606d6c1efc5fd07",
+  "dependencies": [
+    "zlib",
+    "nlohmann-json",
+    "zydis",
+    "argparse",
+    "libzippp",
+    "srell"
+  ]
+}

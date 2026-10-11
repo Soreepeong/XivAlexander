@@ -7,7 +7,7 @@ using namespace Dll;
 
 XivAlexander::LoaderApp::Actions::Inject::Inject(const Arguments& args)
 	: m_args(args)
-	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDllNameW) {
+	, m_loaderDllPath(ProgramDirectory() / XivAlexLoaderDll64NameW) {
 }
 
 int XivAlexander::LoaderApp::Actions::Inject::Run() {
@@ -28,41 +28,30 @@ int XivAlexander::LoaderApp::Actions::Inject::Run() {
 	throw std::logic_error("invalid m_argument for Inject");
 }
 
+// Both bitnesses are handled here; nothing is handed to another loader process.
 void XivAlexander::LoaderApp::Actions::Inject::HookEntryPoint() {
-	std::vector<Utils::Win32::Process> mine, defer;
-	for (auto& process : m_args.m_targetProcessHandles) {
-		if (process.IsProcess64Bits() == (INT64_MAX == INTPTR_MAX))
-			mine.emplace_back(process);
-		else
-			defer.emplace_back(process);
-	}
-	for (auto& process : mine)
+	for (auto& process : m_args.m_targetProcessHandles)
 		PatchEntryPointForInjection(process);
-
-	if (!defer.empty())
-		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {});
 }
 
 void XivAlexander::LoaderApp::Actions::Inject::InjectOrCleanup(bool inject) {
-	std::vector<Utils::Win32::Process> mine, defer;
 	for (auto& process : m_args.m_targetProcessHandles) {
-		if (process.IsProcess64Bits() == (INT64_MAX == INTPTR_MAX))
-			mine.emplace_back(process);
-		else
-			defer.emplace_back(process);
-	}
-	for (auto& process : mine) {
 		try {
-			const auto m = Utils::Win32::InjectedModule(std::move(process), m_dllPath);
-			if (inject)
-				m.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)");
-			else
-				m.Call("DisableAllApps", nullptr, "DisableAllApps(0)");
+			if (process.IsProcess64Bits()) {
+				const auto m = Utils::Win32::InjectedModule(process, m_loaderDllPath);
+				if (inject)
+					m.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)");
+				else
+					m.Call("DisableAllApps", nullptr, "DisableAllApps(0)");
+			} else if (!inject) {
+				// Only 32-bit launchers have XivAlexanderLoader32.dll; it has nothing to enable.
+				const auto dll32 = m_loaderDllPath.parent_path() / XivAlexLoaderDll32NameW;
+				if (process.AddressOf(dll32, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false)) {
+					const auto m = Utils::Win32::InjectedModule(process, dll32);
+					m.Call("DisableAllApps", nullptr, "DisableAllApps(0)");
+				}
+			}
 		} catch (...) {
-			// pass
 		}
 	}
-
-	if (!defer.empty())
-		LaunchXivAlexLoaderWithTargetHandles(defer, m_args.m_action, true, {});
 }

@@ -4,7 +4,7 @@
 namespace XivAlexander::LoaderApp::Actions {
 	class Inject {
 		const Arguments& m_args;
-		const std::filesystem::path m_dllPath;
+		const std::filesystem::path m_loaderDllPath;
 
 	public:
 		Inject(const Arguments& args);

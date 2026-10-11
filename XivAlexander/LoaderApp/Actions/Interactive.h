@@ -1,43 +1,15 @@
 #pragma once
 
-#include "Utils/Win32/TaskDialogBuilder.h"
-
 #include "LoaderApp/Arguments.h"
-#include "Misc/GameInstallationDetector.h"
 
 namespace XivAlexander::LoaderApp::Actions {
+	/// The loader's window; it stays unelevated, and only the operations that need it elevate a child.
 	class Interactive {
 		const Arguments& m_args;
-
-		enum class TaskDialogMode {
-			Install,
-			RunOnce,
-			Break,
-		};
-
-		TaskDialogMode m_nextTaskDialogMode = TaskDialogMode::Install;
-
-		struct TaskDialogState {
-			std::filesystem::path GamePath, BootPath;
-			bool PathRequiresFileOpenDialog = true;
-			DWORD Pid = 0;
-
-			void SelectFrom(const Misc::GameInstallationDetector::GameReleaseInfo& info);
-		} m_state;
 
 	public:
 		Interactive(const Arguments& args);
 
 		int Run();
-
-	private:
-		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForInstallation_MakeInstallUninstallOnCommandCallback(bool install, InstallMode installMode);
-		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForInstallation_MakeRunGameLauncherOnCommandCallback();
-		void SetupBuilderForInstallation(Utils::Win32::TaskDialog::Builder& builder, bool showLoadOnce);
-
-		std::function<Utils::Win32::TaskDialog::ActionHandled(Utils::Win32::TaskDialog&)> SetupBuilderForLoadOnce_MakeLoadUnloadOnCommandCallback(bool load);
-		void SetupBuilderForLoadOnce(Utils::Win32::TaskDialog::Builder& builder, const std::set<DWORD>& pids);
-
-		void ShowSelectGameInstallationDialog();
 	};
 }

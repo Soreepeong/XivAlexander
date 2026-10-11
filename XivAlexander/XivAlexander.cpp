@@ -5,22 +5,29 @@
 #include "Utils/Win32/Resource.h"
 
 #include "Config.h"
-#include "Utils/WinHttp.h"
+#include "LoaderInterface.h"
+#include "MainApp/Features/LoginSessions.h"
 #include "Misc/CrashMessageBoxHandler.h"
 #include "Misc/GameInstallationDetector.h"
 #include "Misc/Hooks.h"
+#include "Misc/Logger.h"
 #include "resource.h"
 #include "XivAlexander.h"
 
 namespace Game = XivAlexander::Game;
+namespace LoaderInterface = XivAlexander::LoaderInterface;
 
 namespace {
 	Utils::Win32::LoadedModule s_hModule;
 	Utils::Win32::ActivationContext s_hActivationContext;
 	std::string s_dllUnloadDisableReason;
-	bool s_bLoadedAsDependency = false;
-	bool s_bLoadedFromEntryPoint = false;
 	std::unique_ptr<XivAlexander::Misc::CrashMessageBoxHandler> s_crashMessageBoxHandler;
+
+	std::mutex s_initializeMtx;
+	bool s_initialized = false;
+	LoaderInterface::LoaderInfo s_loaderInfo{};
+	std::wstring s_loaderPath;
+	std::wstring s_programDirectory;
 
 	std::wstring s_originalCommandLine;
 	bool s_originalCommandLineIsObfuscated;
@@ -28,7 +35,11 @@ namespace {
 	std::wstring s_gameCommandLineW;
 	std::string s_gameCommandLineA;
 
-	void SetGameCommandLine(std::vector<std::pair<std::string, std::string>> params) {
+	[[nodiscard]] bool IsGameProcess() {
+		return lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), Dll::GameExecutableNameW) == 0;
+	}
+
+	void SetGameCommandLine(XivAlexander::Game::CommandLine::ArgumentList params) {
 		if (Dll::IsLanguageRegionModifiable()) {
 			auto config = XivAlexander::Config::Acquire();
 			Game::CommandLine::WellKnown::SetLanguage(params, config->Runtime.Launch.RememberedLanguage);
@@ -42,12 +53,25 @@ namespace {
 		s_gameCommandLineA = Utils::ToAnsi(s_gameCommandLineW);
 	}
 
-	void CheckObfuscatedArguments() {
-		const auto& process = Utils::Win32::Process::Current();
-		auto filename = process.PathOf().filename().wstring();
-		CharLowerW(filename.data());
+	// The game starting itself again passes on the decoded GetCommandLineW; it gets the arguments obfuscated as they came.
+	const wchar_t* __stdcall FilterCreateProcessArguments(const wchar_t* applicationPath, const wchar_t* arguments) {
+		thread_local std::wstring s_arguments;
+		try {
+			if (!s_originalCommandLineIsObfuscated || !applicationPath || !arguments)
+				return nullptr;
+			const auto path = std::filesystem::path(applicationPath);
+			std::error_code ec;
+			if (lstrcmpiW(path.filename().c_str(), Dll::GameExecutableNameW) != 0 || !equivalent(path, Utils::Win32::Process::Current().PathOf(), ec))
+				return nullptr;
+			s_arguments = Game::CommandLine::ToString(Game::CommandLine::FromString(std::format(L"unused.exe {}", arguments)), true);
+			return s_arguments.c_str();
+		} catch (...) {
+			return nullptr;
+		}
+	}
 
-		if (filename != Dll::GameExecutableNameW)
+	void CheckObfuscatedArguments() {
+		if (!IsGameProcess())
 			return;
 
 		try {
@@ -62,9 +86,107 @@ namespace {
 			static const auto h2 = GetCommandLineA.SetHook([]() -> LPSTR {
 				return s_gameCommandLineA.data();
 			});
+
+			if (XA_LOADERINFO_HAS(&s_loaderInfo, SetCreateProcessArgumentFilter) && s_loaderInfo.SetCreateProcessArgumentFilter)
+				s_loaderInfo.SetCreateProcessArgumentFilter(&FilterCreateProcessArguments);
 		} catch (const std::exception& e) {
 			OutputDebugStringW(std::format(L"Error in CheckObfuscatedArguments: {}\n", e.what()).c_str());
 		}
+	}
+
+	// What has to be in place before the game's own initialization runs.
+	void InitializeGameBeforeEntryPoint() {
+		static xivres::util::on_dtor::multi s_hooks;
+
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, LPCSTR> s_OpenMutexA("kernel32!OpenMutexA", "kernel32.dll", "OpenMutexA");
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, LPSECURITY_ATTRIBUTES, BOOL, LPCSTR> s_CreateMutexA("kernel32!CreateMutexA", "kernel32.dll", "CreateMutexA");
+		s_hooks += s_OpenMutexA.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName) {
+			if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+				return static_cast<HANDLE>(0);
+
+			return s_OpenMutexA.bridge(dwDesiredAccess, bInheritHandle, lpName);
+			});
+		s_hooks += s_CreateMutexA.SetHook([](LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName) {
+			if (lpName && std::string_view(lpName).starts_with("Global\\6AA83AB5-BAC4-4a36-9F66-A309770760CB_ffxiv_"))
+				return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, nullptr);
+
+			return s_CreateMutexA.bridge(lpMutexAttributes, bInitialOwner, lpName);
+			});
+
+		// Prevent the game from restarting to "fix" ACL
+		static XivAlexander::Misc::Hooks::ImportedFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcessForXiv("kernel32!OpenProcess", "kernel32.dll", "OpenProcess");
+		static XivAlexander::Misc::Hooks::PointerFunction<HANDLE, DWORD, BOOL, DWORD> s_OpenProcess("OpenProcess", OpenProcess);
+		if (s_OpenProcessForXiv) {
+			s_hooks += s_OpenProcessForXiv.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+				if (dwProcessId == GetCurrentProcessId()) {
+					if (dwDesiredAccess & PROCESS_VM_WRITE) {
+						SetLastError(ERROR_ACCESS_DENIED);
+						return HANDLE{};
+					}
+				}
+				return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+				});
+		}
+		if (s_OpenProcess) {
+			s_hooks += s_OpenProcess.SetHook([](DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId) {
+				if (dwProcessId == GetCurrentProcessId()) {
+					// Prevent Reloaded from tripping
+					if (HANDLE h{}; DuplicateHandle(GetCurrentProcess(), GetCurrentProcess(), GetCurrentProcess(), &h, dwDesiredAccess, bInheritHandle, 0))
+						return h;
+					return HANDLE{};
+				}
+				return s_OpenProcess.bridge(dwDesiredAccess, bInheritHandle, dwProcessId);
+				});
+		}
+
+		// Started without a command line, as in double-clicking the game; use the session the launcher stored last.
+		try {
+			if (Game::CommandLine::FromString(Dll::GetOriginalCommandLine()).empty()) {
+				if (auto stored = XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments()) {
+					XivAlexander::Misc::Logger::Acquire()->Format(XivAlexander::LogCategory::General, "Started without arguments; using login session \"{}\"", stored->first);
+					// The session keeps the language and region it was stored with; the remembered ones apply as on restarting.
+					if (Dll::IsLanguageRegionModifiable()) {
+						const auto& launch = XivAlexander::Config::Acquire()->Runtime.Launch;
+						if (launch.RememberedLanguage != xivres::game_language::Unspecified)
+							Game::CommandLine::WellKnown::SetLanguage(stored->second, launch.RememberedLanguage);
+						if (launch.RememberedRegion != xivres::game_publisher::Unspecified)
+							Game::CommandLine::WellKnown::SetRegion(stored->second, launch.RememberedRegion);
+					}
+					Dll::ReplaceOriginalCommandLine(std::move(stored->second));
+				}
+			}
+		} catch (const std::exception& e) {
+			XivAlexander::Misc::Logger::Acquire()->Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General, "Cannot use a stored login session: {}", e.what());
+		}
+
+		if (XivAlexander::Config::Acquire()->Runtime.FramerateControl.UseMoreCpuTime) {
+			static XivAlexander::Misc::Hooks::ImportedFunction<DWORD_PTR, HANDLE, DWORD_PTR> s_SetThreadAffinityMask("kernel32!SetThreadAffinityMask", "kernel32.dll", "SetThreadAffinityMask");
+			static XivAlexander::Misc::Hooks::ImportedFunction<void, LPSYSTEM_INFO> s_GetSystemInfo("kernel32!GetSystemInfo", "kernel32.dll", "GetSystemInfo");
+			if (s_SetThreadAffinityMask) {
+				s_hooks += s_SetThreadAffinityMask.SetHook([](HANDLE h, DWORD_PTR d) { return static_cast<DWORD_PTR>(-1); });
+			}
+			if (s_GetSystemInfo) {
+				s_hooks += s_GetSystemInfo.SetHook([&](LPSYSTEM_INFO i) {
+					s_GetSystemInfo.bridge(i);
+					i->dwNumberOfProcessors = std::min(192UL, i->dwNumberOfProcessors * 8);
+					});
+			}
+		}
+	}
+
+	// Copies what the loader gave, no further than either side knows.
+	void StoreLoaderInfo(const LoaderInterface::LoaderInfo& info) {
+		s_loaderInfo = {};
+		memcpy(&s_loaderInfo, &info, (std::min<size_t>)(info.Size, sizeof s_loaderInfo));
+		s_loaderInfo.Size = static_cast<uint32_t>((std::min<size_t>)(info.Size, sizeof s_loaderInfo));
+
+		s_loaderPath = s_loaderInfo.LoaderPath ? s_loaderInfo.LoaderPath : L"";
+		s_programDirectory = s_loaderInfo.ProgramDirectory ? s_loaderInfo.ProgramDirectory : L"";
+		s_loaderInfo.LoaderPath = s_loaderPath.c_str();
+		s_loaderInfo.ProgramDirectory = s_programDirectory.c_str();
+		if (s_loaderInfo.OriginalCommandLine)
+			s_originalCommandLine = s_loaderInfo.OriginalCommandLine;
+		s_loaderInfo.OriginalCommandLine = nullptr;
 	}
 }
 
@@ -76,78 +198,10 @@ const Utils::Win32::ActivationContext& Dll::ActivationContext() {
 	return s_hActivationContext;
 }
 
-const char* Dll::LoaderActionToString(LoaderAction val) {
-	switch (val) {
-		case LoaderAction::Interactive: return "interactive";
-		case LoaderAction::Web: return "web";
-		case LoaderAction::Ask: return "ask";
-		case LoaderAction::Load: return "load";
-		case LoaderAction::Unload: return "unload";
-		case LoaderAction::Launcher: return "launcher";
-		case LoaderAction::UpdateCheck: return "update-check";
-		case LoaderAction::Install: return "install";
-		case LoaderAction::Uninstall: return "uninstall";
-		case LoaderAction::Internal_Update_DependencyDllMode: return "_internal_update_dependencydllmode";
-		case LoaderAction::Internal_Update_Step2_ReplaceFiles: return "_internal_update_step2_replacefiles";
-		case LoaderAction::Internal_Update_Step3_CleanupFiles: return "_internal_update_step3_cleanupfiles";
-		case LoaderAction::Internal_Inject_HookEntryPoint: return "_internal_inject_hookentrypoint";
-		case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately: return "_internal_inject_loadxivalexanderimmediately";
-		case LoaderAction::Internal_Inject_UnloadFromHandle: return "_internal_inject_unloadfromhandle";
-	}
-	return "<invalid>";
-}
-
-DWORD Dll::LaunchXivAlexLoaderWithTargetHandles(
-	const std::vector<Utils::Win32::Process>& hSources,
-	LoaderAction action,
-	bool wait,
-	const Utils::Win32::Process& waitForBeforeStarting,
-	const std::filesystem::path& loaderPath) {
-
-	const auto companionPath = loaderPath.empty() ? (
-		lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), GameExecutableNameW) == 0
-		? XivAlexander::Config::Acquire()->Init.ResolveXivAlexInstallationPath()
-		: Module().PathOf().parent_path()
-	) : loaderPath;
-
-	const auto companion = companionPath / XivAlexLoaderNameW;
-
-	if (!exists(companion))
-		throw std::runtime_error(xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_LOADER_NOT_FOUND) + 1, std::make_wformat_args(companion))));
-
-	Utils::Win32::Process companionProcess;
-	{
-		Utils::Win32::ProcessBuilder creator;
-		creator.WithPath(companion)
-			.WithArgument(true, L"")
-			.WithAppendArgument(L"--handle-instead-of-pid")
-			.WithAppendArgument(L"--action")
-			.WithAppendArgument(LoaderActionToString(action));
-
-		if (waitForBeforeStarting)
-			creator.WithAppendArgument("--wait-process")
-				.WithAppendArgument("{}", creator.Inherit(waitForBeforeStarting).Value());
-		for (const auto& h : hSources)
-			creator.WithAppendArgument("{}", creator.Inherit(h).Value());
-
-		companionProcess = creator.Run().first;
-	}
-
-	if (!wait)
-		return 0;
-	else {
-		DWORD retCode = 0;
-		companionProcess.Wait();
-		if (!GetExitCodeProcess(companionProcess, &retCode))
-			throw Utils::Win32::Error("GetExitCodeProcess");
-		return retCode;
-	}
-}
-
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH: {
-			s_bLoadedAsDependency = !!lpReserved;  // non-null for static loads
+			// The loader passes the command line it saw first; this is for when it is older and does not.
 			s_originalCommandLine = GetCommandLineW();
 
 			try {
@@ -160,18 +214,6 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 				});
 
 				MH_Initialize();
-
-				if (s_bLoadedAsDependency && lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), Dll::GameExecutableNameW) == 0) {
-					GetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr, 0);
-					if (GetLastError() == ERROR_ENVVAR_NOT_FOUND) {
-						Dll::DisableUnloading(std::format("Loaded as DLL dependency in place of {}", Dll::Module().PathOf().filename()).c_str());
-						const auto params = Dll::PatchEntryPointForInjection(GetCurrentProcess());
-						params->LoadInstalledXivAlexDllOnly = true;
-					}
-				} else {
-					CheckObfuscatedArguments();
-					s_crashMessageBoxHandler = std::make_unique<XivAlexander::Misc::CrashMessageBoxHandler>();
-				}
 
 			} catch (const std::exception& e) {
 				Utils::Win32::DebugPrint(L"DllMain({:x}, DLL_PROCESS_ATTACH, {}) Error: {}",
@@ -199,12 +241,65 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	return TRUE;
 }
 
-size_t Dll::DisableAllApps(void*) {
-	if (s_bLoadedAsDependency)
-		return -1;
+extern "C" int32_t __stdcall XA_Initialize(const LoaderInterface::LoaderInfo* pInfo) {
+	if (!pInfo || pInfo->Size < offsetof(LoaderInterface::LoaderInfo, EnableInjectOnCreateProcess) || pInfo->Version < LoaderInterface::MinimumVersion) {
+		Utils::Win32::DebugPrint(L"XA_Initialize: loader interface {} (size {}) is not supported; need {} or newer",
+			pInfo ? pInfo->Version : 0, pInfo ? pInfo->Size : 0, LoaderInterface::MinimumVersion);
+		return LoaderInterface::Incompatible;
+	}
 
-	EnableXivAlexander(0);
+	try {
+		{
+			const auto lock = std::lock_guard(s_initializeMtx);
+			if (s_initialized)
+				return Dll::EnableXivAlexander(1) == 0 ? LoaderInterface::Initialized : LoaderInterface::Failed;
+
+			s_initialized = true;
+			StoreLoaderInfo(*pInfo);
+		}
+
+		const auto activationContextCleanup = Dll::ActivationContext().With();
+		CheckObfuscatedArguments();
+		s_crashMessageBoxHandler = std::make_unique<XivAlexander::Misc::CrashMessageBoxHandler>();
+
+		if (Dll::IsLoadedFromEntryPoint() && IsGameProcess())
+			InitializeGameBeforeEntryPoint();
+
+		return Dll::EnableXivAlexander(1) == 0 ? LoaderInterface::Initialized : LoaderInterface::Failed;
+	} catch (const std::exception& e) {
+		Utils::Win32::DebugPrint(L"XA_Initialize error: {}", e.what());
+		return LoaderInterface::Failed;
+	}
+}
+
+// Game folder copies of XivAlexander64.dll from before the loader DLLs call this; the loader DLL does the rest.
+void Dll::InjectEntryPoint(InjectEntryPointParameters* pParam) {
+	try {
+		const auto loader = Utils::Win32::LoadedModule(Module().PathOf().parent_path() / XivAlexLoaderDll64NameW);
+		loader.SetPinned();
+		loader.GetProcAddress<decltype(&InjectEntryPoint)>("XA_InjectEntryPoint")(pParam);
+	} catch (const std::exception& e) {
+		Utils::Win32::DebugPrint(L"InjectEntryPoint: cannot hand over to {}: {}", XivAlexLoaderDll64NameW, e.what());
+		Utils::Win32::Process::Current().WriteMemory(pParam->EntryPoint, pParam->EntryPointOriginalBytes, pParam->EntryPointOriginalLength, true);
+	}
+}
+
+size_t Dll::EnableInjectOnCreateProcess(size_t flags) {
+	if (!s_loaderInfo.EnableInjectOnCreateProcess)
+		return -1;
+	return s_loaderInfo.EnableInjectOnCreateProcess(flags);
+}
+
+size_t Dll::DisableAllApps(void*) {
+	if (const auto res = EnableXivAlexander(0))
+		return res;
+
 	EnableInjectOnCreateProcess(0);
+	// Only a DLL loaded into a running process gets unloaded; the others stay and keep filtering.
+	if (s_loaderInfo.Mode == LoaderInterface::LoadMode::Remote && XA_LOADERINFO_HAS(&s_loaderInfo, SetCreateProcessArgumentFilter) && s_loaderInfo.SetCreateProcessArgumentFilter)
+		s_loaderInfo.SetCreateProcessArgumentFilter(nullptr);
+	if (s_loaderInfo.ReleaseFeatures)
+		s_loaderInfo.ReleaseFeatures();
 	return 0;
 }
 
@@ -212,30 +307,7 @@ void Dll::CallFreeLibrary(void*) {
 	FreeLibraryAndExitThread(Module(), 0);
 }
 
-[[nodiscard]] Dll::CheckPackageVersionResult Dll::CheckPackageVersion() {
-	const auto dir = Utils::Win32::Process::Current().PathOf().parent_path();
-	std::vector<std::pair<std::string, std::string>> modules;
-	try {
-		modules = {
-			Utils::Win32::FormatModuleVersionString(dir / XivAlexLoader64NameW),
-			Utils::Win32::FormatModuleVersionString(dir / XivAlexDll64NameW),
-		};
-	} catch (const Utils::Win32::Error& e) {
-		if (e.Code() == ERROR_FILE_NOT_FOUND)
-			return CheckPackageVersionResult::MissingFiles;
-		throw;
-	}
-	for (size_t i = 1; i < modules.size(); ++i) {
-		if (modules[0].first != modules[i].first || modules[0].second != modules[i].second)
-			return CheckPackageVersionResult::VersionMismatch;
-	}
-	return CheckPackageVersionResult::OK;
-}
-
 size_t Dll::DisableUnloading(const char* pszReason) {
-	if (s_bLoadedAsDependency)
-		return -1;
-
 	s_dllUnloadDisableReason = pszReason ? pszReason : "(reason not specified)";
 	Module().SetPinned();
 	return 0;
@@ -243,36 +315,6 @@ size_t Dll::DisableUnloading(const char* pszReason) {
 
 const char* Dll::GetUnloadDisabledReason() {
 	return s_dllUnloadDisableReason.empty() ? nullptr : s_dllUnloadDisableReason.c_str();
-}
-
-bool Dll::IsLoadedAsDependency() {
-	return s_bLoadedAsDependency;
-}
-
-const wchar_t* Dll::GetGenericMessageBoxTitle() {
-	static std::wstring buf;
-	if (buf.empty()) {
-		buf = std::format(L"{} {}",
-			GetStringResFromId(IDS_APP_NAME),
-			Utils::Win32::FormatModuleVersionString(Module().PathOf()).second);
-	}
-	return buf.data();
-}
-
-int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::wstring& text) {
-	return MessageBoxF(hWnd, uType, text.c_str());
-}
-
-int Dll::MessageBoxF(HWND hWnd, UINT uType, const std::string& text) {
-	return MessageBoxF(hWnd, uType, xivres::util::unicode::convert<std::wstring>(text));
-}
-
-int Dll::MessageBoxF(HWND hWnd, UINT uType, const wchar_t* text) {
-	return MessageBoxW(hWnd, text, GetGenericMessageBoxTitle(), uType);
-}
-
-int Dll::MessageBoxF(HWND hWnd, UINT uType, const char* text) {
-	return MessageBoxF(hWnd, uType, xivres::util::unicode::convert<std::wstring>(text));
 }
 
 LPCWSTR Dll::GetStringResFromId(UINT resId) {
@@ -284,19 +326,19 @@ LPCWSTR Dll::GetStringResFromId(UINT resId) {
 	}
 }
 
-int Dll::MessageBoxF(HWND hWnd, UINT uType, UINT stringResId) {
-	return MessageBoxF(hWnd, uType, GetStringResFromId(stringResId));
-}
-
 std::wstring Dll::GetOriginalCommandLine() {
 	return s_originalCommandLine;
+}
+
+std::wstring Dll::GetGameCommandLine() {
+	return s_gameCommandLineW.empty() ? s_originalCommandLine : s_gameCommandLineW;
 }
 
 bool Dll::IsOriginalCommandLineObfuscated() {
 	return s_originalCommandLineIsObfuscated;
 }
 
-void Dll::ReplaceOriginalCommandLine(std::vector<std::pair<std::string, std::string>> params) {
+void Dll::ReplaceOriginalCommandLine(XivAlexander::Game::CommandLine::ArgumentList params) {
 	s_originalCommandLine = std::format(L"\"{}\" {}", Utils::Win32::Process::Current().PathOf().wstring(), Game::CommandLine::ToString(params, false));
 	s_originalCommandLineIsObfuscated = false;
 	SetGameCommandLine(std::move(params));
@@ -314,12 +356,8 @@ bool Dll::IsLanguageRegionModifiable() {
 	return *s_modifiable;
 }
 
-void Dll::SetLoadedFromEntryPoint() {
-	s_bLoadedFromEntryPoint = true;
-}
-
 bool Dll::IsLoadedFromEntryPoint() {
-	return s_bLoadedFromEntryPoint;
+	return s_loaderInfo.Mode == LoaderInterface::LoadMode::EntryPoint || s_loaderInfo.Mode == LoaderInterface::LoadMode::Proxy;
 }
 
 HWND Dll::FindGameMainWindow(bool throwOnError) {
@@ -334,68 +372,4 @@ HWND Dll::FindGameMainWindow(bool throwOnError) {
 	if (hwnd == nullptr && throwOnError)
 		throw std::runtime_error(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_ERROR_GAME_WINDOW_NOT_FOUND) + 1));
 	return hwnd;
-}
-
-Dll::VersionInformation Dll::CheckUpdates() {
-	const auto response = Utils::Win32::WinHttp::Get("https://api.github.com/repos/Soreepeong/XivAlexander/releases/latest");
-	const auto parsed = nlohmann::json::parse(response.Body);
-	const auto& item = parsed.at("assets").at(0);
-
-	std::istringstream in(parsed.at("published_at").get<std::string>());
-	std::chrono::sys_seconds tp;
-	from_stream(in, "%FT%TZ", tp);
-	if (in.fail())
-		throw std::format_error(std::format("Failed to parse datetime string \"{}\"", in.str()));
-
-	return {
-		.Name = parsed.at("name").get<std::string>(),
-		.Body = parsed.at("body").get<std::string>(),
-		.PublishDate = std::chrono::zoned_time(std::chrono::current_zone(), tp),
-		.DownloadLink = item.at("browser_download_url").get<std::string>(),
-		.DownloadSize = item.at("size").get<size_t>(),
-	};
-}
-
-bool Dll::IsXivAlexanderDll(const std::filesystem::path& dllPath) {
-	DWORD verHandle = 0;
-	std::vector<BYTE> block;
-	block.resize(GetFileVersionInfoSizeW(dllPath.c_str(), &verHandle));
-	if (block.empty()) {
-		const auto err = GetLastError();
-		if (err == ERROR_RESOURCE_TYPE_NOT_FOUND)
-			return false;
-		throw Utils::Win32::Error(err, "GetFileVersionInfoSizeW");
-	}
-	if (!GetFileVersionInfoW(dllPath.c_str(), 0, static_cast<DWORD>(block.size()), &block[0]))
-		throw Utils::Win32::Error("GetFileVersionInfoW");
-	struct LANGANDCODEPAGE {
-		WORD wLanguage;
-		WORD wCodePage;
-	} * lpTranslate;
-	UINT cbTranslate;
-	if (!VerQueryValueW(&block[0],
-		TEXT("\\VarFileInfo\\Translation"),
-		reinterpret_cast<LPVOID*>(&lpTranslate),
-		&cbTranslate))
-		return false;
-
-	for (size_t i = 0; i < (cbTranslate / sizeof(struct LANGANDCODEPAGE)); i++) {
-		wchar_t* buf = nullptr;
-		UINT size = 0;
-		if (!VerQueryValueW(&block[0],
-			std::format(L"\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
-				lpTranslate[i].wLanguage,
-				lpTranslate[i].wCodePage).c_str(),
-			reinterpret_cast<LPVOID*>(&buf),
-			&size))
-			continue;
-		auto currName = std::wstring_view(buf, size);
-		while (!currName.empty() && currName.back() == L'\0')
-			currName = currName.substr(0, currName.size() - 1);
-		if (currName.empty())
-			continue;
-		if (currName == L"XivAlexander Main DLL")
-			return true;
-	}
-	return false;
 }

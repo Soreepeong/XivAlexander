@@ -54,7 +54,7 @@ void XivAlexander::LoaderApp::Actions::LoadUnload::RunForPid(DWORD pid) {
 }
 
 bool XivAlexander::LoaderApp::Actions::LoadUnload::IsXivAlexanderLoaded(const Utils::Win32::Process& process) {
-	return process.AddressOf(m_dllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
+	return process.AddressOf(m_featureDllPath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false);
 }
 
 void XivAlexander::LoaderApp::Actions::LoadUnload::Load(DWORD pid) {
@@ -66,36 +66,42 @@ void XivAlexander::LoaderApp::Actions::LoadUnload::Unload(DWORD pid) {
 }
 
 void XivAlexander::LoaderApp::Actions::LoadUnload::LoadOrUnload(const Utils::Win32::Process& process, bool load) {
-	if (process.IsProcess64Bits() != Utils::Win32::Process::Current().IsProcess64Bits()
-		|| (!Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation({process.GetId()}))) {
-		Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexLoader64NameW,
-			.args = std::format(L"-a {} {}",
-				LoaderActionToString(load ? LoaderAction::Load : LoaderAction::Unload),
-				process.GetId()),
-			.wait = true
-		});
+	// Elevation is decided once by the caller; re-running a loader from here could chain without end.
+	if (!process.IsProcess64Bits())
+		throw std::runtime_error(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_LOADER_ERROR_LOAD_32BIT) + 1));
+
+	const auto injectedModule = Utils::Win32::InjectedModule(process, m_loaderDllPath);
+	if (!load) {
+		if (const auto result = injectedModule.Call("EnableXivAlexander", nullptr, "EnableXivAlexander(0)"); result != 0)
+			throw std::runtime_error(xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_LOADER_ERROR_UNLOAD) + 1, std::make_wformat_args(result))));
 		return;
 	}
 
-	const auto injectedModule = Utils::Win32::InjectedModule(process, m_dllPath);
-	auto unloadRequired = false;
-	const auto cleanup = xivres::util::on_dtor([&injectedModule, &unloadRequired]() {
-		if (unloadRequired)
+	// A failed start leaves nothing running; this must not throw, as the process may have exited meanwhile.
+	const auto disable = [&injectedModule] {
+		try {
 			injectedModule.Call("EnableXivAlexander", nullptr, "EnableXivAlexander(0)");
-	});
-
-	if (load) {
-		unloadRequired = true;
-		if (const auto loadResult = injectedModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)"); loadResult == 0)
-			unloadRequired = false;
-	} else
-		unloadRequired = true;
+		} catch (...) {
+			Utils::Win32::DebugPrint(L"EnableXivAlexander(0) failed");
+		}
+	};
+	int loadResult;
+	try {
+		loadResult = injectedModule.Call("EnableXivAlexander", reinterpret_cast<void*>(1), "EnableXivAlexander(1)");
+	} catch (...) {
+		disable();
+		throw;
+	}
+	if (loadResult != 0) {
+		disable();
+		throw std::runtime_error(xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_LOAD) + 1, std::make_wformat_args(loadResult))));
+	}
 }
 
 XivAlexander::LoaderApp::Actions::LoadUnload::LoadUnload(const Arguments& args)
 	: m_args(args)
-	, m_dllPath(Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexDllNameW) {
+	, m_loaderDllPath(ProgramDirectory() / XivAlexLoaderDll64NameW)
+	, m_featureDllPath(ProgramDirectory() / XivAlexDll64NameW) {
 }
 
 int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
@@ -120,11 +126,15 @@ int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
 		debugPrivilegeError = xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(s)));
 	}
 
+	auto result = 0;
 	for (const auto pid : pids) {
 		try {
 			RunForPid(pid);
 		} catch (const std::exception& e) {
-			if (!m_args.m_quiet)
+			result = -1;
+			if (m_args.m_quiet)
+				ReportError(true, std::format(L"PID {}: {}", pid, xivres::util::unicode::convert<std::wstring>(e.what())));
+			else
 				MessageBoxF(nullptr, MB_OK | MB_ICONERROR,
 					L"PID: {}\n"
 					L"\n"
@@ -137,5 +147,5 @@ int XivAlexander::LoaderApp::Actions::LoadUnload::Run() {
 				);
 		}
 	}
-	return 0;
+	return result;
 }

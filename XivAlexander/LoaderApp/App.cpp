@@ -2,6 +2,7 @@
 #include "App.h"
 
 #include <XivAlexander/XivAlexander.h>
+#include "Game/CommandLine.h"
 #include "Utils/Win32/InjectedModule.h"
 #include "Utils/Win32/Resource.h"
 
@@ -52,14 +53,35 @@ bool XivAlexander::LoaderApp::TestAdminRequirementForProcessManipulation(const s
 	return false;
 }
 
+namespace {
+	// The game accepts an obfuscated block only within its key's time window, which a UAC prompt can outlast.
+	std::wstring RefreshObfuscatedArguments(const std::wstring& args) {
+		if (args.find(xivres::util::unicode::convert<std::wstring>(XivAlexander::Game::CommandLine::ObfuscationHead)) == std::wstring::npos)
+			return args;
+		try {
+			auto obfuscated = false;
+			const auto params = XivAlexander::Game::CommandLine::FromString(std::format(L"unused.exe {}", args), &obfuscated);
+			if (obfuscated)
+				return XivAlexander::Game::CommandLine::ToString(params, true);
+		} catch (...) {
+			// pass it on as it is
+		}
+		return args;
+	}
+}
+
 bool XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args) {
 	if (Utils::Win32::RunProgram({
 		.path = path,
 		.dir = path.parent_path().c_str(),
-		.args = args,
+		.args = RefreshObfuscatedArguments(args),
 		.elevateMode = Utils::Win32::RunProgramParams::CancelIfRequired,
 	}))
 		return true;
+
+	// An elevated loader that still cannot start it must not start yet another one.
+	if (Utils::Win32::IsUserAnAdmin())
+		return false;
 
 	return Utils::Win32::RunProgram({
 		.dir = path.parent_path().c_str(),
@@ -71,19 +93,6 @@ bool XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(const
 		})) + (args.empty() ? L"" : L" " + args),
 		.elevateMode = Utils::Win32::RunProgramParams::Force,
 	});
-}
-
-bool XivAlexander::LoaderApp::EnsureNoWow64Emulation() {
-	BOOL w = FALSE;
-	if (!IsWow64Process(GetCurrentProcess(), &w) || !w)
-		return false;
-
-	Utils::Win32::RunProgram({
-		.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexLoader64NameW,
-		.args = Utils::Win32::SplitCommandLineIntoNameAndArgs(GetOriginalCommandLine()).second,
-		.wait = true,
-	});
-	return true;
 }
 
 template<>
@@ -109,6 +118,7 @@ std::string argparse::details::repr(XivAlexander::LoaderApp::InstallMode const& 
 	switch (val) {
 		case XivAlexander::LoaderApp::InstallMode::D3D: return "d3d";
 		case XivAlexander::LoaderApp::InstallMode::DInput8: return "dinput8";
+		case XivAlexander::LoaderApp::InstallMode::Dxgi: return "dxgi";
 	}
 	return std::format("({})", static_cast<int>(val));
 }
@@ -124,6 +134,19 @@ std::string argparse::details::repr(xivres::game_release_publisher const& val) {
 	return std::format("({})", static_cast<int>(val));
 }
 
+
+void XivAlexander::LoaderApp::ReportError(bool quiet, const std::wstring& message) {
+	if (!quiet) {
+		MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED, message);
+		return;
+	}
+	OutputDebugStringW(std::format(L"XivAlexanderLoader: {}\n", message).c_str());
+	if (const auto hStderr = GetStdHandle(STD_ERROR_HANDLE); hStderr && hStderr != INVALID_HANDLE_VALUE) {
+		const auto utf8 = xivres::util::unicode::convert<std::string>(message) + "\n";
+		DWORD written;
+		WriteFile(hStderr, utf8.data(), static_cast<DWORD>(utf8.size()), &written, nullptr);
+	}
+}
 
 class XivAlexander::LoaderApp::LoaderApp {
 	const Arguments& m_args;
@@ -141,21 +164,39 @@ public:
 		if (const auto hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED); FAILED(hr))
 			throw Utils::Win32::Error(_com_error(hr));
 
-		try {
-			Utils::Win32::AddDebugPrivilege();
-		} catch (const std::exception& err) {
-			const auto s = err.what();
-			m_errorClaimingSeDebugPrivilege = xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(s)));
+		if (NeedsProcessAccess()) {
+			try {
+				Utils::Win32::AddDebugPrivilege();
+			} catch (const std::exception& err) {
+				const auto s = err.what();
+				m_errorClaimingSeDebugPrivilege = xivres::util::unicode::convert<std::string>(std::vformat(FindStringResourceEx(Module(), IDS_ERROR_SEDEBUGPRIVILEGE) + 1, std::make_wformat_args(s)));
+			}
+		}
+	}
+
+	// Actions that open other processes; only those use or report SeDebugPrivilege.
+	[[nodiscard]] bool NeedsProcessAccess() const {
+		switch (m_args.m_action) {
+			case LoaderAction::Ask:
+			case LoaderAction::Load:
+			case LoaderAction::Unload:
+			case LoaderAction::Launcher:
+			case LoaderAction::Internal_Inject_HookEntryPoint:
+			case LoaderAction::Internal_Inject_LoadXivAlexanderImmediately:
+			case LoaderAction::Internal_Inject_UnloadFromHandle:
+			case LoaderAction::UpdateCheck:
+			case LoaderAction::Internal_Update_DependencyDllMode:
+			case LoaderAction::Internal_Update_Step2_ReplaceFiles:
+			case LoaderAction::Internal_Update_Step3_CleanupFiles:
+				return true;
+			default:
+				return false;
 		}
 	}
 
 	int Run() {
 		try {
 			SetEnvironmentVariableW(L"XIVALEXANDER_DISABLE", nullptr);
-
-			const auto& currentProcess = Utils::Win32::Process::Current();
-			const auto dllDir = currentProcess.PathOf().parent_path();
-			const auto dllPath = dllDir / XivAlexDllNameW;
 
 			VerifyPackageVersionOrThrow();
 
@@ -168,8 +209,7 @@ public:
 					return 0;
 
 				case LoaderAction::Interactive:
-					if (!m_args.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && TestAdminRequirementForProcessManipulation(m_args.GetTargetPidList()))
-						RunElevatedSelfIfPossible();
+					// The dialog stays unelevated and elevates only the operations that need it.
 					return Actions::Interactive(m_args).Run();
 
 				case LoaderAction::Ask:
@@ -200,9 +240,10 @@ public:
 
 			throw std::logic_error("invalid m_action value");
 		} catch (const std::exception& e) {
-			MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED,
-				std::format(L"{}\nSeDebugPrivilege: {}", e.what(), m_errorClaimingSeDebugPrivilege.empty() ? "OK" : m_errorClaimingSeDebugPrivilege));
-
+			auto message = xivres::util::unicode::convert<std::wstring>(e.what());
+			if (NeedsProcessAccess() && !m_errorClaimingSeDebugPrivilege.empty())
+				message += std::format(L"\nSeDebugPrivilege: {}", xivres::util::unicode::convert<std::wstring>(m_errorClaimingSeDebugPrivilege));
+			ReportError(m_args.m_quiet, message);
 			return -1;
 		}
 	}
@@ -238,11 +279,8 @@ private:
 	}
 };
 
-extern "C" int Dll::XA_LoaderApp() {
+int Dll::LoaderAppMain() {
 	const auto activationContextCleanup = ActivationContext().With();
-
-	// SetThreadUILanguage(MAKELANGID(LANG_KOREAN, SUBLANG_KOREAN));
-	// SetThreadUILanguage(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN));
 
 	XivAlexander::LoaderApp::Arguments parameters;
 	try {
@@ -254,7 +292,7 @@ extern "C" int Dll::XA_LoaderApp() {
 	try {
 		return XivAlexander::LoaderApp::LoaderApp(parameters).Run();
 	} catch (const std::exception& err) {
-		MessageBoxF(nullptr, MB_ICONWARNING, IDS_ERROR_UNEXPECTED, err.what());
+		XivAlexander::LoaderApp::ReportError(parameters.m_quiet, xivres::util::unicode::convert<std::wstring>(err.what()));
 		return -1;
 	}
 }

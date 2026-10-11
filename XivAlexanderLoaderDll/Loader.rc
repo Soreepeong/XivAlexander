@@ -1,0 +1,196 @@
+// Microsoft Visual C++ generated resource script.
+//
+#pragma code_page(65001)
+
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Japanese (Japan) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOADER_NOT_FOUND "{}でXivAlexanderLoaderを見つけることができませんでした。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_UNEXPECTED    "予想しないエラーが発生しました。({})"
+    IDS_ERROR_INJECT        "このプログラムの初期化に失敗しました。\nエラー：{}\nPID：{}\nパス：{}\nコマンドライン：{}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_APP_NAME            "XivAlexander"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
+    IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
+END
+
+#endif    // Japanese (Japan) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Korean (Korea) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_KOR)
+LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader를 {}에서 발견할 수 없었습니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_UNEXPECTED    "예상치 못한 오류가 발생했습니다. ({})"
+    IDS_ERROR_INJECT        "이 프로그램을 초기화하지 못했습니다.\n오류: {}\nPID: {}\n경로: {}\n명령줄: {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_APP_NAME            "XivAlexander"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-%EB%8F%84%EC%9B%80%EB%A7%90"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
+    IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
+END
+
+#endif    // Korean (Korea) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define XIVALEXANDER_LOADER_DLL\r\n"
+    "#include ""../XivAlexander/Version.rc2""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "..\\XivAlexander\\DummyAssemblyIdentity.manifest"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOADER_NOT_FOUND "XivAlexanderLoader could not be found at {}."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_UNEXPECTED    "Unexpected error occurred. ({})"
+    IDS_ERROR_INJECT        "Failed to initialize this process.\nError: {}\nPID: {}\nPath: {}\nCommand Line: {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_APP_NAME            "XivAlexander"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_URL_HELP            "https://github.com/Soreepeong/XivAlexander/wiki/XivAlexander-Help"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH 
+                            "Failed to resolve the XivAlexander installation path."
+    IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define XIVALEXANDER_LOADER_DLL
+#include "../XivAlexander/Version.rc2"
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

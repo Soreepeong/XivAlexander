@@ -46,19 +46,19 @@ BEGIN
     LTEXT           "4. 予想される実際のGCD (s)",IDC_ESTIMATEDGCD_STATIC,12,72,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDGCD_EDIT,156,72,126,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "自動設定(&U)",IDC_AUTOMATICFPSLOCKING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,90,78,12
-    PUSHBUTTON      "GCDが遅くられないようにするFPSを探す(&M)",IDC_CALCFPS,96,90,186,14
+    PUSHBUTTON      "GCDが遅れないFPSを探す(&M)",IDC_CALCFPS,96,90,186,14
     GROUPBOX        "直接に設定",IDC_STATIC,6,114,138,48
     LTEXT           "レンダー周期(&I) (us)",IDC_INTERVAL_STATIC,12,126,66,11,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_INTERVAL_EDIT,84,126,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "FPS(&F)",IDC_TARGETFRAMERATE_STATIC,12,144,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_TARGETFRAMERATE_EDIT,84,144,54,12,ES_RIGHT | ES_AUTOHSCROLL
-    GROUPBOX        "GCDの数の解散",IDC_STATIC,6,168,138,48
+    GROUPBOX        "GCDの数の計算",IDC_STATIC,6,168,138,48
     LTEXT           "戦闘の時間(&U)",IDC_ESTIMATENUMGCD_DURATION_STATIC,12,180,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATENUMGCD_DURATION_EDIT,84,180,54,12,ES_RIGHT | ES_AUTOHSCROLL
-    LTEXT           "GCDの使い回数",IDC_ESTIMATENUMGCD_RESULT_STATIC,12,198,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "GCDの使用回数",IDC_ESTIMATENUMGCD_RESULT_STATIC,12,198,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATENUMGCD_RESULT_EDIT,84,198,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     GROUPBOX        "GCDのかかる時間の解散",IDC_STATIC,6,222,138,48
-    LTEXT           "GCDの使い回数(&N)",IDC_ESTIMATEDURATION_NUMGCD_STATIC,12,234,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "GCDの使用回数(&N)",IDC_ESTIMATEDURATION_NUMGCD_STATIC,12,234,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDURATION_NUMGCD_EDIT,84,234,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "時間",IDC_ESTIMATEDURATION_RESULT_STATIC,12,252,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDURATION_RESULT_EDIT,84,252,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
@@ -75,6 +75,62 @@ BEGIN
     EDITTEXT        IDC_LASTGCD_RANGE_EDIT_MIN,246,234,36,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     EDITTEXT        IDC_LASTGCD_RANGE_EDIT_MAX,246,252,36,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     PUSHBUTTON      "無効化して閉める",IDC_DISABLE,6,276,78,14
+END
+
+IDD_LOADER_MAIN DIALOGEX 0, 0, 500, 330
+STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "XivAlexander"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "ゲームのインストール先(&T)",IDC_LOADER_INSTALLS_LABEL,7,7,446,10
+    LTEXT           "ゲームを選び、今回だけ使うか、毎回自動で適用するかを選んでください。",IDC_LOADER_INTRO,10,8,480,18,SS_NOPREFIX
+    LTEXT           "2. 使い方を選択",IDC_LOADER_METHOD_LABEL,10,100,480,10,SS_NOPREFIX
+    GROUPBOX        "今すぐ使う",IDC_LOADER_ONCE_GROUP,10,113,237,74
+    LTEXT           "",IDC_LOADER_ONCE_NOTE,16,127,225,32,SS_NOPREFIX
+    PUSHBUTTON      "",IDC_LOADER_APPLY_ONCE,16,163,225,18
+    GROUPBOX        "毎回自動で適用",IDC_LOADER_AUTO_GROUP,253,113,237,74
+    LTEXT           "",IDC_LOADER_AUTO_NOTE,259,127,225,32,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_GUIDANCE,10,193,360,26,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_INSTALL_DETAILS,7,152,340,26,SS_NOPREFIX | 0x2000
+    CONTROL         "コントロールウィンドウを表示(&C)",IDC_LOADER_SHOWCONTROLWINDOW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,350,152,103,12
+    PUSHBUTTON      "参照(&B)...",IDC_LOADER_BROWSE,7,181,60,14
+    PUSHBUTTON      "一覧から削除(&V)",IDC_LOADER_REMOVE,71,181,60,14
+    PUSHBUTTON      "最新の情報に更新(&R)",IDC_LOADER_REFRESH,135,181,60,14
+    PUSHBUTTON      "ゲームを起動(&G)",IDC_LOADER_LAUNCH,265,181,60,14
+    PUSHBUTTON      "アンインストール(&U)",IDC_LOADER_UNINSTALL,329,181,60,14
+    PUSHBUTTON      "インストール(&I)",IDC_LOADER_INSTALL,393,181,60,14
+    LTEXT           "実行中のゲーム(&N)",IDC_LOADER_PROCESSES_LABEL,7,203,446,10
+    LTEXT           "",IDC_LOADER_PROCESS_DETAILS,7,275,310,18,SS_NOPREFIX | 0x2000
+    PUSHBUTTON      "読み込み解除(&O)",IDC_LOADER_UNLOAD,329,275,60,14
+    PUSHBUTTON      "読み込む(&L)",IDC_LOADER_LOAD,393,275,60,14
+    CONTROL         "詳細表示(&D)",IDC_LOADER_ADVANCED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,300,60,12
+    CONTROL         "",IDC_LOADER_STATUS,"Static",SS_LEFTNOWORDWRAP | SS_NOPREFIX | SS_ENDELLIPSIS,71,302,200,10
+    CONTROL         "",IDC_LOADER_PROGRESS,"msctls_progress32",PBS_MARQUEE,275,302,50,10
+    PUSHBUTTON      "その他(&M)",IDC_LOADER_MORE,329,299,60,14
+    PUSHBUTTON      "閉じる",IDCANCEL,393,299,60,14
+END
+
+IDD_LOADER_CLEANUP DIALOGEX 0, 0, 300, 186
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "XivAlexanderのデータの削除"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "",IDC_CLEANUP_INTRO,7,7,286,24,SS_NOPREFIX
+    CONTROL         "キャッシュを削除(&C)",IDC_CLEANUP_CACHES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,36,200,12
+    RTEXT           "",IDC_CLEANUP_CACHES_SIZE,210,38,83,10,SS_NOPREFIX
+    CONTROL         "プログラムのファイルを削除(&P)",IDC_CLEANUP_PROGRAM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,200,12
+    RTEXT           "",IDC_CLEANUP_PROGRAM_SIZE,210,54,83,10,SS_NOPREFIX
+    LTEXT           "",IDC_CLEANUP_PROGRAM_PATH,19,64,274,10,SS_NOPREFIX | SS_PATHELLIPSIS
+    CONTROL         "保存したログインセッションを削除(&L)",IDC_CLEANUP_SESSIONS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,80,200,12
+    RTEXT           "",IDC_CLEANUP_SESSIONS_SIZE,210,82,83,10,SS_NOPREFIX
+    CONTROL         "設定を削除(&S)",IDC_CLEANUP_SETTINGS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,96,200,12
+    RTEXT           "",IDC_CLEANUP_SETTINGS_SIZE,210,98,83,10,SS_NOPREFIX
+    CONTROL         "Modと規則をごみ箱に移動(&M)",IDC_CLEANUP_USERCONTENT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,112,200,12
+    RTEXT           "",IDC_CLEANUP_USERCONTENT_SIZE,210,114,83,10,SS_NOPREFIX
+    LTEXT           "XivAlexanderのフォルダーの外にあるものは変更しません。",IDC_CLEANUP_NOTE,7,134,286,20
+    PUSHBUTTON      "選んだものを削除(&D)",IDOK,159,165,80,14
+    DEFPUSHBUTTON   "スキップ",IDCANCEL,243,165,50,14
 END
 
 
@@ -173,11 +229,11 @@ BEGIN
     POPUP "再起動(&R)"
     BEGIN
         MENUITEM "以下の設定で再起動(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
-        MENUITEM "起動コマンドラインをコピー(&M)",           ID_RESTART_COPYLAUNCHCOMMANDLINE
+        MENUITEM "コマンドラインをコピー(&M)",             ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "XivAlexanderを使用(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "コマンドラインの難読化を使用(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
-        MENUITEM "管理者として実行(&E)\tCtrl+Shift+A", ID_RESTART_USEELEVATION
+        MENUITEM "管理者として実行(&E)\tCtrl+Shift+A",  ID_RESTART_USEELEVATION
         MENUITEM SEPARATOR
         MENUITEM "言語：日本語(&J)",                  ID_RESTART_LANGUAGE_JAPANESE
         MENUITEM "言語：英語(&E)",                   ID_RESTART_LANGUAGE_ENGLISH
@@ -198,7 +254,7 @@ BEGIN
     BEGIN
         POPUP "遅延とタイミングの処理(&H)"
         BEGIN
-            MENUITEM "有効化(&E)\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "有効化(&E)\tCtrl+Shift+H",       ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "モード&1：次のアクションの使用可能時刻からレイテンシを繰り上げる", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "モード&2：サーバからの応答にかかる時間を{}usに固定", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -212,11 +268,11 @@ BEGIN
         MENUITEM "すべてのIPCメッセージをログに記録(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "パケット遅延の軽減(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "すべての接続を強制に終了する(&S)", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "すべての接続を強制に終了する(&S)",          ID_NETWORK_RESETALLCONNECTIONS
         POPUP "トラブルシューティング(&T)"
         BEGIN
             MENUITEM "ループバックアドレスを処理(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "ローカルアドレスを処理(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
             MENUITEM "すべてのアドレスを処理(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
             MENUITEM "すべてのポートを処理(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
@@ -238,9 +294,9 @@ BEGIN
             MENUITEM "インポート(&I)",                   ID_MODDING_TTMP_IMPORT
             MENUITEM "フォルダーを開ける(&O)",               ID_MODDING_TTMP_OPENDIRECTORY
         END
-        MENUITEM "再読み込み(&F)", ID_MODDING_TTMP_REFRESH
+        MENUITEM "再読み込み(&F)",                   ID_MODDING_TTMP_REFRESH
         MENUITEM SEPARATOR
-        MENUITEM "別コーデックの.scdを再生可能にする(&C)",     ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "FLAC・WAVフォーマットの.scdを再生可能にする(&C)", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "すべてのファイルのアクセスをログに記録(I)",      ID_MODDING_LOGALLFILEACCESS
         POPUP "声のミュート(&V)"
         BEGIN
@@ -254,8 +310,8 @@ BEGIN
     POPUP "設定(&C)"
     BEGIN
         MENUITEM SEPARATOR
-        MENUITEM "環境（ランタイム）設定(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "Opcodeの設定(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM "環境設定(&R)\tCtrl+Alt+R",        ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "Opcodeの設定(&O)\tCtrl+Alt+O",   ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "Opcodeのアップデートを確認する(&U)",      ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "軌道のときに自動でOpcodeのアップデートを確認(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
@@ -276,8 +332,8 @@ BEGIN
         POPUP "ウィンドウタイトル(&I)"
         BEGIN
             MENUITEM "変更しない(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "前にセッション名かPIDを追加する(&P)",     ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "後ろにセッション名かPIDを追加する(&A)",    ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "前にセッション名かPIDを追加する(&P)",       ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "後ろにセッション名かPIDを追加する(&A)",      ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM SEPARATOR
         POPUP "言語(&L) (Language/언어)"
@@ -287,9 +343,9 @@ BEGIN
             MENUITEM "韓国語(&K) (언어)",                ID_CONFIGURE_LANGUAGE_KOREAN
             MENUITEM "日本語(&J)",                     ID_CONFIGURE_LANGUAGE_JAPANESE
         END
-        POPUP "テーマ(&T)"
+        POPUP "ダークモードの設定(&T)"
         BEGIN
-            MENUITEM "システム(&S)",                    ID_CONFIGURE_THEME_SYSTEM
+            MENUITEM "システム設定を使用(&S)",               ID_CONFIGURE_THEME_SYSTEM
             MENUITEM "ライト(&L)",                     ID_CONFIGURE_THEME_LIGHT
             MENUITEM "ダーク(&D)",                     ID_CONFIGURE_THEME_DARK
         END
@@ -375,14 +431,11 @@ BEGIN
                             "エラーが発生したため、ゲームを終了します。\nXivAlexanderがエラーの原因の場合もよくあります。GitHubにIssueを作ってログをアプロードして報告してください。"
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "ゲームの起動時のコマンドラインの解読に失敗しました。ゲームの再起動関連の機能を利用できません。({})"
-    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
-                            "XivAlexanderを終了しますか？\n\n終了したい場合{}のボタンを、\nこのウィンドウだけ閉じたい場合{}のボタンを、\n取り消す場合{}のボタンを押してください。"
 END
 
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "ゲームを強制終了しますか？"
-    IDS_CONFIRM_RESET_ALL_CONNECTIONS "すべての接続を強制終了しますか？"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexanderのGitHubのIssueページ</a>を開ける"
     IDS_CONFIRM_RESTART_GAME 
@@ -399,6 +452,26 @@ BEGIN
     IDS_LANGUAGE_NAME_KOREAN "韓国語"
     IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "中国語(簡体字)"
     IDS_LANGUAGE_NAME_UNSPECIFIED "(言語未設定)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_IMPORT_ERROR "エラー: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} を読み込めません。"
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
+                            "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
+    IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
+    IDS_FONTPREVIEW_ERROR_NOFACE "{} を描くためのフォントがありません。"
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
+    IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
+                            "{} にはグリフがありません。インストールされていないか、読み込めない可能性があります。"
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} にはテキストの文字がひとつもありません。"
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "すべての接続を強制終了しますか？"
+    IDS_TITLE_MERGINGEXCEL  "他の言語のテキストを統合しています…"
 END
 
 STRINGTABLE
@@ -423,42 +496,48 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windowsの既定のオーディオ出力デバイスに合わせる ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN 
-                            "Windowsの既定のオーディオ出力デバイスに合わせる(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "システムの既定値に合わせる ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "システムの既定値に合わせる(&0)"
     IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
     IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (既定)(&{})"
     IDS_MENU_USESOXRRESAMPLER "soxrリサンプラーを使用(&S)"
     IDS_REGION_NAME_CHINATRAD "繁体字版"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
     IDS_MENU_LOGINSESSION   "セッション(&S)"
-    IDS_MENU_LOGINSESSION_EXPIRED "{}（期限切れ）"
     IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(起動時のセッション)"
     IDS_CONFIRM_RESTART_GAME_TITLE "この設定でゲームを起動しますか？"
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nログインセッション：{}"
     IDS_RESTART_GAME_RESTART "再起動(&R)\nこのゲームを終了して、もう一度起動します。"
     IDS_RESTART_GAME_NEWINSTANCE "新しく起動(&N)\nこのゲームはそのままにして、もう一つ起動します。"
-    IDS_VERSIONSENSITIVE_CONTENT "以下の機能はゲームのコードをフックまたはパッチしますが、このゲームバージョン（{}）ではまだ確認されていません。ゲームがアップデートされたため、ゲームをクラッシュさせる可能性があります。\n{}\n\nMODの変更はゲームの再起動後に反映されます。"
-    IDS_VERSIONSENSITIVE_TITLE "このゲームバージョンで動作しない可能性のある機能を使い続けますか？"
-    IDS_VERSIONSENSITIVE_KEEP "維持(&K)\nこのゲームバージョンではこれらの機能を使い、今後は確認しません。"
-    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "一時的に維持(&T)\nゲームを終了するまでこれらの機能を使い、次回の起動時にもう一度確認します。"
-    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "一時的に無効化(&M)\nゲームを終了するまでこれらの機能を使わず、次回の起動時にもう一度確認します。"
-    IDS_VERSIONSENSITIVE_DISABLE "無効化(&D)\nこれらの機能をオフにします。"
-    IDS_VERSIONSENSITIVE_MODDING "MOD"
-    IDS_VERSIONSENSITIVE_LOGINSESSIONS "起動中のゲームでのログインセッション切り替え"
-    IDS_VERSIONSENSITIVE_PATCHCODE "パッチコード：{}"
-    IDS_VERSIONSENSITIVE_SAMPLINGRATE "オーディオのサンプリングレート"
-    IDS_VERSIONSENSITIVE_SOXR "soxrリサンプラー"
-    IDS_VERSIONSENSITIVE_ALTCODEC "別コーデックの.scdの再生"
-    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IMEモード表示の韓国語・中国語IME対応"
-    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (混雑時のパフォーマンス改善)"
-    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "フォントの置き換え"
-    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
+    IDS_MENU_LOGINSESSION_EXPIRED "{}（期限切れ）"
+    IDS_VERSIONSENSITIVE_CONTENT 
+                            "以下の機能はこのゲームバージョン（{}）ではまだ確認されていないため、いつでもゲームをクラッシュさせる可能性があります。\n{}\n\nMODの変更はゲームの再起動後に反映されます。"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_COMPONENTS    "次の一部またはすべてのファイルの検証に失敗しました。\n・XivAlexander32.dll\n・XivAlexander64.dll\n・XivAlexanderLoader32.dll\n・XivAlexanderLoader64.dll\n\nプログラムの再ダウンロード試みますか？"
+    IDS_VERSIONSENSITIVE_TITLE "このゲームバージョンで動作しない可能性のある機能を使い続けますか？"
+    IDS_VERSIONSENSITIVE_KEEP "維持(&K)\nこのゲームバージョンではこれらの機能を使い、今後は確認しません。"
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY 
+                            "一時的に維持(&T)\nゲームを終了するまでこれらの機能を使い、次回の起動時にもう一度確認します。"
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY 
+                            "一時的に無効化(&M)\nゲームを終了するまでこれらの機能を使わず、次回の起動時にもう一度確認します。"
+    IDS_VERSIONSENSITIVE_DISABLE "無効化(&D)\nこれらの機能をオフにします。"
+    IDS_VERSIONSENSITIVE_MODDING "MOD"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS "起動中のゲームでのログインセッション切り替え"
+    IDS_VERSIONSENSITIVE_PATCHCODE "ゲームのバグのフィックス：{}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "オーディオのサンプリングレート"
+    IDS_VERSIONSENSITIVE_SOXR "soxrリサンプラー"
+    IDS_VERSIONSENSITIVE_ALTCODEC "FLAC・WAVフォーマットの.scd対応"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 一部の機能は再起動するまで無効になっています。"
+    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "日中韓IMEモード表示対応"
+    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (混雑時のパフォーマンス改善)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "フォントの置き換え"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_COMPONENTS    "次の一部またはすべてのファイルの検証に失敗しました。\n・XivAlexanderLoader32.dll\n・XivAlexanderLoader64.dll\n・XivAlexander64.dll\n・XivAlexanderLoader64.exe\n\nプログラムの再ダウンロード試みますか？"
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} プロセスを見つけませんでした。ゲームを起動しているか確認してください。"
     IDS_ERROR_NO_MATCHING_PROCESS "指定の条件に一致するプロセスを見つけることができませんでした。"
@@ -481,7 +560,7 @@ BEGIN
                             "起動中のゲームのプロセス({}:{})にすでにXivAlexanderがロードされています。\n\n{}のボタンを押し再びロードするか、\n{}のボタンで終了するか、\n{}のボタンでスキップします。"
     IDS_CONFIRM_INJECT      "ゲームのプロセスを見つけました。\n\n・PID：{}\n・パス：{}\n\nこのプロセスにXivAlexanderをロードしますか？"
     IDS_UPDATE_FILE_TOO_BIG "アップデートのファイルサイズのがが大きすぎます。アップデートファイルの無欠性を信頼できる場合、手動でファイルを取り換えアップデートしてください。"
-    IDS_HELP_ACTION         "作業を指定します。\n\t・auto: すでにゲームが起動中の場合起動中のプロセスにロードし、起動していない場合ゲームを起動して起動したプロセスにロードします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
+    IDS_HELP_ACTION         "作業を指定します。\n\t・interactive: ローダーのウィンドウを表示します（基本）。\n\t・install: 対象のゲームフォルダーにXivAlexanderをインストールします。\n\t・uninstall: 対象のゲームフォルダーからXivAlexanderをアンインストールします。\n\t・ask: ゲームプロセス毎に行う作業を確認します。\n\t・load: ゲームプロセスにXivAlexanderをロードします。\n\t・unload: ゲームプロセスからXivAlexanderを終了します。\n\t・launcher: 指定のゲームランチャーを起動し、起動したゲームにXivAlexanderをロードします。\n\t・update-check: アップデートを確認します。\n\t・web: 配布サイト (https://github.com/Soreepeong/XivAlexander) を開きます。"
     IDS_HELP_LAUNCHER       "ランチャーを指定します。有効な値はauto（自動）、select（毎回確認）、squareenix（スクウェア・エニックス）、actozsoft（Actoz Soft）、shengqugames（Shengqu Games）、userjoygames（USERJOY GAMES）です。"
     IDS_HELP_QUIET          "エラーメッセージを表示しません。"
     IDS_HELP_DISABLE_RUNAS  "どの場合でも管理者権限で実行しません。"
@@ -569,16 +648,11 @@ BEGIN
                             "XivAlexanderを次の経路にインストールしました。\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexanderを次の経路からアンインストールしました。\n\n{}\n\n設定ファイルなどは直接に確認して削除してください。設定フォルダーを開けます。"
-    IDS_HELP_INSTALL_MODE   "インストールモードを指定します。有効な値はd3d（基本）、dinput8です。"
+    IDS_HELP_INSTALL_MODE   "インストールモードを指定します。有効な値はd3d（基本）、dinput8、dxgiです。"
     IDS_ERROR_INVALID_INSTALL_MODE "インストールモードが間違っています。使えるのはd3d、dinput8です。"
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
                             "XivAlexanderをdinput8でインストールする(&I)\nXivAlexanderを選択したゲームフォルダーにdinput8.dllでインストールします。"
     IDS_TITLE_DISCOVERINGFILES "ファイルを探索しています…"
-END
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR_CANCELLING_TRYAGAINLATER "前のオペレーションをキャンセル中です。ちょっと後でもう一回してください。"
 END
 
 STRINGTABLE
@@ -594,7 +668,7 @@ BEGIN
     IDS_OPCODEUPDATE_ERROR_404 "Opcodeの設定がまだアップデートされていません。後でもう一度してください。"
     IDS_OPCODEUPDATE_OK_NOTCHANGED "現在のOpcodeの設定がもう最新です。"
     IDS_OPCODEUPDATE_OK_CHANGED "Opcodeの設定をアップデートしました。"
-    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 強制終了 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET "{:x}: 強制終了 => {}"
     IDS_MENU_TTMP_PROFILE   "プロフィール"
     IDS_MENU_MODDING_SAMPLINGRATE "オーディオサンプリングレート(&S)"
 END
@@ -604,14 +678,19 @@ BEGIN
     IDS_SETTINGS_BROWSE     "参照…"
     IDS_SETTINGS_ADD        "追加…"
     IDS_SETTINGS_REMOVE     "削除"
-    IDS_SETTINGS_EDITINCONFIGEDITOR "環境（ランタイム）設定で編集できます。"
+    IDS_SETTINGS_EDITINCONFIGEDITOR "環境設定で編集できます。"
     IDS_SETTINGS_OPENEDITOR "エディターを開く"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPSの固定ダイアログを開く…"
     IDS_SETTINGS_GROUP_UI   "インターフェース"
     IDS_SETTINGS_GROUP_UI_MAINWINDOW "コントロールウィンドウ"
     IDS_SETTINGS_GROUP_UI_LOGWINDOW "ログウィンドウ"
     IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "設定エディター"
     IDS_SETTINGS_GROUP_GAMEWINDOW "ゲームウィンドウ"
     IDS_SETTINGS_GROUP_NETWORKTIMING "遅延とタイミングの処理"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_SOCKET "接続"
     IDS_SETTINGS_GROUP_FRAMERATECONTROL "フレームレート制御"
     IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPSの固定"
@@ -628,6 +707,10 @@ BEGIN
     IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "フィルター"
     IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
     IDS_SETTINGS_GROUP_CROWDFIX_FIXES "修正項目"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "フォント置き換え"
     IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "フォント"
     IDS_SETTINGS_BACKGROUNDLIMIT "バックグラウンド時のフレームレート制限 (fps)"
@@ -637,36 +720,63 @@ BEGIN
     IDS_SETTINGS_LOCK_RANGETO "目標フレームレートの上限 (fps)"
     IDS_SETTINGS_LOCK_MAXDEVIATION "描画間隔の最大偏差 (µs)"
     IDS_SETTINGS_LOCK_GCD   "グローバルクールダウン (s)"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFixを使用"
-    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "周囲のオブジェクトの数に応じて増えるフレームごとの処理を減らします。変更は次のフレームから反映されます。"
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC 
+                            "周囲のオブジェクトの数に応じて増えるフレームごとの処理を減らします。変更は次のフレームから反映されます。表示がおかしくなったら、個々の修正をオフにしてください。"
     IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "処理のないGPUリソース通知をスキップ"
-    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "毎フレームすべてのGPUリソースを2回巡回する代わりに、処理が必要なリソースだけを巡回します。"
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC 
+                            "毎フレームすべてのGPUリソースを2回巡回する代わりに、処理が必要なリソースだけを巡回します。"
     IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "ワーカースレッドの起床を連鎖させる"
-    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "ジョブを投入するたびに全ワーカーを起こす代わりに1つだけ起こし、起きたワーカーが次のワーカーを起こします。"
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC 
+                            "ジョブを投入するたびに全ワーカーを起こす代わりに1つだけ起こし、起きたワーカーが次のワーカーを起こします。"
     IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "スケルトンのポーズ同期をフレームごとに1回にする"
-    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "描画するビューごとに繰り返される全スケルトンのポーズ同期を、フレームの最初の1回以降はスキップします。"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC 
+                            "描画するビューごとに繰り返される全スケルトンのポーズ同期を、フレームの最初の1回以降はスキップします。"
     IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "使用済みのカリングスロットだけをクリア"
-    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "フレームごとに数回40,960スロットすべてをクリアする代わりに、これまで使われた最も高いオブジェクトスロットまでだけ可視性テーブルをクリアします。"
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC 
+                            "フレームごとに数回40,960スロットすべてをクリアする代わりに、これまで使われた最も高いオブジェクトスロットまでだけ可視性テーブルをクリアします。"
     IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "グラフィックアロケーターのロック外で大きなブロックを解放"
-    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "大きなブロックの解放中も小さな割り当てが進むようにします。主にメインスレッドがワーカーを待つCPUで効果があります。"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC 
+                            "大きなブロックの解放中も小さな割り当てが進むようにします。主にメインスレッドがワーカーを待つCPUで効果があります。"
     IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "描画用ステージングブロックを再利用"
-    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "解放されたステージングブロックをサイズ別にためて再利用し、ほとんどの割り当てがアロケーターのグローバルロックを通らないようにします。"
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC 
+                            "解放されたステージングブロックをサイズ別にためて再利用し、ほとんどの割り当てがアロケーターのグローバルロックを通らないようにします。"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "非表示のミニオンの追従AIを止める"
-    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "モデルが非表示のミニオンの、衝突判定を伴う追従AIをスキップします。離れすぎた場合は今まで通り主人のそばにワープします。"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC 
+                            "モデルが非表示のミニオンの、衝突判定を伴う追従AIをスキップします。離れすぎた場合は今まで通り主人のそばにワープします。"
     IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "不要なジョブリストの待機をスキップ"
-    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "すでにシグナル状態のイベントをもう一度待つ処理を省きます。フレームあたり約75回のシステムコールが減ります。"
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC 
+                            "すでにシグナル状態のイベントをもう一度待つ処理を省きます。フレームあたり約75回のシステムコールが減ります。"
     IDS_SETTINGS_CROWDFIX_INLINEBGPREP "背景インスタンシングの準備をメインスレッドで実行"
-    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "ビューごとのごく小さな背景インスタンシングのジョブを、ワーカーに渡して待つ代わりにその場で実行します。"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC 
+                            "ビューごとのごく小さな背景インスタンシングのジョブを、ワーカーに渡して待つ代わりにその場で実行します。"
     IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "非表示のホットバーの準備をスキップ"
-    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "毎フレーム非表示のホットバーのスロットを準備する処理をスキップします。表示されたホットバーはそのフレームで準備されます。"
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC 
+                            "毎フレーム非表示のホットバーのスロットを準備する処理をスキップします。表示されたホットバーはそのフレームで準備されます。"
     IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "アニメーションの仕上げを並列化"
-    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "スケルトンの仕上げ処理をメインスレッドで1つずつ行う代わりに、接続の深さごとにワーカーで処理します。"
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC 
+                            "スケルトンの仕上げ処理をメインスレッドで1つずつ行う代わりに、接続の深さごとにワーカーで処理します。"
     IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "キャラクターのカリングを複数スレッドに分ける"
-    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "ゲームはすべてのキャラクターを1つのジョブでカリングしますが、自分の分を終えたスレッドがそれを手伝うようにします。"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC 
+                            "ゲームはすべてのキャラクターを1つのジョブでカリングしますが、自分の分を終えたスレッドがそれを手伝うようにします。"
     IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "カリング処理を1項目ずつ配る"
-    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "一部のスレッドしか受け取らない最大8項目単位の代わりに1項目ずつ配り、セルのカリングをより多くのスレッドに分散します。"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC 
+                            "一部のスレッドしか受け取らない最大8項目単位の代わりに1項目ずつ配り、セルのカリングをより多くのスレッドに分散します。"
     IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "コマンドリストの使用中の項目だけを集める"
-    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "各コマンドリストの使用中の項目だけをコピーし、すでに並んでいれば並べ替えを省きます。結果はゲームと同じです。"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC 
+                            "各コマンドリストの使用中の項目だけをコピーし、すでに並んでいれば並べ替えを省きます。結果はゲームと同じです。"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PAGE_PATCHCODES "ゲームのバグのフィックス"
     IDS_SETTINGS_PATCHCODE_NEW "新規作成…"
     IDS_SETTINGS_PATCHCODE_EDIT "編集…"
@@ -677,13 +787,16 @@ BEGIN
     IDS_SETTINGS_PAGE_STATUS "状態"
     IDS_SETTINGS_PAGE_GAMEBEHAVIOR "ゲームの動作"
     IDS_SETTINGS_PAGE_CONFIGURATION "設定"
-    IDS_SETTINGS_OPENFRAMERATELOCKING "FPSの固定ダイアログを開く…"
     IDS_SETTINGS_LOCK_MODE  "モード"
     IDS_SETTINGS_LOCK_MODE_OFF "使用しない"
     IDS_SETTINGS_LOCK_MODE_FIXED "固定FPS"
     IDS_SETTINGS_LOCK_MODE_AUTOMATIC "自動設定"
     IDS_SETTINGS_LOCK_FRAMERATE "FPS"
     IDS_SETTINGS_LOCK_MINIMIZECLIPPING "GCDが遅くられないようにするFPSを探す"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_LOCK_ESTIMATEDGCD "予想される実際のGCD (s)"
     IDS_SETTINGS_LOCK_INTERVALINUSE "使用中の描画間隔 (µs)"
     IDS_SETTINGS_LOCK_MEASUREDGCD "測定されたGCD (s)"
@@ -697,15 +810,22 @@ BEGIN
     IDS_SETTINGS_PATHREPLACEMENT_FROM "置き換え元（正規表現）"
     IDS_SETTINGS_PATHREPLACEMENT_TO "置き換え先"
     IDS_SETTINGS_PATHREPLACEMENT_STOP "停止"
-    IDS_SETTINGS_PATHREPLACEMENT_DESC "上から順に適用され、停止が有効な規則に一致するとそこで終わります。"
+    IDS_SETTINGS_PATHREPLACEMENT_DESC 
+                            "ゲームが読み込むファイルのパスを正規表現で書き換えます。上から順に適用され、停止が有効な規則に一致するとそこで終わります。"
     IDS_SETTINGS_PATHFILTER_PATTERN "パターン（正規表現）"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PATHFILTER_INCLUDE "記録"
-    IDS_SETTINGS_PATHFILTER_DESC "最初に一致したフィルターがパスを記録するかを決め、どれにも一致しないパスは上の設定に従います。"
+    IDS_SETTINGS_PATHFILTER_DESC 
+                            "最初に一致したフィルターがパスを記録するかを決め、どれにも一致しないパスは上の設定に従います。"
     IDS_SETTINGS_FALLBACK_DESC "ドラッグで並べ替え：選んだ言語のファイルがない場合、上の言語から使われます。"
     IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "（名前のない全員）"
     IDS_SETTINGS_FORCEDLANGUAGE_DESC "話者の最初の有効な項目が適用され、空の名前は名前のない全員を表します。"
     IDS_SETTINGS_CHOICES_ACTIVE "使用中"
-    IDS_SETTINGS_CHOICES_DESC "使用中の項目がない場合、ファイル名がある最初のプロフィールが使われます。ファイル名を変えても、MODにすでにあるファイルの名前は変わりません。"
+    IDS_SETTINGS_CHOICES_DESC 
+                            "使用中の項目がない場合、ファイル名がある最初のプロフィールが使われます。ファイル名を変えても、MODにすでにあるファイルの名前は変わりません。"
     IDS_SETTINGS_FONT_SOURCE_TYPE "種類"
     IDS_SETTINGS_FONT_SOURCE_PRESET "プリセット"
     IDS_SETTINGS_FONT_SOURCE_FONT "システムフォント"
@@ -714,9 +834,15 @@ BEGIN
     IDS_SETTINGS_FONT_STYLE "スタイル"
     IDS_SETTINGS_FONT_ADDPRESET "プリセットを追加…"
     IDS_SETTINGS_FONT_ADDFONT "システムフォントを追加"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COPYTOOTHERS "他のファミリーにコピー"
     IDS_SETTINGS_FONT_CONFIRMCOPY "他のすべてのファミリーのソースを{}のもので置き換えますか？"
-    IDS_SETTINGS_FONT_SOURCES_DESC "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
+    IDS_SETTINGS_FONT_SOURCES_DESC 
+                            "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
+    IDS_SETTINGS_EDGE_SOFTNESS "縁のぼかし"
     IDS_SETTINGS_EDGE_SCALE "文字サイズ1ピクセルあたりの縁の太さ"
     IDS_SETTINGS_EDGE_MIN   "縁の最小の太さ (px)"
     IDS_SETTINGS_EDGE_MAX   "縁の最大の太さ (px)"
@@ -724,10 +850,15 @@ BEGIN
     IDS_SETTINGS_DIRS_LOCATION "場所"
     IDS_SETTINGS_DIRS_ADDDEFAULT "(既定のパスを追加)"
     IDS_SETTINGS_DIRS_NOTFOUND "{} (見つかりません)"
-    IDS_SETTINGS_DIRS_ADD "フォルダーを追加…"
+    IDS_SETTINGS_DIRS_ADD   "フォルダーを追加…"
     IDS_SETTINGS_SHOWINEXPLORER "エクスプローラーで表示"
-    IDS_SETTINGS_DIRS_DESC "ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
+    IDS_SETTINGS_EDGE_SOFTNESS_DESC 
+                            "ぼかし: 0では縁がくっきり描かれます。1までは縁の太さのこの割合だけ外側に向けて薄くなり、1を超えると文字から太さのこの倍数 (最大 8 px) の距離まで薄くなっていき、光彩のようになります。"
     IDS_SETTINGS_TTMP_AUTHOR "作者"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_TTMP_VERSION "バージョン"
     IDS_SETTINGS_TTMP_STATUS "状態"
     IDS_SETTINGS_TTMP_FILTER "絞り込み"
@@ -737,50 +868,58 @@ BEGIN
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "新しいフォルダーへ移動"
     IDS_SETTINGS_TTMP_NEWFOLDER "新しいフォルダー"
     IDS_SETTINGS_TTMP_TOPLEVEL "最上位: {}"
-    IDS_SETTINGS_TTMP_ORDER_DESC "ドラッグで並べ替えられます。複数のモッドパックが同じファイルを変更する場合、下にあるものが優先されます。"
-    IDS_STATUS_TTMPPROFILE "\nモッドパックのプロファイル: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC 
+                            "ドラッグで並べ替えられます。複数のモッドパックが同じファイルを変更する場合、下にあるものが優先されます。"
+    IDS_STATUS_TTMPPROFILE  "\nモッドパックのプロファイル: {}"
     IDS_SETTINGS_MODDING_ENABLE_DESC "変更はゲームを再起動すると反映されます。"
-    IDS_SETTINGS_LIPSYNC    "カットシーンのリップシンク言語"
-    IDS_SETTINGS_LIPSYNC_DESC "カットシーンで口の動きに使われる言語です。カットシーンのボイスファイルも同じ言語で選ばれます。選べるのはゲームにボイスがある言語だけです。"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_PREVIEW_SIZE "サイズ"
     IDS_SETTINGS_FONT_PREVIEW_TEXT "サンプルテキスト"
-    IDS_SETTINGS_FONT_PREVIEW_DESC "選んだサイズのフォントを、これらのソースから作られるとおりに、ゲームと同じ縁取りを付けて描きます。フォントにない文字はゲームの字形で描かれますが、SystemFallback が有効ならゲーム内ではシステムフォントで描かれます。"
+    IDS_SETTINGS_FONT_PREVIEW_DESC 
+                            "選んだサイズのフォントを、これらのソースから作られるとおりに、ゲームと同じ縁取りを付けて描きます。ソースにない文字は、ゲーム内でシステムフォントで描かれる場合でも、ここではゲームの字形で描かれます。"
+    IDS_SETTINGS_RESTART_REGION "地域"
+    IDS_SETTINGS_MISCELLANEOUS "その他"
+    IDS_SETTINGS_UPDATES    "アップデート"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "コピーしたコマンドラインを消去するまでの秒数"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC 
+                            "コピーしたコマンドラインをこの秒数の後にクリップボードから消去します。0 にすると消去しません。"
+    IDS_SETTINGS_EDITMENU   "編集 ▾"
+    IDS_SETTINGS_SHOWMORE   "続きを表示"
+    IDS_SETTINGS_SHOWLESS   "折りたたむ"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "{}個のモッドパックを削除しますか?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "システムフォントの数字を等幅にする"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "プリセットフォルダーを開く"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "このプリセットはプリセットフォルダーの外にあります。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SESSIONS_FORGETONE "このセッションを削除"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM 
+                            "ログインセッション「{}」を削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_SESSIONS_FORGET "すべて削除"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
+                            "記憶したログインセッションをすべて削除しますか?\nWindows の資格情報マネージャーから削除されます。"
+    IDS_SETTINGS_REMEMBER   "記憶する"
     IDS_SETTINGS_FONT_PREVIEW_COLORS "色"
     IDS_SETTINGS_FONT_PREVIEW_NOEDGE "縁取りを表示できません: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} をフォントの置き換えのとおりに、選んだサイズでこの設定の縁取りを付けて描きます。色はゲームで使われているもので、すべてのフォントのプレビューに使われます。"
+    IDS_SETTINGS_EDGE_PREVIEW_DESC 
+                            "{} をフォントの置き換えのとおりに、選んだサイズでこの設定の縁取りを付けて描きます。色はゲームで使われているもので、すべてのフォントのプレビューに使われます。"
     IDS_SETTINGS_FONT_COLORS_DEFAULT "標準"
     IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "ツールチップの項目名"
     IDS_SETTINGS_FONT_COLORS_ACTIONNAME "アクション名"
     IDS_SETTINGS_FONT_COLORS_STATUSNAME "ステータス名"
     IDS_SETTINGS_FONT_COLORS_WARNING "警告"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COLORS_NOTICE "お知らせ"
     IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "クエストの強調"
     IDS_SETTINGS_FONT_COLORS_TUTORIAL "チュートリアルの本文"
-    IDS_SETTINGS_RESTART_REGION "地域"
-    IDS_SETTINGS_MISCELLANEOUS "その他"
-    IDS_SETTINGS_UPDATES "アップデート"
-    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "セッション切り替えを使う"
-    IDS_SETTINGS_REMEMBER   "記憶する"
-    IDS_SETTINGS_SESSIONS_FORGET "すべて削除"
-    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "記憶したログインセッションをすべて削除しますか?\nWindows の資格情報マネージャーから削除されます。"
-    IDS_SETTINGS_SESSIONS_FORGETONE "このセッションを削除"
-    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "ログインセッション「{}」を削除しますか?\nWindows の資格情報マネージャーから削除されます。"
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED "コピーしたコマンドラインを消去するまでの秒数"
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "コピーしたコマンドラインをこの秒数の後にクリップボードから消去します。0 にすると消去しません。"
-    IDS_SETTINGS_EDITMENU "編集 ▾"
-    IDS_SETTINGS_SHOWMORE "続きを表示"
-    IDS_SETTINGS_SHOWLESS "折りたたむ"
-    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "{}個のモッドパックを削除しますか?"
-    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "システムフォントの数字を等幅にする"
-    IDS_SETTINGS_FONT_OPENPRESETFOLDER "プリセットフォルダーを開く"
-    IDS_SETTINGS_FONT_IMPORT_TITLE "このプリセットはプリセットフォルダーの外にあります。"
-    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nプリセットフォルダーにコピーして取り込みますか？それとも、このファイルを今の場所のまま使いますか？"
-    IDS_SETTINGS_FONT_IMPORT_GLYPHS "このプリセットは、隣にある次のフォルダーからグリフ画像を読み込みます。取り込むと、これらのフォルダーもプリセット専用のフォルダーへ一緒にコピーされます。{}"
-    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "このプリセットは次のフォルダーからグリフ画像を読み込みますが、プリセットのあるフォルダーの中にないため、一緒にコピーできません。今の場所のままでのみ使えます。{}"
-    IDS_SETTINGS_FONT_IMPORT_IMPORT "取り込む\nプリセットフォルダーにコピーします。後で元のファイルを変更しても反映されません。"
-    IDS_SETTINGS_FONT_IMPORT_INPLACE "今の場所のまま使う\n今の場所から読み込みます。ファイルを移動したり削除したりすると使えなくなります。"
-    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nプリセットを読み込めません: {}"
-    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nプリセットを取り込めませんでした: {}"
     IDS_TTMP_ERROR_NAME_EMPTY "名前を空にすることはできません。"
     IDS_TTMP_ERROR_NAME_DOTS "「.」と「..」は名前に使えません。"
     IDS_TTMP_ERROR_NAME_TOOLONG "名前が長すぎます。"
@@ -792,8 +931,52 @@ BEGIN
     IDS_TTMP_ERROR_ITEMGONE "この項目はもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
     IDS_TTMP_ERROR_NAMETAKEN "そのフォルダーには「{}」という名前のものがすでにあります。"
     IDS_TTMP_ERROR_DESTINATIONMISSING "移動先のフォルダーが存在しません。"
-    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "移動先が、TexTools モッドパックを探すどのフォルダーの中にもありません。"
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE 
+                            "移動先が、TexTools モッドパックを探すどのフォルダーの中にもありません。"
     IDS_TTMP_ERROR_MOVEINTOSELF "フォルダーをそれ自身やその中のフォルダーに移動することはできません。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_CLEANUP_PARTIAL "選んだデータを削除しました。使用中の{}件は残りました。"
+    IDS_LOADER_CLEANUP_INTRO_ALL 
+                            "XivAlexanderはどのゲームにもインストールされていません。残ったデータを削除できます。"
+    IDS_LOADER_CLEANUP_INTRO_REGION 
+                            "この地域のゲームにはXivAlexanderがもうインストールされていません。この地域で保存したログインセッションを削除できます。"
+    IDS_LOADER_CLEANUP_CALCULATING "計算中..."
+    IDS_LOADER_CLEANUP_SESSIONS_COUNT "{}件"
+    IDS_LOADER_ERROR_UNLOAD "XivAlexanderの読み込みを解除できませんでした。 ({})"
+    IDS_SETTINGS_NOTIFYWHENHIDDEN "コントロールウィンドウをトレイに隠したときに通知する"
+    IDS_TRAY_HIDDEN_NOTIFICATION "XivAlexanderは引き続き実行中です。トレイのアイコンからもう一度開けます。"
+    IDS_SETTINGS_SESSIONS_RENAME "名前を変更"
+    IDS_SETTINGS_SESSIONS_RENAME_INVALID 
+                            "セッション名は UTF-8 で 64 バイト以内で、制御文字を含めることはできません。"
+    IDS_SETTINGS_SESSIONS_RENAME_EXISTS "ログインセッション「{}」はすでにあります。"
+    IDS_SETTINGS_CROWDFIX_STATUS_ACTIVE "動作中"
+    IDS_SETTINGS_CROWDFIX_STATUS_OFF "オフ"
+    IDS_SETTINGS_CROWDFIX_STATUS_WAITING "ゲームの準備を待機中"
+    IDS_SETTINGS_CROWDFIX_STATUS_UNAVAILABLE "このバージョンのゲームでは使用できません"
+    IDS_SETTINGS_CROWDFIX_STATUS_FAILED "エラーのため停止しました"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_IMPORT_CONTENT 
+                            "{}\n\nプリセットフォルダーにコピーして取り込みますか？それとも、このファイルを今の場所のまま使いますか？"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS 
+                            "このプリセットは、隣にある次のフォルダーからグリフ画像を読み込みます。取り込むと、これらのフォルダーもプリセット専用のフォルダーへ一緒にコピーされます。{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY 
+                            "このプリセットは次のフォルダーからグリフ画像を読み込みますが、プリセットのあるフォルダーの中にないため、一緒にコピーできません。今の場所のままでのみ使えます。{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT 
+                            "取り込む\nプリセットフォルダーにコピーします。後で元のファイルを変更しても反映されません。"
+    IDS_SETTINGS_FONT_IMPORT_INPLACE 
+                            "今の場所のまま使う\n今の場所から読み込みます。ファイルを移動したり削除したりすると使えなくなります。"
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nプリセットを読み込めません: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nプリセットを取り込めませんでした: {}"
+END
+
+STRINGTABLE
+BEGIN
     IDS_TTMP_ERROR_MOVEINTOMODPACK "モッドパックの中には移動できません。"
     IDS_TTMP_ERROR_NAMETAKENATDESTINATION "移動先のフォルダーには「{}」という名前のものがすでにあります。"
     IDS_TTMP_ERROR_DESTINATIONNOTFOUND "移動先のフォルダーが見つかりませんでした。"
@@ -801,27 +984,405 @@ BEGIN
     IDS_TTMP_ERROR_PARENTOUTSIDE "親フォルダーが、TexTools モッドパックを探すどのフォルダーの中にもありません。"
     IDS_TTMP_ERROR_FOLDERINMODPACK "モッドパックの中にフォルダーを作ることはできません。"
     IDS_TTMP_ERROR_CREATEFOLDER "フォルダー {} を作成できませんでした: {}"
-    IDS_TTMP_ERROR_FOLDERGONE "このフォルダーはもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
+    IDS_TTMP_ERROR_FOLDERGONE 
+                            "このフォルダーはもうモッドパックの一覧にありません。再読み込みしてからもう一度お試しください。"
     IDS_TTMP_ERROR_ORDERINCOMPLETE "新しい順序には、フォルダー内のすべての項目をちょうど1回ずつ含める必要があります。"
     IDS_TTMP_ERROR_SAVEORDER "{} を保存できませんでした: {}"
     IDS_TTMP_ERROR_OPENDATA "{} を開けませんでした。"
-    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 元の場所に戻すこともできませんでした ({})。TexTools モッドパックを再読み込みしてください。"
+    IDS_TTMP_ERROR_MOVEBACKFAILED 
+                            "{}; 元の場所に戻すこともできませんでした ({})。TexTools モッドパックを再読み込みしてください。"
     IDS_TTMP_ERROR_DUPLICATENAMES "「{}」という名前の項目が複数あります。"
     IDS_ERROR_FILE_TOO_BIG  "ファイルが大きすぎます。"
     IDS_ERROR_HTTP          "HTTPエラー {}"
     IDS_RESULT_IMPORT_OK    "成功: {}: {}"
-    IDS_RESULT_IMPORT_ERROR "エラー: {}: {}"
-    IDS_FONTPRESET_ERROR_CANNOTREAD "{} を読み込めません。"
-    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
-    IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
-    IDS_FONTPREVIEW_ERROR_NOFACE "{} を描くためのフォントがありません。"
-    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
-    IDS_ERROR_LOAD_INSTALLED "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
-    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
-    IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} にはグリフがありません。インストールされていないか、読み込めない可能性があります。"
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} にはテキストの文字がひとつもありません。"
 END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES "テキスト変換"
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES_DESC 
+                            "他の言語から取り込むテキストを変えるJSONファイルです。シートごとに、文字列の列の対応、ゲーム本来の言語のまま残すセル、正規表現による置換を指定します。変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_LOGGING_EXCELMERGE "テキストの統合"
+    IDS_SETTINGS_TALKLINES  "会話ウィンドウの行数"
+    IDS_SETTINGS_TALKLINES_DESC 
+                            "会話ウィンドウの1ページの行数です。自動では表示言語が日本語・中国語・韓国語なら3行、英語・ドイツ語・フランス語なら4行で、それに合うフォントサイズを使います。日本語クライアントはふりがなが3行ずつ配置されるため3行のままです。変更は次の会話から反映されます。"
+    IDS_SETTINGS_TALKLINES_AUTOMATIC "自動"
+    IDS_SETTINGS_TALKLINES_THREE "3行"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_TALKLINES_FOUR "4行"
+    IDS_VERSIONSENSITIVE_DISPLAYLANGUAGE "表示言語のテキストの規則"
+    IDS_OUTGOINGTEXT_TITLE  "送信しようとしているメッセージにゲーム本来の言語以外のテキストが含まれています"
+    IDS_OUTGOINGTEXT_CONTENT 
+                            "ゲーム本来の言語に戻せなかった統合テキストをゲームが送信しようとしたため、XivAlexanderがこのメッセージを保留しました。このまま送ると、他のプレイヤーにもそのまま表示されます。\n\nメッセージ: {}\nテキスト: {}\n\n選択するまで、この接続からは何も送信されません。受信には影響しません。"
+    IDS_OUTGOINGTEXT_SEND   "そのまま送信する\n危険: 他のプレイヤーに統合テキストが表示されます。"
+    IDS_OUTGOINGTEXT_DROP   "このメッセージを破棄する\n後続のメッセージは送信されます。チャット以外のメッセージの場合、ゲームが応答を待ち続けることがあります。"
+    IDS_OUTGOINGTEXT_DISCONNECT 
+                            "切断する\n「ネットワーク > すべての接続を強制に終了する」と同じく、すべての接続を終了します。"
+    IDS_OUTGOINGTEXT_FOOTER "選択しない場合、{}秒後にメッセージは破棄されます。"
+    IDS_OUTGOINGTEXT_KIND_ZONECHAT "Say・Shout・Yell・エモート (チャットの種類 {})"
+    IDS_OUTGOINGTEXT_KIND_TELL "Tell"
+    IDS_OUTGOINGTEXT_KIND_CHANNEL "パーティ・フリーカンパニー・リンクシェル・ビギナーチャンネル"
+    IDS_OUTGOINGTEXT_KIND_ALLIANCE "アライアンス・パーティ"
+    IDS_OUTGOINGTEXT_KIND_CROSSWORLD "クロスワールドリンクシェル・PvPチーム"
+    IDS_OUTGOINGTEXT_KIND_OTHER "チャット以外のメッセージ (IPCの種類 0x{:04X})"
+    IDS_SETTINGS_RESOURCEOVERRIDE "表示言語"
+    IDS_SETTINGS_RESOURCEOVERRIDE_DESC 
+                            "表示されるテキストの言語 (その言語のデータがあれば統合) と、それに合わせたテキストの規則の言語です。規則は名詞の冠詞などの形、改行、会話ウィンドウのレイアウトに使われます。サーバーに送られるものはゲーム本来の言語のままです。テキストの変更はゲームを再起動すると反映され、規則の変更はすぐに反映されます。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE "音声言語"
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE_DESC 
+                            "ボイスと、それに合わせたカットシーンのリップシンクの言語です。変更はその後に読み込まれるボイスとカットシーンから反映されます。"
+    IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "使用しない"
+    IDS_SETTINGS_FALLBACKPRIORITY "言語の優先順位"
+    IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "キャラクター別の言語"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "縁取り"
+    IDS_SETTINGS_DIRS_GAME  "ゲーム"
+    IDS_SETTINGS_DIRS_GAMENOTFOUND "見つかりません"
+    IDS_SETTINGS_DIRS_DETECTING "確認中…"
+    IDS_SETTINGS_GRID_DESCRIPTION "説明"
+    IDS_SETTINGS_GRID_FILE  "ファイル"
+    IDS_SETTINGS_EXCEL_ADDFILE "ファイルを追加…"
+    IDS_SETTINGS_EXCEL_ORDER_DESC 
+                            "ドラッグで並べ替えられます。ファイルはリストの順に適用されます。シートに一致するルールはすべて適用され、置換の手順は順に続けて実行され、keep・unkeep と列の対応は後のファイルが優先されます。"
+    IDS_SETTINGS_EXCEL_PARSEERROR "読み込めません: {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_UI_LANGUAGE "言語"
+    IDS_SETTINGS_UI_THEMEMODE "ダークモード"
+    IDS_SETTINGS_GAMEWINDOW_TITLEMODE "ウィンドウタイトル"
+    IDS_SETTINGS_GAMEWINDOW_TITLEPREFIX "前に付けるときのタイトルの形式"
+    IDS_SETTINGS_GAMEWINDOW_TITLESUFFIX "後ろに付けるときのタイトルの形式"
+    IDS_SETTINGS_GAMEWINDOW_DISABLEGHOSTING "ウィンドウのゴースト化を無効にする"
+    IDS_SETTINGS_GAMEWINDOW_IMEMODEINDICATOR "日中韓IMEの入力モード表示を直す"
+    IDS_SETTINGS_NETWORK_MITIGATIONMODE "遅延の処理モード"
+    IDS_SETTINGS_MODDING_SQPACKROOTS "他のゲームのインストール"
+    IDS_SETTINGS_MODDING_FILEENTRYROOTS "置き換えファイルのフォルダー"
+    IDS_SETTINGS_MODDING_PATHREPLACEMENTS "パスの置き換え"
+    IDS_SETTINGS_TTMP_SEARCHDIRS "ModPackのフォルダー"
+    IDS_SETTINGS_TTMP_CHOICESFILES "オプションのプロファイル"
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS "ハッシュ追跡のキー"
+    IDS_SETTINGS_LOGGING_ALLPATHS "すべてのファイルパス"
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS "置き換えたファイルパス"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES "カットシーンの話者名"
+    IDS_SETTINGS_LOGGING_PATHFILTERS "パスのフィルター"
+    IDS_SETTINGS_FONT_ENABLED "フォントを置き換える"
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK "フォントにない文字をシステムフォントで描く"
+    IDS_SETTINGS_CHOICES_DEFAULTNAME "既定"
+    IDS_SETTINGS_VERSIONSENSITIVE_TIP 
+                            "(!): ゲームのコードを変更する機能です。このゲームバージョンではこうした機能を無効にすると選んだため、ゲームを再起動するまでオフになっています。次回の起動時にもう一度確認されます。"
+    IDS_SETTINGS_FONT_WEIGHT_100 "極細"
+    IDS_SETTINGS_FONT_WEIGHT_200 "特細"
+    IDS_SETTINGS_FONT_WEIGHT_300 "細"
+    IDS_SETTINGS_FONT_WEIGHT_350 "やや細"
+    IDS_SETTINGS_FONT_WEIGHT_400 "標準"
+    IDS_SETTINGS_FONT_WEIGHT_500 "中"
+    IDS_SETTINGS_FONT_WEIGHT_600 "やや太"
+    IDS_SETTINGS_FONT_WEIGHT_700 "太"
+    IDS_SETTINGS_FONT_WEIGHT_800 "特太"
+    IDS_SETTINGS_FONT_WEIGHT_900 "極太"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_WEIGHT_950 "超極太"
+    IDS_SETTINGS_FONT_STRETCH_1 "超狭幅"
+    IDS_SETTINGS_FONT_STRETCH_2 "特狭幅"
+    IDS_SETTINGS_FONT_STRETCH_3 "狭幅"
+    IDS_SETTINGS_FONT_STRETCH_4 "やや狭幅"
+    IDS_SETTINGS_FONT_STRETCH_5 "標準"
+    IDS_SETTINGS_FONT_STRETCH_6 "やや広幅"
+    IDS_SETTINGS_FONT_STRETCH_7 "広幅"
+    IDS_SETTINGS_FONT_STRETCH_8 "特広幅"
+    IDS_SETTINGS_FONT_STRETCH_9 "超広幅"
+    IDS_SETTINGS_FONT_STYLE_NORMAL "標準"
+    IDS_SETTINGS_FONT_STYLE_OBLIQUE "斜体"
+    IDS_SETTINGS_FONT_STYLE_ITALIC "イタリック"
+    IDS_SETTINGS_NETWORK_ENABLED_DESC 
+                            "測定したネットワークの遅延をアニメーションロックから差し引き、Pingが低いときのようにアクションを入力できるようにします。"
+    IDS_SETTINGS_NETWORK_PREVIEW_DESC "調整を計算してログに記録しますが、適用はしません。"
+    IDS_SETTINGS_SOCKET_TAKEOVER_NOTE 
+                            "以下のオプションは、VPNやプロキシを使っているときなど、遅延補助が接続を検出できない場合にのみ使ってください。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_OPCODECONFIG_DESC 
+                            "オペコードの更新で設定されます。このゲームバージョンの値が分かっている場合にのみ編集してください。"
+    IDS_SETTINGS_SQPACKROOTS_DESC 
+                            "他のクライアントのインストールです。そのテキストを統合でき、ほかの言語のボイスなどこのゲームにないファイルはそこから読み込まれます。「言語」も参照してください。変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_FILEENTRYROOTS_DESC 
+                            "ゲーム内のパスに置いたファイルで、ゲーム本来のファイルを置き換えるフォルダーです。ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
+    IDS_SETTINGS_TTMPDIRS_DESC 
+                            "TexTools ModPackを探すフォルダーです。インポートしたものは最初のフォルダーに入ります。ドラッグで並べ替えられます。<config> は設定フォルダー、<sqpack> はゲームの sqpack フォルダーを表します。"
+    IDS_SETTINGS_LOCK_MODE_DESC 
+                            "グローバルクールダウンがフレームの直前に終わるように選んだ一定の間隔で描画し、次のフレームを待つ時間を減らします。自動では遅延補助が測定したクールダウンを使います。"
+    IDS_SETTINGS_TITLEFORMAT_NOTE 
+                            "タイトルの形式に使えるプレースホルダー: {title}, {pid}, {alias}, {alias_or_pid}"
+    IDS_SETTINGS_DISABLEGHOSTING_DESC 
+                            "処理中のゲームウィンドウが、Windowsによって「応答なし」の枠に置き換えられないようにします。オフにした場合はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_CHAINLOAD_DESC 
+                            "ReShadeをXivAlexanderと一緒に使う場合などに、システムのものの代わりに順に読み込むDLLです。XivAlexanderがそのDLLとしてインストールされているときにだけ使われます。変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_SAMPLINGRATE_DESC 
+                            "ゲームが音声を合成するサンプリングレートです。変更はゲームを再起動すると反映されます。"
+    IDS_SETTINGS_RESTART_OBFUSCATION_TIP 
+                            "セッションIDなどの起動引数を公式ランチャーと同じ方法で暗号化し、コマンドラインから読み取れないようにします。"
+    IDS_SETTINGS_REMEMBER_TIP 
+                            "選択を保存し、以後の再起動とコピーしたコマンドライン、保存したログインセッションでのゲームの起動に使います。"
+    IDS_SETTINGS_MITIGATIONMODE_TIP 
+                            "モード1はPingの分だけをロックから差し引きます。モード2は往復時間が常に設定した時間だったものとして扱います。モード3はサーバー自体の遅延を統計から推定し、Pingを変えるVPNにも対応します。"
+    IDS_SETTINGS_NETWORK_LOGGING_TIP "アクションごとに、測定した遅延と調整したロックをログウィンドウに記録します。"
+    IDS_SETTINGS_REDUCEPACKETDELAY_TIP "以後のゲームの接続で、遅延ACKとNagleアルゴリズムを無効にします。"
+    IDS_SETTINGS_RESETCONNECTIONS_TIP 
+                            "確認のあと、XivAlexanderが把握しているゲームの接続をすべて強制的に閉じます。接続が切れたときと同じ状態になります。"
+    IDS_SETTINGS_OPCODEFINDER_TIP 
+                            "遅延補助が読み取るメッセージと同じ長さのメッセージを16進ダンプとともに記録し、パッチ後のオペコード探しに役立てます。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_ALTCODEC_TIP "一部の音楽Modのように、音声がFLACやWAVの音楽ファイルを再生できるようにします。"
+    IDS_SETTINGS_LOGGING_ALLDATAFILEREAD_TIP 
+                            "ゲームのデータファイルからの読み込みを、オフセットとサイズとともにすべて記録します。"
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS_TIP 
+                            "「すべてのファイルパス」と同じく、ゲームが探すファイルのパスを記録します。"
+    IDS_SETTINGS_LOGGING_ALLPATHS_TIP "ゲームが探すファイルのパスと、見つかった場所をすべて記録します。"
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS_TIP 
+                            "パスの置き換えやキャラクター別の言語で変わったパスだけを記録します。"
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES_TIP 
+                            "カットシーンのボイスの話者名を、キャラクター別の言語で使う形で記録します。"
+    IDS_SETTINGS_FONT_ENABLED_TIP 
+                            "ゲームのテキストを、ゲーム本来のフォントの代わりにファミリーごとに設定したフォントで描きます。"
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP 
+                            "選んだフォントにない文字を、ゲームの字形の代わりにWindowsの代替フォントで描きます。"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS_TIP 
+                            "システムフォントの場合、フォントの等幅数字を使い、なければ各数字を「0」と同じ幅に中央揃えで置いて、数値が変わっても位置がずれないようにします。"
+    IDS_SETTINGS_USEMORECPUTIME_TIP 
+                            "ゲームが前面にある間、短いスリープを省き、固定したフレームを待つ間もCPUを回し続けます。CPU時間と引き換えにフレームのタイミングが安定します。"
+    IDS_SETTINGS_SYNCHRONIZEPROCESSING_TIP 
+                            "アニメーションロックやクールダウンが終わる瞬間にフレームを始め、次のアクションがすぐに受け付けられるようにします。"
+    IDS_SETTINGS_LOCK_MAXDEVIATION_TIP 
+                            "フレームが予定より早く来うる時間です。フレームの直前のこの時間内に終わるクールダウンは、その次のフレームで終わるものとして扱います。"
+    IDS_SETTINGS_SOXR_ENABLED_TIP 
+                            "ボイスを、ゲームの線形補間の代わりにsoxrでリサンプリングします。その後に再生されるボイスから反映されます。"
+    IDS_SETTINGS_SOXR_FILTER_TIP 
+                            "0のままの数値には品質プリセットの値が使われます。変更はその後に再生されるボイスから反映されます。"
+    IDS_SETTINGS_SOXR_QUALITY_TIP 
+                            "品質のプリセットです。Quick (3次補間) から32ビットまであり、Bits20がsoxrの高品質に当たります。"
+    IDS_SETTINGS_SOXR_PHASE_TIP 
+                            "Minimumは音の遅れが最も少なく、Linearは波形の形を保ちますが遅れが大きくなります。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SOXR_STEEPFILTER_TIP "通過域の端をナイキスト周波数の近くまで上げます。"
+    IDS_SETTINGS_SOXR_PASSBANDEND_TIP 
+                            "通過域の終わりを、低い方のナイキスト周波数に対する0から1の割合で指定します。"
+    IDS_SETTINGS_SOXR_STOPBANDBEGIN_TIP 
+                            "減衰が始まる位置を、低い方のナイキスト周波数に対する割合で指定します。通過域の終わりより大きくします。"
+    IDS_SETTINGS_SOXR_ROLLOFF_TIP 
+                            "通過域で許すロールオフの量です: Small (最大 0.01 dB)、Medium (最大 0.35 dB)、None。"
+    IDS_SETTINGS_SOXR_DOUBLEPRECISION_TIP "単精度の代わりに倍精度で計算します。"
+    IDS_SETTINGS_SOXR_HIGHPRECISIONCLOCK_TIP "単純な分数で表せないレート比で、時間をより正確に保ちます。"
+    IDS_SETTINGS_SOXR_LOG2MINDFT_TIP 
+                            "最小のDFTサイズの2を底とする対数 (8〜15) です。大きい方とともに、soxrの遅れの大部分を決めます。"
+    IDS_SETTINGS_SOXR_LOG2LARGEDFT_TIP 
+                            "大きいDFTサイズの2を底とする対数 (8〜20) です。最小の方とともに、soxrの遅れの大部分を決めます。"
+    IDS_SETTINGS_IMEMODEINDICATOR_TIP 
+                            "ゲームはクライアントが韓国語版・中国語版でない限り、どのIMEも日本語のものとして扱います。これにより、日中韓のどのIMEでもチャットの入力モード表示と全角入力が正しくなります。"
+    IDS_SETTINGS_OODLETCP_TIP "ゲームのパケット圧縮を、ゲームの接続が使うTCPモードで動かすかどうかです。"
+    IDS_SETTINGS_SERVERIPRANGE_TIP 
+                            "接続を処理するサーバーのアドレスです。アドレス、範囲 (a-b)、CIDR (a/n) をカンマで区切って指定します。空ならすべてです。"
+    IDS_SETTINGS_SERVERPORTRANGE_TIP 
+                            "接続を処理するサーバーのポートです。ポートか範囲 (a-b) をカンマで区切って指定します。空ならすべてです。"
+    IDS_SETTINGS_VOICELIPSYNC_TIP 
+                            "リップシンクがあるのは日本語・英語・ドイツ語・フランス語だけで、ほかのボイスの言語ではゲーム本来のリップシンクのままです。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_ERROR_LOAD_32BIT "XivAlexanderは64ビットのゲームにのみ読み込めます。"
+    IDS_LOADER_ERROR_NOT_GAME_FOLDER 
+                            "{} にはゲームが見つかりません。ffxiv_dx11.exe があるフォルダーか、game\\ffxiv_dx11.exe があるインストール先を指定してください。"
+    IDS_LOADER_TITLE_ADMIN  "{} (管理者)"
+    IDS_LOADER_COL_LOCATION "場所"
+    IDS_LOADER_COL_REGION   "地域"
+    IDS_LOADER_COL_VERSION  "ゲームのバージョン"
+    IDS_LOADER_COL_STATE    "XivAlexander"
+    IDS_LOADER_COL_FOUNDVIA "検出元"
+    IDS_LOADER_COL_PID      "PID"
+    IDS_LOADER_COL_PROGRAM  "プログラム"
+    IDS_LOADER_COL_ARCH     "アーキテクチャ"
+    IDS_LOADER_COL_INSTALLATION "インストール先"
+    IDS_LOADER_COL_STARTED  "開始時刻"
+    IDS_LOADER_REGION_UNKNOWN "不明"
+    IDS_LOADER_FOUNDVIA_SQUAREENIX "スクウェア・エニックスのインストーラー"
+    IDS_LOADER_FOUNDVIA_STEAM "Steam"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_FOUNDVIA_ACTOZ "Actoz Softのレジストリ"
+    IDS_LOADER_FOUNDVIA_SHENGQU "Shengqu Gamesのレジストリ"
+    IDS_LOADER_FOUNDVIA_USERJOY "USERJOY GAMESのレジストリ"
+    IDS_LOADER_FOUNDVIA_MSI "Windows インストーラー"
+    IDS_LOADER_FOUNDVIA_KNOWNFOLDER "既定のフォルダー"
+    IDS_LOADER_FOUNDVIA_XIVLAUNCHER "XIVLauncher"
+    IDS_LOADER_FOUNDVIA_DESKTOP "デスクトップのショートカット"
+    IDS_LOADER_FOUNDVIA_STARTMENU "スタートメニューのショートカット"
+    IDS_LOADER_FOUNDVIA_PROCESS "実行中のプログラム"
+    IDS_LOADER_FOUNDVIA_CONFIG "XivAlexanderの設定"
+    IDS_LOADER_FOUNDVIA_USER "手動で追加"
+    IDS_LOADER_FOUNDVIA_COMMANDLINE "コマンドライン"
+    IDS_LOADER_STATE_NOTINSTALLED "未インストール"
+    IDS_LOADER_STATE_INSTALLED "インストール済み: {} ({})"
+    IDS_LOADER_STATE_OLDER  "古いバージョン: {} ({})"
+    IDS_LOADER_STATE_NEWER  "新しいバージョン: {} ({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATE_LEFTOVER "残ったファイル: {}"
+    IDS_LOADER_STATE_MISSING "見つかりません"
+    IDS_LOADER_PSTATE_NOTLOADED "読み込まれていません"
+    IDS_LOADER_PSTATE_LOADED "読み込み済み ({})"
+    IDS_LOADER_PSTATE_LOADEDBYINSTALL "インストールした{}で読み込み済み"
+    IDS_LOADER_PSTATE_LOADEDNOACCESS "読み込み済み (詳細は管理者の権限が必要)"
+    IDS_LOADER_PSTATE_UNKNOWN "不明 (管理者の権限が必要)"
+    IDS_LOADER_PSTATE_LAUNCHER "ランチャー"
+    IDS_LOADER_PATH_UNKNOWN "(パス不明)"
+    IDS_LOADER_DETAILS_FOUNDVIA "検出元: {}"
+    IDS_LOADER_DETAILS_THIRDPARTY "ほかのDLL: {}。"
+    IDS_LOADER_DETAILS_CHAINLOADED "チェーンロード: {}。"
+    IDS_LOADER_DETAILS_NOREGION "地域を判別できないため、ここからはゲームを起動できません。"
+    IDS_LOADER_DETAILS_NEEDSADMIN "ここのファイルの変更には管理者の権限が必要です。"
+    IDS_LOADER_DETAILS_RUNNING "ゲームが実行中です。変更は次回の起動から反映されます。"
+    IDS_LOADER_PDETAILS_BYINSTALL "インストールしたDLLで読み込まれたため、ここでは読み込みを解除できません。"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_PDETAILS_NEEDSADMIN "このゲームへの読み込みと解除には管理者の権限が必要です。"
+    IDS_LOADER_EMPTY_SCANNING "ゲームのインストール先を探しています..."
+    IDS_LOADER_EMPTY_NOINSTALL 
+                            "ゲームのインストール先が見つかりませんでした。「参照」でffxivboot.exe、ffxiv_dx11.exe、またはゲームのフォルダーを選んでください。"
+    IDS_LOADER_EMPTY_NOPROCESS "ゲームは実行されていません。"
+    IDS_LOADER_STATUS_FAILED "失敗しました: {}"
+    IDS_LOADER_STATUS_FOUND "見つかったインストール先: {}"
+    IDS_LOADER_STATUS_ELEVATEDFAILED "管理者として実行した操作が完了しませんでした。"
+    IDS_LOADER_STATUS_CANCELLED "キャンセルしました。"
+    IDS_LOADER_STATUS_BUSY  "実行中の操作が終わるまでお待ちください。"
+    IDS_LOADER_STATUS_INSTALLING "{}にインストールしています..."
+    IDS_LOADER_STATUS_INSTALLED "{}にインストールしました。"
+    IDS_LOADER_STATUS_UNINSTALLING "{}からアンインストールしています..."
+    IDS_LOADER_STATUS_UNINSTALLED "{}からアンインストールしました。"
+    IDS_LOADER_STATUS_LAUNCHING "{}を起動しています..."
+    IDS_LOADER_STATUS_LAUNCHED "{}を起動しました。"
+    IDS_LOADER_STATUS_LOADING "プロセス{}に読み込んでいます..."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_UNLOADING "プロセス{}から読み込みを解除しています..."
+    IDS_LOADER_STATUS_LOADED "プロセス{}に読み込みました。"
+    IDS_LOADER_STATUS_UNLOADED "プロセス{}から読み込みを解除しました。"
+    IDS_LOADER_STATUS_CHECKINGUPDATES "アップデートを確認しています..."
+    IDS_LOADER_BROWSE_NOTFOUND "ゲームのインストール先が見つかりません: {}"
+    IDS_LOADER_BROWSE_EXISTS "すでに一覧にあります: {}"
+    IDS_LOADER_BROWSE_ADDING "{}を追加しています..."
+    IDS_LOADER_BROWSE_ADDED "{}を追加しました。"
+    IDS_LOADER_MENU_OPENFOLDER "ゲームのフォルダーを開く(&F)"
+    IDS_LOADER_MENU_COPYPATH "パスをコピー(&C)"
+    IDS_LOADER_MENU_LAUNCH_WITH "XivAlexanderを使って起動(&W)"
+    IDS_LOADER_MENU_LAUNCH_WITHOUT "XivAlexanderを使わずに起動(&O)"
+    IDS_LOADER_MENU_REMOVE  "一覧から削除(&R)"
+    IDS_LOADER_MENU_PICKFILE "ファイルを選択(&F)..."
+    IDS_LOADER_MENU_PICKFOLDER "フォルダーを選択(&O)..."
+    IDS_LOADER_MENU_INSTALL_D3D11 "d3d11.dllとしてインストール(&D) (推奨)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_MENU_INSTALL_DINPUT8 "dinput8.dllとしてインストール(&I)"
+    IDS_LOADER_MENU_INSTALL_DXGI "dxgi.dllとしてインストール(&X)"
+    IDS_LOADER_MENU_LANGUAGE_SYSTEM "システム言語を使用(&S)"
+    IDS_LOADER_MENU_LANGUAGE_ENGLISH "英語(&E) (English)"
+    IDS_LOADER_MENU_LANGUAGE_KOREAN "韓国語(&K) (한국어)"
+    IDS_LOADER_MENU_LANGUAGE_JAPANESE "日本語(&J)"
+    IDS_LOADER_MENU_THEME_SYSTEM "システム設定を使用(&S)"
+    IDS_LOADER_MENU_THEME_LIGHT "ライト(&L)"
+    IDS_LOADER_MENU_THEME_DARK "ダーク(&D)"
+    IDS_LOADER_MENU_CHECKUPDATES "アップデートを確認(&U)"
+    IDS_LOADER_MENU_HOMEPAGE "ホームページを表示(&H)"
+    IDS_LOADER_MENU_OPENCONFIGDIR "設定のフォルダーを開く(&S)"
+    IDS_LOADER_MENU_OPENPROGRAMDIR "プログラムのフォルダーを開く(&P)"
+    IDS_LOADER_MENU_CLEANUP "XivAlexanderのデータを削除(&R)..."
+    IDS_LOADER_STATUS_CLEANING "選んだデータを削除しています..."
+    IDS_LOADER_STATUS_CLEANUP_DONE "選んだデータを削除しました。"
+END
+
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STEP_GAME "1. 使うゲームを選択(&T)"
+    IDS_LOADER_LABEL_INSTALLATIONS "ゲームのインストール先(&T)"
+    IDS_LOADER_LABEL_PROCESSES "実行中のゲーム(&N)"
+    IDS_LOADER_LABEL_SESSIONS "選んだインストール先で実行中のゲーム"
+    IDS_LOADER_BUTTON_BROWSE "参照(&B)..."
+    IDS_LOADER_BUTTON_FIND_GAME "ゲームのフォルダーを探す(&B)..."
+    IDS_LOADER_BUTTON_INSTALL "インストール(&I)"
+    IDS_LOADER_BUTTON_UNINSTALL "アンインストール(&U)"
+    IDS_LOADER_BUTTON_UNLOAD "読み込み解除(&O)"
+    IDS_LOADER_ONCE_NOTE "インストールせず、今回の起動にだけ適用します。ゲームを終了すると適用も終わります。"
+    IDS_LOADER_ONCE_INSTALLED_NOTE "自動適用は設定済みです。このボタンからもゲームを起動できます。"
+    IDS_LOADER_AUTO_GROUP "毎回自動で適用"
+    IDS_LOADER_AUTO_NOTE "一度インストールすると、いつものランチャーでも適用されます。後からここで解除できます。"
+    IDS_LOADER_APPLY_NOW "選んだゲームに適用(&L)"
+    IDS_LOADER_START_ONCE "ゲームを起動して適用(&L)"
+    IDS_LOADER_INSTALL_AUTO "自動適用を設定(&I)"
+    IDS_LOADER_UPDATE_AUTO "自動適用を更新(&I)"
+    IDS_LOADER_STOP_AUTO "自動適用を解除(&U)"
+    IDS_LOADER_STOP_ONCE "今回の適用を解除(&O)"
+    IDS_LOADER_AUTO_READY "設定済み"
+    IDS_LOADER_AUTO_OLDER "更新できます"
+    IDS_LOADER_AUTO_OFF "オフ"
+    IDS_LOADER_AUTO_INCOMPLETE "修復が必要"
+    IDS_LOADER_SESSION_ON "適用済み"
+    IDS_LOADER_SESSION_OFF "未適用"
+    IDS_LOADER_SESSION_UNKNOWN "権限の確認が必要"
+    IDS_LOADER_SESSION_AUTO_NOTE "自動で適用されたゲームです。上で自動適用を解除してからゲームを再起動すると適用が終わります。"
+    IDS_LOADER_SESSION_ADMIN_NOTE "適用や解除の際、Windowsが管理者権限を求める場合があります。"
+    IDS_LOADER_SESSION_ONCE_NOTE "ここでの変更は今回の起動にだけ適用されます。自動適用は上で設定してください。"
+    IDS_LOADER_EMPTY_NOSESSION "このインストール先のゲームは実行されていません。上の起動ボタンか、いつものランチャーで起動してください。"
+    IDS_LOADER_GUIDE_SELECT "上の一覧からゲームを選んでください。なければゲームのフォルダーを追加してください。"
+    IDS_LOADER_GUIDE_MISSING "このゲームのフォルダーが見つかりません。現在のフォルダーか、別のゲームを選んでください。"
+    IDS_LOADER_GUIDE_CHOOSE_SESSION "複数のゲームが実行中です。下の一覧から適用するゲームを1つ選んでください。"
+    IDS_LOADER_GUIDE_ACTIVE "XivAlexanderは適用済みです。自動適用の変更はゲームの再起動後に反映されます。"
+    IDS_LOADER_GUIDE_RUNNING "実行中のゲームに適用するか、次回からの自動適用を設定してください。設定の変更は再起動後に反映されます。"
+    IDS_LOADER_GUIDE_UNIDENTIFIED "実行中のゲームの場所を確認できません。詳細モードで選ぶか、ゲームを終了してから再試行してください。"
+    IDS_LOADER_GUIDE_AUTO "自動適用は設定済みです。いつものランチャーで起動してください。更新後はゲームを再起動してください。"
+    IDS_LOADER_GUIDE_START "起動ボタンで公式ランチャーが開きます。いつも通りログインしてください。毎回使うなら自動適用を設定してください。"
+    IDS_LOADER_GUIDE_NOBOOT "今回だけ使うには、いつものランチャーでゲームを起動してから戻ってください。自動適用は今すぐ設定できます。"
+    IDS_LOADER_APPLYING "選んだゲームにXivAlexanderを適用しています..."
+    IDS_LOADER_STOPPING "今回の起動での適用を解除しています..."
+    IDS_LOADER_DONE_APPLY "適用しました。そのまま遊べます。ゲームを終了するまで有効です。"
+    IDS_LOADER_DONE_STOP "今回の起動での適用を解除しました。"
+    IDS_LOADER_DONE_INSTALL "自動適用を設定しました。いつものランチャーを使ってください。実行中ならゲームを再起動してください。"
+    IDS_LOADER_DONE_UNINSTALL "自動適用を解除しました。実行中のゲームを再起動すると解除が完了します。"
+    IDS_LOADER_EMPTY_GAME "ゲームが見つかりませんでした。右上の「ゲームのフォルダーを探す」で、ゲームをインストールしたフォルダーを選んでください。"
+END
+
 
 #endif    // Japanese (Japan) resources
 /////////////////////////////////////////////////////////////////////////////
@@ -854,28 +1415,28 @@ BEGIN
     EDITTEXT        IDC_TARGETFPS_TO_EDIT,234,18,48,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "2. 렌더 주기 변동(&D) (us)",IDC_FPSDEV_STATIC,12,36,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_FPSDEV_EDIT,156,36,126,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "3. 글로벌 쿨다운(&C) (s)",IDC_GCD_STATIC,12,54,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "3. 전역 재사용 대기 시간(&C) (s)",IDC_GCD_STATIC,12,54,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_GCD_EDIT,156,54,126,12,ES_RIGHT | ES_AUTOHSCROLL
-    LTEXT           "4. 예상되는 실제 글로벌 쿨다운 (s)",IDC_ESTIMATEDGCD_STATIC,12,72,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "4. 예상되는 실제 전역 재사용 대기 시간 (s)",IDC_ESTIMATEDGCD_STATIC,12,72,138,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDGCD_EDIT,156,72,126,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "자동 설정(&U)",IDC_AUTOMATICFPSLOCKING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,90,78,12
-    PUSHBUTTON      "글쿨이 밀리지 않도록 FPS 설정(&M)",IDC_CALCFPS,96,90,186,14
+    PUSHBUTTON      "전역 재사용 대기 시간이 밀리지 않도록 FPS 설정(&M)",IDC_CALCFPS,96,90,186,14
     GROUPBOX        "직접 설정",IDC_STATIC,6,114,138,48
     LTEXT           "렌더 주기(&I) (us)",IDC_INTERVAL_STATIC,12,126,66,11,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_INTERVAL_EDIT,84,126,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "FPS(&F)",IDC_TARGETFRAMERATE_STATIC,12,144,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_TARGETFRAMERATE_EDIT,84,144,54,12,ES_RIGHT | ES_AUTOHSCROLL
-    GROUPBOX        "글쿨 수 계산",IDC_STATIC,6,168,138,48
+    GROUPBOX        "전역 재사용 대기 시간 횟수 계산",IDC_STATIC,6,168,138,48
     LTEXT           "전투 시간 (&U)",IDC_ESTIMATENUMGCD_DURATION_STATIC,12,180,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATENUMGCD_DURATION_EDIT,84,180,54,12,ES_RIGHT | ES_AUTOHSCROLL
-    LTEXT           "글쿨 사용 횟수",IDC_ESTIMATENUMGCD_RESULT_STATIC,12,198,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "전역 재사용 대기 시간 횟수",IDC_ESTIMATENUMGCD_RESULT_STATIC,12,198,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATENUMGCD_RESULT_EDIT,84,198,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     GROUPBOX        "소요 시간 계산",IDC_STATIC,6,222,138,48
-    LTEXT           "글쿨 사용 횟수(&N)",IDC_ESTIMATEDURATION_NUMGCD_STATIC,12,234,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    LTEXT           "전역 재사용 대기 시간 횟수(&N)",IDC_ESTIMATEDURATION_NUMGCD_STATIC,12,234,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDURATION_NUMGCD_EDIT,84,234,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "소요 시간",IDC_ESTIMATEDURATION_RESULT_STATIC,12,252,66,12,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     EDITTEXT        IDC_ESTIMATEDURATION_RESULT_EDIT,84,252,54,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
-    GROUPBOX        "최근 사용한 글쿨 측정",IDC_STATIC,150,114,138,156
+    GROUPBOX        "최근 사용한 대기 시간 측정",IDC_STATIC,150,114,138,156
     LISTBOX         IDC_LASTGCD_LIST,156,126,84,120,LBS_SORT | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "비우기(&R)",IDC_LASTGCD_RESET,156,252,84,12
     LTEXT           "평균",IDC_LASTGCD_MEAN_STATIC,246,126,36,8
@@ -888,6 +1449,62 @@ BEGIN
     EDITTEXT        IDC_LASTGCD_RANGE_EDIT_MIN,246,234,36,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     EDITTEXT        IDC_LASTGCD_RANGE_EDIT_MAX,246,252,36,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_TABSTOP
     PUSHBUTTON      "비활성화하고 닫기",IDC_DISABLE,6,276,78,14
+END
+
+IDD_LOADER_MAIN DIALOGEX 0, 0, 500, 330
+STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "XivAlexander"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "게임 설치 위치(&T)",IDC_LOADER_INSTALLS_LABEL,7,7,446,10
+    LTEXT           "게임을 선택한 뒤, 이번에만 사용하거나 매번 자동으로 적용하도록 설정하세요.",IDC_LOADER_INTRO,10,8,480,18,SS_NOPREFIX
+    LTEXT           "2. 사용 방식 선택",IDC_LOADER_METHOD_LABEL,10,100,480,10,SS_NOPREFIX
+    GROUPBOX        "지금 사용하기",IDC_LOADER_ONCE_GROUP,10,113,237,74
+    LTEXT           "",IDC_LOADER_ONCE_NOTE,16,127,225,32,SS_NOPREFIX
+    PUSHBUTTON      "",IDC_LOADER_APPLY_ONCE,16,163,225,18
+    GROUPBOX        "매번 자동 적용",IDC_LOADER_AUTO_GROUP,253,113,237,74
+    LTEXT           "",IDC_LOADER_AUTO_NOTE,259,127,225,32,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_GUIDANCE,10,193,360,26,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_INSTALL_DETAILS,7,152,340,26,SS_NOPREFIX | 0x2000
+    CONTROL         "관리 창 보이기(&C)",IDC_LOADER_SHOWCONTROLWINDOW,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,350,152,103,12
+    PUSHBUTTON      "찾아보기(&B)...",IDC_LOADER_BROWSE,7,181,60,14
+    PUSHBUTTON      "목록에서 제거(&V)",IDC_LOADER_REMOVE,71,181,60,14
+    PUSHBUTTON      "새로 고침(&R)",IDC_LOADER_REFRESH,135,181,60,14
+    PUSHBUTTON      "게임 실행(&G)",IDC_LOADER_LAUNCH,265,181,60,14
+    PUSHBUTTON      "제거(&U)",IDC_LOADER_UNINSTALL,329,181,60,14
+    PUSHBUTTON      "설치(&I)",IDC_LOADER_INSTALL,393,181,60,14
+    LTEXT           "실행 중인 게임(&N)",IDC_LOADER_PROCESSES_LABEL,7,203,446,10
+    LTEXT           "",IDC_LOADER_PROCESS_DETAILS,7,275,310,18,SS_NOPREFIX | 0x2000
+    PUSHBUTTON      "불러오기 해제(&O)",IDC_LOADER_UNLOAD,329,275,60,14
+    PUSHBUTTON      "불러오기(&L)",IDC_LOADER_LOAD,393,275,60,14
+    CONTROL         "고급(&D)",IDC_LOADER_ADVANCED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,300,60,12
+    CONTROL         "",IDC_LOADER_STATUS,"Static",SS_LEFTNOWORDWRAP | SS_NOPREFIX | SS_ENDELLIPSIS,71,302,200,10
+    CONTROL         "",IDC_LOADER_PROGRESS,"msctls_progress32",PBS_MARQUEE,275,302,50,10
+    PUSHBUTTON      "더 보기(&M)",IDC_LOADER_MORE,329,299,60,14
+    PUSHBUTTON      "닫기",IDCANCEL,393,299,60,14
+END
+
+IDD_LOADER_CLEANUP DIALOGEX 0, 0, 300, 186
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "XivAlexander 데이터 제거"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "",IDC_CLEANUP_INTRO,7,7,286,24,SS_NOPREFIX
+    CONTROL         "캐시 삭제(&C)",IDC_CLEANUP_CACHES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,36,200,12
+    RTEXT           "",IDC_CLEANUP_CACHES_SIZE,210,38,83,10,SS_NOPREFIX
+    CONTROL         "프로그램 파일 삭제(&P)",IDC_CLEANUP_PROGRAM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,200,12
+    RTEXT           "",IDC_CLEANUP_PROGRAM_SIZE,210,54,83,10,SS_NOPREFIX
+    LTEXT           "",IDC_CLEANUP_PROGRAM_PATH,19,64,274,10,SS_NOPREFIX | SS_PATHELLIPSIS
+    CONTROL         "저장된 로그인 세션 삭제(&L)",IDC_CLEANUP_SESSIONS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,80,200,12
+    RTEXT           "",IDC_CLEANUP_SESSIONS_SIZE,210,82,83,10,SS_NOPREFIX
+    CONTROL         "설정 삭제(&S)",IDC_CLEANUP_SETTINGS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,96,200,12
+    RTEXT           "",IDC_CLEANUP_SETTINGS_SIZE,210,98,83,10,SS_NOPREFIX
+    CONTROL         "모드와 규칙을 휴지통으로 이동(&M)",IDC_CLEANUP_USERCONTENT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,112,200,12
+    RTEXT           "",IDC_CLEANUP_USERCONTENT_SIZE,210,114,83,10,SS_NOPREFIX
+    LTEXT           "XivAlexander 폴더 밖의 파일은 건드리지 않습니다.",IDC_CLEANUP_NOTE,7,134,286,20
+    PUSHBUTTON      "선택한 항목 삭제(&D)",IDOK,159,165,80,14
+    DEFPUSHBUTTON   "건너뛰기",IDCANCEL,243,165,50,14
 END
 
 
@@ -942,7 +1559,7 @@ BEGIN
     POPUP "재시작(&R)"
     BEGIN
         MENUITEM "아래 설정을 반영해 재시작하기(&R)\tCtrl+Shift+R", ID_RESTART_RESTART
-        MENUITEM "실행 명령줄 복사(&M)",               ID_RESTART_COPYLAUNCHCOMMANDLINE
+        MENUITEM "명령줄 복사(&M)",                  ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "XivAlexander 사용(&X)\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "명령줄 난독화 사용(&P)\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
@@ -967,7 +1584,7 @@ BEGIN
     BEGIN
         POPUP "지연 및 타이밍 도우미(&H)"
         BEGIN
-            MENUITEM "사용(&E)\tCtrl+Shift+H",      ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "사용(&E)\tCtrl+Shift+H",        ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "모드 &1: 지연 시간만큼 다음 기술 시전 가능 시각 앞당기기", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "모드 &2: 서버 응답 시간을 {}us로 고정",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -981,13 +1598,13 @@ BEGIN
         MENUITEM "모든 IPC 메시지 로그 사용(&I)\tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "패킷 딜레이 감소(&R)\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "모든 접속 강제 해제하기(&S)", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "모든 접속 강제 해제하기(&S)",           ID_NETWORK_RESETALLCONNECTIONS
         POPUP "문제 해결(&T)"
         BEGIN
             MENUITEM "루프백 주소 처리(&L) (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "사설 주소 처리(&P) (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
             MENUITEM "모든 주소 처리(&A) (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
-            MENUITEM "모든 포트 처리(&O)\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
+            MENUITEM "모든 포트 처리(&O)\tCtrl+Shift+4",  ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
     END
     POPUP "모딩(&M)"
@@ -1007,9 +1624,9 @@ BEGIN
             MENUITEM "불러오기(&I)",                    ID_MODDING_TTMP_IMPORT
             MENUITEM "폴더 열기(&O)",                   ID_MODDING_TTMP_OPENDIRECTORY
         END
-        MENUITEM "다시 불러오기(&F)", ID_MODDING_TTMP_REFRESH
+        MENUITEM "새로 고침(&F)",                   ID_MODDING_TTMP_REFRESH
         MENUITEM SEPARATOR
-        MENUITEM "타 코덱 포함 음악 .scd 지원(&C)",      ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "FLAC/WAV 포함 .scd 지원(&C)",     ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "모든 파일 접근 기록하기(&I)",           ID_MODDING_LOGALLFILEACCESS
         POPUP "목소리 분류 음소거(&V)"
         BEGIN
@@ -1023,30 +1640,30 @@ BEGIN
     POPUP "설정(&C)"
     BEGIN
         MENUITEM SEPARATOR
-        MENUITEM "런타임(프로그램) 설정 변경(&R)\tCtrl+Alt+R", ID_CONFIGURE_EDITRUNTIMECONFIGURATION
-        MENUITEM "옵코드 설정 변경(&O)\tCtrl+Alt+O", ID_CONFIGURE_EDITOPCODECONFIGURATION
+        MENUITEM "프로그램 설정 변경(&R)\tCtrl+Alt+R",  ID_CONFIGURE_EDITRUNTIMECONFIGURATION
+        MENUITEM "옵코드 설정 변경(&O)\tCtrl+Alt+O",   ID_CONFIGURE_EDITOPCODECONFIGURATION
         MENUITEM "옵코드 업데이트 확인하기(&U)",           ID_CONFIGURE_CHECKFORUPDATEDOPCODES
         MENUITEM "프로그램 시작 시 자동으로 옵코드 업데이트 확인(&T)", ID_CONFIGURE_CHECKFORUPDATEDOPCODESONSTARTUP
         MENUITEM SEPARATOR
         POPUP "게임 버그 수정(&X)"
         BEGIN
-            MENUITEM "(수정 가능한 버그 없음)",              ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
+            MENUITEM "(없음)",                        ID_CONFIGURE_GAMEFIX_EMPTY, INACTIVE
             MENUITEM SEPARATOR
             MENUITEM "폴더 열기(&O)",                   ID_CONFIGURE_GAMEFIX_OPENDIRECTORY
         END
         MENUITEM SEPARATOR
-        POPUP "프레임 레이트 제어(&F)"
+        POPUP "FPS 설정(&F)"
         BEGIN
             MENUITEM "게임이 가능한 만큼 CPU를 쓰도록 만들기(&C)", ID_CONFIGURE_USEMORECPUTIME
-            MENUITEM "백그라운드 시 프레임 레이트 제한(&B)",      ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
+            MENUITEM "게임 비활성화 시 FPS 제한(&B)",        ID_CONFIGURE_BACKGROUND_FRAMERATE_LIMIT
             MENUITEM "FPS 고정(&F)",                  ID_CONFIGURE_LOCKFRAMERATE
             MENUITEM "재사용 대기 시간 및 애니메이션 시간에 게임 처리를 동기화하기(&P)", ID_CONFIGURE_SYNCHRONIZEPROCESSING
         END
         POPUP "창 제목(&I)"
         BEGIN
-            MENUITEM "변경 안함(&N)",                   ID_CONFIGURE_WINDOWTITLE_PID_NONE
-            MENUITEM "접두어로 추가(&P)",                 ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
-            MENUITEM "접미어로 추가(&A)",                 ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
+            MENUITEM "변경하지 않음(&N)",                 ID_CONFIGURE_WINDOWTITLE_PID_NONE
+            MENUITEM "앞에 덧붙이기(&P)",                 ID_CONFIGURE_WINDOWTITLE_PID_PREFIX
+            MENUITEM "뒤에 덧붙이기(&A)",                 ID_CONFIGURE_WINDOWTITLE_PID_SUFFIX
         END
         MENUITEM SEPARATOR
         POPUP "언어(&L) (Language/言語)"
@@ -1057,15 +1674,15 @@ BEGIN
             MENUITEM "한국어(&K)",                     ID_CONFIGURE_LANGUAGE_KOREAN
             MENUITEM "일본어(&J) (日本語)",               ID_CONFIGURE_LANGUAGE_JAPANESE
         END
-        POPUP "테마(&T)"
+        POPUP "다크 모드 설정(&T)"
         BEGIN
-            MENUITEM "시스템(&S)",                     ID_CONFIGURE_THEME_SYSTEM
-            MENUITEM "라이트(&L)",                     ID_CONFIGURE_THEME_LIGHT
-            MENUITEM "다크(&D)",                      ID_CONFIGURE_THEME_DARK
+            MENUITEM "시스템 설정 사용(&S)",               ID_CONFIGURE_THEME_SYSTEM
+            MENUITEM "밝게(&L)",                      ID_CONFIGURE_THEME_LIGHT
+            MENUITEM "어둡게(&D)",                     ID_CONFIGURE_THEME_DARK
         END
         MENUITEM SEPARATOR
         MENUITEM "설정값 저장 폴더 열기(&D)",            ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "설정 다시 불러오기(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
+        MENUITEM "설정 다시 읽기(&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
     END
     POPUP "보기(&V)"
     BEGIN
@@ -1137,7 +1754,7 @@ END
 
 3 TEXTINCLUDE 
 BEGIN
-    "\r\n"
+    "#include ""Version.rc2""\r\n"
     "\0"
 END
 
@@ -1187,9 +1804,10 @@ END
 STRINGTABLE
 BEGIN
     IDS_SOCKETHOOK_SOCKET_FOUND "{:x}: 처리 시작"
-    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: 처리 안함 (IPv4 주소가 아님)"
-    IDS_SOCKETHOOK_SOCKET_IGNORED_IP "{:x}: 처리 안함 (원격 IP 주소 {}는 규칙에 해당하지 않음)"
-    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT "{:x}: 처리 안함 (원격 포트 {}는 규칙에 해당하지 않음)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_NOT_IPV4 "{:x}: 처리하지 않음 (IPv4 주소가 아님)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_IP 
+                            "{:x}: 처리하지 않음 (원격 IP 주소 {}는 규칙에 해당하지 않음)"
+    IDS_SOCKETHOOK_SOCKET_IGNORED_PORT "{:x}: 처리하지 않음 (원격 포트 {}는 규칙에 해당하지 않음)"
     IDS_SOCKETHOOK_SOCKET_DETACH "{:x}: 처리 종료"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_TITLE "연결 {:x} ({} -> {})\n"
     IDS_SOCKETHOOK_SOCKET_DESCRIBE_SOCKET_LATENCY 
@@ -1206,14 +1824,11 @@ BEGIN
                             "오류가 발생하여 게임을 종료합니다.\nXivAlexander가 오류의 원인일 수 있습니다. GitHub에 로그를 포함한 이슈를 생성해서 도움을 받으실 수 있습니다."
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "게임 명령줄을 해독하지 못했습니다. 게임 재시작 기능을 사용할 수 없습니다. ({})"
-    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
-                            "XivAlexander를 종료하시겠습니까?\n\n종료하려면 {} 버튼을,\n이 창만 닫으려면 {} 버튼을,\n아무것도 안 하려면 {} 버튼을 누르세요."
 END
 
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "게임을 강제로 종료하시겠습니까?"
-    IDS_CONFIRM_RESET_ALL_CONNECTIONS "모든 접속을 강제로 해제하시겠습니까?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "<a href=""issues"">XivAlexander의 GitHub 이슈 페이지</a> 열기"
     IDS_CONFIRM_RESTART_GAME 
@@ -1230,6 +1845,26 @@ BEGIN
     IDS_LANGUAGE_NAME_KOREAN "한국어"
     IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "중국어(간체자)"
     IDS_LANGUAGE_NAME_UNSPECIFIED "(언어 미지정)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_IMPORT_ERROR "오류: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{}을(를) 읽을 수 없습니다."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
+                            "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
+    IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
+    IDS_FONTPREVIEW_ERROR_NOFACE "{}을(를) 그릴 글꼴이 없습니다."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
+    IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
+                            "{}에 글리프가 없습니다. 설치되지 않았거나 읽을 수 없는 것 같습니다."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{}에는 텍스트의 글자가 하나도 없습니다."
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "모든 접속을 강제로 해제하시겠습니까?"
+    IDS_TITLE_MERGINGEXCEL  "다른 언어의 텍스트를 합치는 중..."
 END
 
 STRINGTABLE
@@ -1254,41 +1889,48 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Windows 기본 오디오 출력 장치에 맞춤 ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Windows 기본 오디오 출력 장치에 맞춤(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "시스템 설정 ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "시스템 설정(&0)"
     IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
     IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (기본값)(&{})"
     IDS_MENU_USESOXRRESAMPLER "soxr 리샘플러 사용(&S)"
     IDS_REGION_NAME_CHINATRAD "번체 중국어판"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
     IDS_MENU_LOGINSESSION   "세션(&S)"
-    IDS_MENU_LOGINSESSION_EXPIRED "{} (만료됨)"
     IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(실행 시 세션)"
     IDS_CONFIRM_RESTART_GAME_TITLE "이 설정으로 게임을 실행하시겠습니까?"
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\n로그인 세션: {}"
     IDS_RESTART_GAME_RESTART "재시작(&R)\n이 게임을 종료하고 다시 실행합니다."
     IDS_RESTART_GAME_NEWINSTANCE "새로 실행(&N)\n이 게임은 그대로 두고 하나 더 실행합니다."
-    IDS_VERSIONSENSITIVE_CONTENT "아래 기능들은 게임 코드를 후킹하거나 패치하며, 이 게임 버전({})에서는 아직 확인되지 않았습니다. 게임이 업데이트되었으므로 게임을 강제 종료시킬 수 있습니다.\n{}\n\n모드 관련 변경 사항은 게임을 재시작하면 적용됩니다."
-    IDS_VERSIONSENSITIVE_TITLE "이 게임 버전에서 작동하지 않을 수 있는 기능을 계속 사용하시겠습니까?"
-    IDS_VERSIONSENSITIVE_KEEP "유지(&K)\n이 게임 버전에서 이 기능들을 사용하고, 다시 묻지 않습니다."
-    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "임시로 유지(&T)\n게임을 종료할 때까지 이 기능들을 사용하고, 다음 실행 시 다시 묻습니다."
-    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "임시로 끄기(&M)\n게임을 종료할 때까지 이 기능들을 사용하지 않고, 다음 실행 시 다시 묻습니다."
-    IDS_VERSIONSENSITIVE_DISABLE "끄기(&D)\n이 기능들을 끕니다."
-    IDS_VERSIONSENSITIVE_MODDING "모드"
-    IDS_VERSIONSENSITIVE_LOGINSESSIONS "실행 중인 게임에서 로그인 세션 전환"
-    IDS_VERSIONSENSITIVE_PATCHCODE "패치 코드: {}"
-    IDS_VERSIONSENSITIVE_SAMPLINGRATE "오디오 샘플링 레이트"
-    IDS_VERSIONSENSITIVE_SOXR "soxr 리샘플러"
-    IDS_VERSIONSENSITIVE_ALTCODEC "타 코덱 포함 음악 .scd 지원"
-    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "한국어·중국어 IME 입력 모드 표시"
-    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (사람 많은 곳 성능 개선)"
-    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "폰트 교체"
-    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
+    IDS_MENU_LOGINSESSION_EXPIRED "{} (만료됨)"
+    IDS_VERSIONSENSITIVE_CONTENT 
+                            "아래 기능들은 이 게임 버전({})에서 동작이 확인되지 않았으며 언제라도 오류가 발생하여 게임이 종료될 수 있습니다.\n{}\n\n모드 관련 변경 사항은 게임을 재시작하면 적용됩니다."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_COMPONENTS    "다음 중 일부 또는 전체 파일을 검증할 수 없었습니다.\n* XivAlexander32.dll\n* XivAlexander64.dll\n* XivAlexanderLoader32.dll\n* XivAlexanderLoader64.dll\n\n프로그램을 다시 다운로드하시겠습니까?"
+    IDS_VERSIONSENSITIVE_TITLE "이 게임 버전에서 작동하지 않을 수 있는 기능을 계속 사용하시겠습니까?"
+    IDS_VERSIONSENSITIVE_KEEP "유지(&K)\n이 게임 버전에서 이 기능들을 사용하고, 다시 묻지 않습니다."
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY 
+                            "임시로 유지(&T)\n게임을 종료할 때까지 이 기능들을 사용하고, 다음 실행 시 다시 묻습니다."
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY 
+                            "임시로 끄기(&M)\n게임을 종료할 때까지 이 기능들을 사용하지 않고, 다음 실행 시 다시 묻습니다."
+    IDS_VERSIONSENSITIVE_DISABLE "끄기(&D)\n이 기능들을 끕니다."
+    IDS_VERSIONSENSITIVE_MODDING "모드"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS "실행 중인 게임에서 로그인 세션 전환"
+    IDS_VERSIONSENSITIVE_PATCHCODE "게임 버그 수정: {}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "오디오 샘플링 레이트"
+    IDS_VERSIONSENSITIVE_SOXR "soxr 리샘플러"
+    IDS_VERSIONSENSITIVE_ALTCODEC "FLAC/WAV 포함 .scd 지원"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) 일부 기능이 재시작 전까지 비활성화되었습니다."
+    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "한중일 IME 입력 모드 표시"
+    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (사람 많은 곳 성능 개선)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "폰트 교체"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_COMPONENTS    "다음 중 일부 또는 전체 파일을 검증할 수 없었습니다.\n* XivAlexanderLoader32.dll\n* XivAlexanderLoader64.dll\n* XivAlexander64.dll\n* XivAlexanderLoader64.exe\n\n프로그램을 다시 다운로드하시겠습니까?"
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS "{} 프로세스를 찾을 수 없습니다. 먼저 게임을 실행하고 다시 시도해 주세요."
     IDS_ERROR_NO_MATCHING_PROCESS "지정한 조건에 맞는 프로세스를 찾을 수 없었습니다."
@@ -1312,7 +1954,7 @@ BEGIN
                             "이미 실행중인 게임 프로세스({}:{})에 XivAlexander가 이미 불러들어져 있습니다.\n\n{} 버튼으로 다시 불러들이거나\n{} 버튼으로 종료하거나\n{} 버튼으로 건너뛰세요."
     IDS_CONFIRM_INJECT      "게임 프로세스를 찾았습니다.\n\n* PID: {}\n* 경로: {}\n\n이 프로세스에 XivAlexander을 불러들일까요?"
     IDS_UPDATE_FILE_TOO_BIG "업데이트 파일이 너무 큽니다. 문제가 없는 업데이트 파일이란 것이 확실하다면 수동으로 파일을 교체해 업데이트해 주세요."
-    IDS_HELP_ACTION         "작업을 지정합니다.\n\t* auto: 게임이 이미 실행 중이면 실행중인 게임 프로세스로 불러들이고, 아니라면 게임을 실행하고 실행된 게임에 불러들입니다.\n\t* ask: 게임 프로세스 별 작업을 묻습니다.\n\t* load: 게임 프로세스에 XivAlexander를 불러들입니다.\n\t* unload: 게임 프로세스에서 XivAlexander를 종료합니다.\n\t* launcher: 지정한 게임 런처를 실행하고 실행된 게임에 XivAlexander를 불러들입니다.\n\t* update-check: 업데이트를 확인합니다.\n\t* web: 배포 웹페이지 https://github.com/Soreepeong/XivAlexander 를 엽니다."
+    IDS_HELP_ACTION         "작업을 지정합니다.\n\t* interactive: 로더 창을 엽니다. (기본값)\n\t* install: 대상 게임 폴더에 XivAlexander를 설치합니다.\n\t* uninstall: 대상 게임 폴더에서 XivAlexander를 제거합니다.\n\t* ask: 게임 프로세스 별 작업을 묻습니다.\n\t* load: 게임 프로세스에 XivAlexander를 불러들입니다.\n\t* unload: 게임 프로세스에서 XivAlexander를 종료합니다.\n\t* launcher: 지정한 게임 런처를 실행하고 실행된 게임에 XivAlexander를 불러들입니다.\n\t* update-check: 업데이트를 확인합니다.\n\t* web: 배포 웹페이지 https://github.com/Soreepeong/XivAlexander 를 엽니다."
     IDS_HELP_LAUNCHER       "런처를 지정합니다. 사용 가능한 값은 auto (감지), select (선택), squareenix (스퀘어 에닉스), actozsoft (액토즈소프트), shengqugames (Shengqu Games), userjoygames (USERJOY GAMES) 입니다."
     IDS_HELP_QUIET          "오류 메시지를 보이지 않습니다."
     IDS_HELP_DISABLE_RUNAS  "어떤 경우에도 관리자 권한으로 실행하지 않습니다."
@@ -1324,7 +1966,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_MENU_BACKGROUND_FRAMERATE_TARGET "비활성화 시 FPS 제한: {:g} fps"
+    IDS_MENU_BACKGROUND_FRAMERATE_TARGET "게임 비활성화 시 FPS 제한: {:g} fps"
     IDS_FILTERSPEC_ALLFILES "모든 파일 (*.*)"
     IDS_FILTERSPEC_TTMP     "TexTools 모드팩 파일 (*.ttmp, *.ttmp2, *.mpl)"
     IDS_CONFIRM_REMOVEALLTTMP """{}"" 폴더에 있는 모든 TexTools 모드팩 파일을 제거합니다."
@@ -1399,7 +2041,7 @@ BEGIN
                             "XivAlexander를 다음 경로에 설치하였습니다.\n\n{}"
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander를 다음 경로에서 제거하였습니다.\n\n{}\n\n사용자 설정 파일 등은 수동으로 제거해야 합니다. 설정 파일 저장 폴더를 지금 확인하시겠습니까?"
-    IDS_HELP_INSTALL_MODE   "설치 모드를 지정합니다. (가능한 값: d3d (default), dinput8)"
+    IDS_HELP_INSTALL_MODE   "설치 모드를 지정합니다. (가능한 값: d3d (default), dinput8, dxgi)"
     IDS_ERROR_INVALID_INSTALL_MODE 
                             "설치 모드 지정이 잘못되었습니다. 사용 가능한 값은 d3d, dinput8 입니다."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
@@ -1409,23 +2051,18 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_CANCELLING_TRYAGAINLATER "마지막 작업을 취소 중입니다. 잠시 후 다시 시도해 주세요."
-END
-
-STRINGTABLE
-BEGIN
     IDS_UPDATE_CONFIRM_NOAUTO 
                             "새 업데이트가 있습니다. 새 버전은 {4:%Ec}에 올라온 {0}.{1}.{2}.{3}이고, 현재 버전은 {5}.{6}.{7}.{8} 입니다. 게임이 이미 실행 중이므로 자동으로 업데이트할 수 없습니다. Github에서 직접 다운로드하시겠습니까?"
     IDS_UPDATE_ERROR_ACCESS_DENIED 
                             "파일을 교체할 수 없습니다. 게임이나 XivAlexander Loader가 이미 실행되고 있다면 종료 후 다시 시도해 주세요. 또는, Github에 있는 홈페이지에서 직접 다운로드받아 업데이트를 시도해 보세요.\n\n오류: {}"
     IDS_MENU_LOCKFRAMERATE  "FPS 고정: {:g} fps"
-    IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정 사용 안함"
+    IDS_MENU_LOCKFRAMERATE_DISABLED "FPS 고정: 사용하지 않음"
     IDS_MENU_LOCKFRAMERATE_AUTOMATIC "FPS 고정: 자동"
     IDS_MENU_NETWORKLATENCYHANDLEMODE_2 "모드 &2: 서버 응답 시간을 {}us로 고정"
     IDS_OPCODEUPDATE_ERROR_404 "옵코드 설정이 아직 업데이트되지 않았습니다. 나중에 다시 시도해 주세요."
     IDS_OPCODEUPDATE_OK_NOTCHANGED "현재 옵코드 설정이 이미 최신입니다."
     IDS_OPCODEUPDATE_OK_CHANGED "옵코드 설정이 업데이트되었습니다."
-    IDS_SOCKETHOOK_SOCKET_RESET  "{:x}: 강제 연결 해제 => {}"
+    IDS_SOCKETHOOK_SOCKET_RESET "{:x}: 강제 연결 해제 => {}"
     IDS_MENU_TTMP_PROFILE   "프로파일"
     IDS_MENU_MODDING_SAMPLINGRATE "오디오 샘플링 레이트(&S)"
 END
@@ -1435,16 +2072,21 @@ BEGIN
     IDS_SETTINGS_BROWSE     "찾아보기..."
     IDS_SETTINGS_ADD        "추가..."
     IDS_SETTINGS_REMOVE     "제거"
-    IDS_SETTINGS_EDITINCONFIGEDITOR "런타임 설정 편집기에서 변경할 수 있습니다."
+    IDS_SETTINGS_EDITINCONFIGEDITOR "프로그램 설정 편집기에서 변경할 수 있습니다."
     IDS_SETTINGS_OPENEDITOR "편집기 열기"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "FPS 고정 대화 상자 열기..."
     IDS_SETTINGS_GROUP_UI   "인터페이스"
     IDS_SETTINGS_GROUP_UI_MAINWINDOW "컨트롤 창"
     IDS_SETTINGS_GROUP_UI_LOGWINDOW "로그 창"
     IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "설정 편집기"
     IDS_SETTINGS_GROUP_GAMEWINDOW "게임 창"
     IDS_SETTINGS_GROUP_NETWORKTIMING "지연 및 타이밍 도우미"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_SOCKET "연결"
-    IDS_SETTINGS_GROUP_FRAMERATECONTROL "프레임 레이트 제어"
+    IDS_SETTINGS_GROUP_FRAMERATECONTROL "FPS 설정"
     IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "FPS 고정"
     IDS_SETTINGS_GROUP_OPCODES "옵코드"
     IDS_SETTINGS_GROUP_LAUNCH "실행"
@@ -1459,45 +2101,76 @@ BEGIN
     IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "필터"
     IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
     IDS_SETTINGS_GROUP_CROWDFIX_FIXES "수정 항목"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "글꼴 바꾸기"
     IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "글꼴"
-    IDS_SETTINGS_BACKGROUNDLIMIT "백그라운드 시 프레임 레이트 제한 (fps)"
-    IDS_SETTINGS_LOCK_INTERVAL "렌더링 간격 (µs, 0이면 사용 안 함)"
+    IDS_SETTINGS_BACKGROUNDLIMIT "게임 비활성화 시 FPS 제한 (fps)"
+    IDS_SETTINGS_LOCK_INTERVAL "렌더링 간격 (µs, 0이면 사용하지 않음)"
     IDS_SETTINGS_LOCK_AUTOMATIC "간격 자동으로 정하기"
-    IDS_SETTINGS_LOCK_RANGEFROM "목표 프레임 레이트 최솟값 (fps)"
-    IDS_SETTINGS_LOCK_RANGETO "목표 프레임 레이트 최댓값 (fps)"
+    IDS_SETTINGS_LOCK_RANGEFROM "목표 FPS 최솟값 (fps)"
+    IDS_SETTINGS_LOCK_RANGETO "목표 FPS 최댓값 (fps)"
     IDS_SETTINGS_LOCK_MAXDEVIATION "렌더링 간격 최대 편차 (µs)"
-    IDS_SETTINGS_LOCK_GCD   "글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_GCD   "전역 재사용 대기 시간 (s)"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_CROWDFIX_ENABLED "CrowdFix 사용"
-    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "주변 오브젝트 수에 따라 늘어나는 프레임당 작업을 줄입니다. 변경 사항은 다음 프레임부터 적용됩니다."
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC 
+                            "주변 오브젝트 수에 따라 늘어나는 프레임당 작업을 줄입니다. 변경 사항은 다음 프레임부터 적용됩니다. 화면이 이상하게 보이면 개별 수정을 꺼 보세요."
     IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "작업 없는 GPU 리소스 알림 건너뛰기"
-    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "프레임마다 모든 GPU 리소스를 두 번씩 순회하는 대신, 실제로 할 일이 있는 리소스만 순회합니다."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC 
+                            "프레임마다 모든 GPU 리소스를 두 번씩 순회하는 대신, 실제로 할 일이 있는 리소스만 순회합니다."
     IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "작업 스레드 깨우기를 연쇄로 처리"
-    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "작업을 넣을 때마다 모든 작업 스레드를 깨우는 대신 하나만 깨우고, 깨어난 스레드가 다음 스레드를 깨웁니다."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC 
+                            "작업을 넣을 때마다 모든 작업 스레드를 깨우는 대신 하나만 깨우고, 깨어난 스레드가 다음 스레드를 깨웁니다."
     IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "스켈레톤 포즈 동기화를 프레임당 한 번만 하기"
-    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "렌더링하는 뷰마다 반복되는 모든 스켈레톤의 포즈 동기화를, 프레임의 첫 번째 이후로는 건너뜁니다."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC 
+                            "렌더링하는 뷰마다 반복되는 모든 스켈레톤의 포즈 동기화를, 프레임의 첫 번째 이후로는 건너뜁니다."
     IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "사용한 컬링 슬롯만 지우기"
-    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "프레임마다 여러 번 40,960개 슬롯 전체를 지우는 대신, 지금까지 사용된 가장 높은 오브젝트 슬롯까지만 가시성 테이블을 지웁니다."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC 
+                            "프레임마다 여러 번 40,960개 슬롯 전체를 지우는 대신, 지금까지 사용된 가장 높은 오브젝트 슬롯까지만 가시성 테이블을 지웁니다."
     IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "그래픽 할당자 잠금 밖에서 큰 블록 해제하기"
-    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "큰 블록을 해제하는 동안에도 작은 할당이 진행되게 합니다. 주로 메인 스레드가 작업 스레드를 기다리는 CPU에서 효과가 있습니다."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC 
+                            "큰 블록을 해제하는 동안에도 작은 할당이 진행되게 합니다. 주로 메인 스레드가 작업 스레드를 기다리는 CPU에서 효과가 있습니다."
     IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "그리기용 스테이징 블록 재사용하기"
-    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "해제된 스테이징 블록을 크기별로 모아 다시 내주어, 대부분의 할당이 할당자의 전역 잠금을 거치지 않게 합니다."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC 
+                            "해제된 스테이징 블록을 크기별로 모아 다시 내주어, 대부분의 할당이 할당자의 전역 잠금을 거치지 않게 합니다."
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "숨겨진 미니언의 따라가기 AI 멈추기"
-    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "모델이 숨겨진 미니언의 충돌 검사를 포함한 따라가기 AI를 건너뜁니다. 너무 멀어지면 여전히 주인 곁으로 순간이동합니다."
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC 
+                            "모델이 숨겨진 미니언의 충돌 검사를 포함한 따라가기 AI를 건너뜁니다. 너무 멀어지면 여전히 주인 곁으로 순간이동합니다."
     IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "불필요한 작업 목록 대기 건너뛰기"
-    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "이미 신호 상태인 이벤트를 한 번 더 기다리는 부분을 없앱니다. 프레임당 약 75번의 시스템 호출이 줄어듭니다."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC 
+                            "이미 신호 상태인 이벤트를 한 번 더 기다리는 부분을 없앱니다. 프레임당 약 75번의 시스템 호출이 줄어듭니다."
     IDS_SETTINGS_CROWDFIX_INLINEBGPREP "배경 인스턴싱 준비를 메인 스레드에서 실행하기"
-    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "뷰마다 있는 아주 작은 배경 인스턴싱 작업을, 작업 스레드에 넘기고 기다리는 대신 바로 실행합니다."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC 
+                            "뷰마다 있는 아주 작은 배경 인스턴싱 작업을, 작업 스레드에 넘기고 기다리는 대신 바로 실행합니다."
     IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "숨겨진 단축바 준비 건너뛰기"
-    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "프레임마다 숨겨진 단축바의 슬롯을 준비하는 작업을 건너뜁니다. 보이게 된 단축바는 그 프레임에 바로 준비됩니다."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC 
+                            "프레임마다 숨겨진 단축바의 슬롯을 준비하는 작업을 건너뜁니다. 보이게 된 단축바는 그 프레임에 바로 준비됩니다."
     IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "애니메이션 마무리를 병렬로 처리하기"
-    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "스켈레톤 마무리 작업을 메인 스레드에서 하나씩 하는 대신, 연결 깊이별로 작업 스레드에서 처리합니다."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC 
+                            "스켈레톤 마무리 작업을 메인 스레드에서 하나씩 하는 대신, 연결 깊이별로 작업 스레드에서 처리합니다."
     IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "캐릭터 컬링을 여러 스레드로 나누기"
-    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "게임은 모든 캐릭터를 한 작업에서 컬링하는데, 자기 몫을 끝낸 스레드가 이를 돕게 합니다."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC 
+                            "게임은 모든 캐릭터를 한 작업에서 컬링하는데, 자기 몫을 끝낸 스레드가 이를 돕게 합니다."
     IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "컬링 작업을 한 항목씩 나눠주기"
-    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "몇몇 스레드만 받는 최대 8개 단위 대신, 한 항목씩 나눠 주어 셀 컬링을 더 많은 스레드에 분산합니다."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC 
+                            "몇몇 스레드만 받는 최대 8개 단위 대신, 한 항목씩 나눠 주어 셀 컬링을 더 많은 스레드에 분산합니다."
     IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "명령 목록의 사용된 항목만 모으기"
-    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "각 명령 목록에서 사용된 항목만 복사하고, 이미 정렬되어 있으면 정렬을 건너뜁니다. 결과는 게임과 같습니다."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC 
+                            "각 명령 목록에서 사용된 항목만 복사하고, 이미 정렬되어 있으면 정렬을 건너뜁니다. 결과는 게임과 같습니다."
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PAGE_PATCHCODES "게임 버그 수정"
     IDS_SETTINGS_PATCHCODE_NEW "새로 만들기..."
     IDS_SETTINGS_PATCHCODE_EDIT "편집..."
@@ -1508,17 +2181,20 @@ BEGIN
     IDS_SETTINGS_PAGE_STATUS "상태"
     IDS_SETTINGS_PAGE_GAMEBEHAVIOR "게임 동작"
     IDS_SETTINGS_PAGE_CONFIGURATION "설정"
-    IDS_SETTINGS_OPENFRAMERATELOCKING "FPS 고정 대화 상자 열기..."
     IDS_SETTINGS_LOCK_MODE  "모드"
-    IDS_SETTINGS_LOCK_MODE_OFF "사용 안 함"
+    IDS_SETTINGS_LOCK_MODE_OFF "사용하지 않음"
     IDS_SETTINGS_LOCK_MODE_FIXED "고정 FPS"
     IDS_SETTINGS_LOCK_MODE_AUTOMATIC "자동 설정"
     IDS_SETTINGS_LOCK_FRAMERATE "FPS"
-    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "글쿨이 밀리지 않도록 FPS 설정"
-    IDS_SETTINGS_LOCK_ESTIMATEDGCD "예상되는 실제 글로벌 쿨다운 (s)"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "전역 재사용 대기 시간이 밀리지 않도록 FPS 설정"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_LOCK_ESTIMATEDGCD "예상되는 실제 전역 재사용 대기 시간 (s)"
     IDS_SETTINGS_LOCK_INTERVALINUSE "사용 중인 렌더링 간격 (µs)"
-    IDS_SETTINGS_LOCK_MEASUREDGCD "측정된 글로벌 쿨다운 (s)"
-    IDS_SETTINGS_LOCK_LATESTGCDS "최근 사용한 글쿨 측정"
+    IDS_SETTINGS_LOCK_MEASUREDGCD "측정된 전역 재사용 대기 시간 (s)"
+    IDS_SETTINGS_LOCK_LATESTGCDS "최근 사용한 대기 시간 측정"
     IDS_SETTINGS_LOCK_RESET "비우기"
     IDS_SETTINGS_GRID_ENABLED "사용"
     IDS_SETTINGS_GRID_NAME  "이름"
@@ -1528,15 +2204,23 @@ BEGIN
     IDS_SETTINGS_PATHREPLACEMENT_FROM "원래 경로 (정규식)"
     IDS_SETTINGS_PATHREPLACEMENT_TO "바꿀 경로"
     IDS_SETTINGS_PATHREPLACEMENT_STOP "중단"
-    IDS_SETTINGS_PATHREPLACEMENT_DESC "위에서부터 차례로 적용되며, 중단이 켜진 규칙과 일치하면 거기서 끝납니다."
+    IDS_SETTINGS_PATHREPLACEMENT_DESC 
+                            "게임이 불러오는 파일의 경로를 정규식으로 바꿉니다. 위에서부터 차례로 적용되며, 중단이 켜진 규칙과 일치하면 거기서 끝납니다."
     IDS_SETTINGS_PATHFILTER_PATTERN "패턴 (정규식)"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PATHFILTER_INCLUDE "기록"
-    IDS_SETTINGS_PATHFILTER_DESC "처음으로 일치하는 필터가 경로를 기록할지 정하며, 어느 필터와도 일치하지 않는 경로는 위의 설정을 따릅니다."
+    IDS_SETTINGS_PATHFILTER_DESC 
+                            "처음으로 일치하는 필터가 경로를 기록할지 정하며, 어느 필터와도 일치하지 않는 경로는 위의 설정을 따릅니다."
     IDS_SETTINGS_FALLBACK_DESC "끌어서 순서 변경: 선택한 언어의 파일이 없으면 위에 있는 언어부터 사용합니다."
     IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(이름 없는 모든 인물)"
-    IDS_SETTINGS_FORCEDLANGUAGE_DESC "말하는 인물의 첫 번째로 켜진 항목이 적용되며, 빈 이름은 이름 없는 모든 인물을 뜻합니다."
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC 
+                            "말하는 인물의 첫 번째로 켜진 항목이 적용되며, 빈 이름은 이름 없는 모든 인물을 뜻합니다."
     IDS_SETTINGS_CHOICES_ACTIVE "사용 중"
-    IDS_SETTINGS_CHOICES_DESC "사용 중인 항목이 없으면 파일 이름이 있는 첫 번째 프로필을 사용합니다. 파일 이름을 바꿔도 모드에 이미 있는 파일의 이름은 바뀌지 않습니다."
+    IDS_SETTINGS_CHOICES_DESC 
+                            "사용 중인 항목이 없으면 파일 이름이 있는 첫 번째 프로필을 사용합니다. 파일 이름을 바꿔도 모드에 이미 있는 파일의 이름은 바뀌지 않습니다."
     IDS_SETTINGS_FONT_SOURCE_TYPE "종류"
     IDS_SETTINGS_FONT_SOURCE_PRESET "프리셋"
     IDS_SETTINGS_FONT_SOURCE_FONT "시스템 글꼴"
@@ -1545,9 +2229,15 @@ BEGIN
     IDS_SETTINGS_FONT_STYLE "스타일"
     IDS_SETTINGS_FONT_ADDPRESET "프리셋 추가…"
     IDS_SETTINGS_FONT_ADDFONT "시스템 글꼴 추가"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COPYTOOTHERS "다른 글꼴 패밀리에 복사"
     IDS_SETTINGS_FONT_CONFIRMCOPY "다른 모든 글꼴 패밀리의 소스를 {}의 것으로 바꾸시겠습니까?"
-    IDS_SETTINGS_FONT_SOURCES_DESC "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
+    IDS_SETTINGS_FONT_SOURCES_DESC 
+                            "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
+    IDS_SETTINGS_EDGE_SOFTNESS "테두리 흐림"
     IDS_SETTINGS_EDGE_SCALE "글자 크기 1픽셀당 테두리 두께"
     IDS_SETTINGS_EDGE_MIN   "최소 테두리 두께 (px)"
     IDS_SETTINGS_EDGE_MAX   "최대 테두리 두께 (px)"
@@ -1555,10 +2245,15 @@ BEGIN
     IDS_SETTINGS_DIRS_LOCATION "위치"
     IDS_SETTINGS_DIRS_ADDDEFAULT "(기본 경로 추가)"
     IDS_SETTINGS_DIRS_NOTFOUND "{} (찾을 수 없음)"
-    IDS_SETTINGS_DIRS_ADD "폴더 추가..."
+    IDS_SETTINGS_DIRS_ADD   "폴더 추가..."
     IDS_SETTINGS_SHOWINEXPLORER "탐색기에서 보기"
-    IDS_SETTINGS_DIRS_DESC "끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
+    IDS_SETTINGS_EDGE_SOFTNESS_DESC 
+                            "흐림: 0이면 테두리를 선명하게 그립니다. 1까지는 테두리 두께의 이 비율만큼 바깥쪽으로 옅어지고, 1을 넘으면 글자에서 두께의 이 배수 (최대 8 px) 만큼 떨어진 곳까지 옅어져 광채처럼 보입니다."
     IDS_SETTINGS_TTMP_AUTHOR "제작자"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_TTMP_VERSION "버전"
     IDS_SETTINGS_TTMP_STATUS "상태"
     IDS_SETTINGS_TTMP_FILTER "필터"
@@ -1568,91 +2263,525 @@ BEGIN
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "새 폴더로 이동"
     IDS_SETTINGS_TTMP_NEWFOLDER "새 폴더"
     IDS_SETTINGS_TTMP_TOPLEVEL "최상위: {}"
-    IDS_SETTINGS_TTMP_ORDER_DESC "끌어서 순서를 바꿀 수 있습니다. 여러 모드팩이 같은 파일을 바꾸면 아래에 있는 것이 우선합니다."
-    IDS_STATUS_TTMPPROFILE "\n모드팩 프로필: {}"
+    IDS_SETTINGS_TTMP_ORDER_DESC 
+                            "끌어서 순서를 바꿀 수 있습니다. 여러 모드팩이 같은 파일을 바꾸면 아래에 있는 것이 우선합니다."
+    IDS_STATUS_TTMPPROFILE  "\n모드팩 프로필: {}"
     IDS_SETTINGS_MODDING_ENABLE_DESC "변경 사항은 게임을 재시작하면 적용됩니다."
-    IDS_SETTINGS_LIPSYNC    "컷신 립싱크 언어"
-    IDS_SETTINGS_LIPSYNC_DESC "컷신에서 입 모양에 쓰이는 언어입니다. 컷신 음성 파일도 같은 언어로 고릅니다. 게임에 음성이 있는 언어만 고를 수 있습니다."
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_PREVIEW_SIZE "크기"
     IDS_SETTINGS_FONT_PREVIEW_TEXT "예시 문장"
-    IDS_SETTINGS_FONT_PREVIEW_DESC "선택한 크기의 글꼴을 이 소스들로 만든 그대로, 게임과 같은 테두리를 붙여 그립니다. 글꼴에 없는 글자는 게임의 글리프로 그리지만, SystemFallback을 켜면 게임에서는 시스템 글꼴로 그려집니다."
+    IDS_SETTINGS_FONT_PREVIEW_DESC 
+                            "선택한 크기의 글꼴을 이 소스들로 만든 그대로, 게임과 같은 테두리를 붙여 그립니다. 소스에 없는 글자는 게임에서 시스템 글꼴로 그려지는 경우에도 여기서는 게임의 글리프로 그립니다."
+    IDS_SETTINGS_RESTART_REGION "지역"
+    IDS_SETTINGS_MISCELLANEOUS "기타"
+    IDS_SETTINGS_UPDATES    "업데이트"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED "복사한 명령줄을 지울 때까지의 초"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC 
+                            "복사한 명령줄을 이 시간이 지나면 클립보드에서 지웁니다. 0이면 지우지 않습니다."
+    IDS_SETTINGS_EDITMENU   "편집 ▾"
+    IDS_SETTINGS_SHOWMORE   "더 보기"
+    IDS_SETTINGS_SHOWLESS   "접기"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "모드팩 {}개를 삭제할까요?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "시스템 글꼴의 숫자를 고정 폭으로 표시"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "프리셋 폴더 열기"
+    IDS_SETTINGS_FONT_IMPORT_TITLE "이 프리셋은 프리셋 폴더 밖에 있습니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SESSIONS_FORGETONE "이 세션 삭제"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM 
+                            "로그인 세션 ""{}""을(를) 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_SESSIONS_FORGET "모두 삭제"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
+                            "기억한 로그인 세션을 모두 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
+    IDS_SETTINGS_REMEMBER   "기억"
     IDS_SETTINGS_FONT_PREVIEW_COLORS "색상"
     IDS_SETTINGS_FONT_PREVIEW_NOEDGE "테두리를 표시할 수 없습니다: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} 글꼴을 글꼴 교체가 그리는 대로, 선택한 크기에서 이 설정의 테두리를 붙여 그립니다. 색상은 게임에서 쓰이는 것으로, 모든 글꼴 미리 보기에 적용됩니다."
+    IDS_SETTINGS_EDGE_PREVIEW_DESC 
+                            "{} 글꼴을 글꼴 교체가 그리는 대로, 선택한 크기에서 이 설정의 테두리를 붙여 그립니다. 색상은 게임에서 쓰이는 것으로, 모든 글꼴 미리 보기에 적용됩니다."
     IDS_SETTINGS_FONT_COLORS_DEFAULT "기본"
     IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "툴팁 항목 이름"
     IDS_SETTINGS_FONT_COLORS_ACTIONNAME "기술 이름"
     IDS_SETTINGS_FONT_COLORS_STATUSNAME "상태 이름"
     IDS_SETTINGS_FONT_COLORS_WARNING "경고"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COLORS_NOTICE "알림"
     IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "퀘스트 강조"
     IDS_SETTINGS_FONT_COLORS_TUTORIAL "튜토리얼 본문"
-    IDS_SETTINGS_RESTART_REGION "지역"
-    IDS_SETTINGS_MISCELLANEOUS "기타"
-    IDS_SETTINGS_UPDATES "업데이트"
-    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "세션 전환 사용"
-    IDS_SETTINGS_REMEMBER   "기억"
-    IDS_SETTINGS_SESSIONS_FORGET "모두 삭제"
-    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "기억한 로그인 세션을 모두 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
-    IDS_SETTINGS_SESSIONS_FORGETONE "이 세션 삭제"
-    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "로그인 세션 ""{}""을(를) 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED "복사한 명령줄을 지울 때까지의 초"
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "복사한 명령줄을 이 시간이 지나면 클립보드에서 지웁니다. 0이면 지우지 않습니다."
-    IDS_SETTINGS_EDITMENU "편집 ▾"
-    IDS_SETTINGS_SHOWMORE "더 보기"
-    IDS_SETTINGS_SHOWLESS "접기"
-    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "모드팩 {}개를 삭제할까요?"
-    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "시스템 글꼴의 숫자를 고정 폭으로 표시"
-    IDS_SETTINGS_FONT_OPENPRESETFOLDER "프리셋 폴더 열기"
-    IDS_SETTINGS_FONT_IMPORT_TITLE "이 프리셋은 프리셋 폴더 밖에 있습니다."
-    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\n프리셋 폴더에 복사해서 가져올까요, 아니면 이 파일을 지금 위치 그대로 사용할까요?"
-    IDS_SETTINGS_FONT_IMPORT_GLYPHS "이 프리셋은 옆에 있는 다음 폴더에서 글리프 이미지를 읽습니다. 가져오면 이 폴더들도 프리셋 전용 폴더에 함께 복사됩니다.{}"
-    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "이 프리셋은 다음 폴더에서 글리프 이미지를 읽지만, 이 폴더들은 프리셋이 있는 폴더 안에 있지 않아 함께 복사할 수 없습니다. 지금 위치 그대로만 사용할 수 있습니다.{}"
-    IDS_SETTINGS_FONT_IMPORT_IMPORT "가져오기\n프리셋 폴더에 복사합니다. 나중에 원본 파일을 바꿔도 반영되지 않습니다."
-    IDS_SETTINGS_FONT_IMPORT_INPLACE "지금 위치에서 사용\n지금 위치에서 읽습니다. 파일을 옮기거나 지우면 더 이상 작동하지 않습니다."
-    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\n프리셋을 읽을 수 없습니다: {}"
-    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\n프리셋을 가져오지 못했습니다: {}"
     IDS_TTMP_ERROR_NAME_EMPTY "이름을 비워 둘 수 없습니다."
     IDS_TTMP_ERROR_NAME_DOTS """.""과 ""..""은 이름으로 쓸 수 없습니다."
     IDS_TTMP_ERROR_NAME_TOOLONG "이름이 너무 깁니다."
-    IDS_TTMP_ERROR_NAME_INVALIDCHARS "이름에 < > : "" / \\ | ? * 또는 제어 문자를 쓸 수 없습니다."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS 
+                            "이름에 < > : "" / \\ | ? * 또는 제어 문자를 쓸 수 없습니다."
     IDS_TTMP_ERROR_NAME_TRAILING "이름은 공백이나 마침표로 끝날 수 없습니다."
     IDS_TTMP_ERROR_NAME_RESERVED "Windows에서 예약된 이름이라 쓸 수 없습니다."
     IDS_TTMP_ERROR_DIFFERENTDRIVE "폴더를 다른 드라이브로 옮길 수 없습니다."
     IDS_TTMP_ERROR_MOVEFAILED "{}을(를) {}(으)로 옮기지 못했습니다"
-    IDS_TTMP_ERROR_ITEMGONE "이 항목은 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_ITEMGONE "이 항목은 더 이상 모드팩 목록에 없습니다. 목록을 새로 고침한 뒤 다시 시도해 주세요."
     IDS_TTMP_ERROR_NAMETAKEN "그 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
     IDS_TTMP_ERROR_DESTINATIONMISSING "대상 폴더가 존재하지 않습니다."
-    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "대상 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE 
+                            "대상 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
     IDS_TTMP_ERROR_MOVEINTOSELF "폴더를 자기 자신이나 그 안의 폴더로 옮길 수 없습니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_CLEANUP_PARTIAL "선택한 데이터를 제거했습니다. 사용 중인 {}개 항목은 남았습니다."
+    IDS_LOADER_CLEANUP_INTRO_ALL 
+                            "XivAlexander가 더 이상 어느 게임에도 설치되어 있지 않습니다. 남은 데이터를 제거할 수 있습니다."
+    IDS_LOADER_CLEANUP_INTRO_REGION 
+                            "이 지역의 게임에는 더 이상 XivAlexander가 설치되어 있지 않습니다. 이 지역에서 저장한 로그인 세션을 삭제할 수 있습니다."
+    IDS_LOADER_CLEANUP_CALCULATING "계산 중..."
+    IDS_LOADER_CLEANUP_SESSIONS_COUNT "{}개"
+    IDS_LOADER_ERROR_UNLOAD "XivAlexander를 프로세스에서 해제하지 못했습니다. ({})"
+    IDS_SETTINGS_NOTIFYWHENHIDDEN "관리 창을 알림 영역으로 숨길 때 알리기"
+    IDS_TRAY_HIDDEN_NOTIFICATION 
+                            "XivAlexander는 계속 실행 중입니다. 알림 영역의 아이콘에서 다시 열 수 있습니다."
+    IDS_SETTINGS_SESSIONS_RENAME "이름 바꾸기"
+    IDS_SETTINGS_SESSIONS_RENAME_INVALID 
+                            "세션 이름은 UTF-8로 64바이트 이하여야 하며, 제어 문자를 포함할 수 없습니다."
+    IDS_SETTINGS_SESSIONS_RENAME_EXISTS "로그인 세션 ""{}""이(가) 이미 있습니다."
+    IDS_SETTINGS_CROWDFIX_STATUS_ACTIVE "작동 중"
+    IDS_SETTINGS_CROWDFIX_STATUS_OFF "꺼짐"
+    IDS_SETTINGS_CROWDFIX_STATUS_WAITING "게임 준비를 기다리는 중"
+    IDS_SETTINGS_CROWDFIX_STATUS_UNAVAILABLE "이 버전의 게임에서는 사용할 수 없음"
+    IDS_SETTINGS_CROWDFIX_STATUS_FAILED "오류로 인해 중지됨"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_IMPORT_CONTENT 
+                            "{}\n\n프리셋 폴더에 복사해서 가져올까요, 아니면 이 파일을 지금 위치 그대로 사용할까요?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS 
+                            "이 프리셋은 옆에 있는 다음 폴더에서 글리프 이미지를 읽습니다. 가져오면 이 폴더들도 프리셋 전용 폴더에 함께 복사됩니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY 
+                            "이 프리셋은 다음 폴더에서 글리프 이미지를 읽지만, 이 폴더들은 프리셋이 있는 폴더 안에 있지 않아 함께 복사할 수 없습니다. 지금 위치 그대로만 사용할 수 있습니다.{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT 
+                            "가져오기\n프리셋 폴더에 복사합니다. 나중에 원본 파일을 바꿔도 반영되지 않습니다."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE 
+                            "지금 위치에서 사용\n지금 위치에서 읽습니다. 파일을 옮기거나 지우면 더 이상 작동하지 않습니다."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\n프리셋을 읽을 수 없습니다: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\n프리셋을 가져오지 못했습니다: {}"
+END
+
+STRINGTABLE
+BEGIN
     IDS_TTMP_ERROR_MOVEINTOMODPACK "모드팩 안으로는 옮길 수 없습니다."
-    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "대상 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION 
+                            "대상 폴더에 이미 ""{}""(이)라는 이름의 항목이 있습니다."
     IDS_TTMP_ERROR_DESTINATIONNOTFOUND "대상 폴더를 찾을 수 없었습니다."
     IDS_TTMP_ERROR_PARENTMISSING "상위 폴더가 존재하지 않습니다."
     IDS_TTMP_ERROR_PARENTOUTSIDE "상위 폴더가 TexTools 모드팩을 찾는 폴더 중 어디에도 속하지 않습니다."
     IDS_TTMP_ERROR_FOLDERINMODPACK "모드팩 안에는 폴더를 만들 수 없습니다."
     IDS_TTMP_ERROR_CREATEFOLDER "폴더 {}을(를) 만들지 못했습니다: {}"
-    IDS_TTMP_ERROR_FOLDERGONE "이 폴더는 더 이상 모드팩 목록에 없습니다. 목록을 다시 불러온 뒤 다시 시도해 주세요."
+    IDS_TTMP_ERROR_FOLDERGONE 
+                            "이 폴더는 더 이상 모드팩 목록에 없습니다. 목록을 새로 고침한 뒤 다시 시도해 주세요."
     IDS_TTMP_ERROR_ORDERINCOMPLETE "새 순서에는 폴더 안의 모든 항목이 정확히 한 번씩 들어 있어야 합니다."
     IDS_TTMP_ERROR_SAVEORDER "{}을(를) 저장하지 못했습니다: {}"
     IDS_TTMP_ERROR_OPENDATA "{}을(를) 열지 못했습니다."
-    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; 원래 위치로 되돌리는 것도 실패했습니다 ({}). TexTools 모드팩을 다시 불러와 주세요."
+    IDS_TTMP_ERROR_MOVEBACKFAILED 
+                            "{}; 원래 위치로 되돌리는 것도 실패했습니다 ({}). TexTools 모드팩을 새로 고침해 주세요."
     IDS_TTMP_ERROR_DUPLICATENAMES """{}""(이)라는 이름의 항목이 여러 개 있습니다."
     IDS_ERROR_FILE_TOO_BIG  "파일이 너무 큽니다."
     IDS_ERROR_HTTP          "HTTP 오류 {}"
     IDS_RESULT_IMPORT_OK    "성공: {}: {}"
-    IDS_RESULT_IMPORT_ERROR "오류: {}: {}"
-    IDS_FONTPRESET_ERROR_CANNOTREAD "{}을(를) 읽을 수 없습니다."
-    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
-    IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
-    IDS_FONTPREVIEW_ERROR_NOFACE "{}을(를) 그릴 글꼴이 없습니다."
-    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
-    IDS_ERROR_LOAD_INSTALLED "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
-    IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
-    IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{}에 글리프가 없습니다. 설치되지 않았거나 읽을 수 없는 것 같습니다."
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{}에는 텍스트의 글자가 하나도 없습니다."
 END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES "텍스트 변환"
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES_DESC 
+                            "다른 언어에서 가져오는 텍스트를 바꾸는 JSON 파일입니다. 시트별로 문자열 열의 대응, 게임 본래의 언어 그대로 남길 셀, 정규 표현식 치환을 지정합니다. 변경 사항은 게임을 재시작하면 적용됩니다."
+    IDS_SETTINGS_LOGGING_EXCELMERGE "텍스트 합치기"
+    IDS_SETTINGS_TALKLINES  "대화창 줄 수"
+    IDS_SETTINGS_TALKLINES_DESC 
+                            "대화창 한 페이지의 줄 수입니다. 자동은 표시 언어가 일본어·중국어·한국어면 3줄, 영어·독일어·프랑스어면 4줄이며, 그에 맞는 글꼴 크기를 씁니다. 일본어 클라이언트는 후리가나가 3줄씩 배치되므로 3줄 그대로입니다. 변경 사항은 다음 대화부터 적용됩니다."
+    IDS_SETTINGS_TALKLINES_AUTOMATIC "자동"
+    IDS_SETTINGS_TALKLINES_THREE "3줄"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_TALKLINES_FOUR "4줄"
+    IDS_VERSIONSENSITIVE_DISPLAYLANGUAGE "표시 언어의 텍스트 규칙"
+    IDS_OUTGOINGTEXT_TITLE  "보내려는 메시지에 게임 본래의 언어가 아닌 텍스트가 들어 있습니다"
+    IDS_OUTGOINGTEXT_CONTENT 
+                            "게임 본래의 언어로 되돌리지 못한 통합 텍스트를 게임이 보내려고 해서 XivAlexander가 이 메시지를 보류했습니다. 그대로 보내면 다른 플레이어에게도 그대로 보입니다.\n\n메시지: {}\n텍스트: {}\n\n선택할 때까지 이 접속에서는 아무것도 보내지 않습니다. 받는 것에는 영향이 없습니다."
+    IDS_OUTGOINGTEXT_SEND   "그대로 보내기\n위험: 다른 플레이어에게 통합 텍스트가 보입니다."
+    IDS_OUTGOINGTEXT_DROP   "이 메시지 버리기\n뒤의 메시지는 보냅니다. 채팅이 아닌 메시지라면 게임이 응답을 계속 기다릴 수 있습니다."
+    IDS_OUTGOINGTEXT_DISCONNECT 
+                            "접속 끊기\n'네트워크 > 모든 접속 강제 해제하기'처럼 모든 접속을 해제합니다."
+    IDS_OUTGOINGTEXT_FOOTER "선택하지 않으면 {}초 후에 메시지를 버립니다."
+    IDS_OUTGOINGTEXT_KIND_ZONECHAT "말하기·외치기·떠들기·감정 표현 (채팅 종류 {})"
+    IDS_OUTGOINGTEXT_KIND_TELL "귓속말"
+    IDS_OUTGOINGTEXT_KIND_CHANNEL "파티·자유부대·링크셸·초보자 채널"
+    IDS_OUTGOINGTEXT_KIND_ALLIANCE "연합 파티·파티"
+    IDS_OUTGOINGTEXT_KIND_CROSSWORLD "크로스 월드 링크셸·PvP 팀"
+    IDS_OUTGOINGTEXT_KIND_OTHER "채팅이 아닌 메시지 (IPC 종류 0x{:04X})"
+    IDS_SETTINGS_RESOURCEOVERRIDE "표시 언어"
+    IDS_SETTINGS_RESOURCEOVERRIDE_DESC 
+                            "표시되는 텍스트의 언어(그 언어의 데이터가 있으면 합쳐서 가져옴)와, 그에 맞는 텍스트 규칙의 언어입니다. 규칙은 명사의 관사 같은 형태, 줄바꿈, 대화창 배치에 쓰입니다. 서버로 보내는 것은 게임 본래의 언어 그대로입니다. 텍스트 변경 사항은 게임을 재시작하면 적용되고, 규칙 변경 사항은 바로 적용됩니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE "음성 언어"
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE_DESC 
+                            "음성과, 그에 맞는 컷신 립싱크의 언어입니다. 변경 사항은 이후에 불러오는 음성과 컷신부터 적용됩니다."
+    IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "사용하지 않음"
+    IDS_SETTINGS_FALLBACKPRIORITY "언어 우선순위"
+    IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "캐릭터별 언어"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "테두리"
+    IDS_SETTINGS_DIRS_GAME  "게임"
+    IDS_SETTINGS_DIRS_GAMENOTFOUND "찾을 수 없음"
+    IDS_SETTINGS_DIRS_DETECTING "확인 중..."
+    IDS_SETTINGS_GRID_DESCRIPTION "설명"
+    IDS_SETTINGS_GRID_FILE  "파일"
+    IDS_SETTINGS_EXCEL_ADDFILE "파일 추가..."
+    IDS_SETTINGS_EXCEL_ORDER_DESC 
+                            "끌어서 순서를 바꿀 수 있습니다. 파일은 목록 순서대로 적용됩니다. 시트에 맞는 규칙은 모두 적용되며, 치환 단계는 차례로 이어서 실행되고, keep·unkeep과 열 대응은 나중 파일이 우선합니다."
+    IDS_SETTINGS_EXCEL_PARSEERROR "읽을 수 없음: {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_UI_LANGUAGE "언어"
+    IDS_SETTINGS_UI_THEMEMODE "다크 모드"
+    IDS_SETTINGS_GAMEWINDOW_TITLEMODE "창 제목"
+    IDS_SETTINGS_GAMEWINDOW_TITLEPREFIX "앞에 덧붙일 때의 제목 형식"
+    IDS_SETTINGS_GAMEWINDOW_TITLESUFFIX "뒤에 덧붙일 때의 제목 형식"
+    IDS_SETTINGS_GAMEWINDOW_DISABLEGHOSTING "창 고스팅 끄기"
+    IDS_SETTINGS_GAMEWINDOW_IMEMODEINDICATOR "한중일 IME의 입력 모드 표시 바로잡기"
+    IDS_SETTINGS_NETWORK_MITIGATIONMODE "지연 처리 방식"
+    IDS_SETTINGS_MODDING_SQPACKROOTS "다른 게임 설치"
+    IDS_SETTINGS_MODDING_FILEENTRYROOTS "교체 파일 폴더"
+    IDS_SETTINGS_MODDING_PATHREPLACEMENTS "경로 바꾸기"
+    IDS_SETTINGS_TTMP_SEARCHDIRS "ModPack 폴더"
+    IDS_SETTINGS_TTMP_CHOICESFILES "옵션 프로필"
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS "해시 추적 키"
+    IDS_SETTINGS_LOGGING_ALLPATHS "모든 파일 경로"
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS "바뀐 파일 경로"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES "컷신 화자 이름"
+    IDS_SETTINGS_LOGGING_PATHFILTERS "경로 필터"
+    IDS_SETTINGS_FONT_ENABLED "글꼴 바꾸기"
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK "글꼴에 없는 글자를 시스템 글꼴로 그리기"
+    IDS_SETTINGS_CHOICES_DEFAULTNAME "기본"
+    IDS_SETTINGS_VERSIONSENSITIVE_TIP 
+                            "(!): 게임 코드를 바꾸는 기능입니다. 이 게임 버전에서는 이런 기능을 끄기로 선택했으므로 게임을 다시 시작할 때까지 꺼져 있습니다. 다음에 시작할 때 다시 묻습니다."
+    IDS_SETTINGS_FONT_WEIGHT_100 "가장 가늘게"
+    IDS_SETTINGS_FONT_WEIGHT_200 "아주 가늘게"
+    IDS_SETTINGS_FONT_WEIGHT_300 "가늘게"
+    IDS_SETTINGS_FONT_WEIGHT_350 "조금 가늘게"
+    IDS_SETTINGS_FONT_WEIGHT_400 "보통"
+    IDS_SETTINGS_FONT_WEIGHT_500 "중간"
+    IDS_SETTINGS_FONT_WEIGHT_600 "조금 굵게"
+    IDS_SETTINGS_FONT_WEIGHT_700 "굵게"
+    IDS_SETTINGS_FONT_WEIGHT_800 "아주 굵게"
+    IDS_SETTINGS_FONT_WEIGHT_900 "매우 굵게"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_WEIGHT_950 "가장 굵게"
+    IDS_SETTINGS_FONT_STRETCH_1 "가장 좁게"
+    IDS_SETTINGS_FONT_STRETCH_2 "아주 좁게"
+    IDS_SETTINGS_FONT_STRETCH_3 "좁게"
+    IDS_SETTINGS_FONT_STRETCH_4 "조금 좁게"
+    IDS_SETTINGS_FONT_STRETCH_5 "보통"
+    IDS_SETTINGS_FONT_STRETCH_6 "조금 넓게"
+    IDS_SETTINGS_FONT_STRETCH_7 "넓게"
+    IDS_SETTINGS_FONT_STRETCH_8 "아주 넓게"
+    IDS_SETTINGS_FONT_STRETCH_9 "가장 넓게"
+    IDS_SETTINGS_FONT_STYLE_NORMAL "보통"
+    IDS_SETTINGS_FONT_STYLE_OBLIQUE "기울임"
+    IDS_SETTINGS_FONT_STYLE_ITALIC "이탤릭"
+    IDS_SETTINGS_NETWORK_ENABLED_DESC 
+                            "측정한 네트워크 지연만큼 애니메이션 잠금을 줄여, 핑이 낮을 때처럼 액션을 입력할 수 있게 합니다."
+    IDS_SETTINGS_NETWORK_PREVIEW_DESC "조정을 계산해 로그에 남기기만 하고 적용하지는 않습니다."
+    IDS_SETTINGS_SOCKET_TAKEOVER_NOTE 
+                            "아래 옵션은 VPN이나 프록시를 쓸 때처럼 지연 도우미가 연결을 찾지 못할 때만 사용하세요."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_OPCODECONFIG_DESC 
+                            "옵코드 업데이트가 채워 넣는 값입니다. 이 게임 버전의 값을 알 때만 고치세요."
+    IDS_SETTINGS_SQPACKROOTS_DESC 
+                            "다른 클라이언트의 설치 폴더입니다. 그 텍스트를 합칠 수 있고, 다른 언어의 음성처럼 이 게임에 없는 파일은 거기서 가져옵니다. '언어'도 참고하세요. 변경 사항은 게임을 다시 시작하면 적용됩니다."
+    IDS_SETTINGS_FILEENTRYROOTS_DESC 
+                            "게임 내 경로에 둔 파일로 게임 본래의 파일을 대신하는 폴더입니다. 끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
+    IDS_SETTINGS_TTMPDIRS_DESC 
+                            "TexTools ModPack을 찾는 폴더입니다. 가져온 ModPack은 첫 번째 폴더에 들어갑니다. 끌어서 순서를 바꿀 수 있습니다. <config>는 설정 폴더를, <sqpack>은 게임의 sqpack 폴더를 뜻합니다."
+    IDS_SETTINGS_LOCK_MODE_DESC 
+                            "전역 재사용 대기 시간이 프레임 바로 앞에서 끝나도록 고른 일정한 간격으로 그려, 다음 프레임을 기다리며 잃는 시간을 줄입니다. 자동은 지연 도우미가 측정한 재사용 대기 시간을 씁니다."
+    IDS_SETTINGS_TITLEFORMAT_NOTE 
+                            "제목 형식에 쓸 수 있는 자리 표시자: {title}, {pid}, {alias}, {alias_or_pid}"
+    IDS_SETTINGS_DISABLEGHOSTING_DESC 
+                            "바쁜 게임 창을 Windows가 '응답 없음' 틀로 바꾸지 않게 합니다. 끄는 것은 게임을 다시 시작하면 적용됩니다."
+    IDS_SETTINGS_CHAINLOAD_DESC 
+                            "ReShade를 XivAlexander와 함께 쓸 때처럼, 시스템의 DLL 대신 차례로 불러오는 DLL입니다. XivAlexander가 그 DLL로 설치되어 있을 때만 쓰입니다. 변경 사항은 게임을 다시 시작하면 적용됩니다."
+    IDS_SETTINGS_SAMPLINGRATE_DESC 
+                            "게임이 오디오를 믹싱하는 샘플링 레이트입니다. 변경 사항은 게임을 다시 시작하면 적용됩니다."
+    IDS_SETTINGS_RESTART_OBFUSCATION_TIP 
+                            "세션 ID 같은 실행 인수를 공식 런처와 같은 방식으로 암호화해, 명령줄에서 읽을 수 없게 합니다."
+    IDS_SETTINGS_REMEMBER_TIP 
+                            "선택을 저장해 이후의 재시작과 복사한 명령줄, 저장된 로그인 세션으로 게임을 시작할 때 씁니다."
+    IDS_SETTINGS_MITIGATIONMODE_TIP 
+                            "모드 1은 핑만큼만 잠금에서 뺍니다. 모드 2는 왕복 시간이 늘 설정한 값이었던 것처럼 처리합니다. 모드 3은 서버 자체의 지연을 통계로 추정하며, 핑을 바꾸는 VPN에도 대응합니다."
+    IDS_SETTINGS_NETWORK_LOGGING_TIP "액션마다 측정한 지연과 조정한 잠금을 로그 창에 남깁니다."
+    IDS_SETTINGS_REDUCEPACKETDELAY_TIP 
+                            "이후에 만들어지는 게임 연결에서 지연 ACK와 Nagle 알고리즘을 끕니다."
+    IDS_SETTINGS_RESETCONNECTIONS_TIP 
+                            "확인한 뒤, XivAlexander가 아는 게임 연결을 모두 강제로 닫습니다. 연결이 끊겼을 때와 같아집니다."
+    IDS_SETTINGS_OPCODEFINDER_TIP 
+                            "지연 도우미가 읽는 메시지와 길이가 같은 메시지를 16진 덤프와 함께 남겨, 패치 후 옵코드를 찾는 데 씁니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_ALTCODEC_TIP 
+                            "일부 음악 모드처럼 오디오가 FLAC이나 WAV인 음악 파일을 재생할 수 있게 합니다."
+    IDS_SETTINGS_LOGGING_ALLDATAFILEREAD_TIP 
+                            "게임 데이터 파일에서 읽는 것을 오프셋, 크기와 함께 모두 남깁니다."
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS_TIP 
+                            "'모든 파일 경로'와 같이 게임이 찾는 파일 경로를 남깁니다."
+    IDS_SETTINGS_LOGGING_ALLPATHS_TIP "게임이 찾는 모든 파일 경로와, 찾은 위치를 남깁니다."
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS_TIP "경로 바꾸기나 캐릭터별 언어로 바뀐 경로만 남깁니다."
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES_TIP 
+                            "컷신 음성의 화자 이름을 캐릭터별 언어에 쓰는 형태로 남깁니다."
+    IDS_SETTINGS_FONT_ENABLED_TIP "게임 텍스트를 게임 본래의 글꼴 대신 패밀리마다 설정한 글꼴로 그립니다."
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP 
+                            "고른 글꼴에 없는 글자를 게임의 글리프 대신 Windows의 대체 글꼴로 그립니다."
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS_TIP 
+                            "시스템 글꼴이면 글꼴의 고정폭 숫자를 쓰고, 없으면 숫자마다 '0'과 같은 너비의 칸 가운데에 두어 값이 바뀌어도 위치가 흔들리지 않게 합니다."
+    IDS_SETTINGS_USEMORECPUTIME_TIP 
+                            "게임이 앞에 있는 동안 짧은 대기를 건너뛰고, 고정한 프레임을 기다릴 때도 CPU를 계속 씁니다. CPU 시간을 더 쓰는 대신 프레임 타이밍이 안정됩니다."
+    IDS_SETTINGS_SYNCHRONIZEPROCESSING_TIP 
+                            "애니메이션 잠금이나 재사용 대기 시간이 끝나는 순간에 프레임을 시작해, 다음 액션을 곧바로 받게 합니다."
+    IDS_SETTINGS_LOCK_MAXDEVIATION_TIP 
+                            "프레임이 예정보다 일찍 올 수 있는 시간입니다. 프레임 바로 앞의 이 시간 안에 끝나는 재사용 대기 시간은 그다음 프레임에 끝나는 것으로 칩니다."
+    IDS_SETTINGS_SOXR_ENABLED_TIP 
+                            "음성을 게임의 선형 보간 대신 soxr로 리샘플링합니다. 이후에 재생되는 음성부터 적용됩니다."
+    IDS_SETTINGS_SOXR_FILTER_TIP 
+                            "0으로 둔 숫자에는 품질 프리셋의 값을 씁니다. 변경 사항은 이후에 재생되는 음성부터 적용됩니다."
+    IDS_SETTINGS_SOXR_QUALITY_TIP 
+                            "품질 프리셋입니다. Quick(3차 보간)부터 32비트까지 있으며, Bits20이 soxr의 고품질입니다."
+    IDS_SETTINGS_SOXR_PHASE_TIP 
+                            "Minimum은 소리가 가장 덜 늦어지고, Linear는 파형 모양을 지키지만 더 늦어집니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SOXR_STEEPFILTER_TIP "통과 대역의 끝을 나이퀴스트 주파수 가까이로 올립니다."
+    IDS_SETTINGS_SOXR_PASSBANDEND_TIP 
+                            "통과 대역이 끝나는 곳을 낮은 쪽 나이퀴스트 주파수에 대한 0에서 1 사이의 비율로 정합니다."
+    IDS_SETTINGS_SOXR_STOPBANDBEGIN_TIP 
+                            "감쇠가 시작되는 곳을 낮은 쪽 나이퀴스트 주파수에 대한 비율로 정합니다. 통과 대역의 끝보다 커야 합니다."
+    IDS_SETTINGS_SOXR_ROLLOFF_TIP 
+                            "통과 대역에서 허용하는 롤오프입니다: Small(최대 0.01 dB), Medium(최대 0.35 dB), None."
+    IDS_SETTINGS_SOXR_DOUBLEPRECISION_TIP "단정밀도 대신 배정밀도로 계산합니다."
+    IDS_SETTINGS_SOXR_HIGHPRECISIONCLOCK_TIP 
+                            "간단한 분수가 아닌 레이트 비율에서 시간을 더 정확히 맞춥니다."
+    IDS_SETTINGS_SOXR_LOG2MINDFT_TIP 
+                            "가장 작은 DFT 크기의 밑이 2인 로그(8~15)입니다. 큰 쪽과 함께 soxr 지연의 대부분을 정합니다."
+    IDS_SETTINGS_SOXR_LOG2LARGEDFT_TIP 
+                            "큰 DFT 크기의 밑이 2인 로그(8~20)입니다. 가장 작은 쪽과 함께 soxr 지연의 대부분을 정합니다."
+    IDS_SETTINGS_IMEMODEINDICATOR_TIP 
+                            "게임은 클라이언트가 한국어판이나 중국어판이 아니면 모든 IME를 일본어 IME로 여깁니다. 이 설정은 한중일 어느 IME에서든 채팅의 입력 모드 표시와 전각 입력이 바르게 동작하게 합니다."
+    IDS_SETTINGS_OODLETCP_TIP "게임의 패킷 압축을 게임 연결이 쓰는 TCP 모드로 돌릴지 정합니다."
+    IDS_SETTINGS_SERVERIPRANGE_TIP 
+                            "연결을 처리할 서버 주소입니다. 주소, 범위(a-b), CIDR(a/n)을 쉼표로 구분해 적습니다. 비우면 모두입니다."
+    IDS_SETTINGS_SERVERPORTRANGE_TIP 
+                            "연결을 처리할 서버 포트입니다. 포트나 범위(a-b)를 쉼표로 구분해 적습니다. 비우면 모두입니다."
+    IDS_SETTINGS_VOICELIPSYNC_TIP 
+                            "립싱크는 일본어·영어·독일어·프랑스어에만 있으며, 그 밖의 음성 언어에서는 게임 본래의 립싱크 그대로입니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_ERROR_LOAD_32BIT "XivAlexander는 64비트 게임에만 불러올 수 있습니다."
+    IDS_LOADER_ERROR_NOT_GAME_FOLDER 
+                            "{}에서 게임을 찾을 수 없습니다. ffxiv_dx11.exe가 있는 폴더나 game\\ffxiv_dx11.exe가 있는 설치 위치를 지정해 주세요."
+    IDS_LOADER_TITLE_ADMIN  "{} (관리자)"
+    IDS_LOADER_COL_LOCATION "위치"
+    IDS_LOADER_COL_REGION   "지역"
+    IDS_LOADER_COL_VERSION  "게임 버전"
+    IDS_LOADER_COL_STATE    "XivAlexander"
+    IDS_LOADER_COL_FOUNDVIA "찾은 곳"
+    IDS_LOADER_COL_PID      "PID"
+    IDS_LOADER_COL_PROGRAM  "프로그램"
+    IDS_LOADER_COL_ARCH     "아키텍처"
+    IDS_LOADER_COL_INSTALLATION "설치 위치"
+    IDS_LOADER_COL_STARTED  "시작 시각"
+    IDS_LOADER_REGION_UNKNOWN "알 수 없음"
+    IDS_LOADER_FOUNDVIA_SQUAREENIX "스퀘어 에닉스 설치 프로그램"
+    IDS_LOADER_FOUNDVIA_STEAM "Steam"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_FOUNDVIA_ACTOZ "액토즈소프트 레지스트리"
+    IDS_LOADER_FOUNDVIA_SHENGQU "Shengqu Games 레지스트리"
+    IDS_LOADER_FOUNDVIA_USERJOY "USERJOY GAMES 레지스트리"
+    IDS_LOADER_FOUNDVIA_MSI "Windows Installer"
+    IDS_LOADER_FOUNDVIA_KNOWNFOLDER "기본 폴더"
+    IDS_LOADER_FOUNDVIA_XIVLAUNCHER "XIVLauncher"
+    IDS_LOADER_FOUNDVIA_DESKTOP "바탕 화면 바로 가기"
+    IDS_LOADER_FOUNDVIA_STARTMENU "시작 메뉴 바로 가기"
+    IDS_LOADER_FOUNDVIA_PROCESS "실행 중인 프로그램"
+    IDS_LOADER_FOUNDVIA_CONFIG "XivAlexander 설정"
+    IDS_LOADER_FOUNDVIA_USER "직접 추가함"
+    IDS_LOADER_FOUNDVIA_COMMANDLINE "명령줄"
+    IDS_LOADER_STATE_NOTINSTALLED "설치되지 않음"
+    IDS_LOADER_STATE_INSTALLED "{}로 설치됨 ({})"
+    IDS_LOADER_STATE_OLDER  "{}로 이전 버전 설치됨 ({})"
+    IDS_LOADER_STATE_NEWER  "{}로 새 버전 설치됨 ({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATE_LEFTOVER "남은 파일: {}"
+    IDS_LOADER_STATE_MISSING "찾을 수 없음"
+    IDS_LOADER_PSTATE_NOTLOADED "불러오지 않음"
+    IDS_LOADER_PSTATE_LOADED "불러옴 ({})"
+    IDS_LOADER_PSTATE_LOADEDBYINSTALL "설치된 {}로 불러옴"
+    IDS_LOADER_PSTATE_LOADEDNOACCESS "불러옴 (자세한 정보는 관리자 권한 필요)"
+    IDS_LOADER_PSTATE_UNKNOWN "알 수 없음 (관리자 권한 필요)"
+    IDS_LOADER_PSTATE_LAUNCHER "런처"
+    IDS_LOADER_PATH_UNKNOWN "(경로 알 수 없음)"
+    IDS_LOADER_DETAILS_FOUNDVIA "찾은 곳: {}"
+    IDS_LOADER_DETAILS_THIRDPARTY "다른 DLL: {}."
+    IDS_LOADER_DETAILS_CHAINLOADED "체인 로드: {}."
+    IDS_LOADER_DETAILS_NOREGION "지역을 알 수 없어 여기서 게임을 실행할 수 없습니다."
+    IDS_LOADER_DETAILS_NEEDSADMIN "이곳의 파일을 바꾸려면 관리자 권한이 필요합니다."
+    IDS_LOADER_DETAILS_RUNNING "게임이 실행 중입니다. 변경 사항은 다음 실행부터 적용됩니다."
+    IDS_LOADER_PDETAILS_BYINSTALL "설치된 DLL로 불러왔으므로 여기서 해제할 수 없습니다."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_PDETAILS_NEEDSADMIN "이 게임에 불러오거나 해제하려면 관리자 권한이 필요합니다."
+    IDS_LOADER_EMPTY_SCANNING "게임 설치 위치를 찾는 중..."
+    IDS_LOADER_EMPTY_NOINSTALL 
+                            "게임 설치 위치를 찾지 못했습니다. [찾아보기]로 ffxivboot.exe, ffxiv_dx11.exe 또는 게임 폴더를 선택해 주세요."
+    IDS_LOADER_EMPTY_NOPROCESS "실행 중인 게임이 없습니다."
+    IDS_LOADER_STATUS_FAILED "실패했습니다: {}"
+    IDS_LOADER_STATUS_FOUND "찾은 설치 위치: {}개"
+    IDS_LOADER_STATUS_ELEVATEDFAILED "관리자 권한으로 실행한 작업이 완료되지 않았습니다."
+    IDS_LOADER_STATUS_CANCELLED "취소했습니다."
+    IDS_LOADER_STATUS_BUSY  "진행 중인 작업이 끝날 때까지 기다려 주세요."
+    IDS_LOADER_STATUS_INSTALLING "{}에 설치하는 중..."
+    IDS_LOADER_STATUS_INSTALLED "{}에 설치했습니다."
+    IDS_LOADER_STATUS_UNINSTALLING "{}에서 제거하는 중..."
+    IDS_LOADER_STATUS_UNINSTALLED "{}에서 제거했습니다."
+    IDS_LOADER_STATUS_LAUNCHING "실행하는 중: {}"
+    IDS_LOADER_STATUS_LAUNCHED "실행했습니다: {}"
+    IDS_LOADER_STATUS_LOADING "프로세스 {}에 불러오는 중..."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_UNLOADING "프로세스 {}에서 해제하는 중..."
+    IDS_LOADER_STATUS_LOADED "프로세스 {}에 불러왔습니다."
+    IDS_LOADER_STATUS_UNLOADED "프로세스 {}에서 해제했습니다."
+    IDS_LOADER_STATUS_CHECKINGUPDATES "업데이트를 확인하는 중..."
+    IDS_LOADER_BROWSE_NOTFOUND "게임 설치 위치를 찾을 수 없습니다: {}"
+    IDS_LOADER_BROWSE_EXISTS "이미 목록에 있습니다: {}"
+    IDS_LOADER_BROWSE_ADDING "추가하는 중: {}"
+    IDS_LOADER_BROWSE_ADDED "추가했습니다: {}"
+    IDS_LOADER_MENU_OPENFOLDER "게임 폴더 열기(&F)"
+    IDS_LOADER_MENU_COPYPATH "경로 복사(&C)"
+    IDS_LOADER_MENU_LAUNCH_WITH "XivAlexander와 함께 실행(&W)"
+    IDS_LOADER_MENU_LAUNCH_WITHOUT "XivAlexander 없이 실행(&O)"
+    IDS_LOADER_MENU_REMOVE  "목록에서 제거(&R)"
+    IDS_LOADER_MENU_PICKFILE "파일 선택(&F)..."
+    IDS_LOADER_MENU_PICKFOLDER "폴더 선택(&O)..."
+    IDS_LOADER_MENU_INSTALL_D3D11 "d3d11.dll로 설치(&D) (권장)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_MENU_INSTALL_DINPUT8 "dinput8.dll로 설치(&I)"
+    IDS_LOADER_MENU_INSTALL_DXGI "dxgi.dll로 설치(&X)"
+    IDS_LOADER_MENU_LANGUAGE_SYSTEM "시스템 기본(&S)"
+    IDS_LOADER_MENU_LANGUAGE_ENGLISH "영어(&E) (English)"
+    IDS_LOADER_MENU_LANGUAGE_KOREAN "한국어(&K)"
+    IDS_LOADER_MENU_LANGUAGE_JAPANESE "일본어(&J) (日本語)"
+    IDS_LOADER_MENU_THEME_SYSTEM "시스템 설정 사용(&S)"
+    IDS_LOADER_MENU_THEME_LIGHT "밝게(&L)"
+    IDS_LOADER_MENU_THEME_DARK "어둡게(&D)"
+    IDS_LOADER_MENU_CHECKUPDATES "업데이트 확인(&U)"
+    IDS_LOADER_MENU_HOMEPAGE "홈페이지 표시(&H)"
+    IDS_LOADER_MENU_OPENCONFIGDIR "설정 폴더 열기(&S)"
+    IDS_LOADER_MENU_OPENPROGRAMDIR "프로그램 폴더 열기(&P)"
+    IDS_LOADER_MENU_CLEANUP "XivAlexander 데이터 제거(&R)..."
+    IDS_LOADER_STATUS_CLEANING "선택한 데이터를 제거하는 중..."
+    IDS_LOADER_STATUS_CLEANUP_DONE "선택한 데이터를 제거했습니다."
+END
+
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STEP_GAME "1. 사용할 게임 선택(&T)"
+    IDS_LOADER_LABEL_INSTALLATIONS "게임 설치 위치(&T)"
+    IDS_LOADER_LABEL_PROCESSES "실행 중인 게임(&N)"
+    IDS_LOADER_LABEL_SESSIONS "선택한 설치 위치에서 실행 중인 게임"
+    IDS_LOADER_BUTTON_BROWSE "찾아보기(&B)..."
+    IDS_LOADER_BUTTON_FIND_GAME "게임 폴더 찾기(&B)..."
+    IDS_LOADER_BUTTON_INSTALL "설치(&I)"
+    IDS_LOADER_BUTTON_UNINSTALL "제거(&U)"
+    IDS_LOADER_BUTTON_UNLOAD "불러오기 해제(&O)"
+    IDS_LOADER_ONCE_NOTE "설치 없이 이번 게임 실행에만 적용합니다. 게임을 종료하면 적용도 끝납니다."
+    IDS_LOADER_ONCE_INSTALLED_NOTE "자동 적용이 이미 설정되어 있습니다. 이 버튼으로도 게임을 시작할 수 있습니다."
+    IDS_LOADER_AUTO_GROUP "매번 자동 적용"
+    IDS_LOADER_AUTO_NOTE "한 번 설치하면 평소 쓰던 런처로 실행해도 적용됩니다. 나중에 여기서 해제할 수 있습니다."
+    IDS_LOADER_APPLY_NOW "선택한 게임에 적용(&L)"
+    IDS_LOADER_START_ONCE "게임 실행하고 적용(&L)"
+    IDS_LOADER_INSTALL_AUTO "자동 적용 설치(&I)"
+    IDS_LOADER_UPDATE_AUTO "자동 적용 업데이트(&I)"
+    IDS_LOADER_STOP_AUTO "자동 적용 해제(&U)"
+    IDS_LOADER_STOP_ONCE "이번 실행에서 해제(&O)"
+    IDS_LOADER_AUTO_READY "설정됨"
+    IDS_LOADER_AUTO_OLDER "업데이트 가능"
+    IDS_LOADER_AUTO_OFF "꺼짐"
+    IDS_LOADER_AUTO_INCOMPLETE "설치 복구 필요"
+    IDS_LOADER_SESSION_ON "적용됨"
+    IDS_LOADER_SESSION_OFF "적용 전"
+    IDS_LOADER_SESSION_UNKNOWN "권한 확인 필요"
+    IDS_LOADER_SESSION_AUTO_NOTE "자동으로 적용된 게임입니다. 위에서 자동 적용을 해제한 뒤 게임을 다시 실행하면 적용이 끝납니다."
+    IDS_LOADER_SESSION_ADMIN_NOTE "적용하거나 해제할 때 Windows에서 관리자 권한을 요청할 수 있습니다."
+    IDS_LOADER_SESSION_ONCE_NOTE "여기서의 변경은 이번 게임 실행에만 적용됩니다. 자동 적용은 위에서 설정하세요."
+    IDS_LOADER_EMPTY_NOSESSION "이 설치 위치에서 실행 중인 게임이 없습니다. 위의 '게임 실행하고 적용'을 누르거나 평소 쓰던 런처로 실행하세요."
+    IDS_LOADER_GUIDE_SELECT "위 목록에서 사용할 게임을 선택하세요. 목록에 없으면 '게임 폴더 찾기'로 추가하세요."
+    IDS_LOADER_GUIDE_MISSING "이 게임 폴더를 찾을 수 없습니다. 현재 게임 폴더를 찾거나 다른 게임을 선택하세요."
+    IDS_LOADER_GUIDE_CHOOSE_SESSION "게임이 여러 개 실행 중입니다. 아래 목록에서 적용할 게임을 하나 선택하세요."
+    IDS_LOADER_GUIDE_ACTIVE "XivAlexander가 적용되어 있습니다. 자동 적용 설정을 바꾸면 게임을 다시 실행한 뒤 반영됩니다."
+    IDS_LOADER_GUIDE_RUNNING "실행 중인 게임에 바로 적용하거나, 다음 실행부터 쓸 자동 적용을 설치하세요. 설치 변경은 게임을 다시 실행한 뒤 반영됩니다."
+    IDS_LOADER_GUIDE_UNIDENTIFIED "실행 중인 게임의 위치를 확인할 수 없습니다. 고급 모드에서 선택하거나 게임을 종료한 뒤 다시 시도하세요."
+    IDS_LOADER_GUIDE_AUTO "자동 적용이 설정되어 있습니다. 평소 쓰던 런처로 게임을 실행하세요. 업데이트 후에는 게임을 다시 실행하세요."
+    IDS_LOADER_GUIDE_START "'게임 실행하고 적용'을 누르면 공식 런처가 열립니다. 평소처럼 로그인하세요. 매번 사용하려면 자동 적용을 설치하세요."
+    IDS_LOADER_GUIDE_NOBOOT "이번에만 사용하려면 평소 쓰던 런처로 게임을 실행한 뒤 돌아오세요. 자동 적용 설치는 바로 할 수 있습니다."
+    IDS_LOADER_APPLYING "선택한 게임에 XivAlexander를 적용하고 있습니다..."
+    IDS_LOADER_STOPPING "이번 게임 실행에서 XivAlexander를 해제하고 있습니다..."
+    IDS_LOADER_DONE_APPLY "적용했습니다. 그대로 플레이하세요. 게임을 종료할 때까지 유지됩니다."
+    IDS_LOADER_DONE_STOP "이번 게임 실행에서 적용을 해제했습니다."
+    IDS_LOADER_DONE_INSTALL "자동 적용을 설치했습니다. 평소 쓰던 런처를 이용하세요. 실행 중인 게임은 다시 실행하세요."
+    IDS_LOADER_DONE_UNINSTALL "자동 적용을 해제했습니다. 실행 중인 게임을 종료하고 다시 실행하면 해제가 완료됩니다."
+    IDS_LOADER_EMPTY_GAME "게임을 찾지 못했습니다. 오른쪽 위의 '게임 폴더 찾기'를 눌러 게임을 설치한 폴더를 선택하세요."
+END
+
 
 #endif    // Korean (Korea) resources
 /////////////////////////////////////////////////////////////////////////////
@@ -1721,6 +2850,65 @@ BEGIN
     PUSHBUTTON      "Disable and Close",IDC_DISABLE,6,276,78,14
 END
 
+IDD_LOADER_MAIN DIALOGEX 0, 0, 500, 330
+STYLE DS_SETFONT | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_POPUP | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "XivAlexander"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "Game installa&tions",IDC_LOADER_INSTALLS_LABEL,7,7,446,10
+    LTEXT           "Choose your game, then try XivAlexander for this session or set up automatic loading.",IDC_LOADER_INTRO,10,8,480,18,SS_NOPREFIX
+    LTEXT           "2. Choose how to use XivAlexander",IDC_LOADER_METHOD_LABEL,10,100,480,10,SS_NOPREFIX
+    GROUPBOX        "Use now",IDC_LOADER_ONCE_GROUP,10,113,237,74
+    LTEXT           "",IDC_LOADER_ONCE_NOTE,16,127,225,32,SS_NOPREFIX
+    PUSHBUTTON      "",IDC_LOADER_APPLY_ONCE,16,163,225,18
+    GROUPBOX        "Automatic loading",IDC_LOADER_AUTO_GROUP,253,113,237,74
+    LTEXT           "",IDC_LOADER_AUTO_NOTE,259,127,225,32,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_GUIDANCE,10,193,360,26,SS_NOPREFIX
+    LTEXT           "",IDC_LOADER_INSTALL_DETAILS,7,152,340,26,SS_NOPREFIX | 0x2000
+    CONTROL         "Show &control window",IDC_LOADER_SHOWCONTROLWINDOW,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,350,152,103,12
+    PUSHBUTTON      "&Browse...",IDC_LOADER_BROWSE,7,181,60,14
+    PUSHBUTTON      "Remo&ve from List",IDC_LOADER_REMOVE,71,181,60,14
+    PUSHBUTTON      "&Refresh",IDC_LOADER_REFRESH,135,181,60,14
+    PUSHBUTTON      "Launch &Game",IDC_LOADER_LAUNCH,265,181,60,14
+    PUSHBUTTON      "&Uninstall",IDC_LOADER_UNINSTALL,329,181,60,14
+    PUSHBUTTON      "&Install",IDC_LOADER_INSTALL,393,181,60,14
+    LTEXT           "Ru&nning games",IDC_LOADER_PROCESSES_LABEL,7,203,446,10
+    LTEXT           "",IDC_LOADER_PROCESS_DETAILS,7,275,310,18,SS_NOPREFIX | 0x2000
+    PUSHBUTTON      "Unl&oad",IDC_LOADER_UNLOAD,329,275,60,14
+    PUSHBUTTON      "&Load",IDC_LOADER_LOAD,393,275,60,14
+    CONTROL         "A&dvanced",IDC_LOADER_ADVANCED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,300,60,12
+    CONTROL         "",IDC_LOADER_STATUS,"Static",SS_LEFTNOWORDWRAP | SS_NOPREFIX | SS_ENDELLIPSIS,71,302,200,10
+    CONTROL         "",IDC_LOADER_PROGRESS,"msctls_progress32",PBS_MARQUEE,275,302,50,10
+    PUSHBUTTON      "&More",IDC_LOADER_MORE,329,299,60,14
+    PUSHBUTTON      "Close",IDCANCEL,393,299,60,14
+END
+
+IDD_LOADER_CLEANUP DIALOGEX 0, 0, 300, 186
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Remove XivAlexander Data"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    LTEXT           "",IDC_CLEANUP_INTRO,7,7,286,24,SS_NOPREFIX
+    CONTROL         "Delete &caches",IDC_CLEANUP_CACHES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,36,200,12
+    RTEXT           "",IDC_CLEANUP_CACHES_SIZE,210,38,83,10,SS_NOPREFIX
+    CONTROL         "Delete &program files",IDC_CLEANUP_PROGRAM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,52,200,12
+    RTEXT           "",IDC_CLEANUP_PROGRAM_SIZE,210,54,83,10,SS_NOPREFIX
+    LTEXT           "",IDC_CLEANUP_PROGRAM_PATH,19,64,274,10,SS_NOPREFIX | SS_PATHELLIPSIS
+    CONTROL         "Forget saved &login sessions",IDC_CLEANUP_SESSIONS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,80,200,12
+    RTEXT           "",IDC_CLEANUP_SESSIONS_SIZE,210,82,83,10,SS_NOPREFIX
+    CONTROL         "Delete &settings",IDC_CLEANUP_SETTINGS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,96,200,12
+    RTEXT           "",IDC_CLEANUP_SETTINGS_SIZE,210,98,83,10,SS_NOPREFIX
+    CONTROL         "Move your &mods and rules to the Recycle Bin",IDC_CLEANUP_USERCONTENT,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,112,200,12
+    RTEXT           "",IDC_CLEANUP_USERCONTENT_SIZE,210,114,83,10,SS_NOPREFIX
+    LTEXT           "Nothing outside the XivAlexander folders is touched.",IDC_CLEANUP_NOTE,7,134,286,20
+    PUSHBUTTON      "&Delete Selected",IDOK,159,165,80,14
+    DEFPUSHBUTTON   "Skip",IDCANCEL,243,165,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1773,7 +2961,7 @@ BEGIN
     POPUP "&Restart"
     BEGIN
         MENUITEM "&Restart Using Choices Below\tCtrl+Shift+R", ID_RESTART_RESTART
-        MENUITEM "Copy Launch Co&mmand Line",   ID_RESTART_COPYLAUNCHCOMMANDLINE
+        MENUITEM "Copy as Co&mmand Line",       ID_RESTART_COPYLAUNCHCOMMANDLINE
         MENUITEM SEPARATOR
         MENUITEM "Use &XivAlexander\tCtrl+Shift+X", ID_RESTART_USEXIVALEXANDER
         MENUITEM "Use &Parameter Obfuscation\tCtrl+Shift+P", ID_RESTART_USEPARAMETEROBFUSCATION
@@ -1798,7 +2986,7 @@ BEGIN
     BEGIN
         POPUP "Latency and Timing &Helper"
         BEGIN
-            MENUITEM "&Enable\tCtrl+Shift+H",     ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
+            MENUITEM "&Enable\tCtrl+Shift+H",       ID_NETWORK_HIGHLATENCYMITIGATION_ENABLE
             MENUITEM SEPARATOR
             MENUITEM "Mode &1: Subtract Latency",   ID_NETWORK_HIGHLATENCYMITIGATION_MODE_1
             MENUITEM "Mode &2: Simulate RTT ({}us)", ID_NETWORK_HIGHLATENCYMITIGATION_MODE_2
@@ -1812,11 +3000,11 @@ BEGIN
         MENUITEM "Log All &IPC Message \tCtrl+Shift+M", ID_NETWORK_USEALLIPCMESSAGELOGGER
         MENUITEM SEPARATOR
         MENUITEM "&Reduce Packet Delay\tCtrl+Shift+F1", ID_NETWORK_REDUCEPACKETDELAY
-        MENUITEM "Re&set All Connections", ID_NETWORK_RESETALLCONNECTIONS
+        MENUITEM "Re&set All Connections",      ID_NETWORK_RESETALLCONNECTIONS
         POPUP "&Troubleshooting"
         BEGIN
             MENUITEM "Take Over &Loopback Addresses (127.0.0.0/8)\tCtrl+Shift+1", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERLOOPBACKADDRESSES
-            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/24)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
+            MENUITEM "Take Over &Private Addresses (10.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16)\tCtrl+Shift+2", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERPRIVATEADDRESSES
             MENUITEM "Take Over &All Addresses (0.0.0.0/0)\tCtrl+Shift+3", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLADDRESSES
             MENUITEM "Take Over All P&orts\tCtrl+Shift+4", ID_NETWORK_TROUBLESHOOTREMOTEADDRESSES_TAKEOVERALLPORTS
         END
@@ -1838,9 +3026,9 @@ BEGIN
             MENUITEM "&Import",                     ID_MODDING_TTMP_IMPORT
             MENUITEM "&Open Directory",             ID_MODDING_TTMP_OPENDIRECTORY
         END
-        MENUITEM "Re&fresh", ID_MODDING_TTMP_REFRESH
+        MENUITEM "Re&fresh",                    ID_MODDING_TTMP_REFRESH
         MENUITEM SEPARATOR
-        MENUITEM "Support Alternate &Codecs for Musics", ID_MODDING_USEALTCODECMUSICSUPPORT
+        MENUITEM "Support Alternate &Codecs for Musics (FLAC, WAV)", ID_MODDING_USEALTCODECMUSICSUPPORT
         MENUITEM "Log All F&ile Access",        ID_MODDING_LOGALLFILEACCESS
         POPUP "Mute &Voice"
         BEGIN
@@ -1890,13 +3078,13 @@ BEGIN
         END
         POPUP "&Theme"
         BEGIN
-            MENUITEM "&System",                     ID_CONFIGURE_THEME_SYSTEM
+            MENUITEM "Follow &System",              ID_CONFIGURE_THEME_SYSTEM
             MENUITEM "&Light",                      ID_CONFIGURE_THEME_LIGHT
             MENUITEM "&Dark",                       ID_CONFIGURE_THEME_DARK
         END
         MENUITEM SEPARATOR
         MENUITEM "Open Configuration &Directory", ID_CONFIGURE_OPENCONFIGURATIONDIRECTORY
-        MENUITEM "Reload (&Z)\tCtrl+Shift+F5", ID_CONFIGURE_RELOAD
+        MENUITEM "Reload (&Z)\tCtrl+Shift+F5",  ID_CONFIGURE_RELOAD
     END
     POPUP "&View"
     BEGIN
@@ -1961,45 +3149,6 @@ IDI_TRAY_ICON           ICON                    "..\\Graphics\\Icon.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// Version
-//
-
-VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,14,9,3
- PRODUCTVERSION 1,14,9,3
- FILEFLAGSMASK 0x3fL
-#ifdef _DEBUG
- FILEFLAGS 0x1L
-#else
- FILEFLAGS 0x0L
-#endif
- FILEOS 0x40004L
- FILETYPE 0x1L
- FILESUBTYPE 0x0L
-BEGIN
-    BLOCK "StringFileInfo"
-    BEGIN
-        BLOCK "040004b0"
-        BEGIN
-            VALUE "CompanyName", "Soreepeong"
-            VALUE "FileDescription", "XivAlexander Main DLL"
-            VALUE "FileVersion", "1.14.9.3"
-            VALUE "InternalName", "XivAlexander.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2021"
-            VALUE "OriginalFilename", "XivAlexander.dll"
-            VALUE "ProductName", "XivAlexander"
-            VALUE "ProductVersion", "1.14.9.3"
-        END
-    END
-    BLOCK "VarFileInfo"
-    BEGIN
-        VALUE "Translation", 0x400, 1200
-    END
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // RT_MANIFEST
 //
 
@@ -2011,14 +3160,12 @@ IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.m
 // RCDATA
 //
 
-// Game code signatures the font replacement uses, shared with FFXIV-FontChanger.
 IDR_GAMEFONTSIGNATURES  RCDATA                  "..\\FFXIV-FontChanger\\xivres\\data\\game_font_signatures.json"
 
-// Compiled from FFXIV-FontChanger's FontEdgePS.hlsl by FxCompile into the intermediate directory, an include directory of the resource compiler.
 IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
 
-// Settings font preview shaders, compiled by FxCompile into the intermediate directory.
 IDR_FONTPREVIEWVS       RCDATA                  "FontPreviewVS.cso"
+
 IDR_FONTPREVIEWTEXTPS   RCDATA                  "FontPreviewTextPS.cso"
 
 
@@ -2142,14 +3289,11 @@ BEGIN
                             "An unexpected error has occurred, and the game must exit.\nXivAlexander may be the cause of the error. Make an issue at GitHub with log to get help."
     IDS_WARNING_GAME_PARAMETER_PARSE 
                             "Could not resolve game launch parameters. Restart feature will be disabled. ({})"
-    IDS_CONFIRM_MAIN_WINDOW_CLOSE 
-                            "Do you want to unload XivAlexander?\n\nPress {} to unload XivAlexander.\nPress {} to hide this window.\nPress {} to do nothing."
 END
 
 STRINGTABLE
 BEGIN
     IDS_CONFIRM_EXIT_GAME   "Do you want to force quit the game?"
-    IDS_CONFIRM_RESET_ALL_CONNECTIONS "Do you want to reset all connections?"
     IDS_TITLE_UNRECOVERABLEERROR_FOOTER 
                             "Report to <a href=""issues"">XivAlexander Issues at GitHub</a>"
     IDS_CONFIRM_RESTART_GAME 
@@ -2166,6 +3310,27 @@ BEGIN
     IDS_LANGUAGE_NAME_KOREAN "Korean"
     IDS_LANGUAGE_NAME_CHINESE_SIMPLIFIED "Chinese (Simplified)"
     IDS_LANGUAGE_NAME_UNSPECIFIED "(Language Unspecified)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_RESULT_IMPORT_ERROR "Error: {}: {}"
+    IDS_FONTPRESET_ERROR_CANNOTREAD "{} can't be read."
+    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
+                            "The glyph image folder {} isn't under the preset's folder."
+    IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
+    IDS_FONTPREVIEW_ERROR_NOFACE "There is no face to draw {} with."
+    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
+    IDS_ERROR_LOAD_INSTALLED 
+                            "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
+    IDS_ERROR_LOAD_INSTALLED_NOPATH 
+                            "Failed to resolve the XivAlexander installation path."
+    IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
+    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
+                            "{} has no glyphs; it may not be installed, or can't be read."
+    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} has none of the text's characters."
+    IDS_CONFIRM_RESET_ALL_CONNECTIONS "Do you want to reset all connections?"
+    IDS_TITLE_MERGINGEXCEL  "Merging text of other languages..."
 END
 
 STRINGTABLE
@@ -2191,43 +3356,54 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE 
-                            "Match Default Windows Audio Output Device ({}Hz)(&0)"
-    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN 
-                            "Match Default Windows Audio Output Device(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE "Match System Default ({}Hz)(&0)"
+    IDS_MENU_SAMPLINGRATE_MATCHDEVICE_UNKNOWN "Match System Default(&0)"
     IDS_MENU_SAMPLINGRATE_RATE "{}(&{})"
     IDS_MENU_SAMPLINGRATE_RATE_DEFAULT "{} (default)(&{})"
     IDS_MENU_USESOXRRESAMPLER "Use &soxr Resampler"
     IDS_REGION_NAME_CHINATRAD "Traditional Chinese"
     IDS_CLIENT_USERJOYGAMES "USERJOY GAMES"
     IDS_MENU_LOGINSESSION   "&Session"
-    IDS_MENU_LOGINSESSION_EXPIRED "{} (expired)"
     IDS_MENU_LOGINSESSION_LAUNCHARGUMENTS "(Session from launch arguments)"
     IDS_CONFIRM_RESTART_GAME_TITLE "Start the game with these settings?"
     IDS_CONFIRM_RESTART_GAME_LOGINSESSION "\nLogin Session: {}"
     IDS_RESTART_GAME_RESTART "&Restart\nClose this game and start it again."
-    IDS_RESTART_GAME_NEWINSTANCE "Launch a &New Instance\nKeep this game running and start another one."
-    IDS_VERSIONSENSITIVE_CONTENT "The following features hook or patch the game's code, and have not been confirmed on this game version ({}). As the game has been updated, they may crash the game.\n{}\n\nChanges to modding take effect when the game restarts."
-    IDS_VERSIONSENSITIVE_TITLE "Keep using features that may not work with this game version?"
-    IDS_VERSIONSENSITIVE_KEEP "&Keep\nUse these features on this game version, and do not ask again."
-    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY "Keep &Temporarily\nUse these features until the game exits, and ask again on the next launch."
-    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY "Disable Te&mporarily\nDo not use these features until the game exits, and ask again on the next launch."
-    IDS_VERSIONSENSITIVE_DISABLE "&Disable\nTurn these features off."
-    IDS_VERSIONSENSITIVE_MODDING "Modding"
-    IDS_VERSIONSENSITIVE_LOGINSESSIONS "Switching login sessions in the running game"
-    IDS_VERSIONSENSITIVE_PATCHCODE "Patch code: {}"
-    IDS_VERSIONSENSITIVE_SAMPLINGRATE "Audio sampling rate"
-    IDS_VERSIONSENSITIVE_SOXR "soxr resampler"
-    IDS_VERSIONSENSITIVE_ALTCODEC "Alternate codecs for musics"
-    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IME mode indicator for Korean and Chinese IMEs"
-    IDS_VERSIONSENSITIVE_CROWDFIX "CrowdFix (performance fixes for crowded areas)"
-    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "Font replacement"
-    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART "(!) Some features are disabled until restart."
+    IDS_RESTART_GAME_NEWINSTANCE 
+                            "Launch a &New Instance\nKeep this game running and start another one."
+    IDS_MENU_LOGINSESSION_EXPIRED "{} (expired)"
+    IDS_VERSIONSENSITIVE_CONTENT 
+                            "The following features are not verified to work on this game version ({}), and may result in a crash anytime later.\n{}\n\nChanges to modding take effect when the game restarts."
 END
 
 STRINGTABLE
 BEGIN
-    IDS_ERROR_COMPONENTS    "Failed to verify some or all of the following files:\n* XivAlexander32.dll\n* XivAlexander64.dll\n* XivAlexanderLoader32.dll\n* XivAlexanderLoader64.dll\n\nDo you want to download the program again?"
+    IDS_VERSIONSENSITIVE_TITLE 
+                            "Keep using features that may not work with this game version?"
+    IDS_VERSIONSENSITIVE_KEEP 
+                            "&Keep\nUse these features on this game version, and do not ask again."
+    IDS_VERSIONSENSITIVE_KEEPTEMPORARILY 
+                            "Keep &Temporarily\nUse these features until the game exits, and ask again on the next launch."
+    IDS_VERSIONSENSITIVE_DISABLETEMPORARILY 
+                            "Disable Te&mporarily\nDo not use these features until the game exits, and ask again on the next launch."
+    IDS_VERSIONSENSITIVE_DISABLE "&Disable\nTurn these features off."
+    IDS_VERSIONSENSITIVE_MODDING "Modding"
+    IDS_VERSIONSENSITIVE_LOGINSESSIONS 
+                            "Switching login sessions in the running game"
+    IDS_VERSIONSENSITIVE_PATCHCODE "Game Fix: {}"
+    IDS_VERSIONSENSITIVE_SAMPLINGRATE "Audio sampling rate"
+    IDS_VERSIONSENSITIVE_SOXR "soxr resampler"
+    IDS_VERSIONSENSITIVE_ALTCODEC "Alternate codecs for musics"
+    IDS_VERSIONSENSITIVE_DISABLEDUNTILRESTART 
+                            "(!) Some features are disabled until restart."
+    IDS_VERSIONSENSITIVE_IMEMODEINDICATOR "IME mode indicator for CJK IMEs"
+    IDS_VERSIONSENSITIVE_CROWDFIX 
+                            "CrowdFix (performance fixes for crowded areas)"
+    IDS_VERSIONSENSITIVE_FONTREPLACEMENT "Font replacement"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_ERROR_COMPONENTS    "Failed to verify some or all of the following files:\n* XivAlexanderLoader32.dll\n* XivAlexanderLoader64.dll\n* XivAlexander64.dll\n* XivAlexanderLoader64.exe\n\nDo you want to download the program again?"
     IDS_URL_RELEASES        "https://github.com/Soreepeong/XivAlexander/releases"
     IDS_ERROR_NO_FFXIV_PROCESS 
                             "{} not found. Run the game first, and then try again."
@@ -2254,7 +3430,7 @@ BEGIN
                             "XivAlexander detected in FFXIV Process ({}:{})\n\nPress {} to try loading again if it hasn't loaded properly,\nPress {} to unload, or\nPress {} to skip."
     IDS_CONFIRM_INJECT      "Game process found:\n\n* Process ID: {}\n* Path: {}\n\nContinue loading XivAlexander into this process?"
     IDS_UPDATE_FILE_TOO_BIG "Update package is too big, meaning that the package is possibly corrupted. Please replace files by yourself if you are sure that the update is correct."
-    IDS_HELP_ACTION         "specify action\n\t* auto: load into game if already running, otherwise try to detect game installation and run\n\t* ask: confirm action per game process\n\t* load: load XivAlexander into game process\n\t* unload: unload XivAlexander from game process\n\t* launcher: run specified game launcher and load XivAlexander to the game run\n\t* update-check: check for updates\n\t* web: open github repository at https://github.com/Soreepeong/XivAlexander"
+    IDS_HELP_ACTION         "specify action\n\t* interactive: open the loader window (default)\n\t* install: install XivAlexander into the game folder given as the target\n\t* uninstall: uninstall XivAlexander from the game folder given as the target\n\t* ask: confirm action per game process\n\t* load: load XivAlexander into game process\n\t* unload: unload XivAlexander from game process\n\t* launcher: run specified game launcher and load XivAlexander to the game run\n\t* update-check: check for updates\n\t* web: open github repository at https://github.com/Soreepeong/XivAlexander"
     IDS_HELP_LAUNCHER       "specify launcher (possible values: auto, select, squareenix, actozsoft, shengqugames, userjoygames)"
     IDS_HELP_QUIET          "disable error messages"
     IDS_HELP_DISABLE_RUNAS  "disable run as administrator"
@@ -2349,18 +3525,12 @@ BEGIN
                             "XivAlexander is now installed for {}."
     IDS_NOTIFY_XIVALEXINSTALL_UNINSTALLCOMPLETE 
                             "XivAlexander is now uninstalled from {}.\nFor complete removal of files, you will have to remove configuration files manually. Do you want to open the configuration folder?"
-    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8)"
+    IDS_HELP_INSTALL_MODE   "specify install mode (possible values: d3d (default), dinput8, dxgi)"
     IDS_ERROR_INVALID_INSTALL_MODE 
                             "Invalid install mode specified. Accepted values are d3d, and dinput8."
     IDS_LOADERAPP_INTERACTIVE_INSTALL_INSTALL_DINPUT8 
                             "&Install XivAlexander as dinput8.dll\nInstall XivAlexander for the selected game installation, taking place of dinput8.dll."
     IDS_TITLE_DISCOVERINGFILES "Discovering files..."
-END
-
-STRINGTABLE
-BEGIN
-    IDS_ERROR_CANCELLING_TRYAGAINLATER 
-                            "Cancelling previous operation. Please try again later."
 END
 
 STRINGTABLE
@@ -2387,14 +3557,20 @@ BEGIN
     IDS_SETTINGS_BROWSE     "Browse..."
     IDS_SETTINGS_ADD        "Add..."
     IDS_SETTINGS_REMOVE     "Remove"
-    IDS_SETTINGS_EDITINCONFIGEDITOR "Edit this in the runtime configuration editor."
+    IDS_SETTINGS_EDITINCONFIGEDITOR 
+                            "Edit this in the runtime configuration editor."
     IDS_SETTINGS_OPENEDITOR "Open Editor"
+    IDS_SETTINGS_OPENFRAMERATELOCKING "Open Framerate Locking..."
     IDS_SETTINGS_GROUP_UI   "Interface"
     IDS_SETTINGS_GROUP_UI_MAINWINDOW "Control Window"
     IDS_SETTINGS_GROUP_UI_LOGWINDOW "Logging Window"
     IDS_SETTINGS_GROUP_UI_CONFIGWINDOW "Configuration Editor"
     IDS_SETTINGS_GROUP_GAMEWINDOW "Game Window"
     IDS_SETTINGS_GROUP_NETWORKTIMING "Latency and Timing Helper"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_SOCKET "Connections"
     IDS_SETTINGS_GROUP_FRAMERATECONTROL "Framerate Control"
     IDS_SETTINGS_GROUP_FRAMERATECONTROL_LOCK "Lock Framerate"
@@ -2411,6 +3587,10 @@ BEGIN
     IDS_SETTINGS_GROUP_AUDIO_SOXR_FILTER "Filter"
     IDS_SETTINGS_GROUP_CROWDFIX "CrowdFix"
     IDS_SETTINGS_GROUP_CROWDFIX_FIXES "Fixes"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "Font Replacement"
     IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "Faces"
     IDS_SETTINGS_BACKGROUNDLIMIT "Background framerate limit (fps)"
@@ -2420,36 +3600,70 @@ BEGIN
     IDS_SETTINGS_LOCK_RANGETO "Highest target framerate (fps)"
     IDS_SETTINGS_LOCK_MAXDEVIATION "Maximum render interval deviation (µs)"
     IDS_SETTINGS_LOCK_GCD   "Global cooldown (s)"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_CROWDFIX_ENABLED "Enable CrowdFix"
-    IDS_SETTINGS_CROWDFIX_ENABLED_DESC "Reduces per-frame work that grows with the number of objects around. Changes apply from the next frame."
+    IDS_SETTINGS_CROWDFIX_ENABLED_DESC 
+                            "Reduces per-frame work that grows with the number of objects around. Changes apply from the next frame. Turn individual fixes off if you see visual glitches."
     IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS "Skip idle GPU resource notifiers"
-    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC "Walks only the GPU resources that do per-frame work, instead of every resource twice per frame."
+    IDS_SETTINGS_CROWDFIX_SKIPIDLENOTIFIERS_DESC 
+                            "Walks only the GPU resources that do per-frame work, instead of every resource twice per frame."
     IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS "Chain job worker wake-ups"
-    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC "Wakes one sleeping worker per job submit, and lets each woken worker wake the next, instead of waking every worker from the submitting thread."
-    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS "Sync skeleton poses once per frame"
-    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC "Skips the pose syncs of every skeleton that repeat for each rendered view after the first one in a frame."
+    IDS_SETTINGS_CROWDFIX_CHAINWORKERWAKEUPS_DESC 
+                            "Wakes one sleeping worker per job submit, and lets each woken worker wake the next, instead of waking every worker from the submitting thread."
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS 
+                            "Sync skeleton poses once per frame"
+    IDS_SETTINGS_CROWDFIX_DEDUPESKELETONSYNCS_DESC 
+                            "Skips the pose syncs of every skeleton that repeat for each rendered view after the first one in a frame."
     IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR "Clear only the used culling slots"
-    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC "Clears the visibility table only up to the highest object slot ever used, instead of all 40,960 slots several times per frame."
-    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK "Free large graphics blocks outside the allocator lock"
-    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC "Lets small allocations proceed while large blocks are being freed. Mostly helps on CPUs where the main thread waits for the job workers."
+    IDS_SETTINGS_CROWDFIX_TRIMCULLINGCLEAR_DESC 
+                            "Clears the visibility table only up to the highest object slot ever used, instead of all 40,960 slots several times per frame."
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK 
+                            "Free large graphics blocks outside the allocator lock"
+    IDS_SETTINGS_CROWDFIX_SHORTENALLOCATORLOCK_DESC 
+                            "Lets small allocations proceed while large blocks are being freed. Mostly helps on CPUs where the main thread waits for the job workers."
     IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS "Pool draw staging blocks"
-    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC "Reuses freed staging blocks by size, so most allocations skip the allocator's global locks."
-    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS "Freeze the follow AI of hidden minions"
-    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC "Skips the follow AI, with its collision sweeps, of minions whose model is hidden. They still warp back to their owner when left behind."
+    IDS_SETTINGS_CROWDFIX_POOLSTAGINGBLOCKS_DESC 
+                            "Reuses freed staging blocks by size, so most allocations skip the allocator's global locks."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS 
+                            "Freeze the follow AI of hidden minions"
+    IDS_SETTINGS_CROWDFIX_FREEZEHIDDENMINIONS_DESC 
+                            "Skips the follow AI, with its collision sweeps, of minions whose model is hidden. They still warp back to their owner when left behind."
     IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT "Skip the redundant job list wait"
-    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC "Removes a second wait on an event that is always already signaled: about 75 system calls per frame."
-    IDS_SETTINGS_CROWDFIX_INLINEBGPREP "Run background instancing prep on the main thread"
-    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC "Runs the tiny per-view background instancing job right away, instead of handing it to a worker and waiting for it."
+    IDS_SETTINGS_CROWDFIX_SKIPPREPAREWAIT_DESC 
+                            "Removes a second wait on an event that is always already signaled: about 75 system calls per frame."
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP 
+                            "Run background instancing prep on the main thread"
+    IDS_SETTINGS_CROWDFIX_INLINEBGPREP_DESC 
+                            "Runs the tiny per-view background instancing job right away, instead of handing it to a worker and waiting for it."
     IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS "Skip preparing hidden hotbars"
-    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC "Skips preparing the slots of hidden hotbars every frame. A bar that becomes visible is prepared in that same frame."
+    IDS_SETTINGS_CROWDFIX_SKIPHIDDENHOTBARS_DESC 
+                            "Skips preparing the slots of hidden hotbars every frame. A bar that becomes visible is prepared in that same frame."
     IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL "Finish animations in parallel"
-    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC "Finishes the skeletons of each attach depth on the job workers, instead of one by one on the main thread."
-    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING "Split character culling across threads"
-    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC "The game culls all characters in a single job; this lets every thread that finishes its own culling work help with it."
-    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS "Hand out culling work one item at a time"
-    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC "Spreads cell culling over more threads, instead of handing out blocks of up to 8 items that only a few threads get."
-    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS "Gather only the used command list entries"
-    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC "Copies only the used entries of each command list, and skips sorting them when they are already in order. The result is the same as the game's."
+    IDS_SETTINGS_CROWDFIX_PARALLELANIMTAIL_DESC 
+                            "Finishes the skeletons of each attach depth on the job workers, instead of one by one on the main thread."
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING 
+                            "Split character culling across threads"
+    IDS_SETTINGS_CROWDFIX_SPLITCHARACTERCULLING_DESC 
+                            "The game culls all characters in a single job; this lets every thread that finishes its own culling work help with it."
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS 
+                            "Hand out culling work one item at a time"
+    IDS_SETTINGS_CROWDFIX_PERITEMCULLINGCLAIMS_DESC 
+                            "Spreads cell culling over more threads, instead of handing out blocks of up to 8 items that only a few threads get."
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS 
+                            "Gather only the used command list entries"
+    IDS_SETTINGS_CROWDFIX_GATHERUSEDCOMMANDS_DESC 
+                            "Copies only the used entries of each command list, and skips sorting them when they are already in order. The result is the same as the game's."
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PAGE_PATCHCODES "Game Fixes"
     IDS_SETTINGS_PATCHCODE_NEW "New..."
     IDS_SETTINGS_PATCHCODE_EDIT "Edit..."
@@ -2460,13 +3674,17 @@ BEGIN
     IDS_SETTINGS_PAGE_STATUS "Status"
     IDS_SETTINGS_PAGE_GAMEBEHAVIOR "Game Behavior"
     IDS_SETTINGS_PAGE_CONFIGURATION "Configuration"
-    IDS_SETTINGS_OPENFRAMERATELOCKING "Open Framerate Locking..."
     IDS_SETTINGS_LOCK_MODE  "Mode"
     IDS_SETTINGS_LOCK_MODE_OFF "Disabled"
     IDS_SETTINGS_LOCK_MODE_FIXED "Fixed framerate"
     IDS_SETTINGS_LOCK_MODE_AUTOMATIC "Automatic"
     IDS_SETTINGS_LOCK_FRAMERATE "Framerate (fps)"
-    IDS_SETTINGS_LOCK_MINIMIZECLIPPING "Adjust Framerate to Minimize Cooldown Clipping"
+    IDS_SETTINGS_LOCK_MINIMIZECLIPPING 
+                            "Adjust Framerate to Minimize Cooldown Clipping"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_LOCK_ESTIMATEDGCD "Estimated actual global cooldown (s)"
     IDS_SETTINGS_LOCK_INTERVALINUSE "Render interval in use (µs)"
     IDS_SETTINGS_LOCK_MEASUREDGCD "Measured global cooldown (s)"
@@ -2480,15 +3698,24 @@ BEGIN
     IDS_SETTINGS_PATHREPLACEMENT_FROM "From (regular expression)"
     IDS_SETTINGS_PATHREPLACEMENT_TO "To"
     IDS_SETTINGS_PATHREPLACEMENT_STOP "Stop"
-    IDS_SETTINGS_PATHREPLACEMENT_DESC "Applied from the top; a matching rule with Stop ends the replacement."
+    IDS_SETTINGS_PATHREPLACEMENT_DESC 
+                            "Regular expressions that rewrite the file paths the game looks up. Applied from the top; a matching rule with Stop ends the replacement."
     IDS_SETTINGS_PATHFILTER_PATTERN "Pattern (regular expression)"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_PATHFILTER_INCLUDE "Log"
-    IDS_SETTINGS_PATHFILTER_DESC "The first matching filter decides whether a path is logged; paths none match follow the options above."
-    IDS_SETTINGS_FALLBACK_DESC "Drag to reorder: when a file isn't in the language chosen, languages higher up are used first."
+    IDS_SETTINGS_PATHFILTER_DESC 
+                            "The first matching filter decides whether a path is logged; paths none match follow the options above."
+    IDS_SETTINGS_FALLBACK_DESC 
+                            "Drag to reorder: when a file isn't in the language chosen, languages higher up are used first."
     IDS_SETTINGS_FORCEDLANGUAGE_UNNAMED "(Anyone unnamed)"
-    IDS_SETTINGS_FORCEDLANGUAGE_DESC "The first enabled entry of a speaker applies; an empty name stands for anyone unnamed."
+    IDS_SETTINGS_FORCEDLANGUAGE_DESC 
+                            "The first enabled entry of a speaker applies; an empty name stands for anyone unnamed."
     IDS_SETTINGS_CHOICES_ACTIVE "Active"
-    IDS_SETTINGS_CHOICES_DESC "When none is active, the first profile with a file name is used. Changing a file name doesn't rename the files mods already have."
+    IDS_SETTINGS_CHOICES_DESC 
+                            "When none is active, the first profile with a file name is used. Changing a file name doesn't rename the files mods already have."
     IDS_SETTINGS_FONT_SOURCE_TYPE "Type"
     IDS_SETTINGS_FONT_SOURCE_PRESET "Preset"
     IDS_SETTINGS_FONT_SOURCE_FONT "System font"
@@ -2497,9 +3724,16 @@ BEGIN
     IDS_SETTINGS_FONT_STYLE "Style"
     IDS_SETTINGS_FONT_ADDPRESET "Add Preset…"
     IDS_SETTINGS_FONT_ADDFONT "Add System Font"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COPYTOOTHERS "Copy to Other Families"
-    IDS_SETTINGS_FONT_CONFIRMCOPY "Replace the sources of every other family with those of {}?"
-    IDS_SETTINGS_FONT_SOURCES_DESC "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
+    IDS_SETTINGS_FONT_CONFIRMCOPY 
+                            "Replace the sources of every other family with those of {}?"
+    IDS_SETTINGS_FONT_SOURCES_DESC 
+                            "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
+    IDS_SETTINGS_EDGE_SOFTNESS "Edge softness"
     IDS_SETTINGS_EDGE_SCALE "Edge width per pixel of text size"
     IDS_SETTINGS_EDGE_MIN   "Minimum edge width (px)"
     IDS_SETTINGS_EDGE_MAX   "Maximum edge width (px)"
@@ -2507,10 +3741,15 @@ BEGIN
     IDS_SETTINGS_DIRS_LOCATION "Location"
     IDS_SETTINGS_DIRS_ADDDEFAULT "(add default path)"
     IDS_SETTINGS_DIRS_NOTFOUND "{} (not found)"
-    IDS_SETTINGS_DIRS_ADD "Add Folder..."
+    IDS_SETTINGS_DIRS_ADD   "Add Folder..."
     IDS_SETTINGS_SHOWINEXPLORER "Show in Explorer"
-    IDS_SETTINGS_DIRS_DESC "Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
+    IDS_SETTINGS_EDGE_SOFTNESS_DESC 
+                            "Softness: 0 draws a solid edge. Up to 1, the edge fades out toward its outer side over this fraction of its width; above 1, it fades from the glyph out to this many times its width (8 px at most), like a glow."
     IDS_SETTINGS_TTMP_AUTHOR "Author"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_TTMP_VERSION "Version"
     IDS_SETTINGS_TTMP_STATUS "Status"
     IDS_SETTINGS_TTMP_FILTER "Filter"
@@ -2520,91 +3759,559 @@ BEGIN
     IDS_SETTINGS_TTMP_MOVETONEWFOLDER "Move to New Folder"
     IDS_SETTINGS_TTMP_NEWFOLDER "New Folder"
     IDS_SETTINGS_TTMP_TOPLEVEL "Top level: {}"
-    IDS_SETTINGS_TTMP_ORDER_DESC "Drag to reorder. Where ModPacks change the same file, the one further down wins."
-    IDS_STATUS_TTMPPROFILE "\nModPack profile: {}"
-    IDS_SETTINGS_MODDING_ENABLE_DESC "Changing this takes effect after restarting the game."
-    IDS_SETTINGS_LIPSYNC    "Cutscene lip sync language"
-    IDS_SETTINGS_LIPSYNC_DESC "The language whose mouth movements cutscenes play. The game picks the cutscene voice files by the same language. Only the languages the game is voiced in can be chosen."
+    IDS_SETTINGS_TTMP_ORDER_DESC 
+                            "Drag to reorder. Where ModPacks change the same file, the one further down wins."
+    IDS_STATUS_TTMPPROFILE  "\nModPack profile: {}"
+    IDS_SETTINGS_MODDING_ENABLE_DESC 
+                            "Changing this takes effect after restarting the game."
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_PREVIEW_SIZE "Size"
     IDS_SETTINGS_FONT_PREVIEW_TEXT "Sample text"
-    IDS_SETTINGS_FONT_PREVIEW_DESC "The font at the chosen size, drawn as these sources make it, with the edge the game draws. Characters it lacks are drawn with the game's own glyphs here; with SystemFallback on, the game draws them with system fonts instead."
+    IDS_SETTINGS_FONT_PREVIEW_DESC 
+                            "The font at the chosen size, drawn as these sources make it, with the edge the game draws. Characters the sources lack are drawn with the game's own glyphs here, even where the game draws them with system fonts."
+    IDS_SETTINGS_RESTART_REGION "Region"
+    IDS_SETTINGS_MISCELLANEOUS "Miscellaneous"
+    IDS_SETTINGS_UPDATES    "Updates"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED 
+                            "Clear the copied command line after (seconds)"
+    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC 
+                            "The copied command line is cleared from the clipboard after this many seconds; 0 keeps it."
+    IDS_SETTINGS_EDITMENU   "Edit ▾"
+    IDS_SETTINGS_SHOWMORE   "Show more"
+    IDS_SETTINGS_SHOWLESS   "Show less"
+    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "Delete {} ModPacks?"
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "Monospaced digits for system fonts"
+    IDS_SETTINGS_FONT_OPENPRESETFOLDER "Open Presets Folder"
+    IDS_SETTINGS_FONT_IMPORT_TITLE 
+                            "This preset is outside the presets folder."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SESSIONS_FORGETONE "Forget This Session"
+    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM 
+                            "Forget the login session ""{}""?\nIt is removed from Windows Credential Manager."
+    IDS_SETTINGS_SESSIONS_FORGET "Forget all"
+    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
+                            "Forget all remembered login sessions?\nThey are removed from Windows Credential Manager."
+    IDS_SETTINGS_REMEMBER   "Remember"
     IDS_SETTINGS_FONT_PREVIEW_COLORS "Colors"
     IDS_SETTINGS_FONT_PREVIEW_NOEDGE "The edge can't be shown: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC "{} as the font replacement draws it, with the edge these settings give at the chosen size. The colors are ones the game uses, and apply to every font preview."
+    IDS_SETTINGS_EDGE_PREVIEW_DESC 
+                            "{} as the font replacement draws it, with the edge these settings give at the chosen size. The colors are ones the game uses, and apply to every font preview."
     IDS_SETTINGS_FONT_COLORS_DEFAULT "Default"
     IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "Tooltip labels"
     IDS_SETTINGS_FONT_COLORS_ACTIONNAME "Action names"
     IDS_SETTINGS_FONT_COLORS_STATUSNAME "Status names"
     IDS_SETTINGS_FONT_COLORS_WARNING "Warnings"
+END
+
+STRINGTABLE
+BEGIN
     IDS_SETTINGS_FONT_COLORS_NOTICE "Notices"
     IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "Quest highlights"
     IDS_SETTINGS_FONT_COLORS_TUTORIAL "Tutorial text"
-    IDS_SETTINGS_RESTART_REGION "Region"
-    IDS_SETTINGS_MISCELLANEOUS "Miscellaneous"
-    IDS_SETTINGS_UPDATES "Updates"
-    IDS_SETTINGS_LAUNCH_SESSIONSWITCHING "Use session switch"
-    IDS_SETTINGS_REMEMBER   "Remember"
-    IDS_SETTINGS_SESSIONS_FORGET "Forget all"
-    IDS_SETTINGS_SESSIONS_FORGET_CONFIRM "Forget all remembered login sessions?\nThey are removed from Windows Credential Manager."
-    IDS_SETTINGS_SESSIONS_FORGETONE "Forget This Session"
-    IDS_SETTINGS_SESSIONS_FORGETONE_CONFIRM "Forget the login session ""{}""?\nIt is removed from Windows Credential Manager."
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED "Clear the copied command line after (seconds)"
-    IDS_SETTINGS_LAUNCH_CLEARCOPIED_DESC "The copied command line is cleared from the clipboard after this many seconds; 0 keeps it."
-    IDS_SETTINGS_EDITMENU "Edit ▾"
-    IDS_SETTINGS_SHOWMORE "Show more"
-    IDS_SETTINGS_SHOWLESS "Show less"
-    IDS_SETTINGS_TTMP_CONFIRMDELETEMANY "Delete {} ModPacks?"
-    IDS_SETTINGS_FONT_MONOSPACEDDIGITS "Monospaced digits for system fonts"
-    IDS_SETTINGS_FONT_OPENPRESETFOLDER "Open Presets Folder"
-    IDS_SETTINGS_FONT_IMPORT_TITLE "This preset is outside the presets folder."
-    IDS_SETTINGS_FONT_IMPORT_CONTENT "{}\n\nImport a copy into the presets folder, or use the file where it is?"
-    IDS_SETTINGS_FONT_IMPORT_GLYPHS "It reads glyph images from these folders next to it, which importing copies along with it into a folder of its own:{}"
-    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY "It reads glyph images from these folders, which aren't inside its own folder and can't be copied along with it, so it can only be used where it is:{}"
-    IDS_SETTINGS_FONT_IMPORT_IMPORT "Import\nCopy it into the presets folder. Later changes to the original won't be seen."
-    IDS_SETTINGS_FONT_IMPORT_INPLACE "Use it where it is\nRead it from where it is now. It stops working if the file is moved or deleted."
-    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nThe preset can't be read: {}"
-    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nThe preset couldn't be imported: {}"
     IDS_TTMP_ERROR_NAME_EMPTY "The name cannot be empty."
     IDS_TTMP_ERROR_NAME_DOTS """."" and "".."" cannot be used as a name."
     IDS_TTMP_ERROR_NAME_TOOLONG "The name is too long."
-    IDS_TTMP_ERROR_NAME_INVALIDCHARS "The name cannot contain any of < > : "" / \\ | ? * or control characters."
-    IDS_TTMP_ERROR_NAME_TRAILING "The name cannot end with a space or a period."
+    IDS_TTMP_ERROR_NAME_INVALIDCHARS 
+                            "The name cannot contain any of < > : "" / \\ | ? * or control characters."
+    IDS_TTMP_ERROR_NAME_TRAILING 
+                            "The name cannot end with a space or a period."
     IDS_TTMP_ERROR_NAME_RESERVED "The name is reserved by Windows."
-    IDS_TTMP_ERROR_DIFFERENTDRIVE "Folders cannot be moved to a different drive."
+    IDS_TTMP_ERROR_DIFFERENTDRIVE 
+                            "Folders cannot be moved to a different drive."
     IDS_TTMP_ERROR_MOVEFAILED "Failed to move {} to {}"
     IDS_TTMP_ERROR_ITEMGONE "The item is no longer among the TexTools ModPacks. Refresh and try again."
-    IDS_TTMP_ERROR_NAMETAKEN "Something named ""{}"" already exists in that folder."
+    IDS_TTMP_ERROR_NAMETAKEN 
+                            "Something named ""{}"" already exists in that folder."
     IDS_TTMP_ERROR_DESTINATIONMISSING "The destination folder does not exist."
-    IDS_TTMP_ERROR_DESTINATIONOUTSIDE "The destination is not in any of the folders TexTools ModPacks are looked for in."
-    IDS_TTMP_ERROR_MOVEINTOSELF "A folder cannot be moved into itself or into a folder inside it."
+    IDS_TTMP_ERROR_DESTINATIONOUTSIDE 
+                            "The destination is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_MOVEINTOSELF 
+                            "A folder cannot be moved into itself or into a folder inside it."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_CLEANUP_PARTIAL 
+                            "Removed the selected data, except {} items in use."
+    IDS_LOADER_CLEANUP_INTRO_ALL 
+                            "XivAlexander is no longer installed in any game. You can remove what it left behind."
+    IDS_LOADER_CLEANUP_INTRO_REGION 
+                            "XivAlexander is no longer installed in any game of this region. You can forget the login sessions saved for it."
+    IDS_LOADER_CLEANUP_CALCULATING "Calculating..."
+    IDS_LOADER_CLEANUP_SESSIONS_COUNT "{} saved"
+    IDS_LOADER_ERROR_UNLOAD "Failed to unload XivAlexander from process: {}"
+    IDS_SETTINGS_NOTIFYWHENHIDDEN 
+                            "Notify when the control window is hidden to the notification area"
+    IDS_TRAY_HIDDEN_NOTIFICATION 
+                            "XivAlexander is still running. Open it again from the notification area icon."
+    IDS_SETTINGS_SESSIONS_RENAME "Rename"
+    IDS_SETTINGS_SESSIONS_RENAME_INVALID 
+                            "A session name must be at most 64 bytes in UTF-8, without control characters."
+    IDS_SETTINGS_SESSIONS_RENAME_EXISTS
+                            "A login session named ""{}"" already exists."
+    IDS_SETTINGS_CROWDFIX_STATUS_ACTIVE "Active"
+    IDS_SETTINGS_CROWDFIX_STATUS_OFF "Turned off"
+    IDS_SETTINGS_CROWDFIX_STATUS_WAITING "Waiting for the game"
+    IDS_SETTINGS_CROWDFIX_STATUS_UNAVAILABLE "Not available on this game version"
+    IDS_SETTINGS_CROWDFIX_STATUS_FAILED "Stopped after an error"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_IMPORT_CONTENT 
+                            "{}\n\nImport a copy into the presets folder, or use the file where it is?"
+    IDS_SETTINGS_FONT_IMPORT_GLYPHS 
+                            "It reads glyph images from these folders next to it, which importing copies along with it into a folder of its own:{}"
+    IDS_SETTINGS_FONT_IMPORT_NOGLYPHCOPY 
+                            "It reads glyph images from these folders, which aren't inside its own folder and can't be copied along with it, so it can only be used where it is:{}"
+    IDS_SETTINGS_FONT_IMPORT_IMPORT 
+                            "Import\nCopy it into the presets folder. Later changes to the original won't be seen."
+    IDS_SETTINGS_FONT_IMPORT_INPLACE 
+                            "Use it where it is\nRead it from where it is now. It stops working if the file is moved or deleted."
+    IDS_SETTINGS_FONT_PRESETUNREADABLE "{}\n\nThe preset can't be read: {}"
+    IDS_SETTINGS_FONT_IMPORTFAILED "{}\n\nThe preset couldn't be imported: {}"
+END
+
+STRINGTABLE
+BEGIN
     IDS_TTMP_ERROR_MOVEINTOMODPACK "Nothing can be moved into a ModPack."
-    IDS_TTMP_ERROR_NAMETAKENATDESTINATION "Something named ""{}"" already exists in the destination folder."
-    IDS_TTMP_ERROR_DESTINATIONNOTFOUND "The destination folder could not be found."
+    IDS_TTMP_ERROR_NAMETAKENATDESTINATION 
+                            "Something named ""{}"" already exists in the destination folder."
+    IDS_TTMP_ERROR_DESTINATIONNOTFOUND 
+                            "The destination folder could not be found."
     IDS_TTMP_ERROR_PARENTMISSING "The parent folder does not exist."
-    IDS_TTMP_ERROR_PARENTOUTSIDE "The parent folder is not in any of the folders TexTools ModPacks are looked for in."
-    IDS_TTMP_ERROR_FOLDERINMODPACK "Folders cannot be created inside a ModPack."
+    IDS_TTMP_ERROR_PARENTOUTSIDE 
+                            "The parent folder is not in any of the folders TexTools ModPacks are looked for in."
+    IDS_TTMP_ERROR_FOLDERINMODPACK 
+                            "Folders cannot be created inside a ModPack."
     IDS_TTMP_ERROR_CREATEFOLDER "Failed to create the folder {}: {}"
-    IDS_TTMP_ERROR_FOLDERGONE "The folder is no longer among the TexTools ModPacks. Refresh and try again."
-    IDS_TTMP_ERROR_ORDERINCOMPLETE "The new order must list every item in the folder exactly once."
+    IDS_TTMP_ERROR_FOLDERGONE 
+                            "The folder is no longer among the TexTools ModPacks. Refresh and try again."
+    IDS_TTMP_ERROR_ORDERINCOMPLETE 
+                            "The new order must list every item in the folder exactly once."
     IDS_TTMP_ERROR_SAVEORDER "Failed to save {}: {}"
     IDS_TTMP_ERROR_OPENDATA "Failed to open {}."
-    IDS_TTMP_ERROR_MOVEBACKFAILED "{}; moving it back failed too ({}). Refresh the TexTools ModPacks."
-    IDS_TTMP_ERROR_DUPLICATENAMES "More than one of the items is named ""{}""."
+    IDS_TTMP_ERROR_MOVEBACKFAILED 
+                            "{}; moving it back failed too ({}). Refresh the TexTools ModPacks."
+    IDS_TTMP_ERROR_DUPLICATENAMES 
+                            "More than one of the items is named ""{}""."
     IDS_ERROR_FILE_TOO_BIG  "The file is too big."
     IDS_ERROR_HTTP          "HTTP error {}"
     IDS_RESULT_IMPORT_OK    "OK: {}: {}"
-    IDS_RESULT_IMPORT_ERROR "Error: {}: {}"
-    IDS_FONTPRESET_ERROR_CANNOTREAD "{} can't be read."
-    IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE "The glyph image folder {} isn't under the preset's folder."
-    IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
-    IDS_FONTPREVIEW_ERROR_NOFACE "There is no face to draw {} with."
-    IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
-    IDS_ERROR_LOAD_INSTALLED "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
-    IDS_ERROR_LOAD_INSTALLED_NOPATH "Failed to resolve the XivAlexander installation path."
-    IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT "{} has no glyphs; it may not be installed, or can't be read."
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} has none of the text's characters."
 END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES "Text Transformation"
+    IDS_SETTINGS_EXCEL_OVERRIDEFILES_DESC 
+                            "JSON files that change the text taken from other languages: per sheet, how string columns correspond, cells to keep in the game's own language, and regular expression replacements. Changing this takes effect after restarting the game."
+    IDS_SETTINGS_LOGGING_EXCELMERGE "Text merging"
+    IDS_SETTINGS_TALKLINES  "Dialogue box lines"
+    IDS_SETTINGS_TALKLINES_DESC 
+                            "Lines per page in the dialogue box. Automatic uses 3 for a Japanese, Chinese or Korean display language and 4 for English, German or French, each with its font size. Japanese clients stay at 3, as their furigana are laid out 3 lines at a time. Changes apply from the next dialogue."
+    IDS_SETTINGS_TALKLINES_AUTOMATIC "Automatic"
+    IDS_SETTINGS_TALKLINES_THREE "3 lines"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_TALKLINES_FOUR "4 lines"
+    IDS_VERSIONSENSITIVE_DISPLAYLANGUAGE "Text rules of the display language"
+    IDS_OUTGOINGTEXT_TITLE  "A message about to be sent contains text in a language other than the game's own"
+    IDS_OUTGOINGTEXT_CONTENT 
+                            "XivAlexander held back this message: the game is about to send merged text that could not be changed back to the game's own language. Other players would see it as it is.\n\nMessage: {}\nText: {}\n\nThis connection sends nothing else until you choose; what the game receives is not affected."
+    IDS_OUTGOINGTEXT_SEND   "Send as is\nDangerous: other players will see the merged text."
+    IDS_OUTGOINGTEXT_DROP   "Drop this message\nThe messages after it are sent. If this is not a chat message, the game may keep waiting for a reply to it."
+    IDS_OUTGOINGTEXT_DISCONNECT 
+                            "Disconnect\nResets all connections, as Network > Reset All Connections does."
+    IDS_OUTGOINGTEXT_FOOTER "Unless you choose, the message is dropped in {} seconds."
+    IDS_OUTGOINGTEXT_KIND_ZONECHAT "Say, shout, yell, or emote (chat type {})"
+    IDS_OUTGOINGTEXT_KIND_TELL "Tell"
+    IDS_OUTGOINGTEXT_KIND_CHANNEL 
+                            "Party, free company, linkshell, or novice network"
+    IDS_OUTGOINGTEXT_KIND_ALLIANCE "Alliance or party"
+    IDS_OUTGOINGTEXT_KIND_CROSSWORLD "Cross-world linkshell or PvP team"
+    IDS_OUTGOINGTEXT_KIND_OTHER "Not a chat message (IPC type 0x{:04X})"
+    IDS_SETTINGS_RESOURCEOVERRIDE "Display language"
+    IDS_SETTINGS_RESOURCEOVERRIDE_DESC 
+                            "The language of the text shown, merged in when data for it is available, and of the text rules that go with it: articles and other noun forms, line breaking, and the dialogue box layout. Everything sent to the server keeps the game's own language. Text changes take effect after restarting the game; rule changes apply at once."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE "Audio language"
+    IDS_SETTINGS_VOICERESOURCEOVERRIDE_DESC 
+                            "The language of voices and of the cutscene lip sync that goes with them. Changes apply to voices and cutscenes loaded afterwards."
+    IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "Disable"
+    IDS_SETTINGS_FALLBACKPRIORITY "Fallback language priority"
+    IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "Per-character languages"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "Edge"
+    IDS_SETTINGS_DIRS_GAME  "Game"
+    IDS_SETTINGS_DIRS_GAMENOTFOUND "Not found"
+    IDS_SETTINGS_DIRS_DETECTING "Checking..."
+    IDS_SETTINGS_GRID_DESCRIPTION "Description"
+    IDS_SETTINGS_GRID_FILE  "File"
+    IDS_SETTINGS_EXCEL_ADDFILE "Add File..."
+    IDS_SETTINGS_EXCEL_ORDER_DESC 
+                            "Drag to reorder. Files apply in list order: every rule matching a sheet applies, step lists run one after another, and for keep, unkeep and column mappings the later file wins."
+    IDS_SETTINGS_EXCEL_PARSEERROR "Could not read: {}"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_UI_LANGUAGE "Language"
+    IDS_SETTINGS_UI_THEMEMODE "Theme"
+    IDS_SETTINGS_GAMEWINDOW_TITLEMODE "Window title"
+    IDS_SETTINGS_GAMEWINDOW_TITLEPREFIX "Title format with a prefix"
+    IDS_SETTINGS_GAMEWINDOW_TITLESUFFIX "Title format with a suffix"
+    IDS_SETTINGS_GAMEWINDOW_DISABLEGHOSTING "Disable window ghosting"
+    IDS_SETTINGS_GAMEWINDOW_IMEMODEINDICATOR 
+                            "Fix the input mode indicator for CJK IMEs"
+    IDS_SETTINGS_NETWORK_MITIGATIONMODE "Latency handling mode"
+    IDS_SETTINGS_MODDING_SQPACKROOTS "Other game installations"
+    IDS_SETTINGS_MODDING_FILEENTRYROOTS "Replacement file folders"
+    IDS_SETTINGS_MODDING_PATHREPLACEMENTS "Path replacements"
+    IDS_SETTINGS_TTMP_SEARCHDIRS "ModPack folders"
+    IDS_SETTINGS_TTMP_CHOICESFILES "Option profiles"
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS "Hash tracker keys"
+    IDS_SETTINGS_LOGGING_ALLPATHS "All file paths"
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS "Replaced file paths"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES "Cutscene speaker names"
+    IDS_SETTINGS_LOGGING_PATHFILTERS "Path filters"
+    IDS_SETTINGS_FONT_ENABLED "Replace fonts"
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK 
+                            "Draw missing characters with system fonts"
+    IDS_SETTINGS_CHOICES_DEFAULTNAME "Default"
+    IDS_SETTINGS_VERSIONSENSITIVE_TIP 
+                            "(!): This feature changes the game's code, and is off until the game restarts, as you chose to disable such features on this game version. You will be asked again at the next start."
+    IDS_SETTINGS_FONT_WEIGHT_100 "Thin"
+    IDS_SETTINGS_FONT_WEIGHT_200 "Extra Light"
+    IDS_SETTINGS_FONT_WEIGHT_300 "Light"
+    IDS_SETTINGS_FONT_WEIGHT_350 "Semi Light"
+    IDS_SETTINGS_FONT_WEIGHT_400 "Regular"
+    IDS_SETTINGS_FONT_WEIGHT_500 "Medium"
+    IDS_SETTINGS_FONT_WEIGHT_600 "Semi Bold"
+    IDS_SETTINGS_FONT_WEIGHT_700 "Bold"
+    IDS_SETTINGS_FONT_WEIGHT_800 "Extra Bold"
+    IDS_SETTINGS_FONT_WEIGHT_900 "Black"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_FONT_WEIGHT_950 "Extra Black"
+    IDS_SETTINGS_FONT_STRETCH_1 "Ultra Condensed"
+    IDS_SETTINGS_FONT_STRETCH_2 "Extra Condensed"
+    IDS_SETTINGS_FONT_STRETCH_3 "Condensed"
+    IDS_SETTINGS_FONT_STRETCH_4 "Semi Condensed"
+    IDS_SETTINGS_FONT_STRETCH_5 "Normal"
+    IDS_SETTINGS_FONT_STRETCH_6 "Semi Expanded"
+    IDS_SETTINGS_FONT_STRETCH_7 "Expanded"
+    IDS_SETTINGS_FONT_STRETCH_8 "Extra Expanded"
+    IDS_SETTINGS_FONT_STRETCH_9 "Ultra Expanded"
+    IDS_SETTINGS_FONT_STYLE_NORMAL "Normal"
+    IDS_SETTINGS_FONT_STYLE_OBLIQUE "Oblique"
+    IDS_SETTINGS_FONT_STYLE_ITALIC "Italic"
+    IDS_SETTINGS_NETWORK_ENABLED_DESC 
+                            "Takes the measured network delay out of the animation lock, so actions queue as if you had low ping."
+    IDS_SETTINGS_NETWORK_PREVIEW_DESC 
+                            "Computes and logs the adjustments without applying them."
+    IDS_SETTINGS_SOCKET_TAKEOVER_NOTE 
+                            "Use the options below only if the latency helper doesn't detect your connection, e.g. behind a VPN or proxy."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_OPCODECONFIG_DESC 
+                            "Filled in by the opcode updater; edit only if you know the values for this game version."
+    IDS_SETTINGS_SQPACKROOTS_DESC 
+                            "Installations of other clients: their text can be merged in, and files this game lacks, such as other languages' voices, are taken from them; see Languages. Changing this takes effect after restarting the game."
+    IDS_SETTINGS_FILEENTRYROOTS_DESC 
+                            "Folders whose files, placed at their game paths, replace the game's own. Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
+    IDS_SETTINGS_TTMPDIRS_DESC 
+                            "Folders TexTools ModPacks are looked for in; imported ones go into the first. Drag to reorder. <config> is the configuration folder, and <sqpack> is the game's sqpack folder."
+    IDS_SETTINGS_LOCK_MODE_DESC 
+                            "Renders at a fixed interval chosen so that your global cooldown ends just before a frame, losing less time to waiting for the next one. Automatic uses the cooldown the latency helper measures."
+    IDS_SETTINGS_TITLEFORMAT_NOTE 
+                            "Placeholders in the title formats: {title}, {pid}, {alias}, {alias_or_pid}."
+    IDS_SETTINGS_DISABLEGHOSTING_DESC 
+                            "Stops Windows from replacing a busy game window with a ""Not Responding"" frame; turning it off takes effect after restarting the game."
+    IDS_SETTINGS_CHAINLOAD_DESC 
+                            "DLLs loaded in place of the system's, in order, e.g. to use ReShade alongside XivAlexander; used only while XivAlexander is installed as that DLL. Changing this takes effect after restarting the game."
+    IDS_SETTINGS_SAMPLINGRATE_DESC 
+                            "The rate the game mixes its audio at. Changing this takes effect after restarting the game."
+    IDS_SETTINGS_RESTART_OBFUSCATION_TIP 
+                            "Encodes the launch arguments, such as the session ID, as the official launcher does, so they can't be read from the command line."
+    IDS_SETTINGS_REMEMBER_TIP 
+                            "Keeps the choice for later restarts and copied command lines, and for starting the game with a stored login session."
+    IDS_SETTINGS_MITIGATIONMODE_TIP 
+                            "Mode 1 takes only your ping off the lock. Mode 2 acts as if every round trip took the set time. Mode 3 estimates the server's own delay from statistics, which also suits VPNs that alter ping."
+    IDS_SETTINGS_NETWORK_LOGGING_TIP 
+                            "Writes each action, its measured delays, and the adjusted lock to the log window."
+    IDS_SETTINGS_REDUCEPACKETDELAY_TIP 
+                            "Turns off delayed acknowledgements and Nagle's algorithm on game connections made afterwards."
+    IDS_SETTINGS_RESETCONNECTIONS_TIP 
+                            "After asking, forcibly closes every game connection XivAlexander knows of, as if the connection was lost."
+    IDS_SETTINGS_OPCODEFINDER_TIP 
+                            "Logs messages as long as those the latency helper reads, with hex dumps, to help find opcodes after a patch."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_ALTCODEC_TIP 
+                            "Plays music files whose audio is FLAC or WAV, as some music mods have."
+    IDS_SETTINGS_LOGGING_ALLDATAFILEREAD_TIP 
+                            "Logs every read from the game's data files, with its offset and size."
+    IDS_SETTINGS_LOGGING_HASHTRACKERKEYS_TIP 
+                            "Logs the file paths the game looks up, as All file paths does."
+    IDS_SETTINGS_LOGGING_ALLPATHS_TIP 
+                            "Logs every file path the game looks up, and where it was found."
+    IDS_SETTINGS_LOGGING_REPLACEDPATHS_TIP 
+                            "Logs only the paths changed by path replacements or per-character languages."
+    IDS_SETTINGS_LOGGING_DIALOGUENAMES_TIP 
+                            "Logs the speaker names of cutscene voices, as per-character languages take them."
+    IDS_SETTINGS_FONT_ENABLED_TIP 
+                            "Draws game text with the fonts set for each family instead of the game's own."
+    IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP 
+                            "Draws characters the chosen fonts lack with Windows' fallback fonts instead of the game's glyphs."
+    IDS_SETTINGS_FONT_MONOSPACEDDIGITS_TIP 
+                            "For system fonts: uses the font's tabular digits, or else centers each digit in a cell as wide as 0, so that numbers don't shift as they change."
+    IDS_SETTINGS_USEMORECPUTIME_TIP 
+                            "While the game is in the foreground, skips its short sleeps and waits for locked frames by spinning: steadier frame timing for more CPU time."
+    IDS_SETTINGS_SYNCHRONIZEPROCESSING_TIP 
+                            "Starts a frame right when an animation lock or cooldown ends, so the game takes your next action as soon as it can."
+    IDS_SETTINGS_LOCK_MAXDEVIATION_TIP 
+                            "How much earlier than planned a frame may come; a cooldown ending closer than this before a frame counts as ending on the next one."
+    IDS_SETTINGS_SOXR_ENABLED_TIP 
+                            "Resamples voices with soxr instead of the game's linear interpolation; applies to voices started afterwards."
+    IDS_SETTINGS_SOXR_FILTER_TIP 
+                            "A number left at 0 uses the quality preset's value. Changes apply to voices started afterwards."
+    IDS_SETTINGS_SOXR_QUALITY_TIP 
+                            "The quality preset, from Quick (cubic interpolation) to 32-bit; Bits20 is soxr's high quality."
+    IDS_SETTINGS_SOXR_PHASE_TIP 
+                            "Minimum phase delays the sound the least; Linear keeps the waveform's shape but delays it more."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SETTINGS_SOXR_STEEPFILTER_TIP 
+                            "Moves the passband edge up towards the Nyquist frequency."
+    IDS_SETTINGS_SOXR_PASSBANDEND_TIP 
+                            "Where the passband ends, as a fraction of the lower Nyquist frequency, between 0 and 1."
+    IDS_SETTINGS_SOXR_STOPBANDBEGIN_TIP 
+                            "Where attenuation begins, as a fraction of the lower Nyquist frequency; above the passband end."
+    IDS_SETTINGS_SOXR_ROLLOFF_TIP 
+                            "How much the passband may roll off: Small (0.01 dB at most), Medium (0.35 dB at most), or None."
+    IDS_SETTINGS_SOXR_DOUBLEPRECISION_TIP 
+                            "Computes in double precision instead of single."
+    IDS_SETTINGS_SOXR_HIGHPRECISIONCLOCK_TIP 
+                            "Keeps time more accurately for rate ratios that aren't simple fractions."
+    IDS_SETTINGS_SOXR_LOG2MINDFT_TIP 
+                            "Log2 of the smallest DFT size, 8 to 15; with the large one, it sets most of soxr's delay."
+    IDS_SETTINGS_SOXR_LOG2LARGEDFT_TIP 
+                            "Log2 of the large DFT size, 8 to 20; with the smallest one, it sets most of soxr's delay."
+    IDS_SETTINGS_IMEMODEINDICATOR_TIP 
+                            "The game takes every IME for a Japanese one unless the client is Korean or Chinese; this makes the chat's input mode indicator and full-width input right for every CJK IME."
+    IDS_SETTINGS_OODLETCP_TIP 
+                            "Whether the game's packet compression runs in its TCP mode, as the game's connections use."
+    IDS_SETTINGS_SERVERIPRANGE_TIP 
+                            "Server addresses whose connections are handled: addresses, ranges (a-b), or CIDR blocks (a/n), separated by commas; empty for all."
+    IDS_SETTINGS_SERVERPORTRANGE_TIP 
+                            "Server ports whose connections are handled: ports or ranges (a-b), separated by commas; empty for all."
+    IDS_SETTINGS_VOICELIPSYNC_TIP 
+                            "Lip sync exists for Japanese, English, German and French only; other voice languages keep the game's own lip sync."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_ERROR_LOAD_32BIT 
+                            "XivAlexander can be loaded only into the 64-bit game."
+    IDS_LOADER_ERROR_NOT_GAME_FOLDER 
+                            "No game was found in {}. Specify the folder that contains ffxiv_dx11.exe, or the installation folder that contains game\\ffxiv_dx11.exe."
+    IDS_LOADER_TITLE_ADMIN  "{} (Administrator)"
+    IDS_LOADER_COL_LOCATION "Location"
+    IDS_LOADER_COL_REGION   "Region"
+    IDS_LOADER_COL_VERSION  "Game version"
+    IDS_LOADER_COL_STATE    "XivAlexander"
+    IDS_LOADER_COL_FOUNDVIA "Found via"
+    IDS_LOADER_COL_PID      "PID"
+    IDS_LOADER_COL_PROGRAM  "Program"
+    IDS_LOADER_COL_ARCH     "Arch"
+    IDS_LOADER_COL_INSTALLATION "Installation"
+    IDS_LOADER_COL_STARTED  "Started"
+    IDS_LOADER_REGION_UNKNOWN "Unknown"
+    IDS_LOADER_FOUNDVIA_SQUAREENIX "Square Enix installer"
+    IDS_LOADER_FOUNDVIA_STEAM "Steam"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_FOUNDVIA_ACTOZ "Actoz Soft registry"
+    IDS_LOADER_FOUNDVIA_SHENGQU "Shengqu Games registry"
+    IDS_LOADER_FOUNDVIA_USERJOY "USERJOY GAMES registry"
+    IDS_LOADER_FOUNDVIA_MSI "Windows Installer"
+    IDS_LOADER_FOUNDVIA_KNOWNFOLDER "Default folder"
+    IDS_LOADER_FOUNDVIA_XIVLAUNCHER "XIVLauncher"
+    IDS_LOADER_FOUNDVIA_DESKTOP "Desktop shortcut"
+    IDS_LOADER_FOUNDVIA_STARTMENU "Start menu shortcut"
+    IDS_LOADER_FOUNDVIA_PROCESS "Running program"
+    IDS_LOADER_FOUNDVIA_CONFIG "XivAlexander settings"
+    IDS_LOADER_FOUNDVIA_USER "Added by you"
+    IDS_LOADER_FOUNDVIA_COMMANDLINE "Command line"
+    IDS_LOADER_STATE_NOTINSTALLED "Not installed"
+    IDS_LOADER_STATE_INSTALLED "Installed as {} ({})"
+    IDS_LOADER_STATE_OLDER  "Older version as {} ({})"
+    IDS_LOADER_STATE_NEWER  "Newer version as {} ({})"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATE_LEFTOVER "Leftover file: {}"
+    IDS_LOADER_STATE_MISSING "Not found"
+    IDS_LOADER_PSTATE_NOTLOADED "Not loaded"
+    IDS_LOADER_PSTATE_LOADED "Loaded ({})"
+    IDS_LOADER_PSTATE_LOADEDBYINSTALL "Loaded by the installed {}"
+    IDS_LOADER_PSTATE_LOADEDNOACCESS 
+                            "Loaded (details need administrator permission)"
+    IDS_LOADER_PSTATE_UNKNOWN "Unknown (needs administrator permission)"
+    IDS_LOADER_PSTATE_LAUNCHER "Launcher"
+    IDS_LOADER_PATH_UNKNOWN "(path unknown)"
+    IDS_LOADER_DETAILS_FOUNDVIA "Found via: {}"
+    IDS_LOADER_DETAILS_THIRDPARTY "Other DLLs here: {}."
+    IDS_LOADER_DETAILS_CHAINLOADED "Chain-loaded: {}."
+    IDS_LOADER_DETAILS_NOREGION 
+                            "The region could not be determined, so the game cannot be launched from here."
+    IDS_LOADER_DETAILS_NEEDSADMIN 
+                            "Changing files here needs administrator permission."
+    IDS_LOADER_DETAILS_RUNNING 
+                            "The game is running; changes apply from its next start."
+    IDS_LOADER_PDETAILS_BYINSTALL 
+                            "Loaded by the installed DLL, so it cannot be unloaded here."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_PDETAILS_NEEDSADMIN 
+                            "Loading into this game or unloading from it needs administrator permission."
+    IDS_LOADER_EMPTY_SCANNING "Looking for game installations..."
+    IDS_LOADER_EMPTY_NOINSTALL 
+                            "No game installation was found. Use Browse to pick ffxivboot.exe, ffxiv_dx11.exe or the game folder."
+    IDS_LOADER_EMPTY_NOPROCESS "The game is not running."
+    IDS_LOADER_STATUS_FAILED "Failed: {}"
+    IDS_LOADER_STATUS_FOUND "Game installations found: {}"
+    IDS_LOADER_STATUS_ELEVATEDFAILED 
+                            "The operation run as administrator did not succeed."
+    IDS_LOADER_STATUS_CANCELLED "Cancelled."
+    IDS_LOADER_STATUS_BUSY  "Wait until the current operation finishes."
+    IDS_LOADER_STATUS_INSTALLING "Installing into {}..."
+    IDS_LOADER_STATUS_INSTALLED "Installed into {}."
+    IDS_LOADER_STATUS_UNINSTALLING "Uninstalling from {}..."
+    IDS_LOADER_STATUS_UNINSTALLED "Uninstalled from {}."
+    IDS_LOADER_STATUS_LAUNCHING "Starting {}..."
+    IDS_LOADER_STATUS_LAUNCHED "Started {}."
+    IDS_LOADER_STATUS_LOADING "Loading into process {}..."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STATUS_UNLOADING "Unloading from process {}..."
+    IDS_LOADER_STATUS_LOADED "Loaded into process {}."
+    IDS_LOADER_STATUS_UNLOADED "Unloaded from process {}."
+    IDS_LOADER_STATUS_CHECKINGUPDATES "Checking for updates..."
+    IDS_LOADER_BROWSE_NOTFOUND "No game installation was found at {}."
+    IDS_LOADER_BROWSE_EXISTS "Already in the list: {}"
+    IDS_LOADER_BROWSE_ADDING "Adding {}..."
+    IDS_LOADER_BROWSE_ADDED "Added {}."
+    IDS_LOADER_MENU_OPENFOLDER "Open Game &Folder"
+    IDS_LOADER_MENU_COPYPATH "&Copy Path"
+    IDS_LOADER_MENU_LAUNCH_WITH "Launch &with XivAlexander"
+    IDS_LOADER_MENU_LAUNCH_WITHOUT "Launch with&out XivAlexander"
+    IDS_LOADER_MENU_REMOVE  "&Remove from List"
+    IDS_LOADER_MENU_PICKFILE "Pick a &File..."
+    IDS_LOADER_MENU_PICKFOLDER "Pick a F&older..."
+    IDS_LOADER_MENU_INSTALL_D3D11 "Install as &d3d11.dll (Recommended)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_MENU_INSTALL_DINPUT8 "Install as d&input8.dll"
+    IDS_LOADER_MENU_INSTALL_DXGI "Install as d&xgi.dll"
+    IDS_LOADER_MENU_LANGUAGE_SYSTEM "Follow &System"
+    IDS_LOADER_MENU_LANGUAGE_ENGLISH "&English"
+    IDS_LOADER_MENU_LANGUAGE_KOREAN "&Korean (한국어)"
+    IDS_LOADER_MENU_LANGUAGE_JAPANESE "&Japanese (日本語)"
+    IDS_LOADER_MENU_THEME_SYSTEM "Follow &System"
+    IDS_LOADER_MENU_THEME_LIGHT "&Light"
+    IDS_LOADER_MENU_THEME_DARK "&Dark"
+    IDS_LOADER_MENU_CHECKUPDATES "Check for &Updates"
+    IDS_LOADER_MENU_HOMEPAGE "Open &Homepage"
+    IDS_LOADER_MENU_OPENCONFIGDIR "Open &Settings Folder"
+    IDS_LOADER_MENU_OPENPROGRAMDIR "Open &Program Folder"
+    IDS_LOADER_MENU_CLEANUP "&Remove XivAlexander Data..."
+    IDS_LOADER_STATUS_CLEANING "Removing the selected data..."
+    IDS_LOADER_STATUS_CLEANUP_DONE "Removed the selected data."
+END
+
+
+STRINGTABLE
+BEGIN
+    IDS_LOADER_STEP_GAME "1. Choose your &game"
+    IDS_LOADER_LABEL_INSTALLATIONS "Game installa&tions"
+    IDS_LOADER_LABEL_PROCESSES "Ru&nning games"
+    IDS_LOADER_LABEL_SESSIONS "Running games for the selected installation"
+    IDS_LOADER_BUTTON_BROWSE "&Browse..."
+    IDS_LOADER_BUTTON_FIND_GAME "Find game &folder..."
+    IDS_LOADER_BUTTON_INSTALL "&Install"
+    IDS_LOADER_BUTTON_UNINSTALL "&Uninstall"
+    IDS_LOADER_BUTTON_UNLOAD "Unl&oad"
+    IDS_LOADER_ONCE_NOTE "Try it without installing. It stays active until you close the game."
+    IDS_LOADER_ONCE_INSTALLED_NOTE "Automatic loading is already enabled. You can also start the game here."
+    IDS_LOADER_AUTO_GROUP "Automatic loading"
+    IDS_LOADER_AUTO_NOTE "Install once, then use your usual launcher. You can turn this off here later."
+    IDS_LOADER_APPLY_NOW "&Apply to selected game"
+    IDS_LOADER_START_ONCE "&Start game and apply"
+    IDS_LOADER_INSTALL_AUTO "&Set up automatic loading"
+    IDS_LOADER_UPDATE_AUTO "&Update automatic loading"
+    IDS_LOADER_STOP_AUTO "Turn &off automatic loading"
+    IDS_LOADER_STOP_ONCE "Stop for this &session"
+    IDS_LOADER_AUTO_READY "Enabled"
+    IDS_LOADER_AUTO_OLDER "Update available"
+    IDS_LOADER_AUTO_OFF "Off"
+    IDS_LOADER_AUTO_INCOMPLETE "Setup needs repair"
+    IDS_LOADER_SESSION_ON "Applied"
+    IDS_LOADER_SESSION_OFF "Not applied"
+    IDS_LOADER_SESSION_UNKNOWN "Permission needed"
+    IDS_LOADER_SESSION_AUTO_NOTE "Automatically applied. Turn off automatic loading above, then restart the game to stop using it."
+    IDS_LOADER_SESSION_ADMIN_NOTE "Windows may ask for administrator permission to apply or stop XivAlexander."
+    IDS_LOADER_SESSION_ONCE_NOTE "Changes here affect this game session. Automatic loading is managed above."
+    IDS_LOADER_EMPTY_NOSESSION "No running game for this installation. Use Start game and apply above, or open your usual launcher."
+    IDS_LOADER_GUIDE_SELECT "Choose your game above. If it is missing, use Find game folder."
+    IDS_LOADER_GUIDE_MISSING "This game folder is no longer available. Find the current folder or choose another game."
+    IDS_LOADER_GUIDE_CHOOSE_SESSION "Several games are running. Select one in the list below before applying."
+    IDS_LOADER_GUIDE_ACTIVE "XivAlexander is active. Changes to automatic loading take effect after restarting the game."
+    IDS_LOADER_GUIDE_RUNNING "Apply now to the running game, or set up automatic loading for future sessions. Installation changes take effect after a restart."
+    IDS_LOADER_GUIDE_UNIDENTIFIED "A running game could not be identified. Use Advanced to select it, or close it and try again."
+    IDS_LOADER_GUIDE_AUTO "Automatic loading is set up. Start the game with your usual launcher. An update takes effect after restarting the game."
+    IDS_LOADER_GUIDE_START "Start game and apply opens the official launcher. Log in as usual. For future sessions, set up automatic loading."
+    IDS_LOADER_GUIDE_NOBOOT "To try it once, start the game with your usual launcher and return here. You can still set up automatic loading."
+    IDS_LOADER_APPLYING "Applying XivAlexander to the selected game..."
+    IDS_LOADER_STOPPING "Stopping XivAlexander for this session..."
+    IDS_LOADER_DONE_APPLY "Applied. Keep playing; XivAlexander stays active until you close the game."
+    IDS_LOADER_DONE_STOP "Stopped for this session."
+    IDS_LOADER_DONE_INSTALL "Automatic loading is set up. Use your usual launcher; restart the game if it is already running."
+    IDS_LOADER_DONE_UNINSTALL "Automatic loading is off. Restart the game to finish turning it off."
+    IDS_LOADER_EMPTY_GAME "No game was found. Use Find game folder above to choose the folder where you installed the game."
+END
+
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
@@ -2616,7 +4323,7 @@ END
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-
+#include "Version.rc2"
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

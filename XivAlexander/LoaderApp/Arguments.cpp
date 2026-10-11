@@ -107,6 +107,29 @@ XivAlexander::LoaderApp::Arguments::Arguments()
 		.required()
 		.default_value(false)
 		.implicit_value(true);
+	argp.add_argument("--config-dir")
+		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
+		.required()
+		.nargs(1)
+		.default_value(std::string());
+	argp.add_argument("--program-dir")
+		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
+		.required()
+		.nargs(1)
+		.default_value(std::string());
+	argp.add_argument("--game-files-only")
+		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
+		.default_value(false)
+		.implicit_value(true);
+	argp.add_argument("--show-cleanup-dialog-test")
+		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
+		.default_value(false)
+		.implicit_value(true);
+	argp.add_argument("--test-cleanup")
+		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
+		.required()
+		.nargs(1)
+		.default_value(std::string());
 	argp.add_argument("--wait-process")
 		.help(xivres::util::unicode::convert<std::string>(FindStringResourceEx(Module(), IDS_HELP_INTERNAL_USE_ONLY) + 1))
 		.required()
@@ -144,6 +167,11 @@ void XivAlexander::LoaderApp::Arguments::Parse() {
 	m_launcherType = argp.get<LauncherType>("--launcher");
 	m_quiet = argp.get<bool>("--quiet");
 	m_disableAutoRunAs = argp.get<bool>("--disable-runas");
+	m_configDir = xivres::util::unicode::convert<std::wstring>(argp.get<std::string>("--config-dir"));
+	m_programDir = xivres::util::unicode::convert<std::wstring>(argp.get<std::string>("--program-dir"));
+	m_gameFilesOnly = argp.get<bool>("--game-files-only");
+	m_showCleanupDialogTest = argp.get<bool>("--show-cleanup-dialog-test");
+	m_testCleanupItems = argp.get<std::string>("--test-cleanup");
 	if (const auto waitHandle = argp.get<Utils::Win32::Process>("--wait-process"))
 		waitHandle.Wait();
 
@@ -160,16 +188,16 @@ void XivAlexander::LoaderApp::Arguments::Parse() {
 				m_runProgramArgs = xivres::util::unicode::convert<std::wstring>(Utils::Win32::ReverseCommandLineToArgv(std::span(targets.begin() + 1, targets.end())));
 			}
 
-			for (const auto& target : targets) {
+			// Only these take process IDs or path suffixes; for the others the targets are a program path and its arguments.
+			const auto targetsAreProcesses = m_action == LoaderAction::Ask || m_action == LoaderAction::Load || m_action == LoaderAction::Unload;
+			for (const auto& target : targetsAreProcesses ? targets : std::vector<std::string>{}) {
 				size_t idx = 0;
 				DWORD pid = 0;
 
 				try {
 					pid = std::stoi(target, &idx);
 				} catch (const std::invalid_argument&) {
-					// empty
 				} catch (const std::out_of_range&) {
-					// empty
 				}
 				if (idx != target.length()) {
 					auto buf = xivres::util::unicode::convert<std::wstring>(target);

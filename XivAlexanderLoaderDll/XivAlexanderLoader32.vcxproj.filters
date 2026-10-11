@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Project Items">
+      <UniqueIdentifier>{cfc73a7f-a5fa-4d76-a59a-56bed132e747}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{8175d732-0ff7-482f-ba24-f52216f12f89}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="Exports32.def">
+      <Filter>Project Items</Filter>
+    </None>
+    <None Include="XivAlexanderLoader.props">
+      <Filter>Project Items</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Base.h" />
+    <ClInclude Include="Json.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="x86.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Base.cpp" />
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Follow.cpp" />
+    <ClCompile Include="Json.cpp" />
+    <ClCompile Include="Runtime.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Loader.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

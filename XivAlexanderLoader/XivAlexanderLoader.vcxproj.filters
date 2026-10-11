@@ -1,20 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="App.cpp" />
-    <ClCompile Include="pch.cpp">
-      <Filter>Project Items</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="pch.h">
-      <Filter>Project Items</Filter>
-    </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Resources</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="Project Items">
       <UniqueIdentifier>{df847118-df3f-45ee-a970-4d7bbfbea8ac}</UniqueIdentifier>
     </Filter>
@@ -23,21 +9,87 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\Graphics\Icon.ico">
-      <Filter>Resources</Filter>
-    </Image>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="pch.cpp">
+      <Filter>Project Items</Filter>
+    </ClCompile>
+    <ClCompile Include="..\XivAlexander\XivAlexander.Shared.cpp" />
+    <ClCompile Include="..\XivAlexander\Config.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\AudioResamplerConfigs.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\BaseConfigRepository.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\ChoicesProfile.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\Enums.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\FontReplacementConfigs.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\InitConfigRepository.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\PatchCodeRepository.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\PatchInstruction.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\ResourceOverrideRules.cpp" />
+    <ClCompile Include="..\XivAlexander\Config\RuntimeConfigRepository.cpp" />
+    <ClCompile Include="..\XivAlexander\Game\CommandLine.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\App.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Arguments.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\LeftoverCleanup.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\LoaderSettings.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\LoaderUi.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Inject.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Interactive.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.cpp" />
+    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Update.cpp" />
+    <ClCompile Include="..\XivAlexander\MainApp\Windows\GridView.cpp" />
+    <ClCompile Include="..\XivAlexander\MainApp\Windows\ThemeColors.cpp" />
+    <ClCompile Include="..\XivAlexander\Misc\GameInstallationDetector.cpp" />
+    <ClCompile Include="..\XivAlexander\Misc\Logger.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Crypt.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\StringUtils.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Utils.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\WinHttp.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\Handle.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\InjectedModule.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\LoadedModule.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\Process.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\Resource.cpp" />
+    <ClCompile Include="..\XivAlexander\Utils\Win32\TaskDialogBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="XivAlexanderLoader.rc">
-      <Filter>Resources</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\graphics\rt_manif.bin" />
+    <ClInclude Include="pch.h">
+      <Filter>Project Items</Filter>
+    </ClInclude>
+    <ClInclude Include="..\XivAlexander\XivAlexander.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\App.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Arguments.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\LeftoverCleanup.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\LoaderSettings.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\LoaderUi.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Inject.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Interactive.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.h" />
+    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Update.h" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="DpiAware.manifest">
       <Filter>Resources</Filter>
     </Manifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\XivAlexander\XivAlexander.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewTextPS.hlsl" />
+    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewVS.hlsl" />
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json">
+      <Filter>Project Items</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -3,12 +3,13 @@
 #ifndef XIVALEXANDER_DLLEXPORT
 
 #include <minwindef.h>
+#include "Game/CommandLine.h"
 #include "Utils/Win32/Process.h"
 
 #ifdef XIVALEXANDER_DLLEXPORT_SET
 #define XIVALEXANDER_DLLEXPORT __declspec(dllexport)
 #else
-#define XIVALEXANDER_DLLEXPORT __declspec(dllimport)
+#define XIVALEXANDER_DLLEXPORT
 #endif
 
 namespace Utils {
@@ -25,7 +26,6 @@ namespace Dll {
 	const Utils::Win32::ActivationContext& ActivationContext();
 	size_t DisableUnloading(const char* pszReason);
 	const char* GetUnloadDisabledReason();
-	bool IsLoadedAsDependency();
 
 	const wchar_t* GetGenericMessageBoxTitle();
 
@@ -54,12 +54,19 @@ namespace Dll {
 	}
 
 	std::wstring GetOriginalCommandLine();
+	// What the game read: the original with the remembered language and region applied, when XivAlexander started with it.
+	std::wstring GetGameCommandLine();
 	[[nodiscard]] bool IsOriginalCommandLineObfuscated();
-	void ReplaceOriginalCommandLine(std::vector<std::pair<std::string, std::string>> params);
+	void ReplaceOriginalCommandLine(XivAlexander::Game::CommandLine::ArgumentList params);
 	[[nodiscard]] bool IsLanguageRegionModifiable();
 
 	void SetLoadedFromEntryPoint();
 	[[nodiscard]] bool IsLoadedFromEntryPoint();
+
+#ifdef XIVALEXANDER_LOADER
+	/// XivAlexanderLoader64.exe: its folder, where the loader DLLs and XivAlexander64.dll are.
+	std::filesystem::path ProgramDirectory();
+#endif
 
 	struct InjectEntryPointParameters;
 
@@ -84,18 +91,16 @@ namespace Dll {
 
 	XIVALEXANDER_DLLEXPORT const char* LoaderActionToString(LoaderAction val);
 
-	enum WhichLoader {
-		Current,
-		Opposite,
-		Force32,
-		Force64,
-	};
 	XIVALEXANDER_DLLEXPORT DWORD LaunchXivAlexLoaderWithTargetHandles(
 		const std::vector<Utils::Win32::Process>& hSources,
 		LoaderAction action,
 		bool wait,
 		const Utils::Win32::Process& waitForBeforeStarting = {},
 		const std::filesystem::path& loaderPath = {});
+
+	/// Makes the process load the loader DLL of its bitness when it reaches its entry point, which in the game then loads
+	/// XivAlexander64.dll. Returns the parameters' address in that process. XivAlexanderLoader64.exe calls
+	/// XA_PatchEntryPoint of XivAlexanderLoader64.dll for it.
 	XIVALEXANDER_DLLEXPORT InjectEntryPointParameters* PatchEntryPointForInjection(HANDLE hProcess);
 
 	//
@@ -118,10 +123,11 @@ namespace Dll {
 		void* EntryPointOriginalBytes;
 		size_t EntryPointOriginalLength;
 		void* TrampolineAddress;
-		bool LoadInstalledXivAlexDllOnly;
+		bool LoadedAsProxy;  // set by a loader DLL in the game folder on its own process
 	};
 
 	extern "C" XIVALEXANDER_DLLEXPORT void InjectEntryPoint(InjectEntryPointParameters* pParam);
+	// In XivAlexanderLoader64.dll, loads XivAlexander64.dll and turns it on, or turns it off and lets go of it.
 	extern "C" XIVALEXANDER_DLLEXPORT size_t EnableXivAlexander(size_t bEnable);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t ReloadConfiguration(void* lpReserved);
 	extern "C" XIVALEXANDER_DLLEXPORT size_t DisableAllApps(void* lpReserved);
@@ -135,7 +141,8 @@ namespace Dll {
 
 	XIVALEXANDER_DLLEXPORT [[nodiscard]] CheckPackageVersionResult CheckPackageVersion();
 
-	extern "C" int XA_LoaderApp();
+	// XivAlexanderLoader64.exe: parses the command line and runs the requested action.
+	int LoaderAppMain();
 
 	struct VersionInformation {
 		std::string Name;
@@ -150,17 +157,16 @@ namespace Dll {
 	bool IsXivAlexanderDll(const std::filesystem::path& dllPath);
 	
 	const wchar_t GameExecutable64NameW[] = L"ffxiv_dx11.exe";
+	const wchar_t GameExecutableNameW[] = L"ffxiv_dx11.exe";
 	const wchar_t XivAlexLoader64NameW[] = L"XivAlexanderLoader64.exe";
+	const wchar_t XivAlexLoaderDll32NameW[] = L"XivAlexanderLoader32.dll";
+	const wchar_t XivAlexLoaderDll64NameW[] = L"XivAlexanderLoader64.dll";
 	const wchar_t XivAlexDll64NameW[] = L"XivAlexander64.dll";
 
-#if INTPTR_MAX == INT64_MAX
-
-	const wchar_t GameExecutableNameW[] = L"ffxiv_dx11.exe";
-	const wchar_t XivAlexDllNameW[] = L"XivAlexander64.dll";
-	const char XivAlexDllName[] = "XivAlexander64.dll";
+	// The 64-bit loader is the only one; it patches 32-bit processes itself.
 	const wchar_t XivAlexLoaderNameW[] = L"XivAlexanderLoader64.exe";
 
-#else
+#if INTPTR_MAX != INT64_MAX && INTPTR_MAX != INT32_MAX
 #error "Environment not x86 or x64."
 #endif
 }

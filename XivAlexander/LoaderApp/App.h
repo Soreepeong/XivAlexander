@@ -14,7 +14,8 @@ namespace XivAlexander::LoaderApp {
 
 	bool RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args = L"");
 
-	bool EnsureNoWow64Emulation();
+	/// A message box; with --quiet, stderr (when redirected) and the debugger instead.
+	void ReportError(bool quiet, const std::wstring& message);
 
 	class LoaderApp;
 }

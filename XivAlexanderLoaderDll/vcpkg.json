@@ -1,0 +1,11 @@
+{
+  "name": "xivalexanderloaderdll",
+  "version-string": "1.10",
+  "homepage": "https://github.com/Soreepeong/XivAlexander",
+  "description": "XivAlexanderLoader32.dll and XivAlexanderLoader64.dll: follow game launchers into the game, load XivAlexander64.dll, and stand in for d3d11.dll, dxgi.dll or dinput8.dll in the game folder.",
+  "builtin-baseline": "5f96cd15fd745122cf27e0524606d6c1efc5fd07",
+  "dependencies": [
+    "jsmn",
+    "minhook"
+  ]
+}

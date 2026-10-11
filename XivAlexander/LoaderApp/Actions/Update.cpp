@@ -50,16 +50,6 @@ XivAlexander::LoaderApp::Actions::Update::Update(const Arguments& args)
 }
 
 int XivAlexander::LoaderApp::Actions::Update::CheckForUpdates(std::vector<Utils::Win32::Process> prevProcesses, bool offerAutomaticUpdate) {
-	if (BOOL w = FALSE; IsWow64Process(GetCurrentProcess(), &w) && w) {
-		return Utils::Win32::RunProgram({
-			.path = Utils::Win32::Process::Current().PathOf().parent_path() / XivAlexLoader64NameW,
-			.args = xivres::util::unicode::convert<std::wstring>(Utils::Win32::ReverseCommandLineToArgv({
-				"-a", LoaderActionToString(offerAutomaticUpdate ? LoaderAction::UpdateCheck : LoaderAction::Internal_Update_DependencyDllMode),
-			})),
-			.wait = true,
-		}).WaitAndGetExitCode();
-	}
-
 	const auto updateZip = Utils::Win32::Process::Current().PathOf().parent_path() / "update.zip";
 	if (exists(updateZip) && offerAutomaticUpdate)
 		return PerformUpdateAndExitIfSuccessful(prevProcesses, "", updateZip);
@@ -177,8 +167,8 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 						const auto tempPath = launcherDir / L"updatesourcetest.zip";
 						libzippp::ZipArchive arc(tempPath.string());
 						arc.open(libzippp::ZipArchive::Write);
-						arc.addFile(xivres::util::unicode::convert<std::string>(XivAlexDll64NameW), xivres::util::unicode::convert<std::string>((launcherDir / XivAlexDll64NameW).wstring()));
-						arc.addFile(xivres::util::unicode::convert<std::string>(XivAlexLoader64NameW), xivres::util::unicode::convert<std::string>((launcherDir / XivAlexLoader64NameW).wstring()));
+						for (const auto name : {XivAlexLoaderDll32NameW, XivAlexLoaderDll64NameW, XivAlexDll64NameW, XivAlexLoader64NameW})
+							arc.addFile(xivres::util::unicode::convert<std::string>(name), xivres::util::unicode::convert<std::string>((launcherDir / name).wstring()));
 						arc.close();
 						copy(tempPath, updateZip);
 					} else {
@@ -229,9 +219,9 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 	}
 	// TODO: ask user to quit all FFXIV related processes, except the game itself.
 
-	if (RequiresElevationForUpdate(prevProcessIds)) {
+	if (!m_args.m_disableAutoRunAs && !Utils::Win32::IsUserAnAdmin() && RequiresElevationForUpdate(prevProcessIds)) {
 		return Utils::Win32::RunProgram({
-			.args = std::format(L"--action {}", LoaderActionToString(LoaderAction::UpdateCheck)),
+			.args = std::format(L"--disable-runas --action {}", LoaderActionToString(LoaderAction::UpdateCheck)),
 			.elevateMode = Utils::Win32::RunProgramParams::Force,
 		}).WaitAndGetExitCode();
 	}
@@ -252,7 +242,6 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 				try {
 					processPath = Utils::Win32::Process(PROCESS_QUERY_INFORMATION, false, pid).PathOf();
 				} catch (const std::exception&) {
-					// ¯\_(ツ)_/¯
 					// an inaccessible process is unlikely to be xiv-related unless it's antivirus, which would fail the update anyway.
 					continue;
 				}
@@ -279,7 +268,8 @@ int XivAlexander::LoaderApp::Actions::Update::PerformUpdateAndExitIfSuccessful(s
 			} else {
 				try {
 					auto process = OpenProcessForManipulation(pid);
-					const auto modulePath = launcherDir / XivAlexDll64NameW;
+					// A launcher has the loader DLL of its bitness loaded while it starts the game.
+					const auto modulePath = launcherDir / (process.IsProcess64Bits() ? XivAlexLoaderDll64NameW : XivAlexLoaderDll32NameW);
 					if (process.AddressOf(modulePath, Utils::Win32::Process::ModuleNameCompareMode::FullPath, false))
 						unloadTargets.emplace_back(std::move(process));
 				} catch (...) {
@@ -338,7 +328,6 @@ int XivAlexander::LoaderApp::Actions::Update::UpdateStep_CleanupFiles() {
 			try {
 				LoadUnload(m_args).Load(pid);
 			} catch (...) {
-				// pass
 			}
 		}
 

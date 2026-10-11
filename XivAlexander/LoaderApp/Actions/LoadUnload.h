@@ -5,7 +5,8 @@
 namespace XivAlexander::LoaderApp::Actions {
 	class LoadUnload {
 		const Arguments& m_args;
-		const std::filesystem::path m_dllPath;
+		const std::filesystem::path m_loaderDllPath;  // what gets loaded into the game; it loads XivAlexander64.dll
+		const std::filesystem::path m_featureDllPath;
 
 	public:
 		LoadUnload(const Arguments& args);

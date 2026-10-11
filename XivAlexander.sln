@@ -8,66 +8,58 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files", "Solution Files", "{B57BC430-0583-472A-9324-75F325582452}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
-		StaticData\FontConfig\fontconfig.schema.json = StaticData\FontConfig\fontconfig.schema.json
 		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader", "XivAlexanderLoader\XivAlexanderLoader.vcxproj", "{AE08AFB8-15BE-44E2-9705-FE74DB52C953}"
 	ProjectSection(ProjectDependencies) = postProject
-		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804} = {0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}
+		{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64} = {6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xivres", "FFXIV-FontChanger\xivres\xivres\xivres.vcxproj", "{58DADDF6-5733-40E0-855C-CC3B4BF235EB}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScratchProject", "ScratchProject\ScratchProject.vcxproj", "{B6C2672B-F7A3-4C79-94B9-34F6B165F751}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FontChanger.FixedSizeFont", "FFXIV-FontChanger\FontChanger.FixedSizeFont\FontChanger.FixedSizeFont.vcxproj", "{90E4B098-E528-44EE-B643-56A0EE1A4FFB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FontChanger.Presets.Native", "FFXIV-FontChanger\FontChanger.Presets.Native\FontChanger.Presets.Native.vcxproj", "{FE56ED18-3140-423B-8100-D2FD1AC9164E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader32", "XivAlexanderLoaderDll\XivAlexanderLoader32.vcxproj", "{B5E7CA49-919E-4F94-9D69-66F58DF20848}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XivAlexanderLoader64", "XivAlexanderLoaderDll\XivAlexanderLoader64.vcxproj", "{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
-		ReleaseWithoutAsm|x64 = ReleaseWithoutAsm|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Debug|x64.ActiveCfg = Debug|x64
 		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Debug|x64.Build.0 = Debug|x64
 		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Release|x64.ActiveCfg = Release|x64
 		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.Release|x64.Build.0 = Release|x64
-		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{90E4B098-E528-44EE-B643-56A0EE1A4FFB}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Debug|x64.ActiveCfg = Debug|x64
 		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Debug|x64.Build.0 = Debug|x64
 		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Release|x64.ActiveCfg = Release|x64
 		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.Release|x64.Build.0 = Release|x64
-		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{FE56ED18-3140-423B-8100-D2FD1AC9164E}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Debug|x64.ActiveCfg = Debug|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Debug|x64.Build.0 = Debug|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Release|x64.ActiveCfg = Release|x64
 		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.Release|x64.Build.0 = Release|x64
-		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{58DADDF6-5733-40E0-855C-CC3B4BF235EB}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.Debug|x64.ActiveCfg = Debug|x64
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.Debug|x64.Build.0 = Debug|x64
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.Release|x64.ActiveCfg = Release|x64
 		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.Release|x64.Build.0 = Release|x64
-		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{0EABCDC9-5A49-43AE-9B77-EB3FE9D48804}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.Debug|x64.ActiveCfg = Debug|x64
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.Debug|x64.Build.0 = Debug|x64
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.Release|x64.ActiveCfg = Release|x64
 		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.Release|x64.Build.0 = Release|x64
-		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{AE08AFB8-15BE-44E2-9705-FE74DB52C953}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|x64.ActiveCfg = Debug|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Debug|x64.Build.0 = Debug|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|x64.ActiveCfg = Release|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.Release|x64.Build.0 = Release|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|x64.ActiveCfg = Release|x64
-		{B6C2672B-F7A3-4C79-94B9-34F6B165F751}.ReleaseWithoutAsm|x64.Build.0 = Release|x64
+		{B5E7CA49-919E-4F94-9D69-66F58DF20848}.Debug|x64.ActiveCfg = Debug|Win32
+		{B5E7CA49-919E-4F94-9D69-66F58DF20848}.Debug|x64.Build.0 = Debug|Win32
+		{B5E7CA49-919E-4F94-9D69-66F58DF20848}.Release|x64.ActiveCfg = Release|Win32
+		{B5E7CA49-919E-4F94-9D69-66F58DF20848}.Release|x64.Build.0 = Release|Win32
+		{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}.Debug|x64.ActiveCfg = Debug|x64
+		{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}.Debug|x64.Build.0 = Debug|x64
+		{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}.Release|x64.ActiveCfg = Release|x64
+		{6F4D3C2A-8E1B-4B7A-9C55-2D8E7A1F0B64}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
