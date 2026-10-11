@@ -56,47 +56,6 @@ HRESULT Utils::Win32::TaskDialog::TaskDialogProc(HWND hwnd, UINT msg, WPARAM wPa
 				OnHelp(*this);
 			break;
 		}
-		case TDN_HYPERLINK_CLICKED: {
-			const auto link = std::wstring(reinterpret_cast<const wchar_t*>(lParam));
-			if (const auto it = m_individualHyperlinkHandlers.find(link);
-				it != m_individualHyperlinkHandlers.end()) {
-				switch (it->second(*this)) {
-					case HyperlinkHandleResult::NotHandled:
-						break;
-
-					case HyperlinkHandleResult::HandledKeepDialog:
-						return S_OK;
-
-					case HyperlinkHandleResult::HandledCloseDialog:
-						PostMessageW(hwnd, WM_CLOSE, 0, 0);
-						return S_OK;
-				}
-			}
-			if (m_hyperlinkHandler) {
-				switch (m_hyperlinkHandler(*this, link)) {
-					case HyperlinkHandleResult::NotHandled:
-						break;
-
-					case HyperlinkHandleResult::HandledKeepDialog:
-						return S_OK;
-
-					case HyperlinkHandleResult::HandledCloseDialog:
-						PostMessageW(hwnd, WM_CLOSE, 0, 0);
-						return S_OK;
-				}
-			}
-			if (m_useShellExecuteHyperlinkHandler) {
-				SHELLEXECUTEINFOW shex{
-					.cbSize = sizeof shex,
-					.hwnd = hwnd,
-					.lpFile = link.c_str(),
-					.nShow = SW_SHOW,
-				};
-				if (!ShellExecuteExW(&shex))
-					MessageBoxF(hwnd, MB_ICONERROR | MB_OK, GetWindowString(hwnd).c_str(), std::format(L"Error: {}", Error("ShellExecuteW").what()));
-			}
-			break;
-		}
 		case TDN_NAVIGATED: {
 			if (OnNavigated)
 				OnNavigated(*this);
@@ -157,11 +116,6 @@ Utils::Win32::TaskDialog Utils::Win32::TaskDialog::Builder::Build() {
 		m_dialog.m_radioBuffer.emplace_back(radio.Id, radio.Text.StringRes ? radio.Text.StringRes : radio.Text.Text.c_str());
 	m_dialog.m_dialogConfig.cRadioButtons = static_cast<UINT>(m_dialog.m_radioBuffer.size());
 	m_dialog.m_dialogConfig.pRadioButtons = m_dialog.m_radioBuffer.data();
-
-	if (m_dialog.m_hyperlinkHandler || !m_dialog.m_individualHyperlinkHandlers.empty() || m_dialog.m_useShellExecuteHyperlinkHandler)
-		m_dialog.m_dialogConfig.dwFlags |= TDF_ENABLE_HYPERLINKS;
-	else
-		m_dialog.m_dialogConfig.dwFlags &= ~TDF_ENABLE_HYPERLINKS;
 
 	return std::move(m_dialog);
 }

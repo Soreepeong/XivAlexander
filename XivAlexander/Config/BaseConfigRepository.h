@@ -280,13 +280,37 @@ namespace XivAlexander {
 		m_pBaseRepository->m_cleanup += OnChange([pRepository = m_pBaseRepository] { pRepository->Save(); });
 	}
 
+	template<typename T>
+	struct IsStdVector : std::false_type {};
+	template<typename E, typename A>
+	struct IsStdVector<std::vector<E, A>> : std::true_type {};
+
 	// uint16_t is written as hex; its specializations are in the source file.
 	template<typename T>
 	void ConfigItem<T>::LoadFrom(const nlohmann::json& data) {
 		if (const auto it = data.find(Name); it != data.end()) {
 			std::optional<T> newValue;
 			try {
-				newValue = it->get<T>();
+				if constexpr (IsStdVector<T>::value) {
+					// One invalid entry drops only itself; dropping the list would also erase it from the file on the next save.
+					if (it->is_array()) {
+						T list;
+						for (const auto& element : *it) {
+							try {
+								list.push_back(element.template get<typename T::value_type>());
+							} catch (...) {
+#ifdef _DEBUG
+								throw;
+#endif
+							}
+						}
+						newValue = std::move(list);
+					} else {
+						newValue = it->get<T>();
+					}
+				} else {
+					newValue = it->get<T>();
+				}
 			} catch (...) {
 				// TODO: show how the value is invalid
 #ifdef _DEBUG

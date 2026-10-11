@@ -303,6 +303,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved) {
 	using namespace Loader;
 	switch (fdwReason) {
 		case DLL_PROCESS_ATTACH: {
+			InitSecurityCookie();
 			g_module = hInstance;
 			DisableThreadLibraryCalls(hInstance);
 

@@ -23,7 +23,7 @@
 
 namespace XivAlexander::Apps::MainApp::Features {
 	namespace {
-		using AudioResamplers::Resampler;
+		using AudioResamplers::SoxrResampler;
 		using AudioResamplers::SampleFormat;
 
 		using Game::SoundVoice;
@@ -36,17 +36,16 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		constexpr size_t OutputBufferCount = VoiceMaxQueuedBuffers + 1;
 
-		// Context the engine submits a buffer with when a MARK falls in it; read from no instruction we resolve. As of 7.56h.
+		// As of 7.56h.
 		constexpr uint64_t MarkContext = 1;
 
 		bool Write(uint32_t* target, uint32_t value) {
-			DWORD oldProtect;
-			if (!VirtualProtect(target, sizeof value, PAGE_EXECUTE_READWRITE, &oldProtect))
+			try {
+				Misc::Hooks::WriteAtomically(target, value);
+				return true;
+			} catch (const std::exception&) {
 				return false;
-
-			*target = value;
-			VirtualProtect(target, sizeof value, oldProtect, &oldProtect);
-			return true;
+			}
 		}
 
 		struct Voice {
@@ -57,7 +56,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			double Ratio{};
 
 			std::recursive_mutex Mtx;
-			std::unique_ptr<Resampler> Resampler;
+			std::unique_ptr<SoxrResampler> Resampler;
 			const uint8_t* EndOfData{};
 
 			std::array<std::vector<uint8_t>, OutputBufferCount> Output;
@@ -70,8 +69,6 @@ namespace XivAlexander::Apps::MainApp::Features {
 			bool Drained = false;
 			std::deque<int64_t> PendingMarks;
 
-			// The engine flags every buffer after a marked one in the same refill, which goes on while fewer than two buffers are queued;
-			// a buffer held back here leaves the queue short, so the refill continues, and a flag inherited that way marks nothing.
 			bool LastMarked = false;
 			int32_t HeldBack = 0;
 
@@ -234,10 +231,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 			v.reset();
 		}
 
-		std::unique_ptr<Resampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
+		std::unique_ptr<SoxrResampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
 			const auto sampleFormat = format == VoiceFormat::Int16 ? SampleFormat::Int16 : SampleFormat::Float;
 			std::string error;
-			auto r = std::make_unique<AudioResamplers::SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.Audio.SoxrResampler.Filter.Snapshot(), error);
+			auto r = std::make_unique<SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.Audio.SoxrResampler.Filter.Snapshot(), error);
 			if (!error.empty()) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
 					"soxr ({} -> {} Hz, {} ch) failed: {}", rate, mix, channels, error);
@@ -326,7 +323,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 			if (!ok) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
-					"voice {:p}: {} failed on {} frames", voice, v->Resampler->Name(), framesIn);
+					"voice {:p}: soxr failed on {} frames", voice, framesIn);
 			}
 
 			if (out.empty()) {

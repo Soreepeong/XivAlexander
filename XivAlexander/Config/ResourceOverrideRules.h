@@ -1,6 +1,8 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -9,6 +11,21 @@
 #include <srell.hpp>
 
 namespace XivAlexander {
+	/// A case-insensitive regex compiled on first use; copies share the compiled one, so copy it with its pattern.
+	class LazyRegex {
+		mutable std::atomic<std::shared_ptr<const srell::u8cregex>> m_regex;
+
+	public:
+		LazyRegex() = default;
+		LazyRegex(const LazyRegex& r) : m_regex(r.m_regex.load()) {}
+		LazyRegex& operator=(const LazyRegex& r) {
+			m_regex.store(r.m_regex.load());
+			return *this;
+		}
+
+		[[nodiscard]] const srell::u8cregex& Get(const std::string& pattern) const;
+	};
+
 	struct PathReplacementRule {
 		bool Enabled = true;
 		std::string From;
@@ -21,7 +38,7 @@ namespace XivAlexander {
 		bool operator!=(const PathReplacementRule& r) const { return !operator==(r); }
 
 	private:
-		mutable std::optional<srell::u8cregex> m_regex;
+		LazyRegex m_regex;
 	};
 
 	void to_json(nlohmann::json&, const PathReplacementRule&);
@@ -38,7 +55,7 @@ namespace XivAlexander {
 		bool operator!=(const LogPathFilter& r) const { return !operator==(r); }
 
 	private:
-		mutable std::optional<srell::u8cregex> m_regex;
+		LazyRegex m_regex;
 	};
 
 	void to_json(nlohmann::json&, const LogPathFilter&);

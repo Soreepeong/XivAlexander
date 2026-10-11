@@ -609,7 +609,9 @@ namespace {
 
 	bool IsPe32(const std::filesystem::path& path) {
 		try {
-			const auto data = ReadSmallFile(path, 512 * 1024 * 1024);
+			const auto f = Utils::Win32::Handle::FromCreateFile(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0);
+			std::string data(4096, '\0');
+			data.resize(f.Read(0, data.data(), data.size(), Utils::Win32::Handle::PartialIoMode::AllowPartial));
 			if (data.size() < 0x40)
 				return false;
 			const auto lfanew = *reinterpret_cast<const LONG*>(&data[0x3c]);

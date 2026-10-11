@@ -1,22 +1,21 @@
 #include "pch.h"
 #include "ResourceOverrideRules.h"
 
-#include <mutex>
-
 #include <nlohmann/json.hpp>
 
-namespace {
-	const srell::u8cregex& LazyRegex(std::optional<srell::u8cregex>& regex, const std::string& pattern) {
-		static std::mutex s_mtx;
-		const auto lock = std::lock_guard(s_mtx);
-		if (!regex)
-			regex.emplace(pattern, srell::regex_constants::icase);
-		return *regex;
+const srell::u8cregex& XivAlexander::LazyRegex::Get(const std::string& pattern) const {
+	auto regex = m_regex.load();
+	if (!regex) {
+		// Threads racing here each compile one; the first one stored is used by all.
+		auto compiled = std::make_shared<const srell::u8cregex>(pattern, srell::regex_constants::icase);
+		if (m_regex.compare_exchange_strong(regex, compiled))
+			regex = std::move(compiled);
 	}
+	return *regex;
 }
 
 const srell::u8cregex& XivAlexander::PathReplacementRule::Regex() const {
-	return LazyRegex(m_regex, From);
+	return m_regex.Get(From);
 }
 
 bool XivAlexander::PathReplacementRule::operator==(const PathReplacementRule& r) const {
@@ -40,7 +39,7 @@ void XivAlexander::from_json(const nlohmann::json& j, PathReplacementRule& v) {
 }
 
 const srell::u8cregex& XivAlexander::LogPathFilter::Regex() const {
-	return LazyRegex(m_regex, Pattern);
+	return m_regex.Get(Pattern);
 }
 
 bool XivAlexander::LogPathFilter::operator==(const LogPathFilter& r) const {

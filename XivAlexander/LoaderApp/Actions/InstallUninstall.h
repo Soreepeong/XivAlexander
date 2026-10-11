@@ -11,6 +11,7 @@ namespace XivAlexander::LoaderApp::Actions {
 			std::filesystem::path ConfigDir;  // %APPDATA%\XivAlexander of the invoking user
 			std::filesystem::path ProgramDir;  // %LOCALAPPDATA%\XivAlexander of the invoking user
 			std::filesystem::path SourceDir;  // where this loader is
+			bool Quiet = false;  // passed on to an elevated child, which reports its own errors
 
 			static Paths ForCurrentUser();
 			static Paths FromArguments(const Arguments& args);

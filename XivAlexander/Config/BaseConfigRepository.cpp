@@ -158,6 +158,7 @@ xivres::util::on_dtor XivAlexander::BaseConfigRepository::WithSuppressSave() {
 				m_suppressSave.SupressionCounter -= 1;
 				if (m_suppressSave.SupressionCounter || !m_suppressSave.PendingSave)
 					return;
+				m_suppressSave.PendingSave = false;
 			}
 
 			Save();

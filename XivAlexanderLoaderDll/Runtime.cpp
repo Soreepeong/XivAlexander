@@ -59,6 +59,28 @@ extern "C" {
 #endif
 }
 
+void Loader::InitSecurityCookie() {
+	FILETIME ft{};
+	GetSystemTimeAsFileTime(&ft);
+	LARGE_INTEGER counter{};
+	QueryPerformanceCounter(&counter);
+	auto cookie = (static_cast<uint64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime)
+		^ GetCurrentProcessId() ^ (static_cast<uint64_t>(GetCurrentThreadId()) << 16) ^ GetTickCount64()
+		^ (static_cast<uint64_t>(counter.QuadPart) << 32) ^ static_cast<uint64_t>(counter.QuadPart)
+		^ reinterpret_cast<uintptr_t>(&ft);
+#if XA_LOADER64
+	cookie &= 0x0000FFFFFFFFFFFFull;
+	if (cookie == 0x00002B992DDFA232)
+		cookie = 0x00002B992DDFA233;
+	__security_cookie = static_cast<uintptr_t>(cookie);
+#else
+	auto cookie32 = static_cast<uint32_t>(cookie ^ (cookie >> 32));
+	if (cookie32 == 0xBB40E64E)
+		cookie32 = 0xBB40E64F;
+	__security_cookie = cookie32;
+#endif
+}
+
 // Referenced by placement new in code built without exceptions, never called with anything to free.
 void __cdecl operator delete(void* p) noexcept {
 	Loader::Free(p);

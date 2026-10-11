@@ -10,78 +10,96 @@ const char XivAlexander::Game::CommandLine::ChecksumTable[17] = "fX1pGtdS5CAP4_V
 const char XivAlexander::Game::CommandLine::ObfuscationHead[13] = "//**sqex0003";
 const char XivAlexander::Game::CommandLine::ObfuscationTail[5] = "**//";
 
-std::vector<std::pair<std::string, std::string>> XivAlexander::Game::CommandLine::FromString(const std::wstring& source, bool* wasObfuscated) {
-	const auto args = Win32::CommandLineToArgsU8(source);
-	std::vector<std::pair<std::string, std::string>> res;
+namespace {
+	using XivAlexander::Game::CommandLine::ArgumentList;
 
-	if (args.size() == 2 && args[1].starts_with(ObfuscationHead) && args[1].size() >= 17) {
-		auto endPos = args[1].find(ObfuscationTail);
-		if (endPos == std::string::npos)
-			throw std::invalid_argument("bad encoded string");
-		auto source = args[1].substr(sizeof ObfuscationHead - 1, endPos - (sizeof ObfuscationHead - 1));
-
-		const auto chksum = std::find(ChecksumTable, ChecksumTable + sizeof ChecksumTable, source.back()) - ChecksumTable;
-		source.pop_back();
-
-		{
-			const auto decoded = Crypt::Base64UrlDecode(source);
-			source.assign(reinterpret_cast<const char*>(decoded.data()), decoded.size());
-			ReverseEvery4Bytes(source);
-		}
-
+	uint64_t CreationTickCount() {
 		FILETIME ct, xt, kt, ut, nft;
 		if (!GetProcessTimes(GetCurrentProcess(), &ct, &xt, &kt, &ut))
 			throw Win32::Error("GetProcessTimes(GetCurrentProcess(), ...)");
 		GetSystemTimeAsFileTime(&nft);
-		const auto creationTickCount = GetTickCount64() - (ULARGE_INTEGER{{nft.dwLowDateTime, nft.dwHighDateTime}}.QuadPart - ULARGE_INTEGER{{ct.dwLowDateTime, ct.dwHighDateTime}}.QuadPart) / 10000;
+		return GetTickCount64() - (ULARGE_INTEGER{{nft.dwLowDateTime, nft.dwHighDateTime}}.QuadPart - ULARGE_INTEGER{{ct.dwLowDateTime, ct.dwHighDateTime}}.QuadPart) / 10000;
+	}
 
-		for (auto [val, count] : {
-				std::make_pair(chksum << 16 | (creationTickCount & 0xFF000000), 16),
-				std::make_pair(chksum << 16 | 0ULL, 0xFFF),
-			}) {
-			for (; --count; val += 0x100000) {
-				const auto key = std::format("{:08x}", val & 0xFFFF0000);
+	void DecodeObfuscatedTo(ArgumentList& res, const std::string& arg) {
+		using namespace XivAlexander::Game::CommandLine;
+		constexpr auto headLength = sizeof ObfuscationHead - 1;
 
-				std::string decrypted = source;
-				Crypt::BlowfishEcbDecrypt(std::span(key), std::span(decrypted));
-				if (!decrypted.starts_with("= T ") && !decrypted.starts_with(" T/ "))
-					continue;
+		const auto endPos = arg.find(ObfuscationTail, headLength);
+		if (endPos == std::string::npos || endPos == headLength)
+			throw std::invalid_argument("bad encoded string");
+		auto source = arg.substr(headLength, endPos - headLength);
 
-				ReverseEvery4Bytes(decrypted);
-				source.clear();
-				while (!decrypted.empty() && !decrypted.back())
-					decrypted.pop_back();
+		const auto chksum = static_cast<uint32_t>(std::find(ChecksumTable, ChecksumTable + 16, source.back()) - ChecksumTable);
+		if (chksum >= 16)
+			throw std::invalid_argument("bad encoded string checksum");
+		source.pop_back();
 
-				for (const auto& item : SplitPreserveDelimiter(decrypted, '/', SIZE_MAX)) {
-					const auto keyValue = SplitPreserveDelimiter(item, '=', 1);
-					if (keyValue.size() == 1)
-						res.emplace_back(xivres::util::replace(xivres::util::unicode::convert<std::string>(FromAnsi(keyValue[0])), std::string("  "), std::string(" ")), "");
-					else
-						res.emplace_back(xivres::util::replace(xivres::util::unicode::convert<std::string>(FromAnsi(keyValue[0])), std::string("  "), std::string(" ")),
-							xivres::util::replace(xivres::util::unicode::convert<std::string>(FromAnsi(keyValue[1])), std::string("  "), std::string(" ")));
-				}
-				if (wasObfuscated)
-					*wasObfuscated = true;
-				return res;
+		// Launchers pad with '*'; the game stops reading base64 at it, as it does at '='.
+		if (const auto padding = source.find_first_of("*="); padding != std::string::npos)
+			source.resize(padding);
+
+		{
+			const auto decoded = Crypt::Base64UrlDecode(source);
+			source.assign(reinterpret_cast<const char*>(decoded.data()), decoded.size());
+			if (source.empty() || source.size() % 8)
+				throw std::invalid_argument("bad encoded string length");
+			ReverseEvery4Bytes(source);
+		}
+
+		// Key = launcher's tick & 0xFFFF0000 with bits 16-19 from the checksum; try all bits 20-31, nearest before creation first.
+		const auto creationTop = static_cast<uint32_t>(CreationTickCount()) >> 20;
+		for (uint32_t back = 0; back < 0x1000; ++back) {
+			const auto key = std::format("{:08x}", ((creationTop - back) & 0xFFF) << 20 | chksum << 16);
+
+			std::string decrypted = source;
+			Crypt::BlowfishEcbDecrypt(std::span(key), std::span(decrypted));
+			if (!decrypted.starts_with("= T ") && !decrypted.starts_with(" T/ "))
+				continue;
+
+			ReverseEvery4Bytes(decrypted);
+			while (!decrypted.empty() && !decrypted.back())
+				decrypted.pop_back();
+
+			// The last value lacks the space a following " /" brings, without which its escaped trailing spaces get trimmed.
+			decrypted.push_back(' ');
+
+			const auto unescape = [](const std::string& s) {
+				return xivres::util::replace(xivres::util::unicode::convert<std::string>(FromAnsi(s)), std::string("  "), std::string(" "));
+			};
+			for (const auto& item : SplitPreserveDelimiter(decrypted, '/', SIZE_MAX)) {
+				const auto keyValue = SplitPreserveDelimiter(item, '=', 1);
+				res.emplace_back(unescape(keyValue[0]), keyValue.size() == 1 ? std::string() : unescape(keyValue[1]));
 			}
+			return;
 		}
 		throw std::invalid_argument("bad encoded string");
-
-	} else {
-		for (size_t i = 1; i < args.size(); ++i) {
-			const auto eq = args[i].find('=');
-			if (eq == std::string::npos)
-				res.emplace_back(args[i], "");
-			else
-				res.emplace_back(args[i].substr(0, eq), args[i].substr(eq + 1));
-		}
-		if (wasObfuscated)
-			*wasObfuscated = false;
-		return res;
 	}
 }
 
-std::wstring XivAlexander::Game::CommandLine::ToString(const std::vector<std::pair<std::string, std::string>>& args, bool obfuscate) {
+XivAlexander::Game::CommandLine::ArgumentList XivAlexander::Game::CommandLine::FromString(const std::wstring& source, bool* wasObfuscated) {
+	const auto args = Win32::CommandLineToArgsU8(source);
+	ArgumentList res;
+	auto obfuscated = false;
+
+	// Like the game, take plain arguments as they are and decode any obfuscated block among them.
+	for (size_t i = 1; i < args.size(); ++i) {
+		if (args[i].starts_with(ObfuscationHead) && args[i].find(ObfuscationTail, sizeof ObfuscationHead - 1) != std::string::npos) {
+			DecodeObfuscatedTo(res, args[i]);
+			obfuscated = true;
+		} else if (const auto eq = args[i].find('='); eq == std::string::npos) {
+			res.emplace_back(args[i], "");
+		} else {
+			res.emplace_back(args[i].substr(0, eq), args[i].substr(eq + 1));
+		}
+	}
+
+	if (wasObfuscated)
+		*wasObfuscated = obfuscated;
+	return res;
+}
+
+std::wstring XivAlexander::Game::CommandLine::ToString(const ArgumentList& args, bool obfuscate) {
 	if (obfuscate) {
 		const auto tick = static_cast<DWORD>(GetTickCount64() & 0xFFFFFFFF);  // Practically GetTickCount, but silencing the warning
 		const auto key = std::format("{:08x}", tick & 0xFFFF0000);
@@ -159,7 +177,7 @@ std::vector<std::string> XivAlexander::Game::CommandLine::SplitPreserveDelimiter
 	return split;
 }
 
-void XivAlexander::Game::CommandLine::ModifyParameter(std::vector<std::pair<std::string, std::string>>& args, const std::string& key, std::string value) {
+void XivAlexander::Game::CommandLine::ModifyParameter(ArgumentList& args, const std::string& key, std::string value) {
 	for (auto& pair : args) {
 		if (pair.first == key) {
 			pair.second = std::move(value);
@@ -169,12 +187,12 @@ void XivAlexander::Game::CommandLine::ModifyParameter(std::vector<std::pair<std:
 	args.emplace_back(key, std::move(value));
 }
 
-void XivAlexander::Game::CommandLine::WellKnown::SetRegion(std::vector<std::pair<std::string, std::string>>& args, xivres::game_publisher region) {
+void XivAlexander::Game::CommandLine::WellKnown::SetRegion(ArgumentList& args, xivres::game_publisher region) {
 	if (region != xivres::game_publisher::Unspecified)
 		return ModifyParameter(args, Keys::Region, std::format("{}", static_cast<int>(region)));
 }
 
-xivres::game_publisher XivAlexander::Game::CommandLine::WellKnown::GetRegion(const std::vector<std::pair<std::string, std::string>>& args, xivres::game_publisher fallback /*= xivres::game_publisher::Unspecified*/) {
+xivres::game_publisher XivAlexander::Game::CommandLine::WellKnown::GetRegion(const ArgumentList& args, xivres::game_publisher fallback /*= xivres::game_publisher::Unspecified*/) {
 	for (const auto& pair : args) {
 		if (pair.first == Keys::Region)
 			return static_cast<xivres::game_publisher>(std::strtol(pair.second.c_str(), nullptr, 0));
@@ -182,12 +200,12 @@ xivres::game_publisher XivAlexander::Game::CommandLine::WellKnown::GetRegion(con
 	return fallback;
 }
 
-void XivAlexander::Game::CommandLine::WellKnown::SetLanguage(std::vector<std::pair<std::string, std::string>>& args, xivres::game_language language) {
+void XivAlexander::Game::CommandLine::WellKnown::SetLanguage(ArgumentList& args, xivres::game_language language) {
 	if (language != xivres::game_language::Unspecified)
 		return ModifyParameter(args, Keys::Language, std::format("{}", static_cast<int>(language) - 1));
 }
 
-xivres::game_language XivAlexander::Game::CommandLine::WellKnown::GetLanguage(const std::vector<std::pair<std::string, std::string>>& args, xivres::game_language fallback /*= xivres::game_language::Unspecified*/) {
+xivres::game_language XivAlexander::Game::CommandLine::WellKnown::GetLanguage(const ArgumentList& args, xivres::game_language fallback /*= xivres::game_language::Unspecified*/) {
 	for (const auto& pair : args) {
 		if (pair.first == Keys::Language)
 			return static_cast<xivres::game_language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));

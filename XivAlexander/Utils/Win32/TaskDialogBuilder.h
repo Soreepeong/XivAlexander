@@ -15,12 +15,6 @@ namespace Utils::Win32 {
 			Handled = S_FALSE,
 		};
 
-		enum class HyperlinkHandleResult {
-			NotHandled,
-			HandledKeepDialog,
-			HandledCloseDialog,
-		};
-
 		enum TimerCallbackResult {
 			Processed = S_OK,
 			ClearCounter = S_FALSE,
@@ -100,10 +94,6 @@ namespace Utils::Win32 {
 		TASKDIALOGCONFIG m_dialogConfig{
 			.cbSize = sizeof m_dialogConfig,
 		};
-
-		std::map<std::wstring, std::function<HyperlinkHandleResult(TaskDialog&)>> m_individualHyperlinkHandlers;
-		std::function<HyperlinkHandleResult(TaskDialog&, std::wstring_view)> m_hyperlinkHandler;
-		bool m_useShellExecuteHyperlinkHandler = false;
 
 		HIconOrRes m_mainIcon;
 		HIconOrRes m_footerIcon;

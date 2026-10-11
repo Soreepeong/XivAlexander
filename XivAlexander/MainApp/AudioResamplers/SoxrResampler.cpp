@@ -53,8 +53,6 @@ XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::~SoxrResampler() {
 		soxr_delete(m_soxr);
 }
 
-const char* XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Name() const { return "soxr"; }
-
 bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Process(const void* in, size_t frames, std::vector<uint8_t>& out) {
 	if (m_drained) {
 		soxr_clear(m_soxr);
@@ -73,10 +71,6 @@ bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Drain(std::vec
 void XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Reset() {
 	soxr_clear(m_soxr);
 	m_drained = false;
-}
-
-double XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::HeldBack() const {
-	return soxr_delay(m_soxr);
 }
 
 bool XivAlexander::Apps::MainApp::AudioResamplers::SoxrResampler::Run(const uint8_t* in, size_t frames, std::vector<uint8_t>& out) {

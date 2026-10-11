@@ -70,6 +70,7 @@ XivAlexander::LoaderApp::Actions::InstallUninstall::Paths XivAlexander::LoaderAp
 		paths.ConfigDir = args.m_configDir;
 	if (!args.m_programDir.empty())
 		paths.ProgramDir = args.m_programDir;
+	paths.Quiet = args.m_quiet;
 	return paths;
 }
 
@@ -127,15 +128,17 @@ bool XivAlexander::LoaderApp::Actions::InstallUninstall::RunGameFilesPart(bool i
 		return true;
 	}
 
-	const std::vector<std::wstring> args{
+	std::vector<std::wstring> args{
 		L"--disable-runas",
 		L"--game-files-only",
 		L"--config-dir", paths.ConfigDir.wstring(),
 		L"--program-dir", paths.ProgramDir.wstring(),
 		L"--action", xivres::util::unicode::convert<std::wstring>(Dll::LoaderActionToString(install ? Dll::LoaderAction::Install : Dll::LoaderAction::Uninstall)),
 		L"--install-mode", xivres::util::unicode::convert<std::wstring>(argparse::details::repr(installMode)),
-		gamePath.wstring(),
 	};
+	if (paths.Quiet)
+		args.emplace_back(L"--quiet");
+	args.emplace_back(gamePath.wstring());
 	const auto process = Utils::Win32::RunProgram({
 		.args = Utils::Win32::ReverseCommandLineToArgv(std::span(args)),
 		.elevateMode = Utils::Win32::RunProgramParams::Force,

@@ -207,11 +207,20 @@ private:
 	/// Whether the pending bundle went out; false while a handler holds one of its messages.
 	bool FinishPending(SingleStream& target, const TunnelHandler& handler) {
 		auto& pending = *m_pending;
+		// The held message waits for ReleaseHeld; running the handlers again would repeat their effects.
+		if (pending.Held)
+			return false;
 		for (; pending.Next < pending.Messages.size(); pending.Next++) {
 			const auto pMessage = reinterpret_cast<message*>(pending.Messages[pending.Next].data());
 			if (!pMessage->Length)
 				continue;
-			switch (handler(pMessage)) {
+			auto action = TunnelAction::Keep;
+			try {
+				action = handler(pMessage);
+			} catch (const std::exception& e) {
+				m_logger.Format<LogLevel::Warning>(LogCategory::SocketHook, "{}: Handler error: {}", m_name, e.what());
+			}
+			switch (action) {
 				case TunnelAction::Keep:
 					break;
 				case TunnelAction::Drop:

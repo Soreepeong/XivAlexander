@@ -87,8 +87,6 @@ namespace XivAlexander::Apps::MainApp {
 			return produced;
 		}
 
-		[[nodiscard]] size_t QueuedBytes() const { return m_ring.Readable(); }
-
 		[[nodiscard]] bool EndOfStream(const AsiStream& stream) const {
 			const auto* ctx = stream.User;
 			return ctx && (ctx->Flags & AsiStreamFlag::EndOfStream) != AsiStreamFlag::None;

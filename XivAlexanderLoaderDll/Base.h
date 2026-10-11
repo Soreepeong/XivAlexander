@@ -45,6 +45,8 @@ namespace Loader {
 
 	void* Alloc(size_t size);
 	void Free(void* p);
+	// Seeds the /GS cookie as the C runtime would; call first in DllMain, before any /GS-checked code runs.
+	void InitSecurityCookie();
 	size_t Length(const wchar_t* s);
 	size_t Length(const char* s);
 
