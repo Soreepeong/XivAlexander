@@ -153,6 +153,7 @@ namespace XivAlexander::Game::Signatures {
 
 		const ResolverFn m_resolver;
 		mutable std::mutex m_mtx;
+		mutable std::recursive_mutex m_resolveMtx;
 		mutable std::map<HMODULE, CachedResult> m_cache;
 
 	public:
@@ -180,6 +181,13 @@ namespace XivAlexander::Game::Signatures {
 		friend class ResolveContext;
 
 		const CachedResult& Cached(const Utils::Win32::LoadedModule& module) const {
+			{
+				std::lock_guard lock(m_mtx);
+				if (const auto it = m_cache.find(*module); it != m_cache.end())
+					return it->second;
+			}
+
+			std::lock_guard resolveLock(m_resolveMtx);
 			{
 				std::lock_guard lock(m_mtx);
 				if (const auto it = m_cache.find(*module); it != m_cache.end())

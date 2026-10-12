@@ -75,6 +75,12 @@ namespace XivAlexander {
 		Bgr,
 	};
 
+	enum class FontReplacementNamePlateMode : uint8_t {
+		Game,
+		BakedAtFullSize,
+		Live,
+	};
+
 	class FontReplacementConfigGroup : public ConfigGroup {
 	public:
 		using ConfigGroup::ConfigGroup;
@@ -96,6 +102,8 @@ namespace XivAlexander {
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
 
 		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::System};
+
+		ConfigItem<FontReplacementNamePlateMode> NamePlates{this, "NamePlates", FontReplacementNamePlateMode::BakedAtFullSize};
 	};
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
@@ -108,4 +116,6 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
 	void to_json(nlohmann::json&, const FontReplacementSubpixelMode&);
 	void from_json(const nlohmann::json&, FontReplacementSubpixelMode&);
+	void to_json(nlohmann::json&, const FontReplacementNamePlateMode&);
+	void from_json(const nlohmann::json&, FontReplacementNamePlateMode&);
 }

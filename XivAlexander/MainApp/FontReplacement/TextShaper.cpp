@@ -736,6 +736,10 @@ FontReplacement::GameGlyph* FontReplacement::TextShaper::GetCell(Cluster& c, int
 	auto placed = raster;
 	placed.Advance = advance;
 	placed.Left += pad;
+
+	// A cell that couldn't move left (PlaceClusters) is drawn right of where shaping put its margin: what follows moves along, keeping its distance to the ink.
+	if (placed.Width != 0 && placed.Left < 0)
+		placed.Advance += (std::min)(-placed.Left, FontReplacer::GetEdgeMargin(m_replacer.Edge(), sized.Px));
 	const auto b = m_textToByte[c.TextStart];
 	const auto utf8 = b < 0 ? 0u : GameUtf8::PackSequence(m_shapingBytes + b, GameUtf8::SequenceLength(m_shapingBytes[b]));
 	const auto cell = m_replacer.PlaceCell(sized, std::move(placed), utf8);

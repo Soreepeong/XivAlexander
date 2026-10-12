@@ -490,6 +490,14 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 
 // What font replacement reads and hooks, one signature per part of it; offsets are as the game's code says, so they follow the patches.
 namespace XivAlexander::Game::Resolved::Fonts {
+	// What AtkModule's shader and font reload calls, which the other signatures look into.
+	struct ModuleInitFunctions {
+		void* LoadShaders{};  // AtkServer::LoadShaders(server)
+		void* InitFontManager{};  // AtkFontManager's initialization
+		int32_t Server{};  // AtkServer, in AtkModule
+		int32_t FontManager{};  // AtkFontManager, in AtkModule
+	};
+
 	struct StageLayout {
 		void* const* Instance{};  // AtkStage*
 		int32_t FontManager{};  // AtkFontManager*, in AtkStage
@@ -597,6 +605,8 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		int32_t NodeHeight{};
 		int32_t NodeParent{};
 		int32_t NodeScaleX{};
+		void* Draw{};  // BakePlateRenderer::Draw (virtual); null if not found, then the live mode is unavailable
+		int32_t RendererFixedFontResolution{};  // BakePlateRenderer's DisableFixedFontResolution byte; the live mode sets it while drawing
 	};
 
 	// AtkServer's shader pairs, by pass.
@@ -621,6 +631,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		int32_t UsedUnits{};
 	};
 
+	[[nodiscard]] std::string to_string(const ModuleInitFunctions& value);
 	[[nodiscard]] std::string to_string(const StageLayout& value);
 	[[nodiscard]] std::string to_string(const FontManagerLayout& value);
 	[[nodiscard]] std::string to_string(const FontSetLayout& value);
@@ -635,6 +646,9 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	[[nodiscard]] std::string to_string(const EdgeShaderFunctions& value);
 	[[nodiscard]] std::string to_string(const LineBreakerFunctions& value);
 
+	extern const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit;
+	extern const Signatures::ComplexSignature<void* const*> TextNodeRenderer;  // AtkTextNodeRenderer's vtable
+	extern const Signatures::ComplexSignature<void*> NamePlateUpdate;  // AddonNamePlate's update
 	extern const Signatures::ComplexSignature<StageLayout> Stage;
 	extern const Signatures::ComplexSignature<FontManagerLayout> FontManager;
 	extern const Signatures::ComplexSignature<FontSetLayout> FontSet;

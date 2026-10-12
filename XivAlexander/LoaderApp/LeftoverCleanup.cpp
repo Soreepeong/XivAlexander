@@ -378,6 +378,25 @@ namespace {
 			EnableWindow(GetDlgItem(Hwnd, IDOK), any);
 		}
 
+		bool ConfirmDestructive(uint32_t chosen) const {
+			if (Scope.TestOnly)
+				return true;
+			std::wstring text = Str(IDS_LOADER_CLEANUP_CONFIRM_HEAD);
+			text += L"\r\n";
+			// cache intentionally omitted
+			if (chosen & LeftoverCleanup::ProgramFiles)
+				text += L"\r\n- " + Str.Format(IDS_LOADER_CLEANUP_CONFIRM_PROGRAM, Scope.ProgramDir.wstring());
+			if (chosen & LeftoverCleanup::Sessions)
+				text += L"\r\n- " + std::wstring(Str(IDS_LOADER_CLEANUP_CONFIRM_SESSIONS));
+			if (chosen & LeftoverCleanup::Settings)
+				text += L"\r\n- " + Str.Format(IDS_LOADER_CLEANUP_CONFIRM_SETTINGS, Scope.ConfigDir.wstring());
+			if (chosen & LeftoverCleanup::UserContent)
+				text += L"\r\n- " + Str.Format(IDS_LOADER_CLEANUP_CONFIRM_USERCONTENT, Scope.ConfigDir.wstring());
+			text += L"\r\n\r\n";
+			text += Str(IDS_LOADER_CLEANUP_CONFIRM_TAIL);
+			return MessageBoxW(Hwnd, text.c_str(), Dll::GetGenericMessageBoxTitle(), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING) == IDYES;
+		}
+
 		static INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			auto self = reinterpret_cast<CleanupDialog*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
 			if (uMsg == WM_INITDIALOG) {
@@ -404,6 +423,10 @@ namespace {
 							for (const auto& row : Rows) {
 								if ((self->Scope.OfferedItems() & row.Item) && IsDlgButtonChecked(hwnd, row.CheckId) == BST_CHECKED)
 									self->Chosen |= row.Item;
+							}
+							if ((self->Chosen & ~static_cast<uint32_t>(LeftoverCleanup::Caches)) && !self->ConfirmDestructive(self->Chosen)) {
+								self->Chosen = 0;
+								return TRUE;
 							}
 							EndDialog(hwnd, IDOK);
 							return TRUE;

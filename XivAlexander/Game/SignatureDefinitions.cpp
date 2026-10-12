@@ -435,6 +435,9 @@ namespace XivAlexander::Game::Resolved {
 				if (image.primary_of(*it).BeginAddress == rva)
 					parts.emplace_back(base + it->BeginAddress, it->EndAddress - it->BeginAddress);
 			}
+
+			if (const auto leaf = ctx.FunctionStartingAt(primary); parts.empty() && !leaf.empty())
+				parts.push_back(leaf);
 			ctx.Require(!parts.empty(), ResolveError::NotFound, "no function starts at {}", Signatures::Describe(primary));
 			return parts;
 		}
@@ -2382,8 +2385,12 @@ namespace XivAlexander::Game::FontCode {
 	const Signatures::RegexSignature NamePlateAllocateBakeCaller(R"((?:[\x48-\x4F]\x8B[\x80-\xBF](....)[\x48-\x4F]\x03[\xC0-\xFF].{0,80}?[\x48\x49]\x8D[\x88-\x8F](....)[\x40-\x4F]?\xC6[\x40-\x47](.)\x00[\x48-\x4F]\x8B[\xD0-\xD7]\xE8(....)[\x48-\x4F]\x83[\xC0-\xC7](.)[\x48-\x4F]\x81[\xF8-\xFF](....)|[\x48\x49]\x8D[\x88-\x8F](....).{0,16}?(?:[\x48-\x4F]\x6B[\xC0-\xFF](.)|[\x48-\x4F]\x69[\xC0-\xFF](....)).{0,8}?[\x48-\x4F]\x03[\x80-\xBF](....).{0,8}?\xE8(....)\x84\xC0(?:\x74.|\x0F\x84....)(?:[\x40-\x4F]?\xC6[\x40-\x47](.)\x00)?))");
 	// AddonNamePlate's update looping over every plate's text node.
 	const Signatures::RegexSignature NamePlateObjectsLoop(R"([\x48-\x4F]\x8B[\x80-\xBF](....)\x33\xD2[\x48-\x4F]\x8B[\x4C\x54].(.)\xE8....[\x48-\x4F]\x8B[\x80-\xBF]\1.{0,8}?\xE8....[\x48\x49]\x83[\xC0-\xC7](.)[\x48\x49]\x81[\xF8-\xFF](....)(?:\x7C.|\x0F\x8C....)(?:\xEB.|\xE9....))");
-	// BakePlateRenderer::Draw, then the per-node setup that follows it, whose start is captured.
-	const Signatures::RegexSignature NamePlateBakePrepare(R"([\x48\x4C]\x8B[\x81\x89\x91\x99\xA1\xA9\xB1\xB9](....).{0,64}?[\x40-\x4F]?\x80[\xB8-\xBB\xBD-\xBF](....)\x00(?:[\x00-\x7F\x81-\xFF]{0,40}?|.{0,32}?[\x40-\x4F]?\x80[\x78-\x7F](\x71)\x00.{0,40}?)[\x40-\x4F]?\x80[\x78-\x7F]\x0B\x00.{0,1024}?(?:\xC3|\xE9....)\xCC*()(?:[\x48\x4C]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24.|[\x40\x41]?[\x50-\x57]|\x48\x8B\xC4|[\x48\x4C]\x89[\x58-\x7F].){1,12}\x48(?:\x83\xEC.|\x81\xEC....).{0,16}?\xE8....[\x48\x49]\x83[\xB8-\xBB\xBD-\xBF](....)\x00(?:\x74.|\x0F\x84....).{0,8}?\xE8(....).{0,12}?\xC7[\x40-\x47](.)\x00\x00\x80\x3F\xC7[\x40-\x47](.)\x00\x00\x80\x3F.{0,8}?[\x48\x4C]\x8B[\x80-\xBF]\5)");
+	// Inside BakePlateRenderer's per-node setup: the current bake data it reads from the renderer.
+	const Signatures::RegexSignature NamePlateBakePrepare(R"(\x48(?:\x83\xEC.|\x81\xEC....).{0,16}?\xE8....[\x48\x49]\x83[\xB8-\xBB\xBD-\xBF](....)\x00(?:\x74.|\x0F\x84....).{0,8}?\xE8.....{0,12}?\xC7[\x40-\x47].\x00\x00\x80\x3F\xC7[\x40-\x47].\x00\x00\x80\x3F.{0,8}?[\x48\x4C]\x8B[\x80-\xBF]\1)");
+	// Inside BakePlateRenderer::Draw: the plate's map lookup, then the renderer's flag that draws it live instead of baked.
+	const Signatures::RegexSignature NamePlateDraw(R"(\x80[\x78-\x7F]\x19\x00(?:\x75.|\x0F\x85....).{0,16}?\x80[\xB8-\xBB\xBD-\xBF](....)\x00.{0,16}?(?:\x75.|\x0F\x85....)[\x48-\x4F]\x3B[\xC0-\xFF](?:\x74.|\x0F\x84....))");
+	// The constructor storing AtkTextNodeRenderer's vtable at +0x28, then its scale; the next renderer's vtable is stored before or after it.
+	const Signatures::RegexSignature TextNodeRendererVtable(R"(\x48\x8D\x05(....).{0,8}?[\x48\x4C]\x89[\x40-\x7F]\x28.{0,40}?\xC7[\x40-\x47]\x50\x00\x00\x80\x3F)");
 	// Inside BakePlateRenderer::DrawBaked: a baked region at the node's transform.
 	const Signatures::RegexSignature NamePlateDrawBaked(R"(\xF3[\x40-\x4F]?\x0F\x10[\x42\x4A\x52\x5A\x62\x6A\x72\x7A](.).{0,8}?\xF3[\x40-\x4F]?\x0F\x10[\x42\x4A\x52\x5A\x62\x6A\x72\x7A](.).{0,300}?[\x40-\x4F]?\x0F\xB7[\x80-\xBF](....).{0,48}?\xE8....[\x40-\x4F]?\x0F\xB7[\x80-\xBF](....).{0,8}?[\x40-\x4F]?\x0F\xBF[\x40-\x7F](.).{0,8}?\x83[\xC0-\xC7]\x08.{0,400}?[\x40-\x4F]?\x0F\xB6[\x40-\x7F](.)(?:[\x40-\x4F]?\x88[\x40-\x7F].){4}.{0,200}?[\x40-\x4F]?\x0F\x2E.{1,6}?(?:\x7A.|\x0F\x8A....)(?:\x75.|\x0F\x85....)[\x40-\x4F]?[\xB8-\xBF]\x00\x00\x18\x00)");
 	// AtkServer::LoadShaders' loop over the shader pairs.
@@ -2475,6 +2482,107 @@ namespace XivAlexander::Game::Resolved::Fonts {
 				return std::nullopt;
 			return std::move(all.front());
 		}
+
+		void* CalledFunction(const ResolveContext& ctx, const ScanResult& m, std::initializer_list<size_t> groups, std::string_view what) {
+			return Address(ctx.FunctionStartingAt(CapturedTarget<const void*>(m, groups, what), what).data());
+		}
+
+		std::vector<std::span<const uint8_t>> FunctionRuns(const ResolveContext& ctx, const void* function, std::string_view what) {
+			auto parts = FunctionParts(ctx, ctx.FunctionStartingAt(function, what).data());
+			std::ranges::sort(parts, {}, [](const auto& part) { return part.data(); });
+
+			std::vector<std::span<const uint8_t>> runs;
+			for (const auto part : parts) {
+				if (!runs.empty() && runs.back().data() + runs.back().size() == part.data())
+					runs.back() = {runs.back().data(), runs.back().size() + part.size()};
+				else
+					runs.push_back(part);
+			}
+			return runs;
+		}
+
+		std::vector<const void*> CalleesOf(const ResolveContext& ctx, const void* function, std::string_view what) {
+			std::vector<const void*> callees;
+			for (const auto run : FunctionRuns(ctx, function, what)) {
+				for (const auto& call : RelativeCall.Lookup(run, RegexSignature::FromNextByte)) {
+					if (const auto target = call.ResolveAddress<const void*>(1); ctx.InSection(target, ".text") && !ctx.FunctionStartingAt(target).empty())
+						callees.push_back(target);
+				}
+			}
+			std::ranges::sort(callees);
+			callees.erase(std::ranges::unique(callees).begin(), callees.end());
+			return callees;
+		}
+
+		std::vector<const void*> FunctionsAfter(const ResolveContext& ctx, const void* function, size_t count) {
+			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
+			const auto image = xivres::pe_image::from_loaded(base);
+			const auto table = image.function_table();
+
+			std::vector<const void*> functions;
+			for (auto it = std::ranges::upper_bound(table, static_cast<uint32_t>(static_cast<const uint8_t*>(function) - base), {}, &xivres::pe_image::runtime_function::BeginAddress);
+				it != table.end() && functions.size() < count; ++it) {
+				if (image.primary_of(*it).BeginAddress == it->BeginAddress)
+					functions.push_back(base + it->BeginAddress);
+			}
+			return functions;
+		}
+
+		std::vector<const void*> FunctionsBefore(const ResolveContext& ctx, const void* function, size_t count) {
+			const auto base = reinterpret_cast<const uint8_t*>(*ctx.Module());
+			const auto image = xivres::pe_image::from_loaded(base);
+			const auto table = image.function_table();
+
+			std::vector<const void*> functions;
+			for (auto it = std::ranges::lower_bound(table, static_cast<uint32_t>(static_cast<const uint8_t*>(function) - base), {}, &xivres::pe_image::runtime_function::BeginAddress);
+				it != table.begin() && functions.size() < count;) {
+				--it;
+				if (image.primary_of(*it).BeginAddress == it->BeginAddress)
+					functions.push_back(base + it->BeginAddress);
+			}
+			return functions;
+		}
+
+		ScanResult UniqueIn(const ResolveContext& ctx, const RegexSignature& signature, std::span<const void* const> functions, std::string_view what) {
+			std::optional<ScanResult> found;
+			for (const auto function : functions) {
+				for (const auto run : FunctionRuns(ctx, function, what)) {
+					for (auto& m : ctx.All(signature, run)) {
+						ctx.Require(!found, ResolveError::Ambiguous, "{} found more than once in the code searched", what);
+						found = std::move(m);
+					}
+				}
+			}
+			ctx.Require(found.has_value(), ResolveError::NotFound, "{} not found in the code searched", what);
+			return std::move(*found);
+		}
+
+		ScanResult UniqueIn(const ResolveContext& ctx, const RegexSignature& signature, const void* function, std::string_view what) {
+			return UniqueIn(ctx, signature, std::span<const void* const>(&function, 1), what);
+		}
+
+		std::optional<ScanResult> TryUniqueIn(const ResolveContext& ctx, const RegexSignature& signature, const void* function) {
+			if (ctx.FunctionStartingAt(function).empty())
+				return std::nullopt;
+			std::vector<ScanResult> all;
+			for (const auto run : FunctionRuns(ctx, function, "function")) {
+				for (auto& m : ctx.All(signature, run))
+					all.push_back(std::move(m));
+			}
+			if (all.size() != 1)
+				return std::nullopt;
+			return std::move(all.front());
+		}
+
+		ScanResult UniqueInSlots(const ResolveContext& ctx, void* const* vtable, const RegexSignature& signature, std::string_view what) {
+			const auto slots = ctx.Vtable(vtable, 8, what);
+			return ctx.UniqueSlot(slots, what, [&](size_t, std::span<const uint8_t> fn) { return ctx.Find(signature, fn); }).second;
+		}
+	}
+
+	std::string to_string(const ModuleInitFunctions& value) {
+		return std::format("LoadShaders {}, InitFontManager {}, AtkServer +0x{:X}, font manager +0x{:X}",
+			Signatures::Describe(value.LoadShaders), Signatures::Describe(value.InitFontManager), value.Server, value.FontManager);
 	}
 
 	std::string to_string(const StageLayout& value) {
@@ -2527,10 +2635,12 @@ namespace XivAlexander::Game::Resolved::Fonts {
 
 	std::string to_string(const NamePlateFunctions& value) {
 		return std::format("AllocateBake {}, BakePrepare {}, DrawBaked {}, bake plate +0x{:X}, {} objects of 0x{:X} bytes +0x{:X} (name text +0x{:X}, text size +0x{:X} +0x{:X}, "
-			"needs baking +0x{:X}), bake text Y +0x{:X} alpha +0x{:X}, current bake +0x{:X}, node transform +0x{:X} size +0x{:X} +0x{:X} parent +0x{:X} scale +0x{:X}",
+			"needs baking +0x{:X}), bake text Y +0x{:X} alpha +0x{:X}, current bake +0x{:X}, node transform +0x{:X} size +0x{:X} +0x{:X} parent +0x{:X} scale +0x{:X}, "
+			"Draw {}, fixed font resolution +0x{:X}",
 			Signatures::Describe(value.AllocateBake), Signatures::Describe(value.BakePrepare), Signatures::Describe(value.DrawBaked), value.AddonBakePlate,
 			value.ObjectCount, value.ObjectSize, value.AddonObjects, value.ObjectNameText, value.ObjectTextW, value.ObjectTextH, value.ObjectNeedsToBeBaked,
-			value.BakeTextYOffset, value.BakeAlpha, value.RendererCurrentBakeData, value.NodeTransform, value.NodeWidth, value.NodeHeight, value.NodeParent, value.NodeScaleX);
+			value.BakeTextYOffset, value.BakeAlpha, value.RendererCurrentBakeData, value.NodeTransform, value.NodeWidth, value.NodeHeight, value.NodeParent, value.NodeScaleX,
+			Signatures::Describe(value.Draw), value.RendererFixedFontResolution);
 	}
 
 	std::string to_string(const ShaderTablesLayout& value) {
@@ -2547,8 +2657,26 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			Signatures::Describe(value.SplitWord), Signatures::Describe(value.FitUnits), value.ConsumedUnits, value.MaxUnits, value.UsedUnits);
 	}
 
+	const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit("Fonts.ModuleInit", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::AtkModuleReloadFontShaders, ctx.Text(), "shader reload");
+		return ModuleInitFunctions{
+			.LoadShaders = CalledFunction(ctx, m, {2}, "LoadShaders"),
+			.InitFontManager = CalledFunction(ctx, m, {5}, "InitFontManager"),
+			.Server = Captured(m, {1}, "AtkServer"),
+			.FontManager = Captured(m, {4}, "font manager"),
+		};
+	});
+
+	const Signatures::ComplexSignature<void* const*> TextNodeRenderer("Fonts.TextNodeRenderer", [](ResolveContext& ctx) {
+		return CapturedTarget<void* const*>(ctx.Unique(FontCode::TextNodeRendererVtable, ctx.Text(), "AtkTextNodeRenderer vtable"), {1}, "AtkTextNodeRenderer vtable");
+	});
+
+	const Signatures::ComplexSignature<void*> NamePlateUpdate("Fonts.NamePlateUpdate", [](ResolveContext& ctx) {
+		return FunctionOf(ctx, ctx.Unique(FontCode::NamePlateAllocateBakeCaller, ctx.Text(), "AllocateBake's caller"), "AddonNamePlate's update");
+	});
+
 	const Signatures::ComplexSignature<StageLayout> Stage("Fonts.Stage", [](ResolveContext& ctx) {
-		const auto m = ctx.Unique(FontCode::TextNodeFontSet, ctx.Text(), "TextNodeFontSet");
+		const auto m = UniqueInSlots(ctx, ctx.Get(TextNodeRenderer), FontCode::TextNodeFontSet, "TextNodeFontSet");
 		return StageLayout{
 			.Instance = CapturedTarget<void* const*>(m, {3}, "AtkStage instance"),
 			.FontManager = Captured(m, {4}, "AtkStage font manager"),
@@ -2556,7 +2684,11 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	});
 
 	const Signatures::ComplexSignature<FontManagerLayout> FontManager("Fonts.FontManager", [](ResolveContext& ctx) {
-		const auto m = ctx.Unique(FontCode::InitFontManager, ctx.Text(), "InitFontManager");
+		// Builds without the shader reload (before 2017.09) are scanned whole; InitFontManager's pattern is unique there.
+		ModuleInitFunctions init;
+		const auto m = ModuleInit.Resolve(init, ctx.Module()) == ResolveError::Ok
+			? UniqueIn(ctx, FontCode::InitFontManager, init.InitFontManager, "InitFontManager")
+			: ctx.Unique(FontCode::InitFontManager, ctx.Text(), "InitFontManager");
 		return FontManagerLayout{
 			.Fonts = Captured(m, {3}, "fonts"),
 			.FontCount = Captured(m, {1}, "font count"),
@@ -2569,7 +2701,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	const Signatures::ComplexSignature<FontSetLayout> FontSet("Fonts.FontSet", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
 		const auto pick = ctx.Unique(FontCode::PickFont, text, "PickFont");
-		const auto setUp = ctx.Unique(FontCode::TextNodeSetUp, text, "TextNodeSetUp");
+		const auto setUp = UniqueInSlots(ctx, ctx.Get(TextNodeRenderer), FontCode::TextNodeSetUp, "TextNodeSetUp");
 		return FontSetLayout{
 			.PickFont = Address(pick.begin(0)),
 			.ScaledSizeY = Captured(pick, {2}, "scaled size"),
@@ -2583,13 +2715,15 @@ namespace XivAlexander::Game::Resolved::Fonts {
 
 	const Signatures::ComplexSignature<FontLayout> Font("Fonts.Font", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
-		const auto getGlyph = ctx.Unique(FontCode::GetGlyph, text, "GetGlyph");
 		const auto layOut = ctx.Unique(FontCode::LayOutCharacter, text, "LayOutCharacter");
-		const auto build = ctx.Unique(FontCode::BuildFont, text, "BuildFont");
+		const auto getGlyphFunction = CalledFunction(ctx, layOut, {1}, "GetGlyph");
+		const auto getGlyph = UniqueIn(ctx, FontCode::GetGlyph, getGlyphFunction, "GetGlyph");
+		const auto fontManagerFunctions = FunctionsAfter(ctx, ctx.Get(ModuleInit).InitFontManager, 16);
+		const auto build = UniqueIn(ctx, FontCode::BuildFont, fontManagerFunctions, "BuildFont");
 		const auto quad = ctx.Unique(FontCode::GlyphQuad, text, "GlyphQuad");
-		const auto load = ctx.Unique(FontCode::LoadFont, text, "LoadFont");
+		const auto load = UniqueIn(ctx, FontCode::LoadFont, fontManagerFunctions, "LoadFont");
 		FontLayout res{
-			.GetGlyph = FunctionOf(ctx, getGlyph, "GetGlyph"),
+			.GetGlyph = getGlyphFunction,
 			.LayOutCharacter = FunctionOf(ctx, layOut, "LayOutCharacter"),
 			.BuildFont = FunctionOf(ctx, build, "BuildFont"),
 			.MaxTextures = Captured(load, {5}, "max textures"),
@@ -2604,7 +2738,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			.TextureCount = Captured(build, {5}, "texture count"),
 			.Flags = Captured(build, {4, 16}, "flags"),
 		};
-		ctx.Require(CapturedTarget(layOut, {1}, "LayOutCharacter's GetGlyph") == res.GetGlyph, ResolveError::Mismatch, "LayOutCharacter doesn't call the GetGlyph found");
 
 		// Only set in copies of fonts; without it, italics overhang the next glyph.
 		if (const auto setUp = TryUnique(ctx, FontCode::SetUpFontSets))
@@ -2615,8 +2748,9 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	const Signatures::ComplexSignature<UiLayout> Ui("Fonts.Ui", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
 		const auto setScale = ctx.Unique(FontCode::SetScale, text, "SetScale");
-		const auto update = ctx.Unique(FontCode::UpdateCollisionNodeList, text, "UpdateCollisionNodeList");
-		const auto count = ctx.Unique(FontCode::CountCollisionNodes, text, "CountCollisionNodes");
+		const auto update = UniqueIn(ctx, FontCode::UpdateCollisionNodeList, CalleesOf(ctx, ctx.Get(NamePlateUpdate), "AddonNamePlate's update"), "UpdateCollisionNodeList");
+		const auto updateFunction = FunctionOf(ctx, update, "UpdateCollisionNodeList");
+		const auto count = UniqueIn(ctx, FontCode::CountCollisionNodes, CalleesOf(ctx, updateFunction, "UpdateCollisionNodeList"), "CountCollisionNodes");
 		return UiLayout{
 			.StageUnitManager = Captured(setScale, {2}, "unit manager"),
 			.LoadedUnitsCount = Captured(setScale, {5}, "loaded unit count"),
@@ -2652,21 +2786,21 @@ namespace XivAlexander::Game::Resolved::Fonts {
 
 	const Signatures::ComplexSignature<ReplacerFunctions> Replacer("Fonts.Replacer", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
-		const auto buildCache = ctx.Unique(FontCode::BuildFontCache, text, "BuildFontCache");
-		const auto freeCache = ctx.Unique(FontCode::FreeFontCache, text, "FreeFontCache");
 		const auto toggle = ctx.Unique(FontCode::ToggleFontCache, text, "ToggleFontCache");
-		const auto vtables = ctx.Unique(FontCode::FontAnalyzerVtables, text, "font analyzer vtables");
+		const auto buildFunction = CalledFunction(ctx, toggle, {2}, "BuildFontCache");
+		const auto freeFunction = CalledFunction(ctx, toggle, {3}, "FreeFontCache");
+		const auto buildCache = ctx.MatchAt(FontCode::BuildFontCache, FunctionRuns(ctx, buildFunction, "BuildFontCache").front(), "BuildFontCache");
+		const auto freeCache = ctx.MatchAt(FontCode::FreeFontCache, FunctionRuns(ctx, freeFunction, "FreeFontCache").front(), "FreeFontCache");
+		const auto vtables = UniqueIn(ctx, FontCode::FontAnalyzerVtables, CalleesOf(ctx, ctx.Get(ModuleInit).InitFontManager, "InitFontManager"), "font analyzer vtables");
 		ReplacerFunctions res{
-			.BuildFontCache = Address(buildCache.begin(0)),
-			.FreeFontCache = Address(freeCache.begin(0)),
+			.BuildFontCache = buildFunction,
+			.FreeFontCache = freeFunction,
 			.RendererVtable = CapturedTarget<void* const*>(vtables, {1}, "renderer vtable"),
 			.RenderCountVtable = CapturedTarget<void* const*>(vtables, {3}, "render count vtable"),
 			.FontCacheSlot = Captured(buildCache, {1}, "font cache slot"),
 			.FontCacheFlags = Captured(toggle, {1}, "font cache flags"),
 		};
 		ctx.Require(Captured(freeCache, {1}, "font cache slot") == res.FontCacheSlot, ResolveError::Mismatch, "BuildFontCache and FreeFontCache disagree on the font cache slot");
-		ctx.Require(CapturedTarget(toggle, {2}, "ToggleFontCache's BuildFontCache") == res.BuildFontCache && CapturedTarget(toggle, {3}, "ToggleFontCache's FreeFontCache") == res.FreeFontCache,
-			ResolveError::Mismatch, "ToggleFontCache doesn't call the BuildFontCache and FreeFontCache found");
 
 		// Without it, italics are the game's shear.
 		std::optional<int32_t> stateFlags;
@@ -2697,15 +2831,18 @@ namespace XivAlexander::Game::Resolved::Fonts {
 
 	const Signatures::ComplexSignature<NamePlateFunctions> NamePlates("Fonts.NamePlates", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
-		const auto allocate = ctx.Unique(FontCode::NamePlateAllocateBake, text, "AllocateBake");
-		const auto caller = ctx.Unique(FontCode::NamePlateAllocateBakeCaller, text, "AllocateBake's caller");
-		const auto prepare = ctx.Unique(FontCode::NamePlateBakePrepare, text, "BakePrepare");
-		const auto draw = ctx.Unique(FontCode::NamePlateDrawBaked, text, "DrawBaked");
+		const auto update = ctx.Get(NamePlateUpdate);
+		const auto caller = UniqueIn(ctx, FontCode::NamePlateAllocateBakeCaller, update, "AllocateBake's caller");
+		const auto allocateFunction = CalledFunction(ctx, caller, {4, 11}, "AllocateBake");
+		const auto allocate = UniqueIn(ctx, FontCode::NamePlateAllocateBake, allocateFunction, "AllocateBake");
+		const auto prepare = UniqueIn(ctx, FontCode::NamePlateBakePrepare, FunctionsBefore(ctx, allocateFunction, 8), "BakePrepare");
+		const auto prepareFunction = FunctionOf(ctx, prepare, "BakePrepare");
+		const auto draw = UniqueIn(ctx, FontCode::NamePlateDrawBaked, FunctionsAfter(ctx, prepareFunction, 16), "DrawBaked");
 		const auto dispatch = ctx.Unique(FontCode::AtkResNodeDispatchEvent, text, "AtkResNode::DispatchEvent");
 		const auto setScale = ctx.Unique(FontCode::AtkResNodeSetScale, text, "AtkResNode::SetScale");
 		NamePlateFunctions res{
-			.AllocateBake = FunctionOf(ctx, allocate, "AllocateBake"),
-			.BakePrepare = Address(prepare.begin(4)),
+			.AllocateBake = allocateFunction,
+			.BakePrepare = prepareFunction,
 			.DrawBaked = FunctionOf(ctx, draw, "DrawBaked"),
 			.AddonBakePlate = Captured(caller, {2, 7}, "bake plate"),
 			.AddonObjects = Captured(caller, {1, 10}, "objects"),
@@ -2716,7 +2853,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			.ObjectNeedsToBeBaked = Captured(caller, {3, 12}, "needs baking"),
 			.BakeTextYOffset = Captured(draw, {5}, "bake text Y offset"),
 			.BakeAlpha = Captured(draw, {6}, "bake alpha"),
-			.RendererCurrentBakeData = Captured(prepare, {5}, "current bake"),
+			.RendererCurrentBakeData = Captured(prepare, {1}, "current bake"),
 			// The transform's first row is captured as its two floats; the matrix starts at the first.
 			.NodeTransform = (std::min)(Captured(draw, {1}, "transform"), Captured(draw, {2}, "transform")),
 			.NodeWidth = Captured(draw, {3}, "node width"),
@@ -2728,14 +2865,22 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		// The caller has the array's size before 7.00, the loop over the plates since.
 		auto arraySize = TryCaptured(caller, {6});
 		if (!arraySize)
-			arraySize = Captured(ctx.Unique(FontCode::NamePlateObjectsLoop, text, "the plates' loop"), {4}, "object array size");
+			arraySize = Captured(UniqueIn(ctx, FontCode::NamePlateObjectsLoop, update, "the plates' loop"), {4}, "object array size");
 		res.ObjectCount = *arraySize / (std::max)(res.ObjectSize, 1);
+
+		// Draw is the function before PrepareNode; without it or its flag, only the baked modes are available.
+		if (const auto before = FunctionsBefore(ctx, prepareFunction, 1); !before.empty()) {
+			if (const auto live = TryUniqueIn(ctx, FontCode::NamePlateDraw, before.front()); live) {
+				res.Draw = Address(before.front());
+				res.RendererFixedFontResolution = TryCaptured(*live, {1}).value_or(0);
+			}
+		}
 		return res;
 	});
 
 	const Signatures::ComplexSignature<ShaderTablesLayout> ShaderTables("Fonts.ShaderTables", [](ResolveContext& ctx) {
 		const auto text = ctx.Text();
-		const auto loop = ctx.Unique(FontCode::AtkServerLoadShadersLoop, text, "LoadShaders' loop");
+		const auto loop = UniqueIn(ctx, FontCode::AtkServerLoadShadersLoop, ctx.Get(ModuleInit).LoadShaders, "LoadShaders' loop");
 		const auto bind = ctx.Unique(FontCode::AtkServerBindFontShaders, text, "BindShaders");
 		const auto set = ctx.Unique(FontCode::KernelSetPixelShader, text, "SetPixelShader");
 		const auto vertexShaders = Captured(loop, {1}, "vertex shaders");
@@ -2750,11 +2895,11 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	});
 
 	const Signatures::ComplexSignature<EdgeShaderFunctions> EdgeShader("Fonts.EdgeShader", [](ResolveContext& ctx) {
-		const auto m = ctx.Unique(FontCode::AtkModuleReloadFontShaders, ctx.Text(), "shader reload");
+		const auto& init = ctx.Get(ModuleInit);
 		return EdgeShaderFunctions{
-			.LoadShaders = CapturedTarget(m, {2}, "LoadShaders"),
-			.ModuleServer = Captured(m, {1}, "AtkServer"),
-			.ModuleFontManager = Captured(m, {4}, "font manager"),
+			.LoadShaders = init.LoadShaders,
+			.ModuleServer = init.Server,
+			.ModuleFontManager = init.FontManager,
 		};
 	});
 

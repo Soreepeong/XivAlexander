@@ -51,7 +51,12 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	m_nodeHeight = functions.NodeHeight;
 	m_nodeParent = functions.NodeParent;
 	m_nodeScaleX = functions.NodeScaleX;
+	m_rendererFixedFontResolution = functions.RendererFixedFontResolution;
 
+	if (functions.Draw && m_rendererFixedFontResolution)
+		m_bakePlateDrawHook.emplace("NamePlateDraw", reinterpret_cast<uintptr_t>(functions.Draw), [this](uintptr_t renderer, uintptr_t node) { BakePlateDrawDetour(renderer, node); });
+	else
+		Host::Warning("Live nameplate text is unavailable in this version of the game; it is drawn as baked at full size.");
 	m_allocateBakeHook.emplace("NamePlateAllocateBake", allocateBake, [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
 	m_prepareHook.emplace("NamePlateBakePrepare", prepare, [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });
 	m_drawBakedHook.emplace("NamePlateDrawBaked", drawBaked, [this](uintptr_t renderer, uintptr_t node, uintptr_t bake) { DrawBakedDetour(renderer, node, bake); });
@@ -59,6 +64,7 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 }
 
 FontReplacement::NamePlateText::~NamePlateText() {
+	m_bakePlateDrawHook.reset();
 	m_allocateBakeHook.reset();
 
 	// Regions baked at another scale must not be drawn unhooked; a plate needing a bake is drawn live (BakePlateRenderer.Draw) until rebaked.
@@ -70,6 +76,20 @@ FontReplacement::NamePlateText::~NamePlateText() {
 
 	m_prepareHook.reset();
 	m_drawBakedHook.reset();
+}
+
+void FontReplacement::NamePlateText::SetMode(FontReplacementNamePlateMode mode) {
+	if (m_mode == mode)
+		return;
+	m_mode = mode;
+	ForceRebake();
+}
+
+XivAlexander::FontReplacementNamePlateMode FontReplacement::NamePlateText::GetEffectiveMode() const {
+	using Mode = XivAlexander::FontReplacementNamePlateMode;
+	if (!m_replacer.Enabled())
+		return Mode::Game;
+	return m_mode == Mode::Live && !m_bakePlateDrawHook ? Mode::BakedAtFullSize : m_mode;
 }
 
 void FontReplacement::NamePlateText::ForceRebake() {
@@ -133,8 +153,8 @@ uint8_t FontReplacement::NamePlateText::AllocateBakeDetour(uintptr_t renderer, u
 		m_bakeScales.erase(it);
 	}
 
-	// As the game bakes while the replacement is off.
-	const auto fullSize = m_replacer.Enabled() ? GetFullSizeScale(obj) : std::nullopt;
+	// As the game bakes while the replacement is off, and in the modes that don't bake at full size.
+	const auto fullSize = GetEffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize ? GetFullSizeScale(obj) : std::nullopt;
 	if (!fullSize)
 		return m_allocateBakeHook->Original(renderer, obj);
 
@@ -181,7 +201,7 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 
 	// Shown larger than baked (over 100% up close, targeted): rebake at that size (BakeData is the object's first member); drawn live until then.
 	const auto obj = bake;
-	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && m_replacer.Enabled())
+	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && GetEffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize)
 		SetNeedsToBeBaked(obj);
 
 	// The region is in bake pixels, so the node's size and text offset are scaled to match; near the bake scale the transform is snapped to exactly 1,
@@ -206,4 +226,19 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 		textYOffsetField = textYOffset;
 	});
 	m_drawBakedHook->Original(renderer, node, bake);
+}
+
+void FontReplacement::NamePlateText::BakePlateDrawDetour(uintptr_t renderer, uintptr_t node) {
+	SeeRenderer(renderer);
+	if (GetEffectiveMode() != FontReplacementNamePlateMode::Live) {
+		m_bakePlateDrawHook->Original(renderer, node);
+		return;
+	}
+
+	// The renderer's own live mode, which the game's text render mode setting sets.
+	auto& liveMode = At<uint8_t>(renderer + m_rendererFixedFontResolution);
+	const auto saved = liveMode;
+	liveMode = 1;
+	const auto restore = xivres::util::on_dtor([&] { liveMode = saved; });
+	m_bakePlateDrawHook->Original(renderer, node);
 }

@@ -1095,6 +1095,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	tip(rt.FontReplacement.Enabled, IDS_SETTINGS_FONT_ENABLED_TIP);
 	label(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK);
 	tip(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP);
+	label(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL);
+	tip(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL_DESC);
+	label(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES);
+	tip(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES_TIP);
 
 	// Named as the files they stand in for, in every language.
 	m_itemInfo[&rt.ChainLoad.D3d11].FixedLabel = L"d3d11.dll";
@@ -1159,7 +1163,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Opcodes.VersionSensitiveFeaturesAllowedGameVersion),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
-		static_cast<ConfigItemBase*>(&rt.FontReplacement.Subpixel),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -4038,6 +4041,21 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 			for (auto i = 0; i <= static_cast<int>(xivres::game_publisher::UserjoyGames); ++i)
 				res.emplace_back(static_cast<xivres::game_publisher>(i), rt.GetRegionNameLocalized(static_cast<xivres::game_publisher>(i)));
 			return res;
+		})
+		|| BindEnum<FontReplacementSubpixelMode>(row, [&rt] {
+			return std::vector<std::pair<FontReplacementSubpixelMode, std::wstring>>{
+				{FontReplacementSubpixelMode::Off, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_OFF)},
+				{FontReplacementSubpixelMode::System, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_SYSTEM)},
+				{FontReplacementSubpixelMode::Rgb, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_RGB)},
+				{FontReplacementSubpixelMode::Bgr, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_BGR)},
+			};
+		})
+		|| BindEnum<FontReplacementNamePlateMode>(row, [&rt] {
+			return std::vector<std::pair<FontReplacementNamePlateMode, std::wstring>>{
+				{FontReplacementNamePlateMode::Game, rt.GetStringRes(IDS_SETTINGS_NAMEPLATES_GAME)},
+				{FontReplacementNamePlateMode::BakedAtFullSize, rt.GetStringRes(IDS_SETTINGS_NAMEPLATES_BAKED)},
+				{FontReplacementNamePlateMode::Live, rt.GetStringRes(IDS_SETTINGS_NAMEPLATES_LIVE)},
+			};
 		})
 		|| BindEnum<SoxrResamplerConfig::QualityPreset>(row, [] {
 			using Q = SoxrResamplerConfig::QualityPreset;

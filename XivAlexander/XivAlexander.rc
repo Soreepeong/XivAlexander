@@ -925,6 +925,12 @@ BEGIN
                             "この地域のゲームにはXivAlexanderがもうインストールされていません。この地域で保存したログインセッションを削除できます。"
     IDS_LOADER_CLEANUP_CALCULATING "計算中..."
     IDS_LOADER_CLEANUP_SESSIONS_COUNT "{}件"
+    IDS_LOADER_CLEANUP_CONFIRM_HEAD "次のデータを削除します。この操作は元に戻せません。"
+    IDS_LOADER_CLEANUP_CONFIRM_PROGRAM "プログラムのファイル: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_SESSIONS "保存したログインセッション"
+    IDS_LOADER_CLEANUP_CONFIRM_SETTINGS "設定: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_USERCONTENT "Modと規則: {} (ごみ箱に移動)"
+    IDS_LOADER_CLEANUP_CONFIRM_TAIL "続行しますか?"
     IDS_LOADER_ERROR_UNLOAD "XivAlexanderの読み込みを解除できませんでした。 ({})"
     IDS_SETTINGS_NOTIFYWHENHIDDEN "コントロールウィンドウをトレイに隠したときに通知する"
     IDS_TRAY_HIDDEN_NOTIFICATION "XivAlexanderは引き続き実行中です。トレイのアイコンからもう一度開けます。"
@@ -1372,6 +1378,11 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (赤・緑・青の順)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (青・緑・赤の順)"
     IDS_SETTINGS_SUBPIXEL_DESC "置き換えた文字を ClearType のように、画面の赤・緑・青のサブピクセルごとに描きます。縦長の画面、OLED など並びが縦や三角形の画面ではオフにしてください。濃さとコントラストは Windows の ClearType テキスト チューナーの設定を使います。拡大縮小して描かれる文字と、名前の表示はグレースケールのままです。"
+    IDS_SETTINGS_NAMEPLATES "名前の表示の文字"
+    IDS_SETTINGS_NAMEPLATES_GAME "ゲームと同じ (一度描いて拡大縮小)"
+    IDS_SETTINGS_NAMEPLATES_BAKED "最大の大きさで一度だけ描く"
+    IDS_SETTINGS_NAMEPLATES_LIVE "毎フレーム描く (最も鮮明、負荷大)"
+    IDS_SETTINGS_NAMEPLATES_TIP "ゲームは名前の表示を一度だけ描いて保存し、距離に応じて拡大縮小するため、ぼやけます。「最大の大きさで一度だけ描く」は近くで見たときの大きさで描き、そこから縮小します。「毎フレーム描く」は表示する大きさで毎フレーム描くため最も鮮明ですが、名前の表示が多いと負荷が高くなります。"
 END
 
 
@@ -2312,6 +2323,12 @@ BEGIN
                             "이 지역의 게임에는 더 이상 XivAlexander가 설치되어 있지 않습니다. 이 지역에서 저장한 로그인 세션을 삭제할 수 있습니다."
     IDS_LOADER_CLEANUP_CALCULATING "계산 중..."
     IDS_LOADER_CLEANUP_SESSIONS_COUNT "{}개"
+    IDS_LOADER_CLEANUP_CONFIRM_HEAD "다음 데이터를 삭제합니다. 이 작업은 되돌릴 수 없습니다."
+    IDS_LOADER_CLEANUP_CONFIRM_PROGRAM "프로그램 파일: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_SESSIONS "저장된 로그인 세션"
+    IDS_LOADER_CLEANUP_CONFIRM_SETTINGS "설정: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_USERCONTENT "모드와 규칙: {} (휴지통으로 이동)"
+    IDS_LOADER_CLEANUP_CONFIRM_TAIL "계속하시겠습니까?"
     IDS_LOADER_ERROR_UNLOAD "XivAlexander를 프로세스에서 해제하지 못했습니다. ({})"
     IDS_SETTINGS_NOTIFYWHENHIDDEN "관리 창을 알림 영역으로 숨길 때 알리기"
     IDS_TRAY_HIDDEN_NOTIFICATION 
@@ -2762,6 +2779,11 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (빨강, 초록, 파랑 순)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (파랑, 초록, 빨강 순)"
     IDS_SETTINGS_SUBPIXEL_DESC "바꾼 글자를 ClearType처럼 화면의 빨강, 초록, 파랑 서브픽셀마다 따로 그립니다. 세로로 돌린 화면이나 OLED처럼 배열이 세로 또는 삼각형인 화면에서는 끄세요. 강도와 대비는 Windows ClearType 텍스트 조정기의 설정을 따릅니다. 확대하거나 축소해서 그리는 글자와 이름표는 회색조로 그립니다."
+    IDS_SETTINGS_NAMEPLATES "이름표 글자"
+    IDS_SETTINGS_NAMEPLATES_GAME "게임과 같게 (한 번 그려 확대/축소)"
+    IDS_SETTINGS_NAMEPLATES_BAKED "가장 큰 크기로 한 번만 그리기"
+    IDS_SETTINGS_NAMEPLATES_LIVE "매 프레임 그리기 (가장 선명, 부하 큼)"
+    IDS_SETTINGS_NAMEPLATES_TIP "게임은 이름표를 한 번만 그려 저장해 두고 거리에 따라 확대/축소하므로 흐려집니다. '가장 큰 크기로 한 번만 그리기'는 가까이서 보이는 크기로 그린 뒤 거기서 줄여 보여 줍니다. '매 프레임 그리기'는 보이는 크기로 매 프레임 그려 가장 선명하지만, 이름표가 많으면 부하가 큽니다."
 END
 
 
@@ -3806,6 +3828,12 @@ BEGIN
                             "XivAlexander is no longer installed in any game of this region. You can forget the login sessions saved for it."
     IDS_LOADER_CLEANUP_CALCULATING "Calculating..."
     IDS_LOADER_CLEANUP_SESSIONS_COUNT "{} saved"
+    IDS_LOADER_CLEANUP_CONFIRM_HEAD "This will permanently remove the following. It cannot be undone."
+    IDS_LOADER_CLEANUP_CONFIRM_PROGRAM "Program files: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_SESSIONS "Saved login sessions"
+    IDS_LOADER_CLEANUP_CONFIRM_SETTINGS "Settings: {}"
+    IDS_LOADER_CLEANUP_CONFIRM_USERCONTENT "Mods and rules: {} (moved to the Recycle Bin)"
+    IDS_LOADER_CLEANUP_CONFIRM_TAIL "Do you want to continue?"
     IDS_LOADER_ERROR_UNLOAD "Failed to unload XivAlexander from process: {}"
     IDS_SETTINGS_NOTIFYWHENHIDDEN 
                             "Notify when the control window is hidden to the notification area"
@@ -4282,6 +4310,11 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (red, green, blue from the left)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (blue, green, red from the left)"
     IDS_SETTINGS_SUBPIXEL_DESC "Draws replaced text per red, green and blue subpixel of the screen, as ClearType does. Turn it off on rotated screens and on screens whose subpixels are not in vertical stripes (most OLED panels). Strength and contrast come from the Windows ClearType Text Tuner. Text drawn scaled, and nameplates, stay grayscale."
+    IDS_SETTINGS_NAMEPLATES "Nameplate text"
+    IDS_SETTINGS_NAMEPLATES_GAME "As the game (baked, resampled)"
+    IDS_SETTINGS_NAMEPLATES_BAKED "Baked once at full size"
+    IDS_SETTINGS_NAMEPLATES_LIVE "Live every frame (sharpest, costly)"
+    IDS_SETTINGS_NAMEPLATES_TIP "The game bakes each nameplate's text once and resamples it as the plate scales with distance, which blurs it. Baked once at full size bakes it at the size the plate has up close and draws it scaled down from there. Live draws it every frame at the size shown: always sharp, but costly with many nameplates."
 END
 
 

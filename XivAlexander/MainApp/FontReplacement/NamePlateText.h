@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/Host.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
@@ -29,6 +30,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int m_bakeAlpha = 0;
 
 		int m_rendererCurrentBakeData = 0;
+		int m_rendererFixedFontResolution = 0;
 
 		// AtkResNode; the transform is a row-major 2x2 float matrix.
 		int m_nodeTransform = 0;
@@ -41,9 +43,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uintptr_t m_lastRenderer = 0;
 		bool m_rebakePending = false;
 
+		FontReplacementNamePlateMode m_mode = FontReplacementNamePlateMode::BakedAtFullSize;
+
 		std::optional<Host::Hook<uint8_t, uintptr_t, uintptr_t>> m_allocateBakeHook;
 		std::optional<Host::Hook<void, uintptr_t, float*, GameFontSet*, uintptr_t>> m_prepareHook;
 		std::optional<Host::Hook<void, uintptr_t, uintptr_t, uintptr_t>> m_drawBakedHook;
+
+		// Null if the game's draw isn't found; the live mode then draws as the baked one.
+		std::optional<Host::Hook<void, uintptr_t, uintptr_t>> m_bakePlateDrawHook;
 
 	public:
 		explicit NamePlateText(FontReplacer& replacer);
@@ -54,7 +61,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Plates are reached via the last renderer the hooks saw (embedded in the NamePlate addon) if that addon is still loaded, else at the next draw.
 		void ForceRebake();
 
+		// Game thread; plates are baked again when it changes.
+		void SetMode(FontReplacementNamePlateMode mode);
+
 	private:
+		// The configured mode while the replacement is on, else the game's.
+		[[nodiscard]] FontReplacementNamePlateMode GetEffectiveMode() const;
+
 		// Also performs rebakes requested before any renderer was seen.
 		void SeeRenderer(uintptr_t renderer);
 
@@ -70,5 +83,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uint8_t AllocateBakeDetour(uintptr_t renderer, uintptr_t obj);
 		void PrepareDetour(uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node);
 		void DrawBakedDetour(uintptr_t renderer, uintptr_t node, uintptr_t bake);
+		void BakePlateDrawDetour(uintptr_t renderer, uintptr_t node);
 	};
 }

@@ -101,3 +101,27 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementSubpixelMod
 	else
 		v = FontReplacementSubpixelMode::Off;
 }
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementNamePlateMode& v) {
+	switch (v) {
+		case FontReplacementNamePlateMode::Game:
+			j = "Game";
+			break;
+		case FontReplacementNamePlateMode::Live:
+			j = "Live";
+			break;
+		case FontReplacementNamePlateMode::BakedAtFullSize:
+		default:
+			j = "BakedAtFullSize";
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementNamePlateMode& v) {
+	const auto s = j.is_string() ? j.get<std::string>() : std::string();
+	if (_stricmp(s.c_str(), "Game") == 0)
+		v = FontReplacementNamePlateMode::Game;
+	else if (_stricmp(s.c_str(), "Live") == 0)
+		v = FontReplacementNamePlateMode::Live;
+	else
+		v = FontReplacementNamePlateMode::BakedAtFullSize;
+}
