@@ -97,6 +97,15 @@ namespace XivAlexander::Game::Resolved {
 		SwapChainPresentFn Present{};
 	};
 
+	// AtkServer::SetDrawState: stages the blend state, texture and texture size constant of a batch of UI draw commands.
+	using AtkServerSetDrawStateFn = void(*)(void* server, void* state, uint8_t textureDivisor);
+
+	struct SubpixelTextFunctions {
+		AtkServerSetDrawStateFn SetDrawState{};
+		size_t TextureWidth{};  // uint32_t, in Kernel::Texture
+		size_t RenderingToTexture{};  // uint8_t, in AtkServer: drawing into a render texture
+	};
+
 	// ExcelModuleInterface::GetLanguage: the 0-based language the sheets are loaded in, through a static it updates.
 	using ExcelLanguageGetterFn = const int32_t*(*)(void* excelModuleInterface);
 	// Localize::ProcessNoun: formats a noun with the sheet's handler, made for the language of the moment and kept per sheet name.
@@ -178,6 +187,7 @@ namespace XivAlexander::Game::Resolved {
 	[[nodiscard]] std::string to_string(const LoginSessionsFunctions& value);
 	[[nodiscard]] std::string to_string(const ImeModeIndicatorFunctions& value);
 	[[nodiscard]] std::string to_string(const FontReplacementFunctions& value);
+	[[nodiscard]] std::string to_string(const SubpixelTextFunctions& value);
 
 	extern const Signatures::ComplexSignature<SqpackLookupHooksFunctions> SqpackLookupHooks;
 	extern const Signatures::ComplexSignature<TextHooksFunctions> TextHooks;
@@ -189,6 +199,7 @@ namespace XivAlexander::Game::Resolved {
 	extern const Signatures::ComplexSignature<LoginSessionsFunctions> LoginSessions;
 	extern const Signatures::ComplexSignature<ImeModeIndicatorFunctions> ImeModeIndicator;
 	extern const Signatures::ComplexSignature<FontReplacementFunctions> FontReplacement;
+	extern const Signatures::ComplexSignature<SubpixelTextFunctions> SubpixelText;
 	extern const Signatures::ComplexSignature<DisplayLanguageFunctions> DisplayLanguage;
 	extern const Signatures::ComplexSignature<OutgoingTextFunctions> OutgoingText;
 }
@@ -475,4 +486,166 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 	extern const Signatures::ComplexSignature<SplitCharacterCullingFunctions> SplitCharacterCulling;
 	extern const Signatures::ComplexSignature<PerItemCullingClaimsFunctions> PerItemCullingClaims;
 	extern const Signatures::ComplexSignature<GatherUsedCommandsFunctions> GatherUsedCommands;
+}
+
+// What font replacement reads and hooks, one signature per part of it; offsets are as the game's code says, so they follow the patches.
+namespace XivAlexander::Game::Resolved::Fonts {
+	struct StageLayout {
+		void* const* Instance{};  // AtkStage*
+		int32_t FontManager{};  // AtkFontManager*, in AtkStage
+	};
+
+	struct FontManagerLayout {
+		int32_t Fonts{};  // GameFont*
+		int32_t FontCount{};  // uint16_t
+		int32_t FontSetCount{};
+		int32_t FontSetSize{};
+		int32_t FontSize{};
+	};
+
+	struct FontSetLayout {
+		void* PickFont{};
+		int32_t ScaledSizeY{};  // float
+		int32_t NodeScaleX{};  // float
+		int32_t NodeScaleY{};  // float
+		int32_t CurrentFont{};  // GameFont*
+		int32_t CurrentFontSize{};  // float
+		std::optional<int32_t> DrawFlags;  // uint32_t
+	};
+
+	struct FontLayout {
+		void* GetGlyph{};
+		void* LayOutCharacter{};
+		void* BuildFont{};
+		int32_t MaxTextures{};
+		int32_t Textures{};  // Kernel::Texture*[MaxTextures]
+		int32_t KerningCount{};  // uint32_t
+		int32_t TextureWidth{};  // uint16_t
+		int32_t Size{};  // float
+		int32_t Ascent{};  // int
+		int32_t GlyphMap{};  // GameGlyphMap*
+		int32_t Secondary{};  // GameFont*
+		int32_t SecondaryRatio{};  // float
+		int32_t TextureCount{};  // uint16_t
+		int32_t Flags{};  // uint8_t
+		std::optional<int32_t> XShift;  // int8_t
+	};
+
+	struct UiLayout {
+		int32_t StageUnitManager{};  // RaptureAtkUnitManager*, in AtkStage
+		int32_t LoadedUnitsCount{};  // uint16_t
+		int32_t LoadedUnitsEntries{};  // AtkUnitBase*[]
+		int32_t UnitUld{};  // AtkUldManager, in AtkUnitBase
+		int32_t UldNodeList{};  // AtkResNode**
+		int32_t UldNodeListCount{};  // uint16_t
+		int32_t NodeType{};  // uint16_t
+		int32_t ComponentNodeComponent{};  // AtkComponentBase*
+		int32_t ComponentUld{};  // AtkUldManager, in AtkComponentBase
+	};
+
+	// FileName is an MSVC std::string.
+	struct ResourceHandleLayout {
+		int32_t FileName{};
+		int32_t FileNameLength{};
+		int32_t FileNameCapacity{};
+	};
+
+	// Device::CreateTexture2D(device, int* size, uint8_t mipLevels, uint32_t format, uint32_t flags, uint32_t unknown) -> Kernel::Texture*.
+	struct TextureFunctions {
+		void* const* Device{};
+		void* CreateTexture2D{};
+		int32_t D3D11Texture2D{};  // ID3D11Texture2D*, in Kernel::Texture
+	};
+
+	struct ReplacerFunctions {
+		void* BuildFontCache{};
+		void* FreeFontCache{};
+		void* const* RendererVtable{};  // AtkFontAnalyzerRenderer
+		void* const* RenderCountVtable{};  // AtkFontAnalyzerRenderCount
+		int32_t FontCacheSlot{};  // in AtkTextNode
+		int32_t FontCacheFlags{};  // uint8_t, in AtkTextNode
+		std::optional<int32_t> StateFlags;  // uint32_t, in the font analyzer's state
+	};
+
+	// Tables of {uint64_t texture count, char* texture name format, char* FDT name}.
+	struct FontTablesLayout {
+		void* Game{};
+		void* LobbyA{};
+		void* LobbyB{};
+		int32_t Count{};
+		int32_t EntrySize{};
+		int32_t FdtName{};
+	};
+
+	struct NamePlateFunctions {
+		void* AllocateBake{};
+		void* BakePrepare{};
+		void* DrawBaked{};
+		int32_t AddonBakePlate{};
+		int32_t AddonObjects{};
+		int32_t ObjectSize{};
+		int32_t ObjectCount{};
+		int32_t ObjectNameText{};
+		int32_t ObjectTextW{};
+		int32_t ObjectTextH{};
+		int32_t ObjectNeedsToBeBaked{};
+		int32_t BakeTextYOffset{};
+		int32_t BakeAlpha{};
+		int32_t RendererCurrentBakeData{};
+		int32_t NodeTransform{};
+		int32_t NodeWidth{};
+		int32_t NodeHeight{};
+		int32_t NodeParent{};
+		int32_t NodeScaleX{};
+	};
+
+	// AtkServer's shader pairs, by pass.
+	struct ShaderTablesLayout {
+		void* BindFontShaders{};  // AtkServer::BindShaders(server, pass, alternate)
+		int32_t PixelShaderFiles{};  // ShaderCodeResourceHandle*[], in AtkServer
+		int32_t PixelShaders{};  // Kernel::PixelShader*[], in AtkServer
+		int32_t D3DShader{};  // ID3D11PixelShader*, in Kernel::PixelShader
+	};
+
+	struct EdgeShaderFunctions {
+		void* LoadShaders{};  // AtkServer::LoadShaders(server)
+		int32_t ModuleServer{};  // AtkServer, in AtkModule
+		int32_t ModuleFontManager{};  // AtkFontManager, in AtkModule
+	};
+
+	struct LineBreakerFunctions {
+		void* SplitWord{};
+		void* FitUnits{};
+		int32_t ConsumedUnits{};
+		int32_t MaxUnits{};
+		int32_t UsedUnits{};
+	};
+
+	[[nodiscard]] std::string to_string(const StageLayout& value);
+	[[nodiscard]] std::string to_string(const FontManagerLayout& value);
+	[[nodiscard]] std::string to_string(const FontSetLayout& value);
+	[[nodiscard]] std::string to_string(const FontLayout& value);
+	[[nodiscard]] std::string to_string(const UiLayout& value);
+	[[nodiscard]] std::string to_string(const ResourceHandleLayout& value);
+	[[nodiscard]] std::string to_string(const TextureFunctions& value);
+	[[nodiscard]] std::string to_string(const ReplacerFunctions& value);
+	[[nodiscard]] std::string to_string(const FontTablesLayout& value);
+	[[nodiscard]] std::string to_string(const NamePlateFunctions& value);
+	[[nodiscard]] std::string to_string(const ShaderTablesLayout& value);
+	[[nodiscard]] std::string to_string(const EdgeShaderFunctions& value);
+	[[nodiscard]] std::string to_string(const LineBreakerFunctions& value);
+
+	extern const Signatures::ComplexSignature<StageLayout> Stage;
+	extern const Signatures::ComplexSignature<FontManagerLayout> FontManager;
+	extern const Signatures::ComplexSignature<FontSetLayout> FontSet;
+	extern const Signatures::ComplexSignature<FontLayout> Font;
+	extern const Signatures::ComplexSignature<UiLayout> Ui;
+	extern const Signatures::ComplexSignature<ResourceHandleLayout> ResourceHandles;
+	extern const Signatures::ComplexSignature<TextureFunctions> Textures;
+	extern const Signatures::ComplexSignature<ReplacerFunctions> Replacer;
+	extern const Signatures::ComplexSignature<FontTablesLayout> FontTables;
+	extern const Signatures::ComplexSignature<NamePlateFunctions> NamePlates;
+	extern const Signatures::ComplexSignature<ShaderTablesLayout> ShaderTables;
+	extern const Signatures::ComplexSignature<EdgeShaderFunctions> EdgeShader;
+	extern const Signatures::ComplexSignature<LineBreakerFunctions> LineBreaker;
 }

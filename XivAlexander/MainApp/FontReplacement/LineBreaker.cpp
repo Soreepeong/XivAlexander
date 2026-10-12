@@ -5,7 +5,7 @@
 #include <xivres/xivstring.h>
 
 #include "MainApp/FontReplacement/FontReplacer.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -25,16 +25,12 @@ namespace {
 
 FontReplacement::LineBreaker::LineBreaker(FontReplacer& replacer)
 	: m_replacer(replacer) {
-	uintptr_t splitWord = 0, fitUnits = 0;
-	GameLayout::Resolve("Line breaking", [&] {
-		splitWord = GameLayout::Address("SplitWord");
-		fitUnits = GameLayout::Address("SplitWord", "FitUnits");
-		m_consumedUnitsOffset = GameLayout::Get("Wrapper.ConsumedUnits");
-		m_maxUnitsOffset = GameLayout::Get("Wrapper.MaxUnits");
-		m_usedUnitsOffset = GameLayout::Get("Wrapper.UsedUnits");
-	});
-	m_fitUnits = reinterpret_cast<FitUnitsFn>(fitUnits);
-	m_splitWordHook.emplace("SplitWord", splitWord, [this](uintptr_t wrapper, int width, int unused, const uint8_t* word, const uint8_t* measuredWord, uint8_t lineStart) {
+	const auto functions = ResolveGameCode(Game::Resolved::Fonts::LineBreaker);
+	m_consumedUnitsOffset = functions.ConsumedUnits;
+	m_maxUnitsOffset = functions.MaxUnits;
+	m_usedUnitsOffset = functions.UsedUnits;
+	m_fitUnits = reinterpret_cast<FitUnitsFn>(functions.FitUnits);
+	m_splitWordHook.emplace("SplitWord", reinterpret_cast<uintptr_t>(functions.SplitWord), [this](uintptr_t wrapper, int width, int unused, const uint8_t* word, const uint8_t* measuredWord, uint8_t lineStart) {
 		return SplitWordDetour(wrapper, width, unused, word, measuredWord, lineStart);
 	});
 }

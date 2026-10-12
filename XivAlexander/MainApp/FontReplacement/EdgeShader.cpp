@@ -3,7 +3,7 @@
 
 #include "MainApp/FontReplacement/EdgeShaderCode.h"
 #include "MainApp/FontReplacement/FontStructs.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Utilities.h"
 #include "Utils/StringUtils.h"
@@ -24,19 +24,18 @@ void FontReplacement::EdgeShader::Set(bool use, float softness) {
 	}
 
 	if (!m_resolved) {
-		uintptr_t loadShaders = 0;
-		GameLayout::Resolve("The edge shader", [&] {
-			GameFontManager::Resolve();
-			GameUi::ResolveResourceHandles();
-			m_edgePass = GameLayout::Get("AtkServer.EdgePass");
-			m_shaderFile = GameLayout::GetString("AtkServer.EdgePixelShaderFile");
-			loadShaders = GameLayout::Address("AtkModuleReloadFontShaders", "AtkServer.LoadShaders");
-			m_moduleFontManager = GameLayout::Get("AtkModule.AtkFontManager");
-			m_moduleServer = GameLayout::Get("AtkModule.AtkServer");
-			m_pixelShaderFiles = GameLayout::Get("AtkServer.PixelShaderFiles");
-			m_pixelShaders = GameLayout::Get("AtkServer.PixelShaders");
-			m_d3dShader = GameLayout::Get("Kernel.PixelShader.D3DShader");
-		});
+		GameFontManager::Resolve();
+		GameUi::ResolveResourceHandles();
+		const auto functions = ResolveGameCode(Game::Resolved::Fonts::EdgeShader);
+		const auto tables = ResolveGameCode(Game::Resolved::Fonts::ShaderTables);
+		m_edgePass = 5;
+		m_shaderFile = "FontEdgePS.shcd";
+		const auto loadShaders = reinterpret_cast<uintptr_t>(functions.LoadShaders);
+		m_moduleFontManager = functions.ModuleFontManager;
+		m_moduleServer = functions.ModuleServer;
+		m_pixelShaderFiles = tables.PixelShaderFiles;
+		m_pixelShaders = tables.PixelShaders;
+		m_d3dShader = tables.D3DShader;
 		m_loadShadersHook.emplace("AtkServer::LoadShaders", loadShaders, [this](uintptr_t server) { return LoadShadersDetour(server); });
 		m_resolved = true;
 	}

@@ -83,8 +83,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewTextPS.hlsl" />
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewVS.hlsl" />
     <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl" />
   </ItemGroup>
   <ItemGroup>

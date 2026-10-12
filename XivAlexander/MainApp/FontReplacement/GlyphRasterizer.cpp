@@ -129,6 +129,11 @@ FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Trimmed() const {
 	RasterGlyph res{Advance, Left + x1, Top + y1, w, y2 - y1, std::vector<uint8_t>(static_cast<size_t>(w) * (y2 - y1))};
 	for (auto y = y1; y < y2; y++)
 		std::copy_n(&Alpha[static_cast<size_t>(y) * Width + x1], w, &res.Alpha[static_cast<size_t>(y - y1) * w]);
+	if (HasLcd()) {
+		res.Lcd.resize(res.Alpha.size() * 3);
+		for (auto y = y1; y < y2; y++)
+			std::copy_n(&Lcd[(static_cast<size_t>(y) * Width + x1) * 3], w * 3, &res.Lcd[static_cast<size_t>(y - y1) * w * 3]);
+	}
 	return res;
 }
 
@@ -152,6 +157,11 @@ FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Merge(std::vector<Ras
 	RasterGlyph res{advance, left, top, w, h, std::vector<uint8_t>(static_cast<size_t>(w) * h)};
 	for (const auto& p : pieces)
 		BlitMax(res.Alpha, w, h, p, p.Left - left, p.Top - top);
+	if (std::ranges::any_of(pieces, &RasterGlyph::HasLcd)) {
+		res.Lcd.resize(res.Alpha.size() * 3);
+		for (const auto& p : pieces)
+			BlitMaxLcd(res.Lcd, w, h, p, p.Left - left, p.Top - top);
+	}
 	return res;
 }
 
@@ -160,6 +170,17 @@ void FontReplacement::RasterGlyph::BlitMax(std::span<uint8_t> buffer, int width,
 		for (auto col = (std::max)(0, -x); col < g.Width && col + x < width; col++) {
 			auto& d = buffer[static_cast<size_t>(row + y) * width + col + x];
 			d = (std::max)(d, g.Alpha[static_cast<size_t>(row) * g.Width + col]);
+		}
+	}
+}
+
+void FontReplacement::RasterGlyph::BlitMaxLcd(std::span<uint8_t> buffer, int width, int height, const RasterGlyph& g, int x, int y) {
+	for (auto row = (std::max)(0, -y); row < g.Height && row + y < height; row++) {
+		for (auto col = (std::max)(0, -x); col < g.Width && col + x < width; col++) {
+			const auto from = static_cast<size_t>(row) * g.Width + col;
+			const auto d = &buffer[(static_cast<size_t>(row + y) * width + col + x) * 3];
+			for (auto c = 0; c < 3; c++)
+				d[c] = (std::max)(d[c], g.HasLcd() ? g.Lcd[from * 3 + c] : g.Alpha[from]);
 		}
 	}
 }
@@ -174,6 +195,8 @@ std::vector<uint8_t> FontReplacement::RasterGlyph::CoverageTable(float exponent)
 FontReplacement::RasterGlyph FontReplacement::RasterGlyph::WithCoverage(const std::vector<uint8_t>& table) const {
 	auto res = *this;
 	for (auto& a : res.Alpha)
+		a = table[a];
+	for (auto& a : res.Lcd)
 		a = table[a];
 	return res;
 }
@@ -241,10 +264,34 @@ FontReplacement::RasterGlyph FontReplacement::GlyphRasterizer::RasterizeRun(
 	const DirectWriteParams& parameters,
 	const GlyphTransform& transform,
 	float originY) const {
-	const auto analysis = CreateAnalysis(face, px, glyphs, advances, offsets, count, originX, originY, parameters, transform);
+	// Grayscale is the mean of the three subpixels; aliased text has no ClearType.
+	const auto subpixel = m_subpixelOrder != SubpixelOrder::None && parameters.RenderMode != DWRITE_RENDERING_MODE_ALIASED;
+	const auto analysis = CreateAnalysis(face, px, glyphs, advances, offsets, count, originX, originY, parameters, transform,
+		subpixel ? DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE : DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+
+	RECT bounds;
+	if (subpixel) {
+		ThrowOnError(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_CLEARTYPE_3x1, &bounds), "GetAlphaTextureBounds");
+		const auto w = bounds.right - bounds.left;
+		const auto h = bounds.bottom - bounds.top;
+		if (w > 0 && h > 0) {
+			std::vector<uint8_t> lcd(static_cast<size_t>(w) * h * 3);
+			ThrowOnError(analysis->CreateAlphaTexture(DWRITE_TEXTURE_CLEARTYPE_3x1, &bounds, lcd.data(), static_cast<UINT32>(lcd.size())), "CreateAlphaTexture");
+			std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
+			for (size_t i = 0; i < alpha.size(); i++) {
+				auto& r = lcd[i * 3];
+				auto& b = lcd[i * 3 + 2];
+				alpha[i] = static_cast<uint8_t>((r + lcd[i * 3 + 1] + b + 1) / 3);
+				if (m_subpixelOrder == SubpixelOrder::Bgr)
+					std::swap(r, b);
+			}
+			return {advance, bounds.left, bounds.top, w, h, std::move(alpha), std::move(lcd)};
+		}
+
+		// A font may still render aliased (its recommended mode): the 1x1 texture has it then.
+	}
 
 	// With grayscale antialiasing, the 1x1 texture type gives 8-bit coverage.
-	RECT bounds;
 	ThrowOnError(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_ALIASED_1x1, &bounds), "GetAlphaTextureBounds");
 	auto w = bounds.right - bounds.left;
 	auto h = bounds.bottom - bounds.top;
@@ -268,7 +315,8 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 	float originX,
 	float originY,
 	const DirectWriteParams& parameters,
-	const GlyphTransform& transform) const {
+	const GlyphTransform& transform,
+	DWRITE_TEXT_ANTIALIAS_MODE antialiasMode) const {
 	// DirectWrite transforms row vectors; the origin is on screen, after the transformation.
 	const DWRITE_MATRIX matrix{transform.M11, transform.M21, transform.M12, transform.M22, originX, originY};
 
@@ -301,7 +349,7 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 			renderingMode,
 			measuringMode,
 			gridFitMode,
-			DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+			antialiasMode,
 			0,
 			0,
 			&analysis);

@@ -1,6 +1,6 @@
 #pragma once
 
-// Game UI structures the font replacement reads at offsets from the game's code (GameLayout); each group is resolved by the part that uses it.
+// Game UI structures the font replacement reads at offsets from the game's code; each group is resolved by the part that uses it.
 namespace XivAlexander::Apps::MainApp::FontReplacement::GameUi {
 	// AtkResNode.Type of text nodes; types from FirstComponentNodeType on are component nodes.
 	extern int TextNodeType;

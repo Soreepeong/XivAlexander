@@ -37,10 +37,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		Log(LogLevel::Error, std::format(format, std::forward<Args>(args)...));
 	}
 
-	[[nodiscard]] std::filesystem::path GameFileName();
-
-	[[nodiscard]] uintptr_t GameBaseAddress();
-
 	template<typename R, typename... Args>
 	class Hook {
 		std::optional<Misc::Hooks::PointerFunction<R, Args...>> m_hook;

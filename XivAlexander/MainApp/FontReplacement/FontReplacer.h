@@ -7,6 +7,7 @@
 #include "MainApp/FontReplacement/GlyphAtlas.h"
 #include "MainApp/FontReplacement/Presets.h"
 #include "MainApp/FontReplacement/ReplacementFace.h"
+#include "MainApp/FontReplacement/SubpixelText.h"
 #include "MainApp/FontReplacement/TextShaper.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
@@ -179,6 +180,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FontReplacementEdgeConfig m_edge;
 		EdgeShader m_edgeShader;
 
+		SubpixelSettings m_subpixel;
+		SubpixelText m_subpixelText;
+
 	public:
 		// Resolves what it uses of the game and hooks it. Game thread. Throws if this game version can't be worked with.
 		FontReplacer();
@@ -208,13 +212,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread; glyphs are made again if a size's edge margin changed.
 		void SetEdge(FontReplacementEdgeConfig edge);
 
+		[[nodiscard]] const SubpixelSettings& Subpixel() const { return m_subpixel; }
+
+		// Game thread, between frames; switching it on or off remakes the atlases and every glyph.
+		void SetSubpixel(const SubpixelSettings& settings);
+
 		[[nodiscard]] static int GetAtlasSize(std::string_view family);
 
-		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it; settings previews match it.
+		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it.
 		[[nodiscard]] static uint16_t GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px);
-
-		// Rounded to half pixels, clamped to 4..255 px.
-		[[nodiscard]] static float GetDrawnPx(float size);
 
 		// Of a family's faces (name, size), the one text at px is made with alone; nullopt if none is of that size, so glyphs come from all.
 		[[nodiscard]] static std::optional<size_t> GetExactFace(std::span<const std::pair<std::string, float>> faces, float px);

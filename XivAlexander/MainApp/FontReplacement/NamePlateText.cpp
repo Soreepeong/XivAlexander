@@ -2,7 +2,7 @@
 #include "MainApp/FontReplacement/NamePlateText.h"
 
 #include "MainApp/FontReplacement/FontReplacer.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Utilities.h"
 
@@ -22,39 +22,35 @@ namespace {
 
 FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	: m_replacer(replacer) {
-	uintptr_t allocateBake = 0, prepare = 0, drawBaked = 0;
-	GameLayout::Resolve("Nameplate text", [&] {
-		GameUi::ResolveUnits();
+	GameUi::ResolveUnits();
+	GameFontSet::Resolve();
+	const auto functions = ResolveGameCode(Game::Resolved::Fonts::NamePlates);
 
-		// Allocates a plate's bake region, sized by its TextW and TextH, when it NeedsToBeBaked.
-		allocateBake = GameLayout::Address("NamePlateAllocateBake");
+	// Allocates a plate's bake region, sized by its TextW and TextH, when it NeedsToBeBaked.
+	const auto allocateBake = reinterpret_cast<uintptr_t>(functions.AllocateBake);
 
-		// Per-node text setup; for a bake (CurrentBakeData set), node scale 1.
-		prepare = GameLayout::Address("NamePlateBakePrepare");
+	// Per-node text setup; for a bake (CurrentBakeData set), node scale 1.
+	const auto prepare = reinterpret_cast<uintptr_t>(functions.BakePrepare);
 
-		// Draws a baked plate centered on its node.
-		drawBaked = GameLayout::Address("NamePlateDrawBaked");
+	// Draws a baked plate centered on its node.
+	const auto drawBaked = reinterpret_cast<uintptr_t>(functions.DrawBaked);
 
-		m_addonBakePlate = GameLayout::Get("AddonNamePlate.BakePlate");
-		m_addonObjects = GameLayout::Get("AddonNamePlate.NamePlateObjectArray");
-		m_objectSize = GameLayout::Get("NamePlateObject");
-		m_objectCount = GameLayout::Get("NamePlateObjectArray") / (std::max)(m_objectSize, 1);
-		m_objectNameText = GameLayout::Get("NamePlateObject.NameText");
-		m_objectTextW = GameLayout::Get("NamePlateObject.TextW");
-		m_objectTextH = GameLayout::Get("NamePlateObject.TextH");
-		m_objectNeedsToBeBaked = GameLayout::Get("NamePlateObject.NeedsToBeBaked");
-		m_bakeTextYOffset = GameLayout::Get("BakeData.TextYOffset");
-		m_bakeAlpha = GameLayout::Get("BakeData.Alpha");
-		m_rendererCurrentBakeData = GameLayout::Get("BakePlateRenderer.CurrentBakeData");
-
-		// The transform's first row is captured as its two floats; the matrix starts at the first.
-		m_nodeTransform = (std::min)(GameLayout::Get("AtkResNode.Transform.Row1A"), GameLayout::Get("AtkResNode.Transform.Row1B"));
-		m_nodeWidth = GameLayout::Get("AtkResNode.Width");
-		m_nodeHeight = GameLayout::Get("AtkResNode.Height");
-		m_nodeParent = GameLayout::Get("AtkResNode.ParentNode");
-		m_nodeScaleX = GameLayout::Get("AtkResNode.ScaleX");
-		GameFontSet::Resolve();
-	});
+	m_addonBakePlate = functions.AddonBakePlate;
+	m_addonObjects = functions.AddonObjects;
+	m_objectSize = functions.ObjectSize;
+	m_objectCount = functions.ObjectCount;
+	m_objectNameText = functions.ObjectNameText;
+	m_objectTextW = functions.ObjectTextW;
+	m_objectTextH = functions.ObjectTextH;
+	m_objectNeedsToBeBaked = functions.ObjectNeedsToBeBaked;
+	m_bakeTextYOffset = functions.BakeTextYOffset;
+	m_bakeAlpha = functions.BakeAlpha;
+	m_rendererCurrentBakeData = functions.RendererCurrentBakeData;
+	m_nodeTransform = functions.NodeTransform;
+	m_nodeWidth = functions.NodeWidth;
+	m_nodeHeight = functions.NodeHeight;
+	m_nodeParent = functions.NodeParent;
+	m_nodeScaleX = functions.NodeScaleX;
 
 	m_allocateBakeHook.emplace("NamePlateAllocateBake", allocateBake, [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
 	m_prepareHook.emplace("NamePlateBakePrepare", prepare, [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });

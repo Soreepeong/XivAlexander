@@ -45,11 +45,14 @@ void FontReplacement::GlyphAtlas::Page::ClearDirty() {
 	DirtyRight = DirtyBottom = 0;
 }
 
-FontReplacement::GlyphAtlas::GlyphAtlas(int size, std::string name)
+FontReplacement::GlyphAtlas::GlyphAtlas(int size, std::string name, bool subpixel)
 	: m_size(size)
 	, m_name(std::move(name))
+	, m_subpixel(subpixel)
 	, m_maxPages((std::max)(0, MaxPages()))
-	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages)) {
+	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages))
+	, m_current(FirstPlane())
+	, m_frontier(FirstPlane() + PlaneStep()) {
 }
 
 FontReplacement::GlyphAtlas::~GlyphAtlas() {
@@ -71,19 +74,23 @@ void FontReplacement::GlyphAtlas::Clear() {
 		std::ranges::fill(p.Shelves, Shelf{});
 		p.MarkDirty(0, 0, m_size, m_size);
 	}
-	m_current = 0;
-	m_frontier = 1;
+	m_current = FirstPlane();
+	m_frontier = FirstPlane() + PlaneStep();
 }
 
 void FontReplacement::GlyphAtlas::ClearPlane(int page, int plane) {
 	const auto lock = std::scoped_lock(m_mutex);
 	auto& p = *m_pages[page];
-	const auto channel = ChannelOffsets[plane];
-	const auto pitch = m_size * 4;
-	for (auto row = 0; row < m_size; row++) {
-		const auto d = &p.Shadow[static_cast<size_t>(row) * pitch + channel];
-		for (auto col = 0; col < m_size; col++)
-			d[col * 4] = 0;
+	if (m_subpixel) {
+		std::ranges::fill(p.Shadow, 0);
+	} else {
+		const auto channel = ChannelOffsets[plane];
+		const auto pitch = m_size * 4;
+		for (auto row = 0; row < m_size; row++) {
+			const auto d = &p.Shadow[static_cast<size_t>(row) * pitch + channel];
+			for (auto col = 0; col < m_size; col++)
+				d[col * 4] = 0;
+		}
 	}
 	p.Shelves[plane] = {};
 	p.MarkDirty(0, 0, m_size, m_size);
@@ -126,21 +133,37 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, 
 			lock.lock();
 			continue;
 		}
-		m_current = m_frontier++;
+		m_current = m_frontier;
+		m_frontier += PlaneStep();
 	}
 }
 
-void FontReplacement::GlyphAtlas::Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX) {
+void FontReplacement::GlyphAtlas::Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX, std::span<const uint8_t> lcd) {
 	const auto columns = (std::min)(alphaStride, width - alphaX);
 	const auto pitch = m_size * 4;
 	const auto lock = std::scoped_lock(m_mutex);
 	auto& p = *m_pages[page];
-	const auto dst = &p.Shadow[static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4 + ChannelOffsets[plane]];
-	for (auto row = 0; row < height; row++) {
-		const auto src = &alpha[static_cast<size_t>(row) * alphaStride];
-		const auto d = dst + static_cast<size_t>(row) * pitch + static_cast<size_t>(alphaX) * 4;
-		for (auto col = 0; col < columns; col++)
-			d[col * 4] = src[col];
+	if (m_subpixel) {
+		const auto hasLcd = lcd.size() >= alpha.size() * 3;
+		const auto dst = &p.Shadow[static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4];
+		for (auto row = 0; row < height; row++) {
+			const auto src = &alpha[static_cast<size_t>(row) * alphaStride];
+			const auto d = dst + static_cast<size_t>(row) * pitch + static_cast<size_t>(alphaX) * 4;
+			for (auto col = 0; col < columns; col++) {
+				const auto texel = d + col * 4;
+				texel[ChannelOffsets[SubpixelPlane]] = src[col];
+				for (auto c = 0; c < 3; c++)
+					texel[ChannelOffsets[c]] = hasLcd ? lcd[(static_cast<size_t>(row) * alphaStride + col) * 3 + c] : src[col];
+			}
+		}
+	} else {
+		const auto dst = &p.Shadow[static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4 + ChannelOffsets[plane]];
+		for (auto row = 0; row < height; row++) {
+			const auto src = &alpha[static_cast<size_t>(row) * alphaStride];
+			const auto d = dst + static_cast<size_t>(row) * pitch + static_cast<size_t>(alphaX) * 4;
+			for (auto col = 0; col < columns; col++)
+				d[col * 4] = src[col];
+		}
 	}
 	p.MarkDirty(x, y, x + width, y + height);
 }
@@ -156,6 +179,21 @@ std::vector<uint8_t> FontReplacement::GlyphAtlas::Read(int page, int plane, int 
 			alpha[static_cast<size_t>(row) * width + col] = s[col * 4];
 	}
 	return alpha;
+}
+
+std::vector<uint8_t> FontReplacement::GlyphAtlas::ReadLcd(int page, int x, int y, int width, int height) {
+	std::vector<uint8_t> lcd(static_cast<size_t>(width) * height * 3);
+	const auto pitch = m_size * 4;
+	const auto lock = std::scoped_lock(m_mutex);
+	const auto src = &m_pages[page]->Shadow[static_cast<size_t>(y) * pitch + static_cast<size_t>(x) * 4];
+	for (auto row = 0; row < height; row++) {
+		const auto s = src + static_cast<size_t>(row) * pitch;
+		for (auto col = 0; col < width; col++) {
+			for (auto c = 0; c < 3; c++)
+				lcd[(static_cast<size_t>(row) * width + col) * 3 + c] = s[col * 4 + ChannelOffsets[c]];
+		}
+	}
+	return lcd;
 }
 
 void FontReplacement::GlyphAtlas::Upload() {

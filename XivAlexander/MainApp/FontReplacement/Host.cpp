@@ -2,7 +2,7 @@
 #include "MainApp/FontReplacement/Host.h"
 
 #include "Game/SignatureDefinitions.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/Utilities.h"
 #include "Utils/Win32/LoadedModule.h"
 #include "Utils/Win32/Process.h"
@@ -13,14 +13,6 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 void FontReplacement::Host::Log(LogLevel level, std::string message) {
 	// Not a static: it would live until DLL detach, where its destructor waits on its thread, which can't exit under the loader lock.
 	Misc::Logger::Acquire()->Log(LogCategory::FontReplacement, message, level);
-}
-
-std::filesystem::path FontReplacement::Host::GameFileName() {
-	return Utils::Win32::Process::Current().PathOf();
-}
-
-uintptr_t FontReplacement::Host::GameBaseAddress() {
-	return reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
 }
 
 namespace {
@@ -72,14 +64,13 @@ namespace {
 		static const TextureFunctions& Get() {
 			static const auto s_functions = [] {
 				TextureFunctions res;
-				FontReplacement::GameLayout::Resolve("Atlas textures", [&res] {
-					res.Device = reinterpret_cast<void* const*>(FontReplacement::GameLayout::Target("Device.Instance"));
-					res.CreateTexture2D = reinterpret_cast<CreateTexture2DFn>(FontReplacement::GameLayout::Address("CreateTexture2D"));
-					res.D3D11Texture2D = FontReplacement::GameLayout::Get("Texture.D3D11Texture2D");
+				const auto functions = FontReplacement::ResolveGameCode(XivAlexander::Game::Resolved::Fonts::Textures);
+				res.Device = functions.Device;
+				res.CreateTexture2D = reinterpret_cast<CreateTexture2DFn>(functions.CreateTexture2D);
+				res.D3D11Texture2D = functions.D3D11Texture2D;
 
-					// Released with ReferencedClassBase's DecRef, which no code site pins down well enough for a signature.
-					res.DecRef = FontReplacement::GameLayout::Get("ReferencedClassBase.DecRef.VtableOffset");
-				});
+				// Released with ReferencedClassBase's DecRef, which no code site pins down well enough for a signature.
+				res.DecRef = 0x18;
 				return res;
 			}();
 			return s_functions;

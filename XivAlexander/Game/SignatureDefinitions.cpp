@@ -81,6 +81,11 @@ namespace XivAlexander::Game {
 
 	// The call of Kernel::SwapChain::Present in DeviceDX11::PostTick's render thread path, which then jumps over the other path's call.
 	const Signatures::RegexSignature SwapChainPresentCall(R"([\x48\x49]\x8B[\x48-\x4B\x4D-\x4F]\x70\xE8(....)\x41?\xC6[\x40-\x47]\x79\x00\xEB)");
+	// AtkServer::SetDrawState staging the blend state (masked to its 27 bits) and clearing a flag after it, then the texture's width over the divisor.
+	const Signatures::RegexSignature AtkServerSetDrawStateBody(R"(\x25\xFF\xFF\xFF\x07\x89[\x80-\xBF]....\xC6[\x80-\xBF]....\x00.{0,400}?\x48\x85\xC0(?:\x74.|\x0F\x84....)\x8B[\x40-\x7F](.)\x33\xD2\xF7[\xF0-\xF7])");
+	// AtkServer::SetRenderTexture's begin: the command's flags, then the AtkServer flag it sets while drawing into the texture.
+	const Signatures::RegexSignature AtkServerBeginRenderTexture(R"(\x81[\xE0-\xE7]\x01\x00\x00\xFF.{0,16}?\x83[\xC8-\xCF]\x01\x89[\x40-\x7F]\x08.{0,8}?\xC6[\x80-\xBF](....)\x01)");
+
 	// The pre-present notifier walk before that call: the game's, or SkipIdleNotifiers' rewrite of it.
 	const Signatures::RegexSignature PrePresentNotifierWalk(R"(\x48\x8D\x0D....\xFF\x15....(?:\x48\x8B\x1D....\x48\x85\xDB\x74.\x48\x8B\x03\x48\x8B\xCB\xFF\x50\x10|\x48\xB9.{8}\x48\xB8.{8}\xFF\xD0\xEB))");
 
@@ -936,6 +941,11 @@ namespace XivAlexander::Game::Resolved {
 			Signatures::Describe(value.Present));
 	}
 
+	std::string to_string(const SubpixelTextFunctions& value) {
+		return std::format("SetDrawState {}, texture width +0x{:X}, rendering to texture +0x{:X}",
+			Signatures::Describe(value.SetDrawState), value.TextureWidth, value.RenderingToTexture);
+	}
+
 	std::string to_string(const DisplayLanguageNouns::MacroHandler& value) {
 		return std::format("{} (Localize call {}, interface +0x{:X})", Signatures::Describe(value.Function), Signatures::Describe(value.LocalizeCall), value.Interface);
 	}
@@ -1219,6 +1229,17 @@ namespace XivAlexander::Game::Resolved {
 		return FontReplacementFunctions{
 			.PresentCall = Address(callInstruction),
 			.Present = Address(present),
+		};
+	});
+
+	const Signatures::ComplexSignature<SubpixelTextFunctions> SubpixelText("SubpixelText", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto body = ctx.Unique(AtkServerSetDrawStateBody, text, "SetDrawState");
+		const auto renderTexture = ctx.Unique(AtkServerBeginRenderTexture, text, "render texture begin");
+		return SubpixelTextFunctions{
+			.SetDrawState = Address(ctx.FunctionContaining(body.begin(0), "SetDrawState").data()),
+			.TextureWidth = body.Get<uint8_t>(1),
+			.RenderingToTexture = static_cast<size_t>(ctx.InRange<int32_t>(renderTexture.Get<int32_t>(1), 0x100, 0x10000, "rendering to texture flag")),
 		};
 	});
 }
@@ -2331,6 +2352,420 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			.Gather = Address(gather),
 			.Sort = Address(sort),
 			.Layout = r,
+		};
+	});
+}
+
+// Font replacement's signatures, each matching once in .text.
+namespace XivAlexander::Game::FontCode {
+	// GameFontSet::PickFont, from its start: picks the font for the requested size.
+	const Signatures::RegexSignature PickFont(R"([\x81\x83]\xB9(....)\x00.{0,11}?\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....)(?:[\x70-\x7F].|\x0F[\x80-\x8F]....)\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....)(?:(?:\xEB.|\xE9....)\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....))?.{0,40}?\x84\xD2(?:[\x70-\x7F].|\x0F[\x80-\x8F]....)[\x48-\x4F]\x8B[\x80-\xBF](....)[\x48-\x4F]\x85[\xC0-\xFF](?:[\x70-\x7F].|\x0F[\x80-\x8F]....)\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....).{0,80}?[\x48-\x4F]\x03[\xC0\xC9\xD2\xDB\xE4\xED\xF6\xFF][\x48-\x4F]\x83\x3C[\xC0-\xFF]\x00(?:\x74.|\x0F\x84....)\xF3[\x40-\x4F]?\x0F\x10[\x44\x4C\x54\x5C\x64\x6C\x74\x7C][\xC0-\xFF](.).{0,40}?\x66[\x40-\x4F]?\x83[\xF8-\xFF]\x08(?:[\x70-\x7F].|\x0F[\x80-\x8F]....).{0,24}?[\x40-\x4F]?\xF6[\x80-\x87](....)\x08)");
+	// Inside GetGlyph: a glyph by direct index, else from the font's glyph map.
+	const Signatures::RegexSignature GetGlyph(R"(\xF6[\x80-\x87](....)\x04.{0,12}?(?:[\x48-\x4F]\x8B[\x80-\xBF](....).{0,8}?)?(?:\x74.|\x0F\x84....).{0,8}?[\x40-\x4F]?\x0F\xB6[\x80-\xBF](....).{0,12}?\x81[\xF8-\xFF](?:\xFF\x00|\x00\x01)\x00\x00(?:[\x70-\x7F].|\x0F[\x80-\x8F]....).{0,12}?(?:[\x48-\x4F]\x8B[\x80-\xBF](....).{0,8}?)?[\x48-\x4F]\x8D[\x04-\x3C][\x40-\x7F].{0,8}?[\x48-\x4F]\x8D[\x04-\x3C][\x80-\xBF](?:.{0,16}?[\x48-\x4F]\x8B[\x80-\xBF](....).{0,16}?\xE8(....).{0,8}?[\x48-\x4F]\x8B[\x00-\x3F][\x48-\x4F]\x8B(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.)|.{0,24}?[\x40-\x4F]?\x8B[\x80-\xBF](....).{0,24}?\x99.{0,4}?\xD1[\xF8-\xFF].{0,16}?[\x48-\x4F]\x8D[\x04-\x3C][\x40-\x7F].{0,8}?[\x48-\x4F]\x8D[\x04-\x3C][\x80-\xBF]))");
+	// Inside LayOutCharacter: a character's glyph (GetGlyph's call), the secondary font, kerning and CJK spacing.
+	const Signatures::RegexSignature LayOutCharacter(R"((?:\x80[\xF8-\xFF]\xE0|\x3C\xE0|\x81[\xF8-\xFF]\xE0\x00\x00\x00|\x3D\xE0\x00\x00\x00).{0,40}?(?:\x80[\xF8-\xFF]\xF0|\x3C\xF0|\x81[\xF8-\xFF]\xF0\x00\x00\x00|\x3D\xF0\x00\x00\x00).{0,60}?(?:\x80[\xF8-\xFF]\xF8|\x3C\xF8|\x81[\xF8-\xFF]\xF8\x00\x00\x00|\x3D\xF8\x00\x00\x00).{0,80}?\xE8(....)(?:.{0,40}?(?:[\x48-\x4F]\x8B[\x80-\xBF](....).{0,24}?\x93\x80\xE3\x00|\x93\x80\xE3\x00.{0,24}?[\x48-\x4F]\x8B[\x80-\xBF](....)).{0,24}?\xE8(....).{0,8}?[\x48-\x4F]\x8B[\x00-\x3F][\x48-\x4F]\x8B(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.)(?:.{0,24}?[\x40-\x4F]?\xF6[\x80-\x87](....)\x04.{0,40}?[\x40-\x4F]?\x0F\xB6[\x80-\xBF](....).{0,24}?[\x48-\x4F]\x8B[\x80-\xBF](....)|.{0,24}?\xBA\x2D\x00\x00\x00.{0,16}?\xE8....).{0,80}?\x80\x90\xE3\x00|.{0,40}?\xE8(....)(?:[\x48-\x4F]\x8B[\xC0-\xFF])?[\x48-\x4F]\x85\xC0(?:\x74.|\x0F\x84....))(?:.{0,200}?[\x48-\x4F]\x8B[\x80-\xBF](....).{0,16}?[\x48-\x4F]\x85[\xC0-\xFF](?:[\x70-\x7F].|\x0F[\x80-\x8F]....).{0,24}?(?:\xAB\xAA\xAA\xAA\xAA\xAA\xAA\xAA.{0,16}?[\x48-\x4F]\x2B[\x80-\xBF](....)|[\x48-\x4F]\x2B[\x80-\xBF](....).{0,16}?\xAB\xAA\xAA\xAA\xAA\xAA\xAA\xAA).{0,40}?[\x48-\x4F]\x8D[\x04-\x3C][\x40-\x7F].{0,8}?[\x48-\x4F]\x8D[\x04-\x3C][\x80-\xBF].{0,24}?[\x48-\x4F]\x8B[\x80-\xBF](....).{0,40}?[\x48-\x4F]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24\x20.{0,16}?\xE8.....{0,24}?(?:[\x40-\x4F]?\x0F\xBE(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.).{0,8}?[\x40-\x4F]?\x0F\xB6(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.)|[\x40-\x4F]?\x0F\xB6(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.).{0,8}?[\x40-\x4F]?\x0F\xBE(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C].|[\x40-\x43\x45-\x4B\x4D-\x53\x55-\x5B\x5D-\x63\x65-\x6B\x6D-\x73\x75-\x7B\x7D-\x7F])(.)).{0,40}?\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....)|.{0,200}?[\x48-\x4F]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24\x28.{0,8}?[\x48-\x4F]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24\x20\xE8(....)).{0,200}?[\x40-\x4F]?\x0F[\xB6\xBE][\x80-\xBF](....).{0,24}?\x50\x7B\x1C\xFF)");
+	// The text wrapper's SplitWord, from its start: splits a word that doesn't fit a line (FitUnits' call).
+	const Signatures::RegexSignature SplitWord(R"(\x48\x89\x5C\x24.(?:[\x40\x41]?[\x50-\x57]){1,6}\x48\x83\xEC..{0,16}?[\x44\x45]\x8B[\x88-\x8B\x8D-\x8F](....).{0,16}?[\x44\x45]\x2B[\x88-\x8B\x8D-\x8F](....).{0,24}?\xE8(....)(?:[\x40-\x4F]?\x8B[\xC0-\xFF]\x85\xC0|\x85\xC0[\x40-\x4F]?\x8B[\xC0-\xFF])(?:\x79.|\x0F\x89....).{0,400}?(?:[\x48-\x4F]\x63|[\x40-\x4F]?\x8B)[\x80-\xBF](....).{0,24}?\x83\x3C[\x80-\xBF]\x20)");
+	// AtkTextNode::FreeFontCache, from its start.
+	const Signatures::RegexSignature FreeFontCache(R"(\x48\x85\xC9(?:\x74.|\x0F\x84....).{2,24}?\x0F\xB7[\x80-\xBF](....).{0,12}?\x66\x85[\xC0-\xFF](?:\x74.|\x0F\x84....).{0,12}?[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,12}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,12}?(?:\xB8\x00\x01\x00\x00\x66[\x39\x3B][\xC0-\xFF]|\x66\x41?\x81[\xF8-\xFF]\x00\x01)(?:\x73.|\x0F\x83....).{0,12}?[\x48\x49]\xC1[\xE0-\xE7]\x04[\x48-\x4F]\x03[\x80-\xBF](....).{0,64}?\x66\x41?\x89[\x80-\xBF]\1(?:[\x48\x4C]\x8B[\x44-\x7C]\x24.|\x48\x83\xC4.|\x41?[\x58-\x5F])*?\xC3)");
+	// AtkTextNode::BuildFontCache, from its start.
+	const Signatures::RegexSignature BuildFontCache(R"(\x48\x85\xC9(?:\x74.|\x0F\x84....).{2,24}?\x0F\xB7[\x80-\xBF](....).{0,12}?\x66\x85[\xC0-\xFF](?:\x74.|\x0F\x84....).{0,12}?[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,12}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,12}?(?:\xB8\x00\x01\x00\x00\x66[\x39\x3B][\xC0-\xFF]|\x66\x41?\x81[\xF8-\xFF]\x00\x01)(?:\x73.|\x0F\x83....).{0,12}?[\x48\x49]\xC1[\xE0-\xE7]\x04[\x48-\x4F]\x03[\x80-\xBF](....).{0,64}?\x66\x41?\x89[\x80-\xBF]\1[\x48\x4C]\x8B[\x80-\xBF](....)(?:[\x40-\x4F]?\x38[\x00-\x3F]|\x80[\x38-\x3F]\x00)(?:\x74.|\x0F\x84....))");
+	// AtkTextNode::ToggleFontCache: the node's cache flag, then BuildFontCache's or FreeFontCache's call.
+	const Signatures::RegexSignature ToggleFontCache(R"(\x48\x85\xC9(?:\x74.|\x0F\x84....).{0,20}?[\x40-\x4F]?\x0F\xB6[\x80-\xBF](....).{0,16}?\x80[\xE0-\xE7]\xBF.{0,16}?[\x40-\x4F]?\x88[\x80-\xBF]\1.{0,8}?[\x40-\x4F]?\xF6[\xC0-\xC7]\x40(?:\x74.|\x0F\x84....)\xE8(....)(?:\xEB.|\xE9....)\xE8(....)\x80[\xA0-\xA7\x60-\x67]\1\xEF)");
+	// AtkFontAnalyzer's constructor: the vtables of its renderer and its render counter.
+	const Signatures::RegexSignature FontAnalyzerVtables(R"(\x48\x8D\x05(....)[\x48\x49]\x89[\x80-\x83\x85-\x87](....).{0,16}?\x48\x8D\x05(....).{0,120}?[\x48\x49]\x89[\x80-\x83\x85-\x87](....).{0,60}?\x41\xB8\xA0\x00\x00\x00.{0,40}?\xE8....\xC7[\x80-\x83\x85-\x87](....)\x03\x00\x00\x00)");
+	// Loading the fonts from the game's table or one of the two lobby ones.
+	const Signatures::RegexSignature FontTables(R"(\x83[\xF8-\xFF]\x01(?:\x75.|\x0F\x85....)\x41?(?:\x83[\xB8-\xBF](....)\x01|\x39[\x80-\xBF](....))[\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)[\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)[\x48-\x4F]\x0F\x45[\xC0-\xFF](?:\xEB.|\xE9....)[\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,400}?[\x4C\x4D]\x8B(?:\x4C.|[\x48-\x4B\x4D-\x4F])(.).{0,400}?(?:[\x48\x49]\x83[\xC0-\xC7](.).{0,8}?)?\x41?\x83[\xF8-\xFF](.)(?:\x7C.|\x0F\x8C....))");
+	// Inside BakePlateRenderer::AllocateBake: a plate's region of the render texture, by its text size.
+	const Signatures::RegexSignature NamePlateAllocateBake(R"([\x48\x4C]\x8B[\x81\x89\x91\x99\xA1\xA9\xB1\xB9](....).{0,8}?[\x48\x4C]\x8B[\x42\x4A\x52\x5A\x62\x6A\x72\x7A](.).{0,160}?[\x48\x49]\x8D[\x88-\x8F](....).{0,8}?\xE8.{4,24}?[\x40-\x4F]?\x0F\xB7[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\x0F\xB7[\x40-\x7F](.).{0,8}?\x66[\x40-\x4F]?\x83[\xC0-\xC7]\x08.{0,8}?\x66[\x40-\x4F]?\x83[\xC0-\xC7]\x04.{0,16}?\x66[\x40-\x4F]?\x03[\xC0-\xFF].{0,8}?\x66[\x40-\x4F]?\x03[\xC0-\xFF])");
+	// AddonNamePlate's update calling AllocateBake for the plates to bake.
+	const Signatures::RegexSignature NamePlateAllocateBakeCaller(R"((?:[\x48-\x4F]\x8B[\x80-\xBF](....)[\x48-\x4F]\x03[\xC0-\xFF].{0,80}?[\x48\x49]\x8D[\x88-\x8F](....)[\x40-\x4F]?\xC6[\x40-\x47](.)\x00[\x48-\x4F]\x8B[\xD0-\xD7]\xE8(....)[\x48-\x4F]\x83[\xC0-\xC7](.)[\x48-\x4F]\x81[\xF8-\xFF](....)|[\x48\x49]\x8D[\x88-\x8F](....).{0,16}?(?:[\x48-\x4F]\x6B[\xC0-\xFF](.)|[\x48-\x4F]\x69[\xC0-\xFF](....)).{0,8}?[\x48-\x4F]\x03[\x80-\xBF](....).{0,8}?\xE8(....)\x84\xC0(?:\x74.|\x0F\x84....)(?:[\x40-\x4F]?\xC6[\x40-\x47](.)\x00)?))");
+	// AddonNamePlate's update looping over every plate's text node.
+	const Signatures::RegexSignature NamePlateObjectsLoop(R"([\x48-\x4F]\x8B[\x80-\xBF](....)\x33\xD2[\x48-\x4F]\x8B[\x4C\x54].(.)\xE8....[\x48-\x4F]\x8B[\x80-\xBF]\1.{0,8}?\xE8....[\x48\x49]\x83[\xC0-\xC7](.)[\x48\x49]\x81[\xF8-\xFF](....)(?:\x7C.|\x0F\x8C....)(?:\xEB.|\xE9....))");
+	// BakePlateRenderer::Draw, then the per-node setup that follows it, whose start is captured.
+	const Signatures::RegexSignature NamePlateBakePrepare(R"([\x48\x4C]\x8B[\x81\x89\x91\x99\xA1\xA9\xB1\xB9](....).{0,64}?[\x40-\x4F]?\x80[\xB8-\xBB\xBD-\xBF](....)\x00(?:[\x00-\x7F\x81-\xFF]{0,40}?|.{0,32}?[\x40-\x4F]?\x80[\x78-\x7F](\x71)\x00.{0,40}?)[\x40-\x4F]?\x80[\x78-\x7F]\x0B\x00.{0,1024}?(?:\xC3|\xE9....)\xCC*()(?:[\x48\x4C]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C]\x24.|[\x40\x41]?[\x50-\x57]|\x48\x8B\xC4|[\x48\x4C]\x89[\x58-\x7F].){1,12}\x48(?:\x83\xEC.|\x81\xEC....).{0,16}?\xE8....[\x48\x49]\x83[\xB8-\xBB\xBD-\xBF](....)\x00(?:\x74.|\x0F\x84....).{0,8}?\xE8(....).{0,12}?\xC7[\x40-\x47](.)\x00\x00\x80\x3F\xC7[\x40-\x47](.)\x00\x00\x80\x3F.{0,8}?[\x48\x4C]\x8B[\x80-\xBF]\5)");
+	// Inside BakePlateRenderer::DrawBaked: a baked region at the node's transform.
+	const Signatures::RegexSignature NamePlateDrawBaked(R"(\xF3[\x40-\x4F]?\x0F\x10[\x42\x4A\x52\x5A\x62\x6A\x72\x7A](.).{0,8}?\xF3[\x40-\x4F]?\x0F\x10[\x42\x4A\x52\x5A\x62\x6A\x72\x7A](.).{0,300}?[\x40-\x4F]?\x0F\xB7[\x80-\xBF](....).{0,48}?\xE8....[\x40-\x4F]?\x0F\xB7[\x80-\xBF](....).{0,8}?[\x40-\x4F]?\x0F\xBF[\x40-\x7F](.).{0,8}?\x83[\xC0-\xC7]\x08.{0,400}?[\x40-\x4F]?\x0F\xB6[\x40-\x7F](.)(?:[\x40-\x4F]?\x88[\x40-\x7F].){4}.{0,200}?[\x40-\x4F]?\x0F\x2E.{1,6}?(?:\x7A.|\x0F\x8A....)(?:\x75.|\x0F\x85....)[\x40-\x4F]?[\xB8-\xBF]\x00\x00\x18\x00)");
+	// AtkServer::LoadShaders' loop over the shader pairs.
+	const Signatures::RegexSignature AtkServerLoadShadersLoop(R"([\x48\x49]\x81[\xC0-\xC7](....)[\x40\x41]?[\xB8-\xBF](\x09\x00\x00\x00).{0,16}?[\x48\x49]\x8B[\x80-\xBF](....)[\x48\x49]\x8B[\x88-\x8F](....)[\x48\x49]\x85\xC9(?:\x74.|\x0F\x84....)\x48\x8B\x01\xFF\x50..{0,32}?[\x48\x49]\x8B(?:[\x80-\xBF](....)|[\x40-\x7F](.))[\x48\x49]\x89[\x08-\x0F\x48-\x4F\x88-\x8F].{0,32}?[\x48\x49]\x8B[\x48-\x4F](.)[\x48\x49]\x85\xC9)");
+	// Inside AtkServer::BindShaders: a pass's vertex and pixel shaders.
+	const Signatures::RegexSignature AtkServerBindFontShaders(R"([\x48-\x4F]\x8B[\x84\x8C\x94\x9C\xA4\xAC\xB4\xBC]([\xC0-\xFF])(....).{0,16}?[\x48-\x4F]\x89[\x40-\x47\x80-\x87].{0,24}?[\x40-\x4F]?\x84[\xC0-\xFF](?:\x74.|\x0F\x84....)[\x48-\x4F]\x8B[\x84\x8C\x94\x9C\xA4\xAC\xB4\xBC]\1(....)(?:[\x48-\x4F]\x89[\x40-\x47\x80-\x87].{0,16}?)?(?:\xEB.|\xE9....|\xC3)[\x48-\x4F]\x8B[\x84\x8C\x94\x9C\xA4\xAC\xB4\xBC]\1(....))");
+	// Inside Kernel::ImmediateContext::SetPixelShader.
+	const Signatures::RegexSignature KernelSetPixelShader(R"([\x48\x4C]\x8B[\x81\x89\x91\x99\xA1\xA9\xB1\xB9](....)[\x48\x4C]\x8D[\x81\x89\x91\x99\xA1\xA9\xB1\xB9]....[\x40-\x4F]?\x8B[\x42\x4A\x52\x5A\x6A\x72\x7A](.).{0,400}?[\x48\x49]\x8B[\x50-\x53\x55-\x57](.).{0,16}?\x48\x8B\x01\xFF\x50\x48[\x4C\x4D\x48\x49]\x89(?:[\x80-\x83\x85-\xBF]|[\x84\x8C\x94\x9C\xA4\xAC\xB4\xBC]\x24)\1)");
+	// Inside AtkFontManager::BuildFont: a font's textures, header and kerning from its FDT.
+	const Signatures::RegexSignature BuildFont(R"(\x66[\x3B\x39][\x40-\x7F](.)(?:\x73.|\x0F\x83....).{0,40}?[\x48-\x4F]\x69[\xC0-\xFF](....)[\x48-\x4F]\x03[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\xF6[\x80-\xBF](....)\x02.{0,80}?\x66[\x40-\x4F]?[\x3B\x39][\x80-\xBF](....)(?:\x73.|\x0F\x83....).{0,24}?[\x48-\x4F]\x8B[\x04\x0C\x14\x1C\x24\x2C\x34\x3C][\xC0-\xC4\xC6-\xCC\xCE-\xD4\xD6-\xDC\xDE-\xE4\xE6-\xEC\xEE-\xF4\xF6-\xFC\xFE\xFF][\x48-\x4F]\x8B[\x80-\xBF](....)[\x48-\x4F]\x89[\x44\x4C\x54\x5C\x64\x6C\x74\x7C][\xC0-\xFF](.).{0,40}?[\x48-\x4F]\x8B[\x40-\x7F](.)[\x48-\x4F]\x8B[\x00-\x3F]\xFF[\x90-\x97].....{0,800}?[\x40-\x4F]?\x0F\x10[\x40-\x7F]\x04[\x40-\x4F]?\x0F\x11[\x80-\xBF](....)\xF2[\x40-\x4F]?\x0F\x10[\x40-\x7F]\x14\xF2[\x40-\x4F]?\x0F\x11[\x80-\xBF](....)[\x40-\x4F]?\x8B[\x40-\x7F]\x1C[\x40-\x4F]?\x89[\x80-\xBF](....).{0,60}?[\x48-\x4F]\x89[\x80-\xBF](....).{0,400}?[\x40-\x4F]?\x8B[\x40-\x7F]\x04[\x40-\x4F]?\x89[\x80-\xBF](....).{0,60}?[\x48-\x4F]\x89[\x80-\xBF](....).{0,60}?[\x48-\x4F]\x8D[\x40-\x7F]\x10.{0,60}?[\x40-\x4F]?\x8B[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F][\x48-\x4F]\x8D[\x40-\x7F]\x10[\x40-\x4F]?\x89[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F][\x48-\x4F]\x8D[\x40-\x7F](.).{0,200}?[\x40-\x4F]?\x0F\xB6[\x80-\xBF](....).{0,16}?[\x40-\x4F]?\x80[\xE0-\xE7]\xFB(?:[\x40-\x4F]?\x80[\xC8-\xCF]\x01)?(?:[\x40-\x4F]?\x88[\x80-\xBF]\16)?[\x40-\x4F]?\x88[\x80-\xBF](....).{0,60}?[\x40-\x4F]?\x8B[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F]\x81[\xF8-\xFF]\xFF\x00\x00\x00(?:\x77.|\x0F\x87....).{0,24}?[\x48-\x4F]\x83[\xC0-\xC7](.))");
+	// Inside the font renderer's quad of a glyph: its box and the font's texture width.
+	const Signatures::RegexSignature GlyphQuad(R"(\x0F\xB6[\x40-\x7F](.).{0,40}?[\x40-\x4F]?\x0F\xB6[\x40-\x7F](.).{0,40}?[\x40-\x4F]?\x0F\xBE[\x40-\x7F](.).{0,40}?[\x40-\x4F]?\x0F\xBE[\x40-\x7F](.).{0,400}?[\x40-\x4F]?\x84[\xC0-\xFF](?:\x75.|\x0F\x85....)[\x40-\x4F]?\x0F\xB6[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\x0F\xB7[\x80-\xBF](....).{0,40}?[\x40-\x4F]?\x80[\xE0-\xE7]\x03.{0,40}?[\x40-\x4F]?\xC1[\xE8-\xEF]\x02.{0,400}?[\x40-\x4F]?[\xB8-\xBF]\xFF\x0F\x00\x00.{0,200}?(?:\x66[\x40-\x4F]?\x23[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\x8B[\x40-\x7F]\7|[\x40-\x4F]?\x8B[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\x0F\xB7[\x40-\x7F]\8).{0,80}?[\x40-\x4F]?\xC1[\xE8-\xEF]\x0C)");
+	// AtkTextNodeRenderer::Draw taking the node's font set from AtkStage's font manager.
+	const Signatures::RegexSignature TextNodeFontSet(R"(\x0F\xB6[\x80-\xBF](....).{0,8}?[\x48-\x4F]?\xC1[\xE8-\xEF]\x04.{0,8}?[\x48-\x4F]\x69[\xC0-\xFF](....)[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,16}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,8}?[\x48-\x4F]\x03[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F].{0,8}?\xFF[\x50-\x57]\x18)");
+	// AtkTextNodeRenderer's per-node setup: the requested size and the node's scale.
+	const Signatures::RegexSignature TextNodeSetUp(R"(\x0F\xB6[\x80-\xBF](....).{0,40}?\x0F\x5B[\xC0-\xFF]\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....)[\x40-\x4F]?\x0F\xB6[\x80-\xBF]\1.{0,12}?\x0F\x5B[\xC0-\xFF]\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....).{0,40}?\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....).{0,24}?\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....))");
+	// Inside AtkFontManager's initialization: the fonts and the font sets.
+	const Signatures::RegexSignature InitFontManager(R"(\x66[\x40-\x4F]?\x89[\x40-\x7F](.).{0,24}?[\x48-\x4F]\x69[\xC0-\xFF](....).{0,40}?[\x48-\x4F]\x89[\x40-\x7F](.).{0,40}?\xB9(....)\xE8.....{0,24}?\x41?[\xB8-\xBF]([\x01-\x3F]\x00\x00\x00).{0,300}?[\x48-\x4F]\x81[\xC0-\xC7](....).{0,40}?[\x48-\x4F]\x89[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F])");
+	// Filling the font sets' slots, and each font's italic correction.
+	const Signatures::RegexSignature SetUpFontSets(R"(\x83[\x78-\x7F].\x02(?:\x75.|\x0F\x85....).{0,24}?[\x48-\x4F]\x8B[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F].{0,200}?[\x40-\x4F]?\x8D[\x40-\x7F]([\x04-\x10]).{0,60}?[\x48-\x4F]\x81[\xC0-\xC7].....{0,24}?[\x48-\x4F]\x89[\x00-\x03\x06-\x0B\x0E-\x13\x16-\x1B\x1E-\x23\x26-\x2B\x2E-\x33\x36-\x3B\x3E\x3F].{0,8}?[\x40-\x4F]?\xC6[\x80-\x87](....)[\x01-\x08].{0,8}?[\x48-\x4F]\x89[\x80-\xBF](....).{0,8}?\xC7[\x40-\x47](.)....\xC7[\x40-\x47](.)\x00\x00\x80\x3F.{0,60}?[\x48-\x4F]\x8D[\x40-\x7F](.).{0,40}?\x80[\xA0-\xA7](....)\xFD)");
+	// AtkModule reloading the UI shaders (AtkServer::LoadShaders) and the fonts.
+	const Signatures::RegexSignature AtkModuleReloadFontShaders(R"([\x48\x49]\x8B[\x88-\x8B\x8D-\x8F](....)[\x48\x49]\x85\xC9(?:\x74.|\x0F\x84....)\xE8(....).{0,16}?\xBA([\x01-\x7F]\x00\x00\x00).{0,8}?[\x48\x49]\x8D[\x88-\x8B\x8D-\x8F](....).{0,8}?[\x4C\x4D]\x8D[\x80-\x83\x85-\x87]\1.{0,8}?\xE8(....))");
+	// Loading a font of the font manager: its texture count, against the most it can have.
+	const Signatures::RegexSignature LoadFont(R"(\x66[\x3B\x39][\x40-\x7F](.)(?:\x73.|\x0F\x83....|\x72.|\x0F\x82....).{0,40}?[\x48-\x4F]\x69[\xC0-\xFF](....)[\x48-\x4F]\x03[\x40-\x7F](.)[\x40-\x4F]?\xF6[\x80-\xBF](....)\x01.{0,40}?\x41?\x83[\x38-\x3F](.)(?:\x7C.|\x0F\x8C....).{0,24}?\x83[\xB8-\xBF](....)\x00(?:\x74.|\x0F\x84....).{0,200}?\x66[\x40-\x4F]?\x89[\x80-\xBF](....).{0,16}?[\x40-\x4F]?\x88[\x80-\xBF](....))");
+	// Inside AtkUnitBase::CountCollisionNodes: the node list, recursing into components.
+	const Signatures::RegexSignature CountCollisionNodes(R"(\x0F\xB7[\x40-\x7F](.).{0,12}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,60}?(?:\xE8\x03\x00\x00.{0,60}?\x66[\x40-\x4F]?\x39[\x40-\x7F](.)|\x66[\x40-\x4F]?\x81[\x78-\x7F](.)\xE8\x03)(?:\x72.|\x0F\x82....)[\x48-\x4F]\x8B[\x80-\xBF](....)(?:\xEB.[\x31\x33][\xC0-\xFF])?[\x48-\x4F]\x85[\xC0-\xFF](?:\x74.|\x0F\x84....)(?:[\x48-\x4F]\x83[\xC0-\xC7](.)|[\x48-\x4F]\x8D[\x40-\x7F](.)).{0,8}?\xE8(....))");
+	// Inside AtkUnitBase::UpdateCollisionNodeList: the unit's own ULD manager.
+	const Signatures::RegexSignature UpdateCollisionNodeList(R"([\x48\x49]\x8D[\x50-\x57](.).{0,16}?\xE8(....)\x89[\x80-\xBF](....)\x85\xC0(?:\x74.|\x0F\x84....).{0,12}?\xE8.....{0,8}?\x8B[\x80-\xBF]\3)");
+	// AtkUnitBase::SetScale, from its start: the loaded units, through AtkStage's unit manager.
+	const Signatures::RegexSignature SetScale(R"([\x48-\x4F]\x85\xC9(?:\x74.|\x0F\x84....).{0,60}?[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,30}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,40}?\x0F\xB7[\x80-\xBF](....)(?:\xEB.)\x0F\xB7[\x80-\xBF](....).{0,40}?(?:\x0F[\xB7\xBF]|\x66[\x40-\x4F]?[\x39\x3B])[\x80-\xBF](....).{0,40}?(?:\x00\x01\x00\x00|\x81[\xF8-\xFF]\x00\x01).{0,30}?[\x48-\x4F]\x8B[\x84-\xBC][\xC0-\xFF](....).{0,40}?\x66[\x40-\x4F]?\x39[\x80-\xBF]\4)");
+	// Inside ResourceHandle's destructor: its file name, an MSVC std::string.
+	const Signatures::RegexSignature ResourceHandleDtor(R"([\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)[\x48-\x4F]\x8B[\xC0-\xFF][\x48-\x4F]\x89[\x00-\x3F].{0,8}?\xB8\x01\x00\x00\x00\x87[\x80-\xBF](....).{0,80}?\xF7[\x40-\x7F](.)\x00\x00\x00\x0C.{0,200}?[\x48-\x4F]\x8B[\x40-\x7F](.)[\x48-\x4F]\x83[\xF8-\xFF]\x10(?:\x72.|\x0F\x82....)[\x48-\x4F]\x8B[\x40-\x7F](.).{0,24}?\xE8....(?:[\x48-\x4F]\x89[\x40-\x7F](.)[\x48-\x4F]\xC7[\x40-\x47]\4\x0F\x00\x00\x00|[\x48-\x4F]\xC7[\x40-\x47]\4\x0F\x00\x00\x00.{0,8}?[\x48-\x4F]\x89[\x40-\x7F](.)).{0,24}?[\x40-\x4F]?\x88[\x40-\x7F]\5)");
+	// Inside Kernel::Texture's creation of its views: the device and the D3D11 texture.
+	const Signatures::RegexSignature TextureCreateViews(R"((?:[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....).{0,24}?(?:\x4C\x8D[\x48-\x4F](.)[\x48\x49]\x8B[\x50-\x57](.)|[\x48\x49]\x8B[\x50-\x57](.)\x4C\x8D[\x48-\x4F](.))|(?:\x4C\x8D[\x48-\x4F](.)[\x48\x49]\x8B[\x50-\x57](.)|[\x48\x49]\x8B[\x50-\x57](.)\x4C\x8D[\x48-\x4F](.)).{0,10}?[\x48\x4C]\x8B[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....)).{0,8}?[\x48-\x4F]\x8B[\x88-\x8F](....)[\x48-\x4F]\x8B[\x00-\x3F]\xFF[\x50-\x57]\x38)");
+	// Inside Device::CreateTexture2D: allocating and filling a Kernel::Texture.
+	const Signatures::RegexSignature CreateTexture2D(R"(\xBA(....).{0,30}?\xFF[\x50-\x57]\x10.{0,40}?\xE8(....).{0,120}?[\x48-\x4F]\x89[\x40-\x7F](.).{0,4}?[\x48-\x4F]\x8B[\x00-\x3F][\x48-\x4F]\x89[\x40-\x7F](.)[\x48-\x4F]\x89[\x40-\x7F](.).{0,16}?\xC7[\x40-\x47](.)\x01\x00\x00\x00.{0,8}?[\x40-\x4F]?\x88[\x40-\x7F](.).{0,8}?[\x40-\x4F]?\x89[\x40-\x7F](.)[\x40-\x4F]?\x89[\x40-\x7F](.)\xC6[\x40-\x47](.)\x01[\x40-\x4F]?\xF7[\xC0-\xC7]\x00\x18\x00\x00(?:\x75.|\x0F\x85....).{0,8}?\xE8(....))");
+	// AtkResNode::SetScale's body: both scales stored.
+	const Signatures::RegexSignature AtkResNodeSetScale(R"([\x40-\x4F]?\x8B[\x81\x89\x91\x99\xA9\xB1\xB9](....)(?:[\x40-\x4F]?\x8B[\xC0-\xFF])?(?:\xA8\x01|\xF6[\xC0-\xC7]\x01)(?:\x75.|\x0F\x85....)\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F](.)[\x40-\x4F]?\x0F\x2E[\xC0-\xFF](?:\x7A.|\x0F\x8A....)(?:\x75.|\x0F\x85....)\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F](.)[\x40-\x4F]?\x0F\x2E[\xC0-\xFF](?:\x7A.|\x0F\x8A....)(?:\x74.|\x0F\x84....).{0,40}?(?:\xF3[\x40-\x4F]?\x0F\x11[\x40-\x7F]\2.{0,8}?\xF3[\x40-\x4F]?\x0F\x11[\x40-\x7F]\3|\xF3[\x40-\x4F]?\x0F\x11[\x40-\x7F]\3.{0,8}?\xF3[\x40-\x4F]?\x0F\x11[\x40-\x7F]\2).{0,24}?\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F](.)[\x40-\x4F]?\x0F\x57[\xC0-\xFF][\x40-\x4F]?\x0F\x2E[\xC0-\xFF](?:\x7A.|\x0F\x8A....)(?:\x75.|\x0F\x85....)(?:\x83\xA1\1\xFB|[\x40-\x4F]?\x83[\xE0-\xE7]\xFB[\x40-\x4F]?\x89[\x81\x89\x91\x99\xA9\xB1\xB9]\1))");
+	// Inside AtkResNode::DispatchEvent: the walk up the parent nodes.
+	const Signatures::RegexSignature AtkResNodeDispatchEvent(R"(\x48\x85\xC9(?:[\x74\x75].|\x0F[\x84\x85]....).{0,16}?\xF6\x42\x02\x01.{0,8}?(?:\x74.|\x0F\x84....).{0,16}?[\x48-\x4F]\x8B[\x40-\x7F](.)[\x48-\x4F]\x85[\xC0-\xFF](?:\x74.|\x0F\x84....).{0,16}?\x0F\xB6[\x40-\x7F](.)\x3B[\xC0-\xFF](?:\x74.|\x0F\x84....)[\x48-\x4F]\x8B[\x40-\x7F](.)[\x48-\x4F]\x85[\xC0-\xFF](?:\x75.|\x0F\x85....).{0,16}?[\x48\x49]\x8D[\x48-\x4F]\1.{0,8}?\xE8(....)\x84\xC0(?:\x75.|\x0F\x85....)[\x48-\x4F]\x8B[\x40-\x7F](.)[\x48-\x4F]\x85[\xC0-\xFF](?:\x75.|\x0F\x85....))");
+	// The font renderer shearing an italic glyph's quad: the analyzer state's flags.
+	const Signatures::RegexSignature ItalicQuad(R"(\xF7[\x40-\x47](.)\x00\x00\x00\x08.{0,40}?\x74.\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....))");
+	// The <italic> macro setting the analyzer state's italic flag.
+	const Signatures::RegexSignature ItalicMacro(R"(\x0F\xBA[\xF0-\xF7]\x1B.{0,32}?\x0F\xBA[\xE0-\xE7]\x1B(?:\x72.|\x0F\x82....)\x0F\xBA[\xE8-\xEF]\x1E[\x40-\x4F]?\x89[\x40-\x7F](.))");
+}
+
+namespace XivAlexander::Game::Resolved::Fonts {
+	namespace {
+		// A capture as a little-endian signed integer, from the first of its groups that matched (they are alternatives of the pattern).
+		std::optional<int32_t> TryCaptured(const ScanResult& m, std::initializer_list<size_t> groups) {
+			for (const auto group : groups) {
+				const auto& g = m.Match()[group];
+				if (!g.matched)
+					continue;
+				switch (g.length()) {
+					case 1: return m.Get<int8_t>(group);
+					case 2: return m.Get<int16_t>(group);
+					case 4: return m.Get<int32_t>(group);
+					default: return std::nullopt;
+				}
+			}
+			return std::nullopt;
+		}
+
+		int32_t Captured(const ScanResult& m, std::initializer_list<size_t> groups, std::string_view what) {
+			if (const auto value = TryCaptured(m, groups))
+				return *value;
+			ResolveContext::Fail(ResolveError::Invalid, std::format("{} not captured", what));
+		}
+
+		// Where a captured rel32 points.
+		template<typename T = void*>
+		T CapturedTarget(const ScanResult& m, std::initializer_list<size_t> groups, std::string_view what) {
+			for (const auto group : groups) {
+				if (m.Match()[group].matched)
+					return m.ResolveAddress<T>(group);
+			}
+			ResolveContext::Fail(ResolveError::Invalid, std::format("{} not captured", what));
+		}
+
+		void* FunctionOf(const ResolveContext& ctx, const ScanResult& m, std::string_view what) {
+			return Address(ctx.FunctionContaining(m.begin(0), what).data());
+		}
+
+		// A signature that may be missing, or no longer unique, without failing the part.
+		std::optional<ScanResult> TryUnique(const ResolveContext& ctx, const RegexSignature& signature) {
+			auto all = ctx.All(signature, ctx.Text());
+			if (all.size() != 1)
+				return std::nullopt;
+			return std::move(all.front());
+		}
+	}
+
+	std::string to_string(const StageLayout& value) {
+		return std::format("instance {}, font manager +0x{:X}", Signatures::Describe(value.Instance), value.FontManager);
+	}
+
+	std::string to_string(const FontManagerLayout& value) {
+		return std::format("fonts +0x{:X} (0x{:X} bytes each), font count +0x{:X}, {} font sets of 0x{:X} bytes",
+			value.Fonts, value.FontSize, value.FontCount, value.FontSetCount, value.FontSetSize);
+	}
+
+	std::string to_string(const FontSetLayout& value) {
+		return std::format("PickFont {}, scaled size +0x{:X}, node scale +0x{:X} +0x{:X}, current font +0x{:X} size +0x{:X}, draw flags {}",
+			Signatures::Describe(value.PickFont), value.ScaledSizeY, value.NodeScaleX, value.NodeScaleY, value.CurrentFont, value.CurrentFontSize, Signatures::Describe(value.DrawFlags));
+	}
+
+	std::string to_string(const FontLayout& value) {
+		return std::format("GetGlyph {}, LayOutCharacter {}, BuildFont {}, {} textures +0x{:X}, kerning count +0x{:X}, texture width +0x{:X}, size +0x{:X}, ascent +0x{:X}, "
+			"glyph map +0x{:X}, secondary +0x{:X} ratio +0x{:X}, texture count +0x{:X}, flags +0x{:X}, italic correction {}",
+			Signatures::Describe(value.GetGlyph), Signatures::Describe(value.LayOutCharacter), Signatures::Describe(value.BuildFont), value.MaxTextures, value.Textures,
+			value.KerningCount, value.TextureWidth, value.Size, value.Ascent, value.GlyphMap, value.Secondary, value.SecondaryRatio, value.TextureCount, value.Flags,
+			Signatures::Describe(value.XShift));
+	}
+
+	std::string to_string(const UiLayout& value) {
+		return std::format("unit manager +0x{:X}, loaded units +0x{:X} count +0x{:X}, unit ULD +0x{:X}, node list +0x{:X} count +0x{:X}, node type +0x{:X}, component +0x{:X} ULD +0x{:X}",
+			value.StageUnitManager, value.LoadedUnitsEntries, value.LoadedUnitsCount, value.UnitUld, value.UldNodeList, value.UldNodeListCount, value.NodeType,
+			value.ComponentNodeComponent, value.ComponentUld);
+	}
+
+	std::string to_string(const ResourceHandleLayout& value) {
+		return std::format("file name +0x{:X}, length +0x{:X}, capacity +0x{:X}", value.FileName, value.FileNameLength, value.FileNameCapacity);
+	}
+
+	std::string to_string(const TextureFunctions& value) {
+		return std::format("device {}, CreateTexture2D {}, D3D11 texture +0x{:X}",
+			Signatures::Describe(value.Device), Signatures::Describe(value.CreateTexture2D), value.D3D11Texture2D);
+	}
+
+	std::string to_string(const ReplacerFunctions& value) {
+		return std::format("BuildFontCache {}, FreeFontCache {}, renderer vtable {}, render count vtable {}, font cache slot +0x{:X} flags +0x{:X}, state flags {}",
+			Signatures::Describe(value.BuildFontCache), Signatures::Describe(value.FreeFontCache), Signatures::Describe(value.RendererVtable),
+			Signatures::Describe(value.RenderCountVtable), value.FontCacheSlot, value.FontCacheFlags, Signatures::Describe(value.StateFlags));
+	}
+
+	std::string to_string(const FontTablesLayout& value) {
+		return std::format("game {}, lobby {} {}, {} entries of 0x{:X} bytes, FDT name +0x{:X}",
+			Signatures::Describe(value.Game), Signatures::Describe(value.LobbyA), Signatures::Describe(value.LobbyB), value.Count, value.EntrySize, value.FdtName);
+	}
+
+	std::string to_string(const NamePlateFunctions& value) {
+		return std::format("AllocateBake {}, BakePrepare {}, DrawBaked {}, bake plate +0x{:X}, {} objects of 0x{:X} bytes +0x{:X} (name text +0x{:X}, text size +0x{:X} +0x{:X}, "
+			"needs baking +0x{:X}), bake text Y +0x{:X} alpha +0x{:X}, current bake +0x{:X}, node transform +0x{:X} size +0x{:X} +0x{:X} parent +0x{:X} scale +0x{:X}",
+			Signatures::Describe(value.AllocateBake), Signatures::Describe(value.BakePrepare), Signatures::Describe(value.DrawBaked), value.AddonBakePlate,
+			value.ObjectCount, value.ObjectSize, value.AddonObjects, value.ObjectNameText, value.ObjectTextW, value.ObjectTextH, value.ObjectNeedsToBeBaked,
+			value.BakeTextYOffset, value.BakeAlpha, value.RendererCurrentBakeData, value.NodeTransform, value.NodeWidth, value.NodeHeight, value.NodeParent, value.NodeScaleX);
+	}
+
+	std::string to_string(const ShaderTablesLayout& value) {
+		return std::format("BindShaders {}, pixel shader files +0x{:X}, pixel shaders +0x{:X}, D3D shader +0x{:X}",
+			Signatures::Describe(value.BindFontShaders), value.PixelShaderFiles, value.PixelShaders, value.D3DShader);
+	}
+
+	std::string to_string(const EdgeShaderFunctions& value) {
+		return std::format("LoadShaders {}, AtkServer +0x{:X}, font manager +0x{:X}", Signatures::Describe(value.LoadShaders), value.ModuleServer, value.ModuleFontManager);
+	}
+
+	std::string to_string(const LineBreakerFunctions& value) {
+		return std::format("SplitWord {}, FitUnits {}, units consumed +0x{:X} max +0x{:X} used +0x{:X}",
+			Signatures::Describe(value.SplitWord), Signatures::Describe(value.FitUnits), value.ConsumedUnits, value.MaxUnits, value.UsedUnits);
+	}
+
+	const Signatures::ComplexSignature<StageLayout> Stage("Fonts.Stage", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::TextNodeFontSet, ctx.Text(), "TextNodeFontSet");
+		return StageLayout{
+			.Instance = CapturedTarget<void* const*>(m, {3}, "AtkStage instance"),
+			.FontManager = Captured(m, {4}, "AtkStage font manager"),
+		};
+	});
+
+	const Signatures::ComplexSignature<FontManagerLayout> FontManager("Fonts.FontManager", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::InitFontManager, ctx.Text(), "InitFontManager");
+		return FontManagerLayout{
+			.Fonts = Captured(m, {3}, "fonts"),
+			.FontCount = Captured(m, {1}, "font count"),
+			.FontSetCount = Captured(m, {5}, "font set count"),
+			.FontSetSize = Captured(m, {6}, "font set size"),
+			.FontSize = Captured(m, {2}, "font size"),
+		};
+	});
+
+	const Signatures::ComplexSignature<FontSetLayout> FontSet("Fonts.FontSet", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto pick = ctx.Unique(FontCode::PickFont, text, "PickFont");
+		const auto setUp = ctx.Unique(FontCode::TextNodeSetUp, text, "TextNodeSetUp");
+		return FontSetLayout{
+			.PickFont = Address(pick.begin(0)),
+			.ScaledSizeY = Captured(pick, {2}, "scaled size"),
+			.NodeScaleX = Captured(setUp, {4}, "node scale X"),
+			.NodeScaleY = Captured(setUp, {5}, "node scale Y"),
+			.CurrentFont = Captured(pick, {5}, "current font"),
+			.CurrentFontSize = Captured(pick, {6}, "current font size"),
+			.DrawFlags = TryCaptured(pick, {1}),
+		};
+	});
+
+	const Signatures::ComplexSignature<FontLayout> Font("Fonts.Font", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto getGlyph = ctx.Unique(FontCode::GetGlyph, text, "GetGlyph");
+		const auto layOut = ctx.Unique(FontCode::LayOutCharacter, text, "LayOutCharacter");
+		const auto build = ctx.Unique(FontCode::BuildFont, text, "BuildFont");
+		const auto quad = ctx.Unique(FontCode::GlyphQuad, text, "GlyphQuad");
+		const auto load = ctx.Unique(FontCode::LoadFont, text, "LoadFont");
+		FontLayout res{
+			.GetGlyph = FunctionOf(ctx, getGlyph, "GetGlyph"),
+			.LayOutCharacter = FunctionOf(ctx, layOut, "LayOutCharacter"),
+			.BuildFont = FunctionOf(ctx, build, "BuildFont"),
+			.MaxTextures = Captured(load, {5}, "max textures"),
+			.Textures = Captured(build, {7}, "textures"),
+			.KerningCount = Captured(build, {13}, "kerning count"),
+			.TextureWidth = Captured(quad, {6}, "texture width"),
+			.Size = Captured(build, {10}, "size"),
+			.Ascent = Captured(build, {11}, "ascent"),
+			.GlyphMap = Captured(getGlyph, {5}, "glyph map"),
+			.Secondary = Captured(layOut, {10}, "secondary font"),
+			.SecondaryRatio = Captured(layOut, {18}, "secondary ratio"),
+			.TextureCount = Captured(build, {5}, "texture count"),
+			.Flags = Captured(build, {4, 16}, "flags"),
+		};
+		ctx.Require(CapturedTarget(layOut, {1}, "LayOutCharacter's GetGlyph") == res.GetGlyph, ResolveError::Mismatch, "LayOutCharacter doesn't call the GetGlyph found");
+
+		// Only set in copies of fonts; without it, italics overhang the next glyph.
+		if (const auto setUp = TryUnique(ctx, FontCode::SetUpFontSets))
+			res.XShift = TryCaptured(*setUp, {2});
+		return res;
+	});
+
+	const Signatures::ComplexSignature<UiLayout> Ui("Fonts.Ui", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto setScale = ctx.Unique(FontCode::SetScale, text, "SetScale");
+		const auto update = ctx.Unique(FontCode::UpdateCollisionNodeList, text, "UpdateCollisionNodeList");
+		const auto count = ctx.Unique(FontCode::CountCollisionNodes, text, "CountCollisionNodes");
+		return UiLayout{
+			.StageUnitManager = Captured(setScale, {2}, "unit manager"),
+			.LoadedUnitsCount = Captured(setScale, {5}, "loaded unit count"),
+			.LoadedUnitsEntries = Captured(setScale, {6}, "loaded units"),
+			.UnitUld = Captured(update, {1}, "unit ULD manager"),
+			.UldNodeList = Captured(count, {2}, "node list"),
+			.UldNodeListCount = Captured(count, {1}, "node list count"),
+			.NodeType = Captured(count, {3, 4}, "node type"),
+			.ComponentNodeComponent = Captured(count, {5}, "component"),
+			.ComponentUld = Captured(count, {6, 7}, "component ULD manager"),
+		};
+	});
+
+	const Signatures::ComplexSignature<ResourceHandleLayout> ResourceHandles("Fonts.ResourceHandles", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::ResourceHandleDtor, ctx.Text(), "ResourceHandle destructor");
+		return ResourceHandleLayout{
+			.FileName = Captured(m, {5}, "file name"),
+			.FileNameLength = Captured(m, {6, 7}, "file name length"),
+			.FileNameCapacity = Captured(m, {4}, "file name capacity"),
+		};
+	});
+
+	const Signatures::ComplexSignature<TextureFunctions> Textures("Fonts.Textures", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto views = ctx.Unique(FontCode::TextureCreateViews, text, "texture views");
+		const auto create = ctx.Unique(FontCode::CreateTexture2D, text, "CreateTexture2D");
+		return TextureFunctions{
+			.Device = CapturedTarget<void* const*>(views, {1, 10}, "device instance"),
+			.CreateTexture2D = FunctionOf(ctx, create, "CreateTexture2D"),
+			.D3D11Texture2D = Captured(views, {3, 4, 7, 8}, "D3D11 texture"),
+		};
+	});
+
+	const Signatures::ComplexSignature<ReplacerFunctions> Replacer("Fonts.Replacer", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto buildCache = ctx.Unique(FontCode::BuildFontCache, text, "BuildFontCache");
+		const auto freeCache = ctx.Unique(FontCode::FreeFontCache, text, "FreeFontCache");
+		const auto toggle = ctx.Unique(FontCode::ToggleFontCache, text, "ToggleFontCache");
+		const auto vtables = ctx.Unique(FontCode::FontAnalyzerVtables, text, "font analyzer vtables");
+		ReplacerFunctions res{
+			.BuildFontCache = Address(buildCache.begin(0)),
+			.FreeFontCache = Address(freeCache.begin(0)),
+			.RendererVtable = CapturedTarget<void* const*>(vtables, {1}, "renderer vtable"),
+			.RenderCountVtable = CapturedTarget<void* const*>(vtables, {3}, "render count vtable"),
+			.FontCacheSlot = Captured(buildCache, {1}, "font cache slot"),
+			.FontCacheFlags = Captured(toggle, {1}, "font cache flags"),
+		};
+		ctx.Require(Captured(freeCache, {1}, "font cache slot") == res.FontCacheSlot, ResolveError::Mismatch, "BuildFontCache and FreeFontCache disagree on the font cache slot");
+		ctx.Require(CapturedTarget(toggle, {2}, "ToggleFontCache's BuildFontCache") == res.BuildFontCache && CapturedTarget(toggle, {3}, "ToggleFontCache's FreeFontCache") == res.FreeFontCache,
+			ResolveError::Mismatch, "ToggleFontCache doesn't call the BuildFontCache and FreeFontCache found");
+
+		// Without it, italics are the game's shear.
+		std::optional<int32_t> stateFlags;
+		auto agree = true;
+		for (const auto signature : {&FontCode::ItalicQuad, &FontCode::ItalicMacro}) {
+			if (const auto m = TryUnique(ctx, *signature); m) {
+				const auto value = TryCaptured(*m, {1});
+				agree = agree && value && (!stateFlags || *stateFlags == *value);
+				stateFlags = value;
+			}
+		}
+		if (agree)
+			res.StateFlags = stateFlags;
+		return res;
+	});
+
+	const Signatures::ComplexSignature<FontTablesLayout> FontTables("Fonts.FontTables", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::FontTables, ctx.Text(), "font tables");
+		return FontTablesLayout{
+			.Game = CapturedTarget(m, {5}, "game table"),
+			.LobbyA = CapturedTarget(m, {3}, "lobby table A"),
+			.LobbyB = CapturedTarget(m, {4}, "lobby table B"),
+			.Count = Captured(m, {8}, "table length"),
+			.EntrySize = Captured(m, {7}, "entry size"),
+			.FdtName = Captured(m, {6}, "FDT name"),
+		};
+	});
+
+	const Signatures::ComplexSignature<NamePlateFunctions> NamePlates("Fonts.NamePlates", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto allocate = ctx.Unique(FontCode::NamePlateAllocateBake, text, "AllocateBake");
+		const auto caller = ctx.Unique(FontCode::NamePlateAllocateBakeCaller, text, "AllocateBake's caller");
+		const auto prepare = ctx.Unique(FontCode::NamePlateBakePrepare, text, "BakePrepare");
+		const auto draw = ctx.Unique(FontCode::NamePlateDrawBaked, text, "DrawBaked");
+		const auto dispatch = ctx.Unique(FontCode::AtkResNodeDispatchEvent, text, "AtkResNode::DispatchEvent");
+		const auto setScale = ctx.Unique(FontCode::AtkResNodeSetScale, text, "AtkResNode::SetScale");
+		NamePlateFunctions res{
+			.AllocateBake = FunctionOf(ctx, allocate, "AllocateBake"),
+			.BakePrepare = Address(prepare.begin(4)),
+			.DrawBaked = FunctionOf(ctx, draw, "DrawBaked"),
+			.AddonBakePlate = Captured(caller, {2, 7}, "bake plate"),
+			.AddonObjects = Captured(caller, {1, 10}, "objects"),
+			.ObjectSize = Captured(caller, {5, 8, 9}, "object size"),
+			.ObjectNameText = Captured(allocate, {2}, "name text"),
+			.ObjectTextW = Captured(allocate, {4}, "text width"),
+			.ObjectTextH = Captured(allocate, {5}, "text height"),
+			.ObjectNeedsToBeBaked = Captured(caller, {3, 12}, "needs baking"),
+			.BakeTextYOffset = Captured(draw, {5}, "bake text Y offset"),
+			.BakeAlpha = Captured(draw, {6}, "bake alpha"),
+			.RendererCurrentBakeData = Captured(prepare, {5}, "current bake"),
+			// The transform's first row is captured as its two floats; the matrix starts at the first.
+			.NodeTransform = (std::min)(Captured(draw, {1}, "transform"), Captured(draw, {2}, "transform")),
+			.NodeWidth = Captured(draw, {3}, "node width"),
+			.NodeHeight = Captured(draw, {4}, "node height"),
+			.NodeParent = Captured(dispatch, {5}, "parent node"),
+			.NodeScaleX = Captured(setScale, {2}, "node scale"),
+		};
+
+		// The caller has the array's size before 7.00, the loop over the plates since.
+		auto arraySize = TryCaptured(caller, {6});
+		if (!arraySize)
+			arraySize = Captured(ctx.Unique(FontCode::NamePlateObjectsLoop, text, "the plates' loop"), {4}, "object array size");
+		res.ObjectCount = *arraySize / (std::max)(res.ObjectSize, 1);
+		return res;
+	});
+
+	const Signatures::ComplexSignature<ShaderTablesLayout> ShaderTables("Fonts.ShaderTables", [](ResolveContext& ctx) {
+		const auto text = ctx.Text();
+		const auto loop = ctx.Unique(FontCode::AtkServerLoadShadersLoop, text, "LoadShaders' loop");
+		const auto bind = ctx.Unique(FontCode::AtkServerBindFontShaders, text, "BindShaders");
+		const auto set = ctx.Unique(FontCode::KernelSetPixelShader, text, "SetPixelShader");
+		const auto vertexShaders = Captured(loop, {1}, "vertex shaders");
+		ShaderTablesLayout res{
+			.BindFontShaders = FunctionOf(ctx, bind, "BindShaders"),
+			.PixelShaderFiles = vertexShaders + Captured(loop, {5, 6}, "pixel shader files"),
+			.PixelShaders = Captured(bind, {4}, "pixel shaders"),
+			.D3DShader = Captured(set, {3}, "D3D shader"),
+		};
+		ctx.Require(vertexShaders + Captured(loop, {7}, "pixel shaders") == res.PixelShaders, ResolveError::Mismatch, "LoadShaders and BindShaders disagree on the pixel shaders");
+		return res;
+	});
+
+	const Signatures::ComplexSignature<EdgeShaderFunctions> EdgeShader("Fonts.EdgeShader", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::AtkModuleReloadFontShaders, ctx.Text(), "shader reload");
+		return EdgeShaderFunctions{
+			.LoadShaders = CapturedTarget(m, {2}, "LoadShaders"),
+			.ModuleServer = Captured(m, {1}, "AtkServer"),
+			.ModuleFontManager = Captured(m, {4}, "font manager"),
+		};
+	});
+
+	const Signatures::ComplexSignature<LineBreakerFunctions> LineBreaker("Fonts.LineBreaker", [](ResolveContext& ctx) {
+		const auto m = ctx.Unique(FontCode::SplitWord, ctx.Text(), "SplitWord");
+		return LineBreakerFunctions{
+			.SplitWord = Address(m.begin(0)),
+			.FitUnits = CapturedTarget(m, {3}, "FitUnits"),
+			.ConsumedUnits = Captured(m, {4}, "consumed units"),
+			.MaxUnits = Captured(m, {1}, "max units"),
+			.UsedUnits = Captured(m, {2}, "used units"),
 		};
 	});
 }

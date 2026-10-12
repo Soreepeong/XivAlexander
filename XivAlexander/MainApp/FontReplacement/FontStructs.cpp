@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/FontStructs.h"
 
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities.h"
@@ -9,6 +9,12 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
+	// The most textures a font of the global client's tables has.
+	constexpr int GlobalMaxFontTextureCount = 7;
+
+	// Set once BuildFont has built the font.
+	constexpr int ReadyFontFlag = 2;
+
 	struct {
 		int StageFontManager;
 		int FontSets;
@@ -86,70 +92,34 @@ int FontReplacement::GameFontManager::IndexOf(const GameFont* font) const {
 
 void FontReplacement::GameFontManager::Resolve() {
 	GameUi::ResolveStage();
-	s_manager.StageFontManager = GameLayout::Get("AtkStage.AtkFontManager");
-	s_manager.FontSets = GameLayout::Get("AtkFontManager.FontSets");
-	s_manager.Fonts = GameLayout::Get("AtkFontManager.Fonts");
-	s_manager.FontCount = GameLayout::Get("AtkFontManager.FontCount");
-	FontSetCount = GameLayout::Get("AtkFontManager.FontSetCount");
+	const auto manager = ResolveGameCode(Game::Resolved::Fonts::FontManager);
+	s_manager.StageFontManager = ResolveGameCode(Game::Resolved::Fonts::Stage).FontManager;
+	s_manager.FontSets = 0;  // at the start
+	s_manager.Fonts = manager.Fonts;
+	s_manager.FontCount = manager.FontCount;
+	FontSetCount = manager.FontSetCount;
 }
 
 void FontReplacement::ResolveGameFontStructs() {
 	GameFontManager::Resolve();
 	GameFontSet::Resolve();
 	GameFont::Resolve();
-	GameLayout::CheckFixed("GameGlyph", sizeof(GameGlyph), {
-		{"Utf8Value", offsetof(GameGlyph, Utf8Value)},
-		{"Packed", offsetof(GameGlyph, Packed)},
-		{"Width", offsetof(GameGlyph, Width)},
-		{"Height", offsetof(GameGlyph, Height)},
-		{"OffsetX", offsetof(GameGlyph, OffsetX)},
-		{"OffsetY", offsetof(GameGlyph, OffsetY)},
-	});
-	GameLayout::CheckFixed("GameKerningEntry", sizeof(GameKerningEntry), {
-		{"Left", offsetof(GameKerningEntry, Left)},
-		{"Right", offsetof(GameKerningEntry, Right)},
-		{"Adjustment", offsetof(GameKerningEntry, Adjustment)},
-	});
-	GameLayout::CheckFixed("GlyphMap", sizeof(GameGlyphMap), {
-		{"MaxLoadFactor", offsetof(GameGlyphMap, MaxLoadFactor)},
-		{"Head", offsetof(GameGlyphMap, Head)},
-		{"Count", offsetof(GameGlyphMap, Count)},
-		{"Buckets", offsetof(GameGlyphMap, Buckets)},
-		{"Mask", offsetof(GameGlyphMap, Mask)},
-		{"MaxIndex", offsetof(GameGlyphMap, MaxIndex)},
-	});
-	GameLayout::CheckFixed("GlyphMap.Node", sizeof(GameGlyphMap::Node), {
-		{"Next", offsetof(GameGlyphMap::Node, Next)},
-		{"Prev", offsetof(GameGlyphMap::Node, Prev)},
-		{"Key", offsetof(GameGlyphMap::Node, Key)},
-		{"Value", offsetof(GameGlyphMap::Node, Value)},
-	});
 }
 
 int FontReplacement::GetMaxGameFontTextureCount() {
-	int count = 0, entrySize = 0, textureCount = 0;
-	uintptr_t tables[3]{};
+	Game::Resolved::Fonts::FontTablesLayout tables;
 	try {
-		GameLayout::Resolve("Reading the game's font tables", [&] {
-			count = GameLayout::Get("FontTable.Count");
-			entrySize = GameLayout::Get("FontTableEntry");
-			textureCount = GameLayout::Get("FontTableEntry.TextureCount");
-			tables[0] = GameLayout::Address("FontTables", "GameTable");
-			tables[1] = GameLayout::Address("FontTables", "LobbyTableA");
-			tables[2] = GameLayout::Address("FontTables", "LobbyTableB");
-		});
+		tables = ResolveGameCode(Game::Resolved::Fonts::FontTables);
 	} catch (const std::exception& e) {
-		const auto fallback = GameLayout::TryGet("FontTable.MaxTextureCount");
-		if (!fallback)
-			throw;
 		Host::Warning("The font tables weren't found; taking the global client's texture count: {}", e.what());
-		return *fallback;
+		return GlobalMaxFontTextureCount;
 	}
 
+	// An entry's texture count is its first field.
 	auto max = 0;
-	for (const auto table : tables) {
-		for (auto i = 0; i < count; i++)
-			max = (std::max)(max, static_cast<int>(*reinterpret_cast<const uint64_t*>(table + static_cast<size_t>(i) * entrySize + textureCount)));
+	for (const auto table : {tables.Game, tables.LobbyA, tables.LobbyB}) {
+		for (auto i = 0; i < tables.Count; i++)
+			max = (std::max)(max, static_cast<int>(*reinterpret_cast<const uint64_t*>(static_cast<const uint8_t*>(table) + static_cast<size_t>(i) * tables.EntrySize)));
 	}
 	return max;
 }
@@ -175,12 +145,13 @@ float& FontReplacement::GameFontSet::CurrentFontSize() {
 }
 
 void FontReplacement::GameFontSet::Resolve() {
-	StructSize = GameLayout::Get("GameFontSet");
-	s_set.ScaledSizeY = GameLayout::Get("GameFontSet.ScaledSizeY");
-	s_set.NodeScaleX = GameLayout::Get("GameFontSet.NodeScaleX");
-	s_set.NodeScaleY = GameLayout::Get("GameFontSet.NodeScaleY");
-	s_set.CurrentFont = GameLayout::Get("GameFontSet.CurrentFont");
-	s_set.CurrentFontSize = GameLayout::Get("GameFontSet.CurrentFontSize");
+	StructSize = ResolveGameCode(Game::Resolved::Fonts::FontManager).FontSetSize;
+	const auto set = ResolveGameCode(Game::Resolved::Fonts::FontSet);
+	s_set.ScaledSizeY = set.ScaledSizeY;
+	s_set.NodeScaleX = set.NodeScaleX;
+	s_set.NodeScaleY = set.NodeScaleY;
+	s_set.CurrentFont = set.CurrentFont;
+	s_set.CurrentFontSize = set.CurrentFontSize;
 }
 
 FontReplacement::GameGlyphMap::Node* FontReplacement::GameGlyphMap::Find(uint32_t key) const {
@@ -276,26 +247,29 @@ FontReplacement::GameGlyph* FontReplacement::GameFont::FindGlyph(char32_t codepo
 }
 
 void FontReplacement::GameFont::Resolve() {
-	StructSize = GameLayout::Get("GameFont");
-	MaxTextures = GameLayout::Get("GameFont.MaxTextures");
-	s_font.TextureResourceHandles = GameLayout::Get("GameFont.TextureResourceHandles");
-	s_font.Textures = GameLayout::Get("GameFont.Textures");
-	s_font.KerningCount = GameLayout::Get("GameFont.KerningCount");
-	s_font.TextureWidth = GameLayout::Get("GameFont.TextureWidth");
-	s_font.TextureHeight = GameLayout::Get("GameFont.TextureHeight");
-	s_font.Size = GameLayout::Get("GameFont.Size");
-	s_font.LineHeight = GameLayout::Get("GameFont.LineHeight");
-	s_font.Ascent = GameLayout::Get("GameFont.Ascent");
+	StructSize = ResolveGameCode(Game::Resolved::Fonts::FontManager).FontSize;
+	const auto font = ResolveGameCode(Game::Resolved::Fonts::Font);
+	MaxTextures = font.MaxTextures;
 
-	s_font.GlyphMap = GameLayout::Get("GameFont.GlyphMap");
-	s_font.Secondary = GameLayout::Get("GameFont.Secondary");
-	s_font.SecondaryRatio = GameLayout::Get("GameFont.SecondaryRatio");
-	s_font.TextureCount = GameLayout::Get("GameFont.TextureCount");
-	s_font.Flags = GameLayout::Get("GameFont.Flags");
-	s_font.ReadyFlag = GameLayout::Get("GameFont.Flags.Ready");
+	// At the start, where the code has no displacement to capture.
+	s_font.TextureResourceHandles = 0;
+	s_font.Textures = font.Textures;
+	s_font.KerningCount = font.KerningCount;
+	s_font.TextureWidth = font.TextureWidth;
+	s_font.TextureHeight = font.TextureWidth + 2;  // as in the FDT's header
+	s_font.Size = font.Size;
+	s_font.LineHeight = font.Size + 4;  // copied from the FDT's header along with Size
+	s_font.Ascent = font.Ascent;
+
+	s_font.GlyphMap = font.GlyphMap;
+	s_font.Secondary = font.Secondary;
+	s_font.SecondaryRatio = font.SecondaryRatio;
+	s_font.TextureCount = font.TextureCount;
+	s_font.Flags = font.Flags;
+	s_font.ReadyFlag = ReadyFontFlag;
 
 	// Optional: only changed in copies.
-	s_font.ItalicCorrection = GameLayout::TryGet("GameFont.XShift").value_or(-1);
+	s_font.ItalicCorrection = font.XShift.value_or(-1);
 }
 
 int FontReplacement::GameUtf8::Decode(const uint8_t* p, int length) {

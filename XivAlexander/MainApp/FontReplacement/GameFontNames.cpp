@@ -4,7 +4,7 @@
 #include <FontChanger.FixedSizeFont/fontdata_fixed_size_font.h>
 
 #include "MainApp/FontReplacement/FontStructs.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "Utils/StringUtils.h"
 
@@ -74,19 +74,14 @@ const std::vector<std::string>& GameFontNames::Families() {
 }
 
 void GameFontNames::Initialize() {
-	uintptr_t lobbyA = 0, lobbyB = 0, game = 0;
-	int entrySize = 0, fdtName = 0;
-	GameLayout::Resolve("Naming the game's fonts", [&] {
-		s_entryCount = GameLayout::Get("FontTable.Count");
-
-		// Before 6.30, entries are indexed as i * 3 * 8.
-		entrySize = GameLayout::Get("FontTableEntry");
-		fdtName = GameLayout::Get("FontTableEntry.FdtName");
-		lobbyA = GameLayout::Address("FontTables", "LobbyTableA");
-		lobbyB = GameLayout::Address("FontTables", "LobbyTableB");
-		game = GameLayout::Address("FontTables", "GameTable");
-		GameUi::ResolveResourceHandles();
-	});
+	const auto tables = ResolveGameCode(Game::Resolved::Fonts::FontTables);
+	GameUi::ResolveResourceHandles();
+	s_entryCount = tables.Count;
+	const auto entrySize = tables.EntrySize;
+	const auto fdtName = tables.FdtName;
+	const auto lobbyA = reinterpret_cast<uintptr_t>(tables.LobbyA);
+	const auto lobbyB = reinterpret_cast<uintptr_t>(tables.LobbyB);
+	const auto game = reinterpret_cast<uintptr_t>(tables.Game);
 
 	s_lobbyNamesA = Read(lobbyA, entrySize, fdtName);
 	s_lobbyNamesB = Read(lobbyB, entrySize, fdtName);

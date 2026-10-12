@@ -1,6 +1,6 @@
 #pragma once
 
-// Structures that moved over the patches (font manager, font sets, fonts) use GameLayout offsets; the rest are C++ structs checked against the code.
+// Structures that moved over the patches (font manager, font sets, fonts) use offsets from the game's code; the rest are C++ structs.
 // RE write-up: private-scratch/ffxiv/ui/font_rendering_756h.md and ffxiv/xivalexander/code-notes/font-replacement.md.
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFont;
@@ -35,7 +35,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static void Resolve();
 	};
 
-	// Called within GameLayout::Resolve.
 	void ResolveGameFontStructs();
 
 	// Most textures a font of the FontTables (game's and lobby's two) has, so indices from there on are free; the global client's if not found.

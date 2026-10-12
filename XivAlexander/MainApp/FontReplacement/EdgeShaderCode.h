@@ -10,6 +10,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::EdgeShaderCode {
 	// Replaces each Sentinel in the code chunk and sets the checksum; returns how many (with none, dxbc is left as it was).
 	size_t Patch(std::span<uint8_t> dxbc, float softness);
 
+	// Replaces each word of the code chunk equal to a sentinel (a float's bits) with its value and sets the checksum; returns how many.
+	size_t PatchConstants(std::span<uint8_t> dxbc, std::initializer_list<std::pair<uint32_t, float>> values);
+
 	// The DXBC container's checksum, of everything after it.
 	std::array<uint8_t, 16> ComputeChecksum(std::span<const uint8_t> dxbc);
 }

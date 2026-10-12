@@ -159,6 +159,9 @@
     <ClCompile Include="MainApp\FontReplacement\EdgeShaderCode.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\SubpixelText.cpp">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
@@ -171,16 +174,10 @@
     <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\FamilyPreview.cpp">
-      <Filter>MainApp\FontReplacement</Filter>
-    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\FreeTypeFonts.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\GameFontNames.cpp">
-      <Filter>MainApp\FontReplacement</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\GameLayout.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\GameTextureReader.cpp">
@@ -214,9 +211,6 @@
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Presets.cpp">
-      <Filter>MainApp\FontReplacement</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\PreviewRenderer.cpp">
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp">
@@ -487,6 +481,9 @@
     <ClInclude Include="MainApp\FontReplacement\EdgeShaderCode.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\SubpixelText.h">
+      <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\ElementFonts.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
@@ -499,16 +496,13 @@
     <ClInclude Include="MainApp\FontReplacement\FontStructs.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\FamilyPreview.h">
-      <Filter>MainApp\FontReplacement</Filter>
-    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\GameFontNames.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\GameLayout.h">
+    <ClInclude Include="MainApp\FontReplacement\GameCode.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\GameTextureReader.h">
@@ -545,9 +539,6 @@
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Presets.h">
-      <Filter>MainApp\FontReplacement</Filter>
-    </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\PreviewRenderer.h">
       <Filter>MainApp\FontReplacement</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h">
@@ -796,10 +787,10 @@
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="MainApp\FontReplacement\FontPreviewTextPS.hlsl">
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontSubpixelPS.hlsl">
       <Filter>MainApp\FontReplacement</Filter>
     </FxCompile>
-    <FxCompile Include="MainApp\FontReplacement\FontPreviewVS.hlsl">
+    <FxCompile Include="MainApp\FontReplacement\FontSubpixelHighlightPS.hlsl">
       <Filter>MainApp\FontReplacement</Filter>
     </FxCompile>
     <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">

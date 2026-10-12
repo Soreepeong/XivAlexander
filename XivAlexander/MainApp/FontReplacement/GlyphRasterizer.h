@@ -14,6 +14,13 @@ _COM_SMARTPTR_TYPEDEF(IDWriteLocalFontFileLoader, __uuidof(IDWriteLocalFontFileL
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FreeTypeFonts;
 
+	// Left to right; None draws grayscale.
+	enum class SubpixelOrder : uint8_t {
+		None,
+		Rgb,
+		Bgr,
+	};
+
 	// On screen, y down: x' = M11 x + M12 y, y' = M21 x + M22 y (FontChanger's screen matrix); advances scale by M11, line metrics by |M22|.
 	struct GlyphTransform {
 		float M11 = 1;
@@ -53,6 +60,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int Height = 0;
 		std::vector<uint8_t> Alpha;
 
+		// Empty, or R, G, B subpixel coverage per pixel of Alpha (which is their mean); resampling drops it.
+		std::vector<uint8_t> Lcd;
+
+		[[nodiscard]] bool HasLcd() const { return !Lcd.empty(); }
+
 		// Scaled about the pen, shifted right and down by a fraction of a pixel.
 		static void ScaledBounds(int left, int top, int width, int height, float scale, float shiftX, float shiftY, int& x0, int& y0, int& w, int& h);
 
@@ -68,6 +80,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static RasterGlyph Merge(std::vector<RasterGlyph> pieces, int advance);
 
 		static void BlitMax(std::span<uint8_t> buffer, int width, int height, const RasterGlyph& g, int x, int y);
+
+		// Into 3 bytes a pixel; g's Alpha stands in for all three without Lcd.
+		static void BlitMaxLcd(std::span<uint8_t> buffer, int width, int height, const RasterGlyph& g, int x, int y);
 
 		// Maps coverage to coverage^exponent.
 		static std::vector<uint8_t> CoverageTable(float exponent);
@@ -112,6 +127,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		IDWriteFontFallbackPtr m_noFallback;
 		std::unique_ptr<FreeTypeFonts> m_freeType;
 		GlyphRunCollector m_runCollector;
+		SubpixelOrder m_subpixelOrder = SubpixelOrder::None;
 
 	public:
 		GlyphRasterizer();
@@ -128,6 +144,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] IDWriteFontFallback* NoFallback() const { return m_noFallback; }
 
 		[[nodiscard]] GlyphRunCollector& RunCollector() { return m_runCollector; }
+
+		// Game thread, before glyphs are made again.
+		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_subpixelOrder; }
+		void SetSubpixelOrder(SubpixelOrder order) { m_subpixelOrder = order; }
 
 		// Closest match, simulated if the family lacks the style; nullptr if the family isn't installed.
 		[[nodiscard]] IDWriteFontPtr FindFont(const std::string& name, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STRETCH stretch, DWRITE_FONT_STYLE style) const;
@@ -160,6 +180,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			float originX,
 			float originY,
 			const DirectWriteParams& parameters,
-			const GlyphTransform& transform) const;
+			const GlyphTransform& transform,
+			DWRITE_TEXT_ANTIALIAS_MODE antialiasMode) const;
 	};
 }

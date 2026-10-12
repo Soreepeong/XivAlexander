@@ -1,217 +1,224 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-  </ItemGroup>
-  <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{AE08AFB8-15BE-44E2-9705-FE74DB52C953}</ProjectGuid>
-    <RootNamespace>XivAlexanderLoader</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>XivAlexanderLoader</ProjectName>
-  </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-    <UseOfMfc>false</UseOfMfc>
-    <SpectreMitigation>false</SpectreMitigation>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-    <UseOfMfc>false</UseOfMfc>
-    <SpectreMitigation>false</SpectreMitigation>
-  </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <PropertyGroup>
-    <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
-    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
-    <IncludePath>$(ProjectDir);$(SolutionDir)XivAlexander\;$(SolutionDir)XivAlexander\includes;$(SolutionDir);$(SolutionDir)FFXIV-FontChanger\xivres\xivres\include\;$(IncludePath)</IncludePath>
-    <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
-  <PropertyGroup Label="Vcpkg">
-    <VcpkgEnableManifest>true</VcpkgEnableManifest>
-    <VcpkgOverlayTriplets>$(SolutionDir)triplets</VcpkgOverlayTriplets>
-    <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(PlatformToolset)_$(ProjectName)\</VcpkgInstalledDir>
-    <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
-    <VcpkgUseStatic>true</VcpkgUseStatic>
-    <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
-  </PropertyGroup>
-  <ItemDefinitionGroup>
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <PreprocessorDefinitions>XIVALEXANDER_LOADER;XIVALEXANDER_LOADER_EXE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Bcrypt.lib;Comctl32.lib;Dwmapi.lib;Pathcch.lib;Shlwapi.lib;uxtheme.lib;Version.lib;Winhttp.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
-    </Link>
-    <CustomBuildStep>
-      <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
-"$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"</Command>
-      <Message>Signing $(TargetPath)</Message>
-      <Outputs>$(TargetPath).sign.txt</Outputs>
-    </CustomBuildStep>
-    <ResourceCompile>
-      <NullTerminateStrings>true</NullTerminateStrings>
-      <PreprocessorDefinitions>XIVALEXANDER_LOADER;XIVALEXANDER_LOADER_EXE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(IntDir);$(SolutionDir)XivAlexander\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ResourceCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
-    <ClCompile>
-      <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
-    <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-    </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="pch.h" />
-    <ClInclude Include="..\XivAlexander\XivAlexander.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\App.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Arguments.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\LeftoverCleanup.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\LoaderSettings.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\LoaderUi.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Inject.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Interactive.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.h" />
-    <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Update.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="App.cpp" />
-    <ClCompile Include="..\XivAlexander\XivAlexander.Shared.cpp" />
-    <ClCompile Include="..\XivAlexander\Config.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\AudioResamplerConfigs.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\BaseConfigRepository.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\ChoicesProfile.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\Enums.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\FontReplacementConfigs.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\InitConfigRepository.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\PatchCodeRepository.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\PatchInstruction.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\ResourceOverrideRules.cpp" />
-    <ClCompile Include="..\XivAlexander\Config\RuntimeConfigRepository.cpp" />
-    <ClCompile Include="..\XivAlexander\Game\CommandLine.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\App.cpp">
-      <ObjectFileName>$(IntDir)LoaderApp.App.obj</ObjectFileName>
-    </ClCompile>
-    <ClCompile Include="..\XivAlexander\LoaderApp\Arguments.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\LeftoverCleanup.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\LoaderSettings.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\LoaderUi.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Inject.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Interactive.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.cpp" />
-    <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Update.cpp" />
-    <ClCompile Include="..\XivAlexander\MainApp\Windows\GridView.cpp" />
-    <ClCompile Include="..\XivAlexander\MainApp\Windows\ThemeColors.cpp" />
-    <ClCompile Include="..\XivAlexander\Misc\GameInstallationDetector.cpp" />
-    <ClCompile Include="..\XivAlexander\Misc\Logger.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Crypt.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\StringUtils.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Utils.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\WinHttp.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\Handle.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\InjectedModule.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\LoadedModule.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\Process.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\Resource.cpp" />
-    <ClCompile Include="..\XivAlexander\Utils\Win32\TaskDialogBuilder.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="..\XivAlexander\XivAlexander.rc" />
-  </ItemGroup>
-  <!-- XivAlexander.rc embeds these. -->
-  <ItemGroup>
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewTextPS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewVS.hlsl">
-      <ShaderType>Vertex</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <DisableOptimizations>false</DisableOptimizations>
-      <EnableDebuggingInformation>false</EnableDebuggingInformation>
-      <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="vcpkg.json" />
-  </ItemGroup>
-  <ItemGroup>
-    <Manifest Include="DpiAware.manifest" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\FFXIV-FontChanger\xivres\xivres\xivres.vcxproj">
-      <Project>{58DADDF6-5733-40E0-855C-CC3B4BF235EB}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+    <ItemGroup Label="ProjectConfigurations">
+        <ProjectConfiguration Include="Debug|x64">
+            <Configuration>Debug</Configuration>
+            <Platform>x64</Platform>
+        </ProjectConfiguration>
+        <ProjectConfiguration Include="Release|x64">
+            <Configuration>Release</Configuration>
+            <Platform>x64</Platform>
+        </ProjectConfiguration>
+    </ItemGroup>
+    <PropertyGroup Label="Globals">
+        <VCProjectVersion>16.0</VCProjectVersion>
+        <ProjectGuid>{AE08AFB8-15BE-44E2-9705-FE74DB52C953}</ProjectGuid>
+        <RootNamespace>XivAlexanderLoader</RootNamespace>
+        <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+        <ProjectName>XivAlexanderLoader</ProjectName>
+    </PropertyGroup>
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+        <ConfigurationType>Application</ConfigurationType>
+        <UseDebugLibraries>true</UseDebugLibraries>
+        <PlatformToolset>v145</PlatformToolset>
+        <CharacterSet>Unicode</CharacterSet>
+        <UseOfMfc>false</UseOfMfc>
+        <SpectreMitigation>false</SpectreMitigation>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+        <ConfigurationType>Application</ConfigurationType>
+        <UseDebugLibraries>false</UseDebugLibraries>
+        <PlatformToolset>v145</PlatformToolset>
+        <WholeProgramOptimization>true</WholeProgramOptimization>
+        <CharacterSet>Unicode</CharacterSet>
+        <UseOfMfc>false</UseOfMfc>
+        <SpectreMitigation>false</SpectreMitigation>
+    </PropertyGroup>
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
+    <ImportGroup Label="ExtensionSettings">
+    </ImportGroup>
+    <ImportGroup Label="Shared">
+    </ImportGroup>
+    <ImportGroup Label="PropertySheets">
+        <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform"/>
+    </ImportGroup>
+    <PropertyGroup Label="UserMacros"/>
+    <PropertyGroup>
+        <OutDir>$(SolutionDir)build\$(Configuration)\</OutDir>
+        <IntDir>$(SolutionDir)build\$(Configuration)\Temp_$(Platform)_$(ProjectName)\</IntDir>
+        <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
+        <IncludePath>$(ProjectDir);$(SolutionDir)XivAlexander\;$(SolutionDir)XivAlexander\includes;$(SolutionDir);$(SolutionDir)FFXIV-FontChanger\xivres\xivres\include\;$(IncludePath)</IncludePath>
+        <LibraryPath>$(OutDir);$(LibraryPath)</LibraryPath>
+    </PropertyGroup>
+    <PropertyGroup Label="Vcpkg">
+        <VcpkgEnableManifest>true</VcpkgEnableManifest>
+        <VcpkgOverlayTriplets>$(SolutionDir)triplets</VcpkgOverlayTriplets>
+        <VcpkgInstalledDir>$(SolutionDir)build\vcpkg_$(Platform)_$(PlatformToolset)_$(ProjectName)\</VcpkgInstalledDir>
+        <VcpkgAdditionalInstallOptions>--feature-flags=versions</VcpkgAdditionalInstallOptions>
+        <VcpkgUseStatic>true</VcpkgUseStatic>
+        <VcpkgTriplet>x64-windows-static</VcpkgTriplet>
+    </PropertyGroup>
+    <ItemDefinitionGroup>
+        <ClCompile>
+            <WarningLevel>Level3</WarningLevel>
+            <SDLCheck>true</SDLCheck>
+            <ConformanceMode>true</ConformanceMode>
+            <PrecompiledHeader>Use</PrecompiledHeader>
+            <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+            <LanguageStandard>stdcpp20</LanguageStandard>
+            <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+            <LanguageStandard_C>stdc17</LanguageStandard_C>
+            <PreprocessorDefinitions>XIVALEXANDER_LOADER;XIVALEXANDER_LOADER_EXE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+            <DisableSpecificWarnings>26812</DisableSpecificWarnings>
+            <MultiProcessorCompilation>true</MultiProcessorCompilation>
+        </ClCompile>
+        <Link>
+            <SubSystem>Windows</SubSystem>
+            <AdditionalDependencies>Bcrypt.lib;Comctl32.lib;Dwmapi.lib;Pathcch.lib;Shlwapi.lib;uxtheme.lib;Version.lib;Winhttp.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+            <AdditionalOptions>/ignore:4099 /ignore:4006 %(AdditionalOptions)</AdditionalOptions>
+            <AdditionalManifestDependencies>type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'</AdditionalManifestDependencies>
+        </Link>
+        <CustomBuildStep>
+            <Command>set /p CERT_PASSWORD= &lt; "$(SolutionDir)Build\CertificatePassword.txt"
+                "$(FrameworkSDKDir)bin\$(TargetPlatformVersion)\x86\signtool.exe" sign /tr http://timestamp.digicert.com /td sha256 /v /fd sha256 /f "$(SolutionDir)Build\Certificate.pfx" /p "%25CERT_PASSWORD%25" "$(TargetPath)" &gt; "$(TargetPath).sign.txt"
+            </Command>
+            <Message>Signing $(TargetPath)</Message>
+            <Outputs>$(TargetPath).sign.txt</Outputs>
+        </CustomBuildStep>
+        <ResourceCompile>
+            <NullTerminateStrings>true</NullTerminateStrings>
+            <PreprocessorDefinitions>XIVALEXANDER_LOADER;XIVALEXANDER_LOADER_EXE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+            <AdditionalIncludeDirectories>$(IntDir);$(SolutionDir)XivAlexander\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+        </ResourceCompile>
+    </ItemDefinitionGroup>
+    <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+        <ClCompile>
+            <Optimization>Disabled</Optimization>
+            <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+        </ClCompile>
+    </ItemDefinitionGroup>
+    <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+        <ClCompile>
+            <Optimization>MaxSpeed</Optimization>
+            <FunctionLevelLinking>true</FunctionLevelLinking>
+            <IntrinsicFunctions>true</IntrinsicFunctions>
+            <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+        </ClCompile>
+        <Link>
+            <EnableCOMDATFolding>true</EnableCOMDATFolding>
+            <OptimizeReferences>true</OptimizeReferences>
+        </Link>
+    </ItemDefinitionGroup>
+    <ItemGroup>
+        <ClInclude Include="pch.h"/>
+        <ClInclude Include="..\XivAlexander\XivAlexander.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\App.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Arguments.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\LeftoverCleanup.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\LoaderSettings.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\LoaderUi.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Inject.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Interactive.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.h"/>
+        <ClInclude Include="..\XivAlexander\LoaderApp\Actions\Update.h"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ClCompile Include="pch.cpp">
+            <PrecompiledHeader>Create</PrecompiledHeader>
+        </ClCompile>
+        <ClCompile Include="App.cpp"/>
+        <ClCompile Include="..\XivAlexander\XivAlexander.Shared.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\AudioResamplerConfigs.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\BaseConfigRepository.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\ChoicesProfile.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\Enums.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\FontReplacementConfigs.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\InitConfigRepository.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\PatchCodeRepository.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\PatchInstruction.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\ResourceOverrideRules.cpp"/>
+        <ClCompile Include="..\XivAlexander\Config\RuntimeConfigRepository.cpp"/>
+        <ClCompile Include="..\XivAlexander\Game\CommandLine.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\App.cpp">
+            <ObjectFileName>$(IntDir)LoaderApp.App.obj</ObjectFileName>
+        </ClCompile>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Arguments.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\LeftoverCleanup.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\LoaderSettings.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\LoaderUi.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\LoginSessionCredentials.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Inject.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\InstallUninstall.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Interactive.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\LoadUnload.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\RunLauncher.cpp"/>
+        <ClCompile Include="..\XivAlexander\LoaderApp\Actions\Update.cpp"/>
+        <ClCompile Include="..\XivAlexander\MainApp\Windows\GridView.cpp"/>
+        <ClCompile Include="..\XivAlexander\MainApp\Windows\ThemeColors.cpp"/>
+        <ClCompile Include="..\XivAlexander\Misc\GameInstallationDetector.cpp"/>
+        <ClCompile Include="..\XivAlexander\Misc\Logger.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Crypt.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\StringUtils.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Utils.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\WinHttp.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\Handle.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\InjectedModule.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\LoadedModule.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\Process.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\Resource.cpp"/>
+        <ClCompile Include="..\XivAlexander\Utils\Win32\TaskDialogBuilder.cpp"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ResourceCompile Include="..\XivAlexander\XivAlexander.rc"/>
+    </ItemGroup>
+    <!-- XivAlexander.rc embeds these. -->
+    <ItemGroup>
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontSubpixelPS.hlsl">
+            <ShaderType>Pixel</ShaderType>
+            <ShaderModel>5.0</ShaderModel>
+            <EntryPointName>main</EntryPointName>
+            <DisableOptimizations>false</DisableOptimizations>
+            <EnableDebuggingInformation>false</EnableDebuggingInformation>
+            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
+            <ObjectFileOutput>$(IntDir)FontSubpixelPS.cso</ObjectFileOutput>
+        </FxCompile>
+        <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontSubpixelHighlightPS.hlsl">
+            <ShaderType>Pixel</ShaderType>
+            <ShaderModel>5.0</ShaderModel>
+            <EntryPointName>main</EntryPointName>
+            <DisableOptimizations>false</DisableOptimizations>
+            <EnableDebuggingInformation>false</EnableDebuggingInformation>
+            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
+            <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
+        </FxCompile>
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
+            <ShaderType>Pixel</ShaderType>
+            <ShaderModel>5.0</ShaderModel>
+            <EntryPointName>main</EntryPointName>
+            <DisableOptimizations>false</DisableOptimizations>
+            <EnableDebuggingInformation>false</EnableDebuggingInformation>
+            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
+            <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
+        </FxCompile>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="vcpkg.json"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Manifest Include="DpiAware.manifest"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\FFXIV-FontChanger\xivres\xivres\xivres.vcxproj">
+            <Project>{58DADDF6-5733-40E0-855C-CC3B4BF235EB}</Project>
+        </ProjectReference>
+    </ItemGroup>
+    <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
+    <ImportGroup Label="ExtensionTargets">
+    </ImportGroup>
 </Project>

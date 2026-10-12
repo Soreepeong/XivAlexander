@@ -72,3 +72,32 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 	Read(j, "Max", v.Max);
 	Read(j, "Softness", v.Softness);
 }
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode& v) {
+	switch (v) {
+		case FontReplacementSubpixelMode::System:
+			j = "System";
+			break;
+		case FontReplacementSubpixelMode::Rgb:
+			j = "RGB";
+			break;
+		case FontReplacementSubpixelMode::Bgr:
+			j = "BGR";
+			break;
+		case FontReplacementSubpixelMode::Off:
+		default:
+			j = "Off";
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementSubpixelMode& v) {
+	const auto s = j.is_string() ? j.get<std::string>() : std::string();
+	if (_stricmp(s.c_str(), "System") == 0)
+		v = FontReplacementSubpixelMode::System;
+	else if (_stricmp(s.c_str(), "RGB") == 0)
+		v = FontReplacementSubpixelMode::Rgb;
+	else if (_stricmp(s.c_str(), "BGR") == 0)
+		v = FontReplacementSubpixelMode::Bgr;
+	else
+		v = FontReplacementSubpixelMode::Off;
+}

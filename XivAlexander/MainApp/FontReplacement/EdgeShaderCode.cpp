@@ -124,14 +124,21 @@ std::array<uint8_t, 16> EdgeShaderCode::ComputeChecksum(std::span<const uint8_t>
 }
 
 size_t EdgeShaderCode::Patch(std::span<uint8_t> dxbc, float softness) {
+	return PatchConstants(dxbc, {{Sentinel, softness}});
+}
+
+size_t EdgeShaderCode::PatchConstants(std::span<uint8_t> dxbc, std::initializer_list<std::pair<uint32_t, float>> values) {
 	const auto code = FindCode(dxbc);
-	const auto value = std::bit_cast<uint32_t>(softness);
 	size_t count = 0;
 	for (size_t i = 0; i + 4 <= code.size(); i += 4) {
-		if (ReadU32(code.data() + i) != Sentinel)
-			continue;
-		WriteU32(code.data() + i, value);
-		count++;
+		const auto word = ReadU32(code.data() + i);
+		for (const auto& [sentinel, value] : values) {
+			if (word != sentinel)
+				continue;
+			WriteU32(code.data() + i, std::bit_cast<uint32_t>(value));
+			count++;
+			break;
+		}
 	}
 	if (count) {
 		const auto checksum = ComputeChecksum(dxbc);

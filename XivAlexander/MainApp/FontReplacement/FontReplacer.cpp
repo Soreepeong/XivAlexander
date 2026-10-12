@@ -2,7 +2,7 @@
 #include "MainApp/FontReplacement/FontReplacer.h"
 
 #include "MainApp/FontReplacement/GameFontNames.h"
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "Utils/StringUtils.h"
@@ -27,36 +27,30 @@ thread_local FontReplacement::FontReplacer::LayoutContext FontReplacement::FontR
 
 FontReplacement::FontReplacer::FontReplacer() {
 	{
-		uintptr_t pickFont = 0, getGlyph = 0, layOutCharacter = 0, buildFontCache = 0, freeFontCache = 0, buildFont = 0;
-		GameLayout::Resolve("Font replacement", [&] {
-			ResolveGameFontStructs();
-			GameUi::ResolveUnits();
-			GameUi::ResolveTextures();
-			pickFont = GameLayout::Address("PickFont");
-			getGlyph = GameLayout::Address("GetGlyph");
-			layOutCharacter = GameLayout::Address("LayOutCharacter");
-			buildFontCache = GameLayout::Address("BuildFontCache");
-			freeFontCache = GameLayout::Address("FreeFontCache");
-			buildFont = GameLayout::Address("BuildFont");
-			m_rendererVtbl = GameLayout::Address("FontAnalyzerVtables", "AtkFontAnalyzerRenderer.Vtable");
-			m_renderCountVtbl = GameLayout::Address("FontAnalyzerVtables", "AtkFontAnalyzerRenderCount.Vtable");
-			m_fontCacheSlotOffset = GameLayout::Get("AtkTextNode.FontCacheSlot");
-			m_fontCacheFlagsOffset = GameLayout::Get("AtkTextNode.FontCacheFlags");
-			m_useFontCacheFlag = static_cast<uint8_t>(GameLayout::Get("AtkTextNode.FontCacheFlags.UseFontCache"));
-			m_missingGlyphSubstitutes = GameLayout::GetList("LayOutCharacter.MissingGlyphSubstitutes");
+		ResolveGameFontStructs();
+		GameUi::ResolveUnits();
+		GameUi::ResolveTextures();
+		const auto set = ResolveGameCode(Game::Resolved::Fonts::FontSet);
+		const auto font = ResolveGameCode(Game::Resolved::Fonts::Font);
+		const auto functions = ResolveGameCode(Game::Resolved::Fonts::Replacer);
+		const auto pickFont = reinterpret_cast<uintptr_t>(set.PickFont);
+		const auto getGlyph = reinterpret_cast<uintptr_t>(font.GetGlyph);
+		const auto layOutCharacter = reinterpret_cast<uintptr_t>(font.LayOutCharacter);
+		const auto buildFontCache = reinterpret_cast<uintptr_t>(functions.BuildFontCache);
+		const auto freeFontCache = reinterpret_cast<uintptr_t>(functions.FreeFontCache);
+		const auto buildFont = reinterpret_cast<uintptr_t>(font.BuildFont);
+		m_rendererVtbl = reinterpret_cast<uintptr_t>(functions.RendererVtable);
+		m_renderCountVtbl = reinterpret_cast<uintptr_t>(functions.RenderCountVtable);
+		m_fontCacheSlotOffset = functions.FontCacheSlot;
+		m_fontCacheFlagsOffset = functions.FontCacheFlags;
+		m_useFontCacheFlag = 0x40;
+		m_missingGlyphSubstitutes = {0xE38093, '-', 0xE39080};  // U+3013, '-', U+3400, as UTF-8 packed big-endian
 
-			// Optional: without them, italics are the game's shear.
-			m_stateFlagsOffset = GameLayout::TryGet("FontAnalyzerState.Flags").value_or(-1);
-			m_setFlagsOffset = GameLayout::TryGet("GameFontSet.DrawFlags").value_or(-1);
-			m_stateItalicFlag = static_cast<uint32_t>(GameLayout::Get("FontAnalyzerState.Flags.Italic"));
-			m_setItalicFlag = static_cast<uint32_t>(GameLayout::Get("GameFontSet.DrawFlags.Italic"));
-
-			if (getGlyph && layOutCharacter && GameLayout::Address("LayOutCharacter", "GetGlyph") != getGlyph)
-				throw std::runtime_error("LayOutCharacter doesn't call the GetGlyph found.");
-			if (const auto toggle = buildFontCache && freeFontCache ? GameLayout::Match("ToggleFontCache") : nullptr;
-				toggle && (GameLayout::Target(*toggle, "BuildFontCache") != buildFontCache || GameLayout::Target(*toggle, "FreeFontCache") != freeFontCache))
-				throw std::runtime_error("ToggleFontCache doesn't call the BuildFontCache and FreeFontCache found.");
-		});
+		// Optional: without them, italics are the game's shear.
+		m_stateFlagsOffset = functions.StateFlags.value_or(-1);
+		m_setFlagsOffset = set.DrawFlags.value_or(-1);
+		m_stateItalicFlag = 0x08000000;
+		m_setItalicFlag = 0x08000000;
 		GlyphAtlas::FirstTextureIndex = GetMaxGameFontTextureCount();
 
 		m_rasterizer = std::make_unique<GlyphRasterizer>();
@@ -88,6 +82,7 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	if (m_pickFontHook && m_getGlyphHook && m_buildFontCacheHook)
 		SetEnabled(false);
 	m_edgeShader.Set(false);
+	m_subpixelText.Set({});
 	m_buildFontHook.reset();
 	m_layOutCharacterHook.reset();
 	m_buildFontCacheHook.reset();
@@ -249,7 +244,9 @@ FontReplacement::GlyphAtlas* FontReplacement::FontReplacer::GetAtlas(const std::
 	if (const auto it = m_atlases.find(family); it != m_atlases.end())
 		return it->second.get();
 
-	auto atlas = std::make_unique<GlyphAtlas>(GetAtlasSize(family), family);
+	// FontSubpixelPS tells subpixel pages from the game's textures by their odd width.
+	const auto subpixel = m_subpixelText.Active();
+	auto atlas = std::make_unique<GlyphAtlas>(GetAtlasSize(family) - (subpixel ? 1 : 0), family, subpixel);
 	const auto p = atlas.get();
 	atlas->PageAdded = [this, p] { OnPageAdded(p); };
 	m_atlases.emplace(family, std::move(atlas));
@@ -288,16 +285,48 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 		TextInvalidated();
 }
 
+void FontReplacement::FontReplacer::SetSubpixel(const SubpixelSettings& settings) {
+	if (settings == m_subpixel)
+		return;
+	m_subpixel = settings;
+	try {
+		m_subpixelText.Set(settings);
+	} catch (const std::exception& e) {
+		Host::Error("Subpixel text is off: {}", e.what());
+		m_subpixelText.Set({});
+	}
+
+	const auto active = m_subpixelText.Active();
+	const auto order = active ? settings.Order : SubpixelOrder::None;
+	const auto atlasesChange = std::ranges::any_of(m_atlases | std::views::values, [active](const auto& atlas) { return atlas->Subpixel() != active; });
+	if (order == m_rasterizer->GetSubpixelOrder() && !atlasesChange)
+		return;
+	m_rasterizer->SetSubpixelOrder(order);
+	if (!atlasesChange) {
+		RebuildGlyphs();
+		return;
+	}
+
+	// Glyphs and copies refer to the old atlases' pages, so they go first.
+	RebuildGlyphs();
+	m_lastEviction.clear();
+	m_sizedFonts.clear();
+	m_atlases.clear();
+	for (auto& [copy, info] : m_copies) {
+		info.Sized = GetSized(info.Original, info.HalfPx);
+		Sync(copy, info);
+	}
+	ForgetPickedFonts();
+	if (TextInvalidated)
+		TextInvalidated();
+}
+
 int FontReplacement::FontReplacer::GetAtlasSize(std::string_view family) {
 	return Utils::EqualsI(family, "AXIS") ? AxisAtlasSize : OtherAtlasSize;
 }
 
 uint16_t FontReplacement::FontReplacer::GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px) {
 	return static_cast<uint16_t>(std::clamp(std::round(static_cast<float>(atlasSize) / edge.GetWidth(px)), 256.f, 65535.f));
-}
-
-float FontReplacement::FontReplacer::GetDrawnPx(float size) {
-	return static_cast<float>(std::clamp(static_cast<int>(std::round(size * 2)), MinHalfPx, MaxHalfPx)) / 2.f;
 }
 
 std::optional<size_t> FontReplacement::FontReplacer::GetExactFace(std::span<const std::pair<std::string, float>> faces, float px) {
@@ -321,7 +350,13 @@ FontReplacement::RasterGlyph FontReplacement::FontReplacer::FinishGlyph(const Si
 	std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
 	for (auto y = 0; y < r.Height; y++)
 		std::copy_n(&r.Alpha[static_cast<size_t>(y) * r.Width], r.Width, &alpha[static_cast<size_t>(y + m) * w + m]);
-	return {r.Advance, r.Left - m, r.Top - m, w, h, std::move(alpha)};
+	std::vector<uint8_t> lcd;
+	if (r.HasLcd()) {
+		lcd.resize(alpha.size() * 3);
+		for (auto y = 0; y < r.Height; y++)
+			std::copy_n(&r.Lcd[static_cast<size_t>(y) * r.Width * 3], r.Width * 3, &lcd[(static_cast<size_t>(y + m) * w + m) * 3]);
+	}
+	return {r.Advance, r.Left - m, r.Top - m, w, h, std::move(alpha), std::move(lcd)};
 }
 
 void FontReplacement::FontReplacer::RebuildGlyphs() {
@@ -621,6 +656,9 @@ void FontReplacement::FontReplacer::Upload() {
 
 	for (const auto& atlas : m_atlases | std::views::values)
 		atlas->Upload();
+
+	// This frame's UI draw commands are processed by now.
+	m_subpixelText.EndFrame();
 }
 
 FontReplacement::RasterGlyph FontReplacement::FontReplacer::WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha) {
@@ -812,13 +850,20 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 		GlyphSlot* Slot;
 		uint64_t Drawn;
 		std::vector<uint8_t> Pixels;
+		std::vector<uint8_t> Lcd;
 	};
 	std::vector<Moved> moved;
 	for (auto& slot : m_slots) {
 		const auto glyph = &slot.Glyph;
 		if (slot.Cell.State != CellState::Placed || slot.Cell.Atlas != atlas || PlaneOf(glyph) != victim)
 			continue;
-		moved.push_back({&slot, slot.Cell.Drawn, atlas->Read(glyph->TextureIndex() - GlyphAtlas::FirstTextureIndex, glyph->Channel(), glyph->X(), glyph->Y(), glyph->Width, glyph->Height)});
+		const auto page = glyph->TextureIndex() - GlyphAtlas::FirstTextureIndex;
+		moved.push_back({
+			&slot,
+			slot.Cell.Drawn,
+			atlas->Read(page, glyph->Channel(), glyph->X(), glyph->Y(), glyph->Width, glyph->Height),
+			atlas->Subpixel() ? atlas->ReadLcd(page, glyph->X(), glyph->Y(), glyph->Width, glyph->Height) : std::vector<uint8_t>{},
+		});
 	}
 
 	std::ranges::sort(moved, [](const Moved& a, const Moved& b) { return a.Drawn > b.Drawn; });
@@ -826,11 +871,11 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 
 	auto budget = stale[victim] == 0 ? static_cast<int64_t>(atlas->Size()) * atlas->Size() / 2 : INT64_MAX;
 	auto kept = 0;
-	for (auto& [slot, drawn, pixels] : moved) {
+	for (auto& [slot, drawn, pixels, lcd] : moved) {
 		const auto glyph = &slot->Glyph;
 		auto& cell = slot->Cell;
 		cell.State = CellState::Pending;
-		cell.Raster = {0, 0, 0, glyph->Width, glyph->Height, std::move(pixels)};
+		cell.Raster = {0, 0, 0, glyph->Width, glyph->Height, std::move(pixels), std::move(lcd)};
 		cell.BoxLeft = 0;
 		cell.InkTop = 0;
 		glyph->Packed = GameGlyph::Pack(0, 0, 0, GlyphAtlas::FirstTextureIndex);
@@ -866,7 +911,10 @@ void FontReplacement::FontReplacer::WriteCell(const GameGlyph* glyph, const Cell
 			lastRow - firstRow,
 			std::span(r.Alpha).subspan(static_cast<size_t>(firstRow) * r.Width, static_cast<size_t>(lastRow - firstRow) * r.Width),
 			r.Width,
-			r.Left - cell.BoxLeft);
+			r.Left - cell.BoxLeft,
+			r.HasLcd()
+				? std::span<const uint8_t>(r.Lcd).subspan(static_cast<size_t>(firstRow) * r.Width * 3, static_cast<size_t>(lastRow - firstRow) * r.Width * 3)
+				: std::span<const uint8_t>());
 	}
 }
 

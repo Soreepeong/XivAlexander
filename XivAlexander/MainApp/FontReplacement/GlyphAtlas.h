@@ -5,9 +5,12 @@
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Square B8G8R8A8 pages, a glyph plane per channel; may be smaller than the game's as shaders divide UVs by the bound texture's size.
 	// Only the edge/glare texel step follows the font's claimed texture width. Indices start at FirstTextureIndex, above the game's textures.
+	// Subpixel atlases have odd sizes (how FontSubpixelPS tells them apart); glyphs take R, G, B for subpixel coverage and A (SubpixelPlane) for grayscale.
 	class GlyphAtlas {
 	public:
 		static constexpr int PlanesPerPage = 4;
+
+		static constexpr int SubpixelPlane = 3;
 
 		// Past the textures of every font in the game's tables (7 in the global client). Set before the first atlas is made.
 		static int FirstTextureIndex;
@@ -45,6 +48,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		const int m_size;
 		const std::string m_name;
+		const bool m_subpixel;
 
 		// Slots never move and a page is stored before the count that publishes it, so pages below PageCount() can be read without the lock.
 		const int m_maxPages;
@@ -60,8 +64,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int m_frontier = 1;
 
 	public:
-		// size: page side length, up to 4096 (glyph positions take 12 bits).
-		GlyphAtlas(int size, std::string name);
+		// size: page side length, up to 4096 (glyph positions take 12 bits); odd for a subpixel atlas.
+		GlyphAtlas(int size, std::string name, bool subpixel = false);
 		GlyphAtlas(const GlyphAtlas&) = delete;
 		GlyphAtlas& operator=(const GlyphAtlas&) = delete;
 		~GlyphAtlas();
@@ -72,6 +76,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] int Size() const { return m_size; }
 
 		[[nodiscard]] const std::string& Name() const { return m_name; }
+
+		[[nodiscard]] bool Subpixel() const { return m_subpixel; }
 
 		[[nodiscard]] int PageCount() const { return m_pageCount.load(std::memory_order_acquire); }
 
@@ -91,9 +97,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		bool TryAllocate(int width, int height, int& page, int& plane, int& x, int& y);
 
 		// 8-bit coverage from alphaX in each row; coverage past the box's right edge is cut off. Marks the box for upload.
-		void Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX);
+		// In a subpixel atlas, lcd (3 bytes a pixel, same layout) fills R, G and B; without it they get alpha.
+		void Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX, std::span<const uint8_t> lcd = {});
 
 		[[nodiscard]] std::vector<uint8_t> Read(int page, int plane, int x, int y, int width, int height);
+
+		// 3 bytes a pixel.
+		[[nodiscard]] std::vector<uint8_t> ReadLcd(int page, int x, int y, int width, int height);
 
 		// Present thread.
 		void Upload();
@@ -101,5 +111,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		// Adds pages up to count; the textures are made without the lock. false if count is past MaxPages().
 		bool TryEnsurePages(int count);
+
+		[[nodiscard]] int FirstPlane() const { return m_subpixel ? SubpixelPlane : 0; }
+		[[nodiscard]] int PlaneStep() const { return m_subpixel ? PlanesPerPage : 1; }
 	};
 }

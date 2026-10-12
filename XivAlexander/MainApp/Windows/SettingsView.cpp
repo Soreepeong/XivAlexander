@@ -15,7 +15,6 @@
 #include "MainApp/Features/NetworkTimingHandler.h"
 #include <FontChanger.FixedSizeFont/image_glyph_files.h>
 
-#include "MainApp/FontReplacement/FamilyPreview.h"
 #include "MainApp/FontReplacement/GameFontNames.h"
 #include "MainApp/FontReplacement/Presets.h"
 #include "MainApp/Modding/NestedTtmp.h"
@@ -41,7 +40,6 @@ namespace {
 		WmCooldown,
 		WmTtmpSetsChanged,
 		WmSelectTtmpPack,
-		WmFontPreviewDrawn,
 		WmListenToCrowdFix,
 		WmCrowdFixStatusChanged,
 	};
@@ -71,55 +69,6 @@ namespace {
 
 	constexpr auto ContainerClassName = L"XivAlexander::Window::SettingsView";
 	constexpr auto StatusClassName = L"XivAlexander::Window::SettingsView::Status";
-	constexpr auto FontPreviewClassName = L"XivAlexander::Window::SettingsView::FontPreview";
-
-	// How long a font family's preview waits for changes to stop before it is drawn: making the faces can take a while.
-	constexpr auto FontPreviewDelay = std::chrono::milliseconds(300);
-
-	// Latin, Japanese and Korean, so that what the family's sources lack shows.
-	constexpr auto DefaultFontPreviewText = L"The quick brown fox jumps over the lazy dog. 0123456789 いろはにほへと ちりぬるを 漢字とカタカナ 다람쥐 헌 쳇바퀴에 타고파";
-
-	// Meidinger draws the numbers flying over battles: digits and a few signs only, hence its own sample text.
-	constexpr auto MeidingerFamily = "Meidinger";
-	constexpr auto MeidingerPreviewText = L"0123456789?!%+-./";
-
-	// Meidinger keeps its own sample text; the other families share one.
-	std::string FontPreviewTextKey(const std::string& family) {
-		return family == MeidingerFamily ? family : std::string();
-	}
-
-	// The family the font replacement's page previews the edge with: that of most of the UI's text.
-	constexpr auto EdgePreviewFamily = "AXIS";
-
-	// The sizes a preview can be drawn at: those the replacement draws (FontReplacer::GetDrawnPx).
-	constexpr float MinFontPreviewSize = 4;
-	constexpr float MaxFontPreviewSize = 255;
-
-	// Common <colortype(n)>/<edgecolortype(m)> pairs (UIColor rows, dark theme) of the game's text; how they were chosen is in private-scratch notes.
-	struct FontPreviewColorPreset {
-		UINT LabelId;
-		COLORREF Text;
-		COLORREF Edge;
-		COLORREF Background;
-	};
-	constexpr FontPreviewColorPreset FontPreviewColorPresets[]{
-		// The game's text without color macros.
-		{IDS_SETTINGS_FONT_COLORS_DEFAULT, RGB(0xFF, 0xFF, 0xFF), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// UIColor 504/505.
-		{IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL, RGB(0x00, 0xCC, 0x22), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// UIColor 500/501.
-		{IDS_SETTINGS_FONT_COLORS_ACTIONNAME, RGB(0xFF, 0x7B, 0x1A), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// UIColor 506/507.
-		{IDS_SETTINGS_FONT_COLORS_STATUSNAME, RGB(0xFF, 0xFF, 0x66), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// UIColor 508/509.
-		{IDS_SETTINGS_FONT_COLORS_WARNING, RGB(0xFF, 0x80, 0x80), RGB(0x00, 0x00, 0x00), RGB(0x60, 0x60, 0x60)},
-		// UIColor 533/534.
-		{IDS_SETTINGS_FONT_COLORS_NOTICE, RGB(0xFF, 0xC8, 0xC8), RGB(0xAE, 0x00, 0x00), RGB(0x30, 0x30, 0x30)},
-		// UIColor 582/581.
-		{IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT, RGB(0xFF, 0xA0, 0x00), RGB(0x40, 0x00, 0x80), RGB(0x30, 0x30, 0x30)},
-		// UIColor 7/3.
-		{IDS_SETTINGS_FONT_COLORS_TUTORIAL, RGB(0x00, 0x00, 0x00), RGB(0xA0, 0xA0, 0xA0), RGB(0xE8, 0xE0, 0xD0)},
-	};
 
 	using Utils::Win32::GetWindowString;
 
@@ -542,7 +491,6 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 		RichText,  // Text that can be selected, with its links followed, shortened unless expanded; no item.
 		Tabs,  // Buttons choosing which of the rows after it are shown; no item.
 		Slider,  // A slider, and the number it sets; no item.
-		Preview,  // A font family's preview, drawn by the control; no item.
 	};
 
 	ConfigItemBase* Item{};
@@ -583,16 +531,6 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	std::function<void()> Commit;
 	// Takes the RowPart clicked.
 	std::function<void(int)> Click;
-};
-
-struct XivAlexander::Apps::MainApp::Window::SettingsView::FontPreview {
-	std::string Family;
-	std::vector<std::pair<std::string, float>> Faces;  // Of the family, with their sizes (GameFontNames::FacesOf).
-	HWND Control{};  // Of its row, which draws Image.
-	uint64_t Generation = 0;  // Of the latest request; 0 before the first.
-	bool Reload = true;  // The page's first request makes the faces anew: their files may have changed since.
-	SIZE Requested{};  // The size of the latest request.
-	std::optional<FontReplacement::FamilyPreview::Image> Image;
 };
 
 namespace {
@@ -839,16 +777,6 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 			return self->StatusProc(hwnd, uMsg, wParam, lParam);
 		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 	});
-	registerClass(FontPreviewClassName, [](HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
-		const auto self = reinterpret_cast<SettingsView*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
-		if (uMsg == WM_ERASEBKGND)
-			return 1;
-		if (uMsg == WM_PAINT && self) {
-			self->PaintFontPreview(hwnd);
-			return 0;
-		}
-		return DefWindowProcW(hwnd, uMsg, wParam, lParam);
-	});
 
 	const auto create = [this](HWND hParent, DWORD exStyle, LPCWSTR className, DWORD style) {
 		const auto hWnd = CreateWindowExW(exStyle, className, L"", WS_CHILD | style, 0, 0, 0, 0, hParent, nullptr, Dll::Module(), nullptr);
@@ -924,8 +852,6 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::GameDirectoryDetection
 };
 
 XivAlexander::Apps::MainApp::Window::SettingsView::~SettingsView() {
-	// Waits for a preview being drawn, which then posts to nothing.
-	m_fontPreviewer.reset();
 	if (m_gameDirectories) {
 		const auto lock = std::scoped_lock(m_gameDirectories->Mutex);
 		m_gameDirectories->Owner = nullptr;
@@ -1233,6 +1159,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Opcodes.VersionSensitiveFeaturesAllowedGameVersion),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Subpixel),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -1432,7 +1359,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::PopulateTree() {
 void XivAlexander::Apps::MainApp::Window::SettingsView::ClearRows() {
 	m_rowCleanup.clear();
 	m_crowdFixListener.clear();
-	m_fontPreview.reset();
 	m_deferredTabbed.clear();
 	TruncateRows(0);
 	m_ttmpPage.reset();
@@ -3186,12 +3112,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddEdgeRows() {
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_SOFTNESS), 0, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Softness); }, setter(&FontReplacementEdgeConfig::Softness));
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_EDGE_SOFTNESS_DESC);
 	PostOnChange(edge, WmRefreshRows);
-
-	// The edge is previewed on the family of most of the UI's text (or the first there is), redrawn as the sliders refresh the rows.
-	auto family = std::string(EdgePreviewFamily);
-	if (FontReplacement::GameFontNames::FacesOf(family).empty() && !m_fontFamilies.empty())
-		family = m_fontFamilies.front();
-	AddFontPreviewRows(family, true);
 }
 
 const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::GetFontPresetFolder() {
@@ -3675,207 +3595,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 	});
 	*pGrid = &grid;
 	PostOnChange(item, WmRefreshRows);
-
-	// The preview shows the edge, as it is set on the font replacement's page.
-	PostOnChange(rt.FontReplacement.Edge, WmRefreshRows);
-	AddFontPreviewRows(family, false);
-}
-
-void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontPreviewRows(const std::string& family, bool edgePage) {
-	// Without the game's font table there is no face to draw with.
-	auto faces = FontReplacement::GameFontNames::FacesOf(family);
-	if (faces.empty())
-		return;
-	auto& rt = m_config->Runtime;
-
-	// The size last chosen, else the family's size nearest 14, which most text is drawn at; other sizes can be typed.
-	std::vector<float> sizes;
-	for (const auto size : faces | std::views::values) {
-		if (std::ranges::find(sizes, size) == sizes.end())
-			sizes.push_back(size);
-	}
-	std::ranges::sort(sizes);
-	if (auto& chosen = m_fontPreviewSizes[family]; chosen <= 0)
-		chosen = std::ranges::min(sizes, {}, [](float size) { return std::fabs(size - 14.f); });
-	const auto textKey = FontPreviewTextKey(family);
-	if (auto& text = m_fontPreviewTexts[textKey]; text.empty())
-		text = textKey == MeidingerFamily ? MeidingerPreviewText : DefaultFontPreviewText;
-	m_fontPreview = std::make_unique<FontPreview>(FontPreview{.Family = family, .Faces = std::move(faces)});
-
-	constexpr int LineGroup = 1;
-	auto pSizeRow = std::make_unique<Row>();
-	auto& sizeRow = *pSizeRow;
-	sizeRow.Type = Row::RowType::ComboEdit;
-	sizeRow.LineGroup = LineGroup;
-	sizeRow.LineWidth = 80;
-	sizeRow.Label = CreateRowControl(PartLabel, 0, WC_STATICW, rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_SIZE), SS_LEFT | SS_NOPREFIX);
-	sizeRow.Control = CreateRowControl(PartControl, 0, WC_COMBOBOXW, L"", WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWN | CBS_AUTOHSCROLL);
-	for (const auto size : sizes)
-		ComboBox_AddString(sizeRow.Control, FormatNumber(size).c_str());
-	sizeRow.Refresh = [this, &sizeRow, family] { SetWindowTextW(sizeRow.Control, FormatNumber(m_fontPreviewSizes[family]).c_str()); };
-	// Rounded to half pixels and clamped as the replacement draws; text that isn't a size stays while typed and reverts once the box is left.
-	sizeRow.CommitOnChange = true;
-	sizeRow.Commit = [this, &sizeRow, family] {
-		if (const auto value = ParseNumber<float>(GetWindowString(sizeRow.Control)); value && std::isfinite(*value) && *value > 0) {
-			const auto size = std::round(std::clamp(*value, MinFontPreviewSize, MaxFontPreviewSize) * 2) / 2;
-			if (auto& chosen = m_fontPreviewSizes[family]; chosen != size) {
-				chosen = size;
-				RequestFontPreview(FontPreviewDelay);
-			}
-		}
-		if (!IsTypingInto(sizeRow, GetFocus()))
-			sizeRow.Refresh();
-	};
-	sizeRow.Click = [this, &sizeRow, family, sizes](int part) {
-		// One of the family's sizes was picked from the list.
-		if (const auto selected = ComboBox_GetCurSel(sizeRow.Control); part == PartControl && selected >= 0 && static_cast<size_t>(selected) < sizes.size()) {
-			m_fontPreviewSizes[family] = sizes[selected];
-			RequestFontPreview(std::chrono::milliseconds(0));
-		}
-	};
-	m_rows.emplace_back(std::move(pSizeRow));
-	AddHelp(m_rows.size() - 1, edgePage
-		? rt.FormatStringRes(IDS_SETTINGS_EDGE_PREVIEW_DESC, Wide(family))
-		: std::wstring(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_DESC)));
-
-	if (edgePage) {
-		std::vector<std::wstring> colorChoices;
-		for (const auto& preset : FontPreviewColorPresets)
-			colorChoices.emplace_back(rt.GetStringRes(preset.LabelId));
-		CreateComboRow(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_COLORS), colorChoices, [this] { return static_cast<int>(m_fontPreviewColors); }, [this](int index) {
-			if (index >= 0 && static_cast<size_t>(index) < std::size(FontPreviewColorPresets)) {
-				m_fontPreviewColors = static_cast<size_t>(index);
-				RequestFontPreview(std::chrono::milliseconds(0));
-			}
-		});
-		m_rows.back()->LineGroup = LineGroup;
-	} else {
-		// Like the TexTools ModPacks' filter, it is never set back by a refresh.
-		CreateNumberRow(rt.GetStringRes(IDS_SETTINGS_FONT_PREVIEW_TEXT), {}, {});
-		auto& textRow = *m_rows.back();
-		textRow.LineGroup = LineGroup;
-		textRow.Refresh = nullptr;
-		textRow.Commit = [this, &textRow, textKey] {
-			m_fontPreviewTexts[textKey] = GetWindowString(textRow.Control);
-			RequestFontPreview(FontPreviewDelay);
-		};
-		// Before CommitOnChange: setting the text notifies a change at once.
-		SetWindowTextW(textRow.Control, m_fontPreviewTexts[textKey].c_str());
-		textRow.CommitOnChange = true;
-	}
-
-	auto pRow = std::make_unique<Row>();
-	auto& row = *pRow;
-	row.Type = Row::RowType::Preview;
-	row.Height = 140;
-	row.Control = CreateRowControl(PartControl, 0, FontPreviewClassName, L"", 0);
-	SetWindowLongPtrW(row.Control, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-	// Requested again on every refresh (as when the sources change); the faces are kept if the sources are the same, so it only redraws text.
-	row.Refresh = [this] { RequestFontPreview(FontPreviewDelay); };
-	m_fontPreview->Control = row.Control;
-	m_rows.emplace_back(std::move(pRow));
-}
-
-void XivAlexander::Apps::MainApp::Window::SettingsView::RequestFontPreview(std::chrono::milliseconds delay) {
-	if (!m_fontPreview)
-		return;
-
-	// Before the page is laid out, LayoutPage asks once it is.
-	RECT rc;
-	GetClientRect(m_fontPreview->Control, &rc);
-	if (rc.right <= 0 || rc.bottom <= 0)
-		return;
-
-	// The page's first image is wanted at once; whether a posted image is still wanted is decided when it is taken.
-	if (!m_fontPreview->Generation)
-		delay = std::chrono::milliseconds(0);
-	if (!m_fontPreviewer)
-		m_fontPreviewer = std::make_unique<FontReplacement::FamilyPreview>([hWnd = m_hWnd](uint64_t) { PostMessageW(hWnd, WmFontPreviewDrawn, 0, 0); });
-
-	const auto& settings = m_config->Runtime.FontReplacement.Faces;
-	const auto& family = m_fontPreview->Family;
-	FontReplacementFamily familySettings;
-	if (const auto& all = settings.Families.Value(); all.contains(family))
-		familySettings = all.at(family);
-	const auto size = m_fontPreviewSizes[family];
-	const auto& colors = FontPreviewColorPresets[std::min(m_fontPreviewColors, std::size(FontPreviewColorPresets) - 1)];
-	m_fontPreview->Requested = {rc.right, rc.bottom};
-	m_fontPreview->Generation = m_fontPreviewer->Request({
-		.Family = family,
-		.Faces = m_fontPreview->Faces,
-		.Size = size,
-		.Settings = std::move(familySettings),
-		.PresetFolder = GetFontPresetFolder(),
-		.Reload = std::exchange(m_fontPreview->Reload, false),
-		.Edge = m_config->Runtime.FontReplacement.Edge.Value(),
-		.Text = m_fontPreviewTexts[FontPreviewTextKey(family)],
-		.Width = static_cast<int>(rc.right),
-		.Height = static_cast<int>(rc.bottom),
-		.Foreground = colors.Text,
-		.EdgeColor = colors.Edge,
-		.Background = colors.Background,
-	}, delay);
-}
-
-void XivAlexander::Apps::MainApp::Window::SettingsView::OnFontPreviewDrawn() {
-	if (!m_fontPreview || !m_fontPreviewer)
-		return;
-	if (auto image = m_fontPreviewer->Take(m_fontPreview->Generation)) {
-		m_fontPreview->Image = std::move(*image);
-		InvalidateRect(m_fontPreview->Control, nullptr, FALSE);
-	}
-}
-
-void XivAlexander::Apps::MainApp::Window::SettingsView::PaintFontPreview(HWND hwnd) {
-	PAINTSTRUCT ps{};
-	const auto hdc = BeginPaint(hwnd, &ps);
-	RECT rc;
-	GetClientRect(hwnd, &rc);
-	const auto& colors = GetThemeColors(IsDarkModeEnabled());
-
-	// The image keeps the size it was asked for; the page's background fills around it until it is drawn anew at the new size.
-	const auto pImage = m_fontPreview && m_fontPreview->Control == hwnd && m_fontPreview->Image ? &*m_fontPreview->Image : nullptr;
-	auto drawnWidth = 0, drawnHeight = 0;
-	if (pImage && pImage->Pixels.size() == static_cast<size_t>(pImage->Width) * pImage->Height) {
-		BITMAPINFO bmi{.bmiHeader = {
-			.biSize = sizeof(BITMAPINFOHEADER),
-			.biWidth = pImage->Width,
-			.biHeight = -pImage->Height,
-			.biPlanes = 1,
-			.biBitCount = 32,
-			.biCompression = BI_RGB,
-		}};
-		SetDIBitsToDevice(hdc, 0, 0, pImage->Width, pImage->Height, 0, 0, 0, pImage->Height, pImage->Pixels.data(), &bmi, DIB_RGB_COLORS);
-		drawnWidth = pImage->Width;
-		drawnHeight = pImage->Height;
-	}
-	const RECT rcRight{drawnWidth, 0, rc.right, rc.bottom};
-	const RECT rcBelow{0, drawnHeight, std::min<LONG>(drawnWidth, rc.right), rc.bottom};
-	for (const auto& r : {rcRight, rcBelow}) {
-		if (r.left < r.right && r.top < r.bottom)
-			FillRect(hdc, &r, *m_backgroundBrush);
-	}
-
-	// In the preview's text color: the image's background is the preview's colors', not the page's.
-	auto failures = pImage ? Wide(pImage->Failures) : std::wstring();
-	if (pImage && !pImage->EdgeFailure.empty())
-		failures += (failures.empty() ? L"" : L"\n") + m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_PREVIEW_NOEDGE, Wide(pImage->EdgeFailure));
-	if (!failures.empty()) {
-		const auto& text = failures;
-		const auto hPrevFont = SelectObject(hdc, *m_font);
-		const auto margin = static_cast<int>(8 * GetZoom());
-		RECT rcText{margin, 0, std::max<LONG>(margin + 1, rc.right - margin), 0};
-		DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX | DT_EDITCONTROL);
-		const auto height = rcText.bottom;
-		rcText = {margin, std::max<LONG>(0, rc.bottom - margin - height), rc.right - margin, rc.bottom - margin};
-		SetBkMode(hdc, TRANSPARENT);
-		SetTextColor(hdc, FontPreviewColorPresets[std::min(m_fontPreviewColors, std::size(FontPreviewColorPresets) - 1)].Text);
-		DrawTextW(hdc, text.c_str(), static_cast<int>(text.size()), &rcText, DT_WORDBREAK | DT_NOPREFIX | DT_EDITCONTROL);
-		SelectObject(hdc, hPrevFont);
-	}
-
-	FrameRect(hdc, &rc, *colors.CreateBackgroundWeakBrush());
-	EndPaint(hwnd, &ps);
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::CreateChoiceRow(const std::wstring& label, bool enabled, std::function<bool()> isChosen, std::function<void()> choose, bool checkBox, int flowGroup) {
@@ -4489,8 +4208,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 		return std::max(height, lineHeight);
 	};
 
-	// Laid out with the grids at their own heights, then again with what the page has left given to a preview ending the page, or else shared among the grids alike.
-	const auto layoutRows = [&](int gridExtra, int previewExtra) {
+	// Laid out with the grids at their own heights, then again with what the page has left shared among them alike.
+	const auto layoutRows = [&](int gridExtra) {
 		placements.clear();
 		auto y = pad;
 		auto flowGroup = 0;
@@ -4665,18 +4384,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 					break;
 				}
 
-				case Row::RowType::Preview: {
-					auto previewY = y;
-					if (const auto descriptionHeight = measure(row->Description, inner)) {
-						place(row->Description, pad, previewY, inner, descriptionHeight);
-						previewY += descriptionHeight + scale(4);
-					}
-					const auto previewHeight = scale(row->Height) + previewExtra;
-					place(row->Control, pad, previewY, inner, previewHeight);
-					rowHeight = previewY + previewHeight - y;
-					break;
-				}
-
 				case Row::RowType::Check: {
 					// Being renamed (BeginSessionRename): the box on a line of its own, so as not to cover the buttons beside it.
 					if (row->Secondary) {
@@ -4830,13 +4537,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 		return y;
 	};
 	const auto isShown = [](const auto& row) { return !row->TabOwner || row->TabIndex == row->TabOwner->ActiveTab; };
-	auto y = layoutRows(0, 0);
+	auto y = layoutRows(0);
 	if (const auto spare = static_cast<int>(rcPage.bottom) - (y - rowGap + pad); spare > 0) {
-		const auto last = std::ranges::find_if(m_rows.rbegin(), m_rows.rend(), isShown);
-		if (last != m_rows.rend() && (*last)->Type == Row::RowType::Preview)
-			y = layoutRows(0, spare);
-		else if (const auto grids = static_cast<int>(std::ranges::count_if(m_rows, [&isShown](const auto& row) { return row->Type == Row::RowType::Grid && isShown(row); })))
-			y = layoutRows(spare / grids, 0);
+		if (const auto grids = static_cast<int>(std::ranges::count_if(m_rows, [&isShown](const auto& row) { return row->Type == Row::RowType::Grid && isShown(row); })))
+			y = layoutRows(spare / grids);
 	}
 	SelectObject(hdc, hPrevFont);
 	ReleaseDC(m_hPage, hdc);
@@ -4862,14 +4566,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 	};
 	SetScrollInfo(m_hPage, SB_VERT, &si, TRUE);
 	InvalidateRect(m_hPage, nullptr, TRUE);
-
-	// The font preview is drawn at its control's size, so anew once resizing the page changes it.
-	if (m_fontPreview) {
-		RECT rcPreview;
-		GetClientRect(m_fontPreview->Control, &rcPreview);
-		if (rcPreview.right != m_fontPreview->Requested.cx || rcPreview.bottom != m_fontPreview->Requested.cy)
-			RequestFontPreview(FontPreviewDelay);
-	}
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::ScrollPageTo(int y) {
@@ -5337,17 +5033,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 				RenameShownTtmp();
 			return 0;
 
-		case WmFontPreviewDrawn:
-			OnFontPreviewDrawn();
-			return 0;
-
 		case WM_DESTROY:
 			// Nothing is shown any more; the object goes with its host.
 			m_cooldownListener.clear();
 			m_crowdFixListener.clear();
 			m_rowCleanup.clear();
 			m_cleanup.clear();
-			m_fontPreview.reset();
 			m_rows.clear();
 			break;
 	}
@@ -5486,6 +5177,5 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::RefreshTheme() {
 		if (row->Grid)
 			row->Grid->ApplyTheme(dark);
 	}
-	// The preview's image has colors of its own (FontPreviewColorPresets); its frame is the theme's, drawn with it.
 	RedrawWindow(m_hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
 }

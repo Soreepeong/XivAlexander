@@ -1,10 +1,12 @@
 #include "pch.h"
 #include "MainApp/Features/FontReplacement.h"
 
+#include <execution>
+
 #include "Config.h"
+#include "Game/SignatureDefinitions.h"
 #include "MainApp/App.h"
 #include "MainApp/FontReplacement/FontReplacer.h"
-#include "MainApp/FontReplacement/GameLayout.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/LineBreaker.h"
 #include "MainApp/FontReplacement/NamePlateText.h"
@@ -29,6 +31,10 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
 	bool PendingSettings = true;
 
+	// How often System mode re-reads Windows' ClearType settings and the game's monitor.
+	static constexpr uint64_t SubpixelRefreshMs = 2000;
+	uint64_t LastSubpixelQuery = 0;
+
 	// Only one is set: the hook of the game's call of Present, or DXGI's Present where that isn't found.
 	std::optional<Host::PresentCallHook> PresentCall;
 	std::optional<Host::PresentHook> Present;
@@ -51,7 +57,14 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	}
 
 	void Initialize() {
-		void(GameLayout::TryGet("GameFont"));
+		// The parts resolve these on the game's thread, then from what is found here.
+		namespace Fonts = Game::Resolved::Fonts;
+		const std::initializer_list<const Game::Signatures::ComplexSignatureBase*> signatures{
+			&Fonts::Stage, &Fonts::FontManager, &Fonts::FontSet, &Fonts::Font, &Fonts::Ui, &Fonts::ResourceHandles, &Fonts::Textures,
+			&Fonts::Replacer, &Fonts::FontTables, &Fonts::NamePlates, &Fonts::ShaderTables, &Fonts::EdgeShader, &Fonts::LineBreaker,
+			&Game::Resolved::SubpixelText,
+		};
+		std::for_each(std::execution::par, signatures.begin(), signatures.end(), [](const auto* signature) { void(signature->Check()); });
 		const auto window = App.GetGameWindowHandle(true);
 		if (!window)
 			return;
@@ -61,6 +74,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			try {
 				Replacer = std::make_unique<FontReplacer>();
 				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
+				ApplySubpixel(window);
 				NamePlates = Optional<NamePlateText>("Nameplate text");
 				Breaker = Optional<LineBreaker>("Line breaking");
 				Replacer->TextInvalidated = [this] {
@@ -102,6 +116,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 				PendingSettings = true;
 			};
 			Cleanup += settings.Edge.OnChange(markPending);
+			Cleanup += settings.Subpixel.OnChange(markPending);
 
 			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
 				const auto lock = std::scoped_lock(PendingMutex);
@@ -155,6 +170,16 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		step("font replacer", [this] { Replacer.reset(); });
 	}
 
+	// Game thread, between frames.
+	void ApplySubpixel(HWND window) {
+		LastSubpixelQuery = GetTickCount64();
+		try {
+			Replacer->SetSubpixel(SubpixelSettings::Of(Config->Runtime.FontReplacement.Subpixel.Value(), window));
+		} catch (const std::exception& e) {
+			Host::Error("Applying the subpixel text setting failed: {}", e.what());
+		}
+	}
+
 	void BeforePresent() {
 		if (!Replacer)
 			return;
@@ -171,6 +196,9 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (settings) {
 			const auto& current = Config->Runtime.FontReplacement;
 			Replacer->SetEdge(current.Edge.Value());
+			ApplySubpixel(App.GetGameWindowHandle());
+		} else if (Config->Runtime.FontReplacement.Subpixel.Value() == FontReplacementSubpixelMode::System && GetTickCount64() - LastSubpixelQuery >= SubpixelRefreshMs) {
+			ApplySubpixel(App.GetGameWindowHandle());
 		}
 
 		if (preset) {

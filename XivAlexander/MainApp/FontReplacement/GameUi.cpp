@@ -1,11 +1,12 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/GameUi.h"
 
-#include "MainApp/FontReplacement/GameLayout.h"
+#include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/Utilities.h"
 
 namespace GameUi = XivAlexander::Apps::MainApp::FontReplacement::GameUi;
-using XivAlexander::Apps::MainApp::FontReplacement::GameLayout;
+namespace Fonts = XivAlexander::Game::Resolved::Fonts;
+using XivAlexander::Apps::MainApp::FontReplacement::ResolveGameCode;
 
 namespace {
 	uintptr_t s_stageInstance;
@@ -24,40 +25,40 @@ namespace {
 	int s_textureD3D11Texture2D;
 }
 
-int GameUi::TextNodeType;
-int GameUi::FirstComponentNodeType;
+int GameUi::TextNodeType = 3;
+int GameUi::FirstComponentNodeType = 1000;
 
 uintptr_t GameUi::Stage() {
 	return s_stageInstance ? At<uintptr_t>(s_stageInstance) : 0;
 }
 
 void GameUi::ResolveStage() {
-	s_stageInstance = GameLayout::Target("AtkStage.Instance");
+	s_stageInstance = reinterpret_cast<uintptr_t>(ResolveGameCode(Fonts::Stage).Instance);
 }
 
 void GameUi::ResolveUnits() {
 	ResolveStage();
-	s_stageUnitManager = GameLayout::Get("AtkStage.RaptureAtkUnitManager");
-	s_loadedUnitsCount = GameLayout::Get("AtkUnitManager.AllLoadedUnitsList.Count");
-	s_loadedUnitsEntries = GameLayout::Get("AtkUnitManager.AllLoadedUnitsList.Entries");
-	s_unitUld = GameLayout::Get("AtkUnitBase.UldManager");
-	s_uldNodeList = GameLayout::Get("AtkUldManager.NodeList");
-	s_uldNodeListCount = GameLayout::Get("AtkUldManager.NodeListCount");
-	s_nodeType = GameLayout::Get("AtkResNode.Type");
-	s_componentNodeComponent = GameLayout::Get("AtkComponentNode.Component");
-	s_componentUld = GameLayout::Get("AtkComponentBase.UldManager");
-	TextNodeType = GameLayout::Get("NodeType.Text");
-	FirstComponentNodeType = GameLayout::Get("NodeType.FirstComponent");
+	const auto ui = ResolveGameCode(Fonts::Ui);
+	s_stageUnitManager = ui.StageUnitManager;
+	s_loadedUnitsCount = ui.LoadedUnitsCount;
+	s_loadedUnitsEntries = ui.LoadedUnitsEntries;
+	s_unitUld = ui.UnitUld;
+	s_uldNodeList = ui.UldNodeList;
+	s_uldNodeListCount = ui.UldNodeListCount;
+	s_nodeType = ui.NodeType;
+	s_componentNodeComponent = ui.ComponentNodeComponent;
+	s_componentUld = ui.ComponentUld;
 }
 
 void GameUi::ResolveResourceHandles() {
-	s_fileName = GameLayout::Get("ResourceHandle.FileName");
-	s_fileNameLength = GameLayout::Get("ResourceHandle.FileName.Length");
-	s_fileNameCapacity = GameLayout::Get("ResourceHandle.FileName.Capacity");
+	const auto handles = ResolveGameCode(Fonts::ResourceHandles);
+	s_fileName = handles.FileName;
+	s_fileNameLength = handles.FileNameLength;
+	s_fileNameCapacity = handles.FileNameCapacity;
 }
 
 void GameUi::ResolveTextures() {
-	s_textureD3D11Texture2D = GameLayout::Get("Texture.D3D11Texture2D");
+	s_textureD3D11Texture2D = ResolveGameCode(Fonts::Textures).D3D11Texture2D;
 }
 
 std::vector<uintptr_t> GameUi::GetLoadedUnits() {

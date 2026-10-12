@@ -67,6 +67,14 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
 	};
 
+	/// Subpixel text; System follows Windows' ClearType setting for the game's monitor.
+	enum class FontReplacementSubpixelMode : uint8_t {
+		Off,
+		System,
+		Rgb,
+		Bgr,
+	};
+
 	class FontReplacementConfigGroup : public ConfigGroup {
 	public:
 		using ConfigGroup::ConfigGroup;
@@ -86,6 +94,8 @@ namespace XivAlexander {
 		} Faces{this, "Faces"};
 
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
+
+		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::System};
 	};
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
@@ -96,4 +106,6 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, FontReplacementFamily&);
 	void to_json(nlohmann::json&, const FontReplacementEdgeConfig&);
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
+	void to_json(nlohmann::json&, const FontReplacementSubpixelMode&);
+	void from_json(const nlohmann::json&, FontReplacementSubpixelMode&);
 }
