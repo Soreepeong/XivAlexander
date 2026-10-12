@@ -296,10 +296,6 @@ uint16_t FontReplacement::FontReplacer::GetClaimedTextureWidth(const FontReplace
 	return static_cast<uint16_t>(std::clamp(std::round(static_cast<float>(atlasSize) / edge.GetWidth(px)), 256.f, 65535.f));
 }
 
-float FontReplacement::FontReplacer::GetDrawnPx(float size) {
-	return static_cast<float>(std::clamp(static_cast<int>(std::round(size * 2)), MinHalfPx, MaxHalfPx)) / 2.f;
-}
-
 std::optional<size_t> FontReplacement::FontReplacer::GetExactFace(std::span<const std::pair<std::string, float>> faces, float px) {
 	for (size_t i = 0; i < faces.size(); i++) {
 		if (std::abs(faces[i].second - px) < 0.01f)

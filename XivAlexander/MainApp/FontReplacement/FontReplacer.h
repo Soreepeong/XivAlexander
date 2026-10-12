@@ -210,11 +210,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] static int GetAtlasSize(std::string_view family);
 
-		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it; settings previews match it.
+		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it.
 		[[nodiscard]] static uint16_t GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px);
-
-		// Rounded to half pixels, clamped to 4..255 px.
-		[[nodiscard]] static float GetDrawnPx(float size);
 
 		// Of a family's faces (name, size), the one text at px is made with alone; nullopt if none is of that size, so glyphs come from all.
 		[[nodiscard]] static std::optional<size_t> GetExactFace(std::span<const std::pair<std::string, float>> faces, float px);

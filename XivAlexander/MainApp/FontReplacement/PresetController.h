@@ -33,7 +33,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		};
 
 		// Later sources win; of a preset, only the family's faces are taken. None if the family is off, so the game's font stays.
-		// The settings' font family pages preview with this too, so it touches nothing the replacer uses.
 		static Presets::Faces MakeFamilyFaces(const std::string& family, const FontReplacementFamily& settings, PresetReader& read, std::vector<std::string>& failures, bool* usesFont = nullptr);
 
 	private:

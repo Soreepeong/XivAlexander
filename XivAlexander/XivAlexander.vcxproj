@@ -183,7 +183,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\FontReplacement\EdgeShader.cpp" />
     <ClCompile Include="MainApp\FontReplacement\EdgeShaderCode.cpp" />
     <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp" />
-    <ClCompile Include="MainApp\FontReplacement\FamilyPreview.cpp" />
     <ClCompile Include="MainApp\Features\FontReplacement.cpp" />
     <ClCompile Include="MainApp\FontReplacement\FontReplacer.cpp" />
     <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp" />
@@ -201,7 +200,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClCompile Include="MainApp\FontReplacement\NamePlateText.cpp" />
     <ClCompile Include="MainApp\FontReplacement\PresetController.cpp" />
     <ClCompile Include="MainApp\FontReplacement\Presets.cpp" />
-    <ClCompile Include="MainApp\FontReplacement\PreviewRenderer.cpp" />
     <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp" />
     <ClCompile Include="MainApp\FontReplacement\TextShaper.cpp" />
     <ClCompile Include="Config\FontReplacementConfigs.cpp" />
@@ -311,7 +309,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\FontReplacement\EdgeShader.h" />
     <ClInclude Include="MainApp\FontReplacement\EdgeShaderCode.h" />
     <ClInclude Include="MainApp\FontReplacement\ElementFonts.h" />
-    <ClInclude Include="MainApp\FontReplacement\FamilyPreview.h" />
     <ClInclude Include="MainApp\Features\FontReplacement.h" />
     <ClInclude Include="MainApp\FontReplacement\FontReplacer.h" />
     <ClInclude Include="MainApp\FontReplacement\FontStructs.h" />
@@ -330,7 +327,6 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
     <ClInclude Include="MainApp\FontReplacement\NamePlateText.h" />
     <ClInclude Include="MainApp\FontReplacement\PresetController.h" />
     <ClInclude Include="MainApp\FontReplacement\Presets.h" />
-    <ClInclude Include="MainApp\FontReplacement\PreviewRenderer.h" />
     <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h" />
     <ClInclude Include="MainApp\FontReplacement\TextShaper.h" />
     <ClInclude Include="Config\FontReplacementConfigs.h" />
@@ -438,20 +434,7 @@ copy /y "$(TargetPath)" "$(LOCALAPPDATA)\XivAlexander\" || cd.
   <ItemGroup>
     <Image Include="..\Graphics\Icon.ico" />
   </ItemGroup>
-  <!-- Font preview shaders (IDR_FONTPREVIEWVS, IDR_FONTPREVIEWTEXTPS), compiled into IntDir before the resources that embed them. -->
   <ItemGroup>
-    <FxCompile Include="MainApp\FontReplacement\FontPreviewTextPS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="MainApp\FontReplacement\FontPreviewVS.hlsl">
-      <ShaderType>Vertex</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
     <!-- IDR_FONTEDGEPS: compiled as FontChanger.ShaderGen does for the Dalamud plugin (ps_5_0, main, /O3, every configuration), to the same bytecode. -->
     <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
       <ShaderType>Pixel</ShaderType>

@@ -18,10 +18,6 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	struct NestedTtmp;
 }
 
-namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class FamilyPreview;
-}
-
 namespace XivAlexander::Apps::MainApp {
 	class App;
 }
@@ -174,14 +170,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		};
 		std::map<std::filesystem::path, TextTransformationInfo> m_textTransformationInfo;
 
-		// Drawn on the previewer's thread, which posts when done; taken by the page's latest request number, so stale or orphaned images are dropped.
-		struct FontPreview;
-		std::unique_ptr<FontReplacement::FamilyPreview> m_fontPreviewer;  // Made when first needed; lives with this.
-		std::unique_ptr<FontPreview> m_fontPreview;  // Of the page shown; goes with its rows.
-		std::map<std::string, float> m_fontPreviewSizes;  // The size last chosen of each family.
-		std::map<std::string, std::wstring> m_fontPreviewTexts;  // Kept from page to page, by FontPreviewTextKey.
-		size_t m_fontPreviewColors = 0;  // Of FontPreviewColorPresets; for the session, for every page's preview.
-
 		// The node whose page is shown.
 		const TreeNode* m_pNode{};
 		std::vector<std::unique_ptr<ConfigWindow>> m_patchCodeEditors;
@@ -278,12 +266,6 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddTextTransformationRows();
 		void AddEdgeRows();
 		void AddFontFamilyRows(const std::string& family);
-		// With the size and the sample text on a family's page, or the size and the colors on the font replacement's page (edgePage).
-		void AddFontPreviewRows(const std::string& family, bool edgePage);
-		// At the control's size, once nothing has changed for the delay.
-		void RequestFontPreview(std::chrono::milliseconds delay);
-		void OnFontPreviewDrawn();
-		void PaintFontPreview(HWND hwnd);
 		[[nodiscard]] RECT GetDividerRect() const;
 		void DragWindow() const;
 		void ListenToTtmps();

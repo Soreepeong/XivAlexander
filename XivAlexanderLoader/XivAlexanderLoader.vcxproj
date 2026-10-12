@@ -178,18 +178,6 @@
   </ItemGroup>
   <!-- XivAlexander.rc embeds these. -->
   <ItemGroup>
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewTextPS.hlsl">
-      <ShaderType>Pixel</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontPreviewVS.hlsl">
-      <ShaderType>Vertex</ShaderType>
-      <ShaderModel>5.0</ShaderModel>
-      <EntryPointName>main</EntryPointName>
-      <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
     <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel>5.0</ShaderModel>

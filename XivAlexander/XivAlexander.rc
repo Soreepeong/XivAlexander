@@ -461,15 +461,11 @@ BEGIN
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
     IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
-    IDS_FONTPREVIEW_ERROR_NOFACE "{} を描くためのフォントがありません。"
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
     IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexanderのインストール先を確認できませんでした。"
     IDS_ERROR_LOAD_INSTALLED_PATH "{} をロードできませんでした。"
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
-                            "{} にはグリフがありません。インストールされていないか、読み込めない可能性があります。"
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} にはテキストの文字がひとつもありません。"
     IDS_CONFIRM_RESET_ALL_CONNECTIONS "すべての接続を強制終了しますか？"
     IDS_TITLE_MERGINGEXCEL  "他の言語のテキストを統合しています…"
 END
@@ -876,10 +872,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_PREVIEW_SIZE "サイズ"
-    IDS_SETTINGS_FONT_PREVIEW_TEXT "サンプルテキスト"
-    IDS_SETTINGS_FONT_PREVIEW_DESC 
-                            "選んだサイズのフォントを、これらのソースから作られるとおりに、ゲームと同じ縁取りを付けて描きます。ソースにない文字は、ゲーム内でシステムフォントで描かれる場合でも、ここではゲームの字形で描かれます。"
     IDS_SETTINGS_RESTART_REGION "地域"
     IDS_SETTINGS_MISCELLANEOUS "その他"
     IDS_SETTINGS_UPDATES    "アップデート"
@@ -904,22 +896,10 @@ BEGIN
     IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
                             "記憶したログインセッションをすべて削除しますか?\nWindows の資格情報マネージャーから削除されます。"
     IDS_SETTINGS_REMEMBER   "記憶する"
-    IDS_SETTINGS_FONT_PREVIEW_COLORS "色"
-    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "縁取りを表示できません: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC 
-                            "{} をフォントの置き換えのとおりに、選んだサイズでこの設定の縁取りを付けて描きます。色はゲームで使われているもので、すべてのフォントのプレビューに使われます。"
-    IDS_SETTINGS_FONT_COLORS_DEFAULT "標準"
-    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "ツールチップの項目名"
-    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "アクション名"
-    IDS_SETTINGS_FONT_COLORS_STATUSNAME "ステータス名"
-    IDS_SETTINGS_FONT_COLORS_WARNING "警告"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_COLORS_NOTICE "お知らせ"
-    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "クエストの強調"
-    IDS_SETTINGS_FONT_COLORS_TUTORIAL "チュートリアルの本文"
     IDS_TTMP_ERROR_NAME_EMPTY "名前を空にすることはできません。"
     IDS_TTMP_ERROR_NAME_DOTS "「.」と「..」は名前に使えません。"
     IDS_TTMP_ERROR_NAME_TOOLONG "名前が長すぎます。"
@@ -1854,15 +1834,11 @@ BEGIN
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
     IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
-    IDS_FONTPREVIEW_ERROR_NOFACE "{}을(를) 그릴 글꼴이 없습니다."
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
     IDS_ERROR_LOAD_INSTALLED_NOPATH "XivAlexander 설치 경로를 확인하지 못했습니다."
     IDS_ERROR_LOAD_INSTALLED_PATH "{}을(를) 불러들이지 못했습니다."
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
-                            "{}에 글리프가 없습니다. 설치되지 않았거나 읽을 수 없는 것 같습니다."
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{}에는 텍스트의 글자가 하나도 없습니다."
     IDS_CONFIRM_RESET_ALL_CONNECTIONS "모든 접속을 강제로 해제하시겠습니까?"
     IDS_TITLE_MERGINGEXCEL  "다른 언어의 텍스트를 합치는 중..."
 END
@@ -2271,10 +2247,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_PREVIEW_SIZE "크기"
-    IDS_SETTINGS_FONT_PREVIEW_TEXT "예시 문장"
-    IDS_SETTINGS_FONT_PREVIEW_DESC 
-                            "선택한 크기의 글꼴을 이 소스들로 만든 그대로, 게임과 같은 테두리를 붙여 그립니다. 소스에 없는 글자는 게임에서 시스템 글꼴로 그려지는 경우에도 여기서는 게임의 글리프로 그립니다."
     IDS_SETTINGS_RESTART_REGION "지역"
     IDS_SETTINGS_MISCELLANEOUS "기타"
     IDS_SETTINGS_UPDATES    "업데이트"
@@ -2299,22 +2271,10 @@ BEGIN
     IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
                             "기억한 로그인 세션을 모두 삭제할까요?\nWindows 자격 증명 관리자에서 삭제됩니다."
     IDS_SETTINGS_REMEMBER   "기억"
-    IDS_SETTINGS_FONT_PREVIEW_COLORS "색상"
-    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "테두리를 표시할 수 없습니다: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC 
-                            "{} 글꼴을 글꼴 교체가 그리는 대로, 선택한 크기에서 이 설정의 테두리를 붙여 그립니다. 색상은 게임에서 쓰이는 것으로, 모든 글꼴 미리 보기에 적용됩니다."
-    IDS_SETTINGS_FONT_COLORS_DEFAULT "기본"
-    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "툴팁 항목 이름"
-    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "기술 이름"
-    IDS_SETTINGS_FONT_COLORS_STATUSNAME "상태 이름"
-    IDS_SETTINGS_FONT_COLORS_WARNING "경고"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_COLORS_NOTICE "알림"
-    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "퀘스트 강조"
-    IDS_SETTINGS_FONT_COLORS_TUTORIAL "튜토리얼 본문"
     IDS_TTMP_ERROR_NAME_EMPTY "이름을 비워 둘 수 없습니다."
     IDS_TTMP_ERROR_NAME_DOTS """.""과 ""..""은 이름으로 쓸 수 없습니다."
     IDS_TTMP_ERROR_NAME_TOOLONG "이름이 너무 깁니다."
@@ -3164,10 +3124,6 @@ IDR_GAMEFONTSIGNATURES  RCDATA                  "..\\FFXIV-FontChanger\\xivres\\
 
 IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
 
-IDR_FONTPREVIEWVS       RCDATA                  "FontPreviewVS.cso"
-
-IDR_FONTPREVIEWTEXTPS   RCDATA                  "FontPreviewTextPS.cso"
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -3319,16 +3275,12 @@ BEGIN
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "The glyph image folder {} isn't under the preset's folder."
     IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
-    IDS_FONTPREVIEW_ERROR_NOFACE "There is no face to draw {} with."
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
     IDS_ERROR_LOAD_INSTALLED_NOPATH 
                             "Failed to resolve the XivAlexander installation path."
     IDS_ERROR_LOAD_INSTALLED_PATH "Failed to load {}."
-    IDS_FONTPREVIEW_ERROR_EMPTYELEMENT 
-                            "{} has no glyphs; it may not be installed, or can't be read."
-    IDS_FONTPREVIEW_ERROR_NOGLYPHS "{} has none of the text's characters."
     IDS_CONFIRM_RESET_ALL_CONNECTIONS "Do you want to reset all connections?"
     IDS_TITLE_MERGINGEXCEL  "Merging text of other languages..."
 END
@@ -3768,10 +3720,6 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_PREVIEW_SIZE "Size"
-    IDS_SETTINGS_FONT_PREVIEW_TEXT "Sample text"
-    IDS_SETTINGS_FONT_PREVIEW_DESC 
-                            "The font at the chosen size, drawn as these sources make it, with the edge the game draws. Characters the sources lack are drawn with the game's own glyphs here, even where the game draws them with system fonts."
     IDS_SETTINGS_RESTART_REGION "Region"
     IDS_SETTINGS_MISCELLANEOUS "Miscellaneous"
     IDS_SETTINGS_UPDATES    "Updates"
@@ -3798,22 +3746,10 @@ BEGIN
     IDS_SETTINGS_SESSIONS_FORGET_CONFIRM 
                             "Forget all remembered login sessions?\nThey are removed from Windows Credential Manager."
     IDS_SETTINGS_REMEMBER   "Remember"
-    IDS_SETTINGS_FONT_PREVIEW_COLORS "Colors"
-    IDS_SETTINGS_FONT_PREVIEW_NOEDGE "The edge can't be shown: {}"
-    IDS_SETTINGS_EDGE_PREVIEW_DESC 
-                            "{} as the font replacement draws it, with the edge these settings give at the chosen size. The colors are ones the game uses, and apply to every font preview."
-    IDS_SETTINGS_FONT_COLORS_DEFAULT "Default"
-    IDS_SETTINGS_FONT_COLORS_TOOLTIPLABEL "Tooltip labels"
-    IDS_SETTINGS_FONT_COLORS_ACTIONNAME "Action names"
-    IDS_SETTINGS_FONT_COLORS_STATUSNAME "Status names"
-    IDS_SETTINGS_FONT_COLORS_WARNING "Warnings"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_SETTINGS_FONT_COLORS_NOTICE "Notices"
-    IDS_SETTINGS_FONT_COLORS_QUESTHIGHLIGHT "Quest highlights"
-    IDS_SETTINGS_FONT_COLORS_TUTORIAL "Tutorial text"
     IDS_TTMP_ERROR_NAME_EMPTY "The name cannot be empty."
     IDS_TTMP_ERROR_NAME_DOTS """."" and "".."" cannot be used as a name."
     IDS_TTMP_ERROR_NAME_TOOLONG "The name is too long."
