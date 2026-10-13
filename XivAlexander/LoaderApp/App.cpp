@@ -70,10 +70,11 @@ namespace {
 	}
 }
 
-bool XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args) {
+bool XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args, const std::filesystem::path& workingDirectory) {
+	const auto dir = workingDirectory.empty() ? path.parent_path() : workingDirectory;
 	if (Utils::Win32::RunProgram({
 		.path = path,
-		.dir = path.parent_path().c_str(),
+		.dir = dir,
 		.args = RefreshObfuscatedArguments(args),
 		.elevateMode = Utils::Win32::RunProgramParams::CancelIfRequired,
 	}))
@@ -84,7 +85,7 @@ bool XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(const
 		return false;
 
 	return Utils::Win32::RunProgram({
-		.dir = path.parent_path().c_str(),
+		.dir = dir,
 		.args = xivres::util::unicode::convert<std::wstring>(Utils::Win32::ReverseCommandLineToArgv({
 			"--disable-runas",
 			"-a", LoaderActionToString(LoaderAction::Launcher),

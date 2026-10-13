@@ -12,7 +12,7 @@ namespace XivAlexander::LoaderApp {
 
 	bool TestAdminRequirementForProcessManipulation(const std::set<DWORD>& pids);
 
-	bool RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args = L"");
+	bool RunProgramRetryAfterElevatingSelfAsNecessary(const std::filesystem::path& path, const std::wstring& args = L"", const std::filesystem::path& workingDirectory = {});
 
 	/// A message box; with --quiet, stderr (when redirected) and the debugger instead.
 	void ReportError(bool quiet, const std::wstring& message);

@@ -58,6 +58,9 @@ namespace {
 		CmdOpenProgramDir,
 		CmdOpenConfigDir,
 		CmdCleanup,
+		CmdProcFront,
+		CmdProcTerminate,
+		CmdProcRestart,
 	};
 
 	constexpr UINT_PTR ProcessTimerId = 1;
@@ -156,6 +159,57 @@ namespace {
 			if (wcscmp(className, MainWindowClassName) != 0)
 				return TRUE;
 			s.Found = true;
+			return FALSE;
+		}, reinterpret_cast<LPARAM>(&search));
+		return search.Found;
+	}
+
+	struct LaunchInfo {
+		std::wstring Args;  // the command line without the program
+		std::filesystem::path Dir;
+	};
+
+	// Offsets into the x64 PEB and RTL_USER_PROCESS_PARAMETERS, which winternl.h does not expose.
+	std::optional<LaunchInfo> ReadLaunchInfo(DWORD pid) {
+		using NtQueryInformationProcessFn = NTSTATUS(NTAPI*)(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG);
+		const auto query = reinterpret_cast<NtQueryInformationProcessFn>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess"));
+		const auto hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+		if (!query || !hProcess)
+			return std::nullopt;
+		try {
+			const auto process = Utils::Win32::Process(hProcess, true);
+			PROCESS_BASIC_INFORMATION pbi{};
+			if (query(hProcess, ProcessBasicInformation, &pbi, sizeof pbi, nullptr) < 0 || !pbi.PebBaseAddress)
+				return std::nullopt;
+			const auto params = process.ReadMemory<void*>(pbi.PebBaseAddress, 0x20);
+			const auto dir = process.ReadMemory<UNICODE_STRING>(params, 0x38);
+			const auto command = process.ReadMemory<UNICODE_STRING>(params, 0x70);
+			if (!command.Buffer || !command.Length)
+				return std::nullopt;
+			const auto commandLine = process.ReadMemory<wchar_t>(command.Buffer, 0, command.Length / sizeof(wchar_t));
+			LaunchInfo info{.Args = Utils::Win32::SplitCommandLineIntoNameAndArgs(std::wstring(commandLine.begin(), commandLine.end())).second};
+			if (dir.Buffer && dir.Length) {
+				const auto dirChars = process.ReadMemory<wchar_t>(dir.Buffer, 0, dir.Length / sizeof(wchar_t));
+				info.Dir = std::wstring(dirChars.begin(), dirChars.end());
+			}
+			return info;
+		} catch (...) {
+			return std::nullopt;
+		}
+	}
+
+	HWND FindGameWindow(DWORD pid) {
+		struct Search {
+			DWORD Pid;
+			HWND Found;
+		} search{pid, nullptr};
+		EnumWindows([](HWND hWnd, LPARAM lParam) {
+			auto& s = *reinterpret_cast<Search*>(lParam);
+			DWORD windowPid{};
+			GetWindowThreadProcessId(hWnd, &windowPid);
+			if (windowPid != s.Pid || !IsWindowVisible(hWnd) || GetWindow(hWnd, GW_OWNER) || !GetWindowTextLengthW(hWnd))
+				return TRUE;
+			s.Found = hWnd;
 			return FALSE;
 		}, reinterpret_cast<LPARAM>(&search));
 		return search.Found;
@@ -739,6 +793,7 @@ namespace {
 					else if (!m_settings.Advanced)
 						SetFocus(GetDlgItem(m_hwnd, IDC_LOADER_APPLY_ONCE));
 				},
+				.ShowContextMenu = [this](size_t row, POINT pt) { ShowProcessContextMenu(row, pt); },
 				.SelectionChanged = [this](std::optional<size_t>) { UpdateControls(); },
 				.GetEmptyText = [this] { return std::wstring(m_str(m_settings.Advanced ? IDS_LOADER_EMPTY_NOPROCESS : IDS_LOADER_EMPTY_NOSESSION)); },
 			});
@@ -1838,6 +1893,94 @@ namespace {
 				OnCommand(command, 0);
 		}
 
+		void ShowProcessContextMenu(size_t index, POINT pt) {
+			if (index >= m_visibleProcesses.size() || m_busy)
+				return;
+			const auto& process = m_processes[m_visibleProcesses[index]];
+			if (!process.IsGame)
+				return;
+			const auto canRestart = !process.Path.empty() && ReadLaunchInfo(process.Pid);
+			const auto hMenu = CreatePopupMenu();
+			const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
+			AppendMenuW(hMenu, MF_STRING, CmdProcFront, m_str(IDS_LOADER_MENU_PROC_FRONT));
+			AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
+			AppendMenuW(hMenu, MF_STRING, CmdProcTerminate, m_str(IDS_LOADER_MENU_PROC_TERMINATE));
+			AppendMenuW(hMenu, MF_STRING | (canRestart ? 0 : MF_GRAYED), CmdProcRestart, m_str(IDS_LOADER_MENU_PROC_RESTART));
+			const auto command = static_cast<UINT>(TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, m_hwnd, nullptr));
+			if (command)
+				OnCommand(command, 0);
+		}
+
+		void BringProcessToFront() {
+			const auto process = SelectedProcess();
+			if (!process || !process->IsGame)
+				return;
+			const auto hWnd = FindGameWindow(process->Pid);
+			if (!hWnd) {
+				SetStatus(m_str.Format(IDS_LOADER_STATUS_NOWINDOW, process->Pid));
+				return;
+			}
+			if (IsIconic(hWnd))
+				ShowWindow(hWnd, SW_RESTORE);
+			if (!SetForegroundWindow(hWnd) || GetForegroundWindow() != hWnd) {
+				// A synthetic ALT press lifts the foreground lock for this call.
+				keybd_event(VK_MENU, 0, 0, 0);
+				keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+				SetForegroundWindow(hWnd);
+			}
+		}
+
+		bool ConfirmProcessAction(UINT textId, DWORD pid) const {
+			const auto text = m_str.Format(textId, pid);
+			return MessageBoxW(m_hwnd, text.c_str(), GetGenericMessageBoxTitle(), MB_YESNO | MB_DEFBUTTON2 | MB_ICONWARNING) == IDYES;
+		}
+
+		void TerminateSelectedProcess(bool restart) {
+			const auto row = SelectedProcess();
+			if (!row || !row->IsGame)
+				return;
+			const auto pid = row->Pid;
+			const auto path = row->Path;
+			// Injected by us, so the new process needs the same.
+			const auto viaLoader = row->State == ProcessState::Loaded;
+			std::optional<LaunchInfo> info;
+			if (restart) {
+				info = path.empty() ? std::nullopt : ReadLaunchInfo(pid);
+				if (!info)
+					return;
+			}
+			if (!ConfirmProcessAction(restart ? IDS_LOADER_PROC_CONFIRM_RESTART : IDS_LOADER_PROC_CONFIRM_TERMINATE, pid))
+				return;
+
+			RunOperation(m_str.Format(restart ? IDS_LOADER_STATUS_RESTARTING : IDS_LOADER_STATUS_TERMINATING, pid), [this, pid, path, viaLoader, info, restart]() -> std::function<void()> {
+				{
+					const auto process = Utils::Win32::Process(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+					process.Terminate(1);
+					process.Wait();
+				}
+				if (!restart)
+					return [this, pid] { SetStatus(m_str.Format(IDS_LOADER_STATUS_TERMINATED, pid)); };
+
+				auto started = false;
+				if (viaLoader) {
+					started = !!Utils::Win32::RunProgram({
+						.dir = info->Dir,
+						.args = Utils::Win32::ReverseCommandLineToArgv({
+							std::wstring(L"-a"), xivres::util::unicode::convert<std::wstring>(LoaderActionToString(LoaderAction::Launcher)),
+							std::wstring(L"-l"), std::wstring(L"select"),
+							path.wstring(),
+						}) + (info->Args.empty() ? L"" : L" " + info->Args),
+						.elevateMode = Utils::Win32::RunProgramParams::NoElevationIfDenied,
+					});
+				} else {
+					started = XivAlexander::LoaderApp::RunProgramRetryAfterElevatingSelfAsNecessary(path, info->Args, info->Dir);
+				}
+				if (!started)
+					return [this] { SetStatus(m_str(IDS_LOADER_STATUS_CANCELLED)); };
+				return [this, pid] { SetStatus(m_str.Format(IDS_LOADER_STATUS_RESTARTED, pid)); };
+			});
+		}
+
 		void ShowMoreMenu() {
 			const auto hMenu = CreatePopupMenu();
 			const auto destroyMenu = xivres::util::on_dtor([hMenu] { DestroyMenu(hMenu); });
@@ -2028,6 +2171,16 @@ namespace {
 				case IDC_LOADER_SHOWCONTROLWINDOW:
 					if (const auto row = SelectedInstall(); row && !row->Missing)
 						WriteShowControlWindow(*row, IsDlgButtonChecked(m_hwnd, IDC_LOADER_SHOWCONTROLWINDOW) == BST_CHECKED);
+					return;
+
+				case CmdProcFront:
+					BringProcessToFront();
+					return;
+				case CmdProcTerminate:
+					TerminateSelectedProcess(false);
+					return;
+				case CmdProcRestart:
+					TerminateSelectedProcess(true);
 					return;
 
 				case IDC_LOADER_LOAD:
