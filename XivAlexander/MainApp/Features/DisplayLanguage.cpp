@@ -30,7 +30,7 @@ namespace {
 	constexpr int32_t GameKorean = static_cast<int32_t>(GameLanguageValue::Korean) - 1;
 	constexpr int32_t GameTraditionalChinese = static_cast<int32_t>(GameLanguageValue::TraditionalChinese) - 1;
 
-	// The language the sheets load in, as the text merge takes it.
+	// The language the sheets load in, as the text merge takes it; unspecified if unknown.
 	GameLanguageValue GameLanguage() {
 		static const auto language = [] {
 			try {
@@ -44,9 +44,11 @@ namespace {
 					default:
 						break;
 				}
-				return XivAlexander::Game::CommandLine::WellKnown::GetLanguage(XivAlexander::Game::CommandLine::FromString(Dll::GetGameCommandLine()), GameLanguageValue::English);
+				if (!Dll::GetCommandLineError().empty())
+					return GameLanguageValue::Unspecified;
+				return XivAlexander::Game::CommandLine::WellKnown::GetEffectiveLanguage(XivAlexander::Game::CommandLine::FromString(Dll::GetGameCommandLine()));
 			} catch (...) {
-				return GameLanguageValue::English;
+				return GameLanguageValue::Unspecified;
 			}
 		}();
 		return language;
@@ -62,7 +64,8 @@ namespace {
 		const auto config = XivAlexander::Config::Acquire();
 		const auto& languages = config->Runtime.Modding.Languages;
 		Settings s{.Game = GameLanguage(), .Display = GameLanguageValue::Unspecified, .TalkLines = languages.TalkLines.Value()};
-		if (config->Runtime.Modding.Enabled)
+		// Without the game's language, nothing can be told apart from it.
+		if (config->Runtime.Modding.Enabled && s.Game != GameLanguageValue::Unspecified)
 			s.Display = languages.ResourceOverride.Value();
 		if (s.Display == GameLanguageValue::Unspecified)
 			s.Display = s.Game;
@@ -307,7 +310,9 @@ struct XivAlexander::Apps::MainApp::Features::DisplayLanguage::Implementation {
 						lines = GameEnglish <= display && display <= GameFrench ? 4 : 3;
 					break;
 			}
-			if (lines == 4 && s.Game == GameLanguageValue::Japanese) {
+			if (s.Game == GameLanguageValue::Unspecified)
+				lines = 0;
+			else if (lines == 4 && s.Game == GameLanguageValue::Japanese) {
 				if (!JapaneseTalkLinesLogged.test_and_set())
 					Logger->Format(LogCategory::GameResourceOverrider, "Display language: dialogue boxes stay at 3 lines, as the Japanese client lays furigana out 3 lines at a time");
 				lines = 0;
@@ -337,5 +342,5 @@ void XivAlexander::Apps::MainApp::Features::DisplayLanguage::Update() {
 
 bool XivAlexander::Apps::MainApp::Features::DisplayLanguage::IsNeeded() {
 	const auto s = ReadSettings();
-	return s.Display != s.Game || s.TalkLines != TalkLineCount::Automatic;
+	return s.Game != GameLanguageValue::Unspecified && (s.Display != s.Game || s.TalkLines != TalkLineCount::Automatic);
 }

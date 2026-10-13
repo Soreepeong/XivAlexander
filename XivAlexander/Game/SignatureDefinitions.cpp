@@ -18,6 +18,12 @@ namespace XivAlexander::Game {
 	const Signatures::RegexSignature RipRelativeLea(R"([\x48\x4C]\x8D[\x05\x0D\x15\x1D\x25\x2D\x35\x3D](....))");
 	const Signatures::RegexSignature StringIndirectionResolver(R"(\x8b\x01\x25\xff\xff\xff\x00\x48\x03\xc1)");
 	const Signatures::RegexSignature CutSceneLanguageGetter(R"(\xE8(....)[\x48\x49]\x63[\x50-\x53\x55-\x57]\x1C)");
+	// cmp byte ptr [key], '_'; jnz; lea rdx, "_rsv_"
+	const Signatures::RegexSignature RsvKeyPrefixTest(R"(\x80[\x38-\x3F\x78-\x7F].{0,2}\x5F(?:\x75.|\x0F\x85....)\x48\x8D\x15(....))");
+	// The column string's resolver: mov rdx, [resolver]; test rdx, rdx; jz; mov rcx, rax; jmp rdx
+	const Signatures::RegexSignature RsvResolverTailCall(R"(\x48\x8B\x15(....)\x48\x85\xD2\x74.\x48\x8B\xC8\x48?\xFF\xE2)");
+	// lea rax, function; (up to 8 bytes); mov [pointer], rax
+	const Signatures::RegexSignature FunctionPointerStore(R"(\x48\x8D\x05(....).{0,8}\x48\x89\x05(....))");
 
 	const Signatures::RegexSignature OodleInit(R"(\x75.\x48\x8d\x15....\x48\x8d\x0d....\xe8(....)\xc6\x05....\x01.{0,256}\x75.\xb9(....)\xe8(....)(?:\x45\x33\xc0\x33\xd2|\x33\xd2\x45\x33\xc0)\x48\x8b\xc8\xe8.....{0,6}\x41\xb9(....)\xba.....{0,6}\x48\x8b\xc8\xe8(....))");
 	const Signatures::RegexSignature OodleSetUpStatesAndTrain(R"(\x75\x04[\x48\x4C]\x89..\xe8(....)[\x4C\x48]..\xe8(....).{0,256}\x01\x75\x0a[\x48\x49]\x8b.\xe8(....)\xeb\x09[\x48\x49]\x8b.\x08\xe8(....))");
@@ -881,9 +887,14 @@ namespace XivAlexander::Game::Resolved {
 	}
 
 	std::string to_string(const TextHooksFunctions& value) {
-		return std::format("cut scene language getter {}, string indirection resolvers {}",
+		return std::format("cut scene language getter {}, string indirection resolvers {}, RSV strings {}",
 			Signatures::Describe(value.CutSceneLanguageGetter),
-			Signatures::Describe(value.StringIndirectionResolvers));
+			Signatures::Describe(value.StringIndirectionResolvers),
+			Signatures::Describe(value.RsvStrings));
+	}
+
+	std::string to_string(const RsvStringFunctions& value) {
+		return std::format("add {}, resolve {}", Signatures::Describe(value.Add), Signatures::Describe(value.Resolve));
 	}
 
 	std::string to_string(const AudioResamplerFunctions& value) {
@@ -1028,6 +1039,31 @@ namespace XivAlexander::Game::Resolved {
 				return Address(ctx.First(CutSceneLanguageGetter, ctx.Text(), "call").ResolveAddress<const void*>(1));
 			}),
 			.StringIndirectionResolvers = AllMatchStarts<StringIndirectionResolverFn>(ctx, StringIndirectionResolver),
+			.RsvStrings = OptionalPart("TextHooks", "RSV strings", [&ctx]() -> RsvStringFunctions {
+				const void* found = nullptr;
+				for (const auto& m : ctx.All(RsvKeyPrefixTest, ctx.Text())) {
+					const auto prefix = m.ResolveAddress<const char*>(1);
+					if (!ctx.InSection(prefix, ".rdata") || std::string_view(prefix, 6) != std::string_view("_rsv_", 6))
+						continue;
+					const auto fn = ctx.FunctionContaining(m.begin(0), "AddRsvString").data();
+					ctx.Require(!found || found == fn, ResolveError::Ambiguous, "AddRsvString at {} and {}", Signatures::Describe(found), Signatures::Describe(fn));
+					found = fn;
+				}
+				ctx.Require(found != nullptr, ResolveError::NotFound, "AddRsvString not found");
+
+				const auto resolverPointer = ctx.Unique(RsvResolverTailCall, ctx.Text(), "column string resolver").ResolveAddress<const void*>(1);
+				ctx.RequireInSection(resolverPointer, ".data", "resolver pointer");
+				const void* resolve = nullptr;
+				for (const auto& m : ctx.All(FunctionPointerStore, ctx.Text())) {
+					if (m.ResolveAddress<const void*>(2) != resolverPointer)
+						continue;
+					const auto fn = ctx.RequireInSection(m.ResolveAddress<const void*>(1), ".text", "resolver");
+					ctx.Require(!resolve || resolve == fn, ResolveError::Ambiguous, "resolvers at {} and {}", Signatures::Describe(resolve), Signatures::Describe(fn));
+					resolve = fn;
+				}
+				ctx.Require(resolve != nullptr, ResolveError::NotFound, "where the resolver is set not found");
+				return {.Add = Address(found), .Resolve = Address(resolve)};
+			}),
 		};
 	});
 
@@ -2415,6 +2451,10 @@ namespace XivAlexander::Game::FontCode {
 	const Signatures::RegexSignature AtkModuleReloadFontShaders(R"([\x48\x49]\x8B[\x88-\x8B\x8D-\x8F](....)[\x48\x49]\x85\xC9(?:\x74.|\x0F\x84....)\xE8(....).{0,16}?\xBA([\x01-\x7F]\x00\x00\x00).{0,8}?[\x48\x49]\x8D[\x88-\x8B\x8D-\x8F](....).{0,8}?[\x4C\x4D]\x8D[\x80-\x83\x85-\x87]\1.{0,8}?\xE8(....))");
 	// Loading a font of the font manager: its texture count, against the most it can have.
 	const Signatures::RegexSignature LoadFont(R"(\x66[\x3B\x39][\x40-\x7F](.)(?:\x73.|\x0F\x83....|\x72.|\x0F\x82....).{0,40}?[\x48-\x4F]\x69[\xC0-\xFF](....)[\x48-\x4F]\x03[\x40-\x7F](.)[\x40-\x4F]?\xF6[\x80-\xBF](....)\x01.{0,40}?\x41?\x83[\x38-\x3F](.)(?:\x7C.|\x0F\x8C....).{0,24}?\x83[\xB8-\xBF](....)\x00(?:\x74.|\x0F\x84....).{0,200}?\x66[\x40-\x4F]?\x89[\x80-\xBF](....).{0,16}?[\x40-\x4F]?\x88[\x80-\xBF](....))");
+	// Unloading the font manager's loaded fonts: each texture's resource handle released, it and the texture nulled, then the loaded flags cleared.
+	const Signatures::RegexSignature UnloadFont(R"([\x40-\x4F]?\xF6[\x80-\x87](....)\x01(?:\x74.|\x0F\x84....).{0,16}?\x66[\x40-\x4F]?[\x3B\x39][\x80-\xBF](....)(?:\x73.|\x0F\x83....).{0,40}?\xE8....[\x48-\x4F]\x89[\x04\x0C\x14\x1C\x24\x2C\x34\x3C][\xC0-\xFF][\x48-\x4F]\x89(?:[\x44\x4C\x54\x5C\x64\x6C\x74\x7C][\xC0-\xFF](.)|[\x84\x8C\x94\x9C\xA4\xAC\xB4\xBC][\xC0-\xFF](....)).{0,120}?\x80[\xA0-\xA7](....)\xFC)");
+	// AtkModule unloading the fonts after the AtkServer's shaders, jumping over those without an AtkServer; the font manager's destroy at shutdown frees the AtkServer there instead.
+	const Signatures::RegexSignature AtkModuleUnloadFontShaders(R"([\x48\x49]\x8B[\x80-\xBF](....).{0,8}?[\x48\x49]\x85[\xC0-\xFF](?:\x74(.)|\x0F\x84(....))(?:(?![\x48-\x4F][\x89\x8B][\x80-\xBF]\1).){0,120}?[\x48\x49]\x8D[\x88-\x8B\x8D-\x8F](....).{0,12}?[\xE8\xE9](....))");
 	// Inside AtkUnitBase::CountCollisionNodes: the node list, recursing into components.
 	const Signatures::RegexSignature CountCollisionNodes(R"(\x0F\xB7[\x40-\x7F](.).{0,12}?[\x48-\x4F]\x8B[\x40-\x7F](.).{0,60}?(?:\xE8\x03\x00\x00.{0,60}?\x66[\x40-\x4F]?\x39[\x40-\x7F](.)|\x66[\x40-\x4F]?\x81[\x78-\x7F](.)\xE8\x03)(?:\x72.|\x0F\x82....)[\x48-\x4F]\x8B[\x80-\xBF](....)(?:\xEB.[\x31\x33][\xC0-\xFF])?[\x48-\x4F]\x85[\xC0-\xFF](?:\x74.|\x0F\x84....)(?:[\x48-\x4F]\x83[\xC0-\xC7](.)|[\x48-\x4F]\x8D[\x40-\x7F](.)).{0,8}?\xE8(....))");
 	// Inside AtkUnitBase::UpdateCollisionNodeList: the unit's own ULD manager.
@@ -2581,8 +2621,8 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	}
 
 	std::string to_string(const ModuleInitFunctions& value) {
-		return std::format("LoadShaders {}, InitFontManager {}, AtkServer +0x{:X}, font manager +0x{:X}",
-			Signatures::Describe(value.LoadShaders), Signatures::Describe(value.InitFontManager), value.Server, value.FontManager);
+		return std::format("Reload {}, LoadShaders {}, InitFontManager {}, AtkServer +0x{:X}, font manager +0x{:X}",
+			Signatures::Describe(value.Reload), Signatures::Describe(value.LoadShaders), Signatures::Describe(value.InitFontManager), value.Server, value.FontManager);
 	}
 
 	std::string to_string(const StageLayout& value) {
@@ -2600,9 +2640,10 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	}
 
 	std::string to_string(const FontLayout& value) {
-		return std::format("GetGlyph {}, LayOutCharacter {}, BuildFont {}, {} textures +0x{:X}, kerning count +0x{:X}, texture width +0x{:X}, size +0x{:X}, ascent +0x{:X}, "
-			"glyph map +0x{:X}, secondary +0x{:X} ratio +0x{:X}, texture count +0x{:X}, flags +0x{:X}, italic correction {}",
-			Signatures::Describe(value.GetGlyph), Signatures::Describe(value.LayOutCharacter), Signatures::Describe(value.BuildFont), value.MaxTextures, value.Textures,
+		return std::format("GetGlyph {}, LayOutCharacter {}, BuildFont {}, UnloadFont {}, {} textures +0x{:X}, kerning count +0x{:X}, texture width +0x{:X}, size +0x{:X}, "
+			"ascent +0x{:X}, glyph map +0x{:X}, secondary +0x{:X} ratio +0x{:X}, texture count +0x{:X}, flags +0x{:X}, italic correction {}",
+			Signatures::Describe(value.GetGlyph), Signatures::Describe(value.LayOutCharacter), Signatures::Describe(value.BuildFont), Signatures::Describe(value.UnloadFont),
+			value.MaxTextures, value.Textures,
 			value.KerningCount, value.TextureWidth, value.Size, value.Ascent, value.GlyphMap, value.Secondary, value.SecondaryRatio, value.TextureCount, value.Flags,
 			Signatures::Describe(value.XShift));
 	}
@@ -2660,6 +2701,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit("Fonts.ModuleInit", [](ResolveContext& ctx) {
 		const auto m = ctx.Unique(FontCode::AtkModuleReloadFontShaders, ctx.Text(), "shader reload");
 		return ModuleInitFunctions{
+			.Reload = FunctionOf(ctx, m, "shader reload"),
 			.LoadShaders = CalledFunction(ctx, m, {2}, "LoadShaders"),
 			.InitFontManager = CalledFunction(ctx, m, {5}, "InitFontManager"),
 			.Server = Captured(m, {1}, "AtkServer"),
@@ -2718,14 +2760,35 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		const auto layOut = ctx.Unique(FontCode::LayOutCharacter, text, "LayOutCharacter");
 		const auto getGlyphFunction = CalledFunction(ctx, layOut, {1}, "GetGlyph");
 		const auto getGlyph = UniqueIn(ctx, FontCode::GetGlyph, getGlyphFunction, "GetGlyph");
-		const auto fontManagerFunctions = FunctionsAfter(ctx, ctx.Get(ModuleInit).InitFontManager, 16);
+		const auto& init = ctx.Get(ModuleInit);
+		const auto fontManagerFunctions = FunctionsAfter(ctx, init.InitFontManager, 16);
 		const auto build = UniqueIn(ctx, FontCode::BuildFont, fontManagerFunctions, "BuildFont");
 		const auto quad = ctx.Unique(FontCode::GlyphQuad, text, "GlyphQuad");
 		const auto load = UniqueIn(ctx, FontCode::LoadFont, fontManagerFunctions, "LoadFont");
+
+		// AtkModule's shader and font unload is the function right after its reload.
+		const void* unloadTarget{};
+		for (const auto function : FunctionsAfter(ctx, init.Reload, 4)) {
+			for (const auto run : FunctionRuns(ctx, function, "function after the shader reload")) {
+				for (const auto& m : FontCode::AtkModuleUnloadFontShaders.Lookup(run, RegexSignature::FromNextByte)) {
+					if (m.Get<int32_t>(1) != init.Server || m.Get<int32_t>(4) != init.FontManager)
+						continue;
+					const auto skipTo = m.Match()[2].matched ? m.begin<const uint8_t>(2) + 1 + m.Get<int8_t>(2) : m.begin<const uint8_t>(3) + 4 + m.Get<int32_t>(3);
+					if (skipTo != m.begin<const uint8_t>(4) - 3)
+						continue;
+					const auto target = m.ResolveAddress<const void*>(5);
+					ctx.Require(!unloadTarget || unloadTarget == target, ResolveError::Ambiguous, "font unload sites call different functions");
+					unloadTarget = target;
+				}
+			}
+		}
+		ctx.Require(unloadTarget != nullptr, ResolveError::NotFound, "font unload site not found after the shader reload");
+
 		FontLayout res{
 			.GetGlyph = getGlyphFunction,
 			.LayOutCharacter = FunctionOf(ctx, layOut, "LayOutCharacter"),
 			.BuildFont = FunctionOf(ctx, build, "BuildFont"),
+			.UnloadFont = Address(ctx.FunctionStartingAt(unloadTarget, "UnloadFont").data()),
 			.MaxTextures = Captured(load, {5}, "max textures"),
 			.Textures = Captured(build, {7}, "textures"),
 			.KerningCount = Captured(build, {13}, "kerning count"),
@@ -2738,6 +2801,11 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			.TextureCount = Captured(build, {5}, "texture count"),
 			.Flags = Captured(build, {4, 16}, "flags"),
 		};
+		if (const auto unload = TryUniqueIn(ctx, FontCode::UnloadFont, res.UnloadFont)) {
+			ctx.Require(Captured(*unload, {1}, "flags") == res.Flags && Captured(*unload, {5}, "flags") == res.Flags && Captured(*unload, {2}, "texture count") == res.TextureCount
+					&& Captured(*unload, {3, 4}, "textures") == res.Textures,
+				ResolveError::Mismatch, "UnloadFont disagrees with BuildFont on the font's fields");
+		}
 
 		// Only set in copies of fonts; without it, italics overhang the next glyph.
 		if (const auto setUp = TryUnique(ctx, FontCode::SetUpFontSets))

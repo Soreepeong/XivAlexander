@@ -91,4 +91,8 @@
   <ItemGroup>
     <None Include="vcpkg.json" />
   </ItemGroup>
+  <!-- A relinked target is unsigned, but the signing step would count its old log as up to date. -->
+  <Target Name="ForgetSigningOnRelink" AfterTargets="Link" Condition="'$(LinkSkippedExecution)' == 'false'">
+    <Delete Files="$(TargetPath).sign.txt" />
+  </Target>
 </Project>

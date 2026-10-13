@@ -214,7 +214,7 @@ FontReplacement::FontFileKey FontReplacement::FontFileKey::Of(IDWriteFontFace* f
 }
 
 FontReplacement::GlyphRasterizer::GlyphRasterizer() {
-	ThrowOnError(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory2), reinterpret_cast<IUnknown**>(&m_factory)), "DWriteCreateFactory");
+	ThrowOnError(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), reinterpret_cast<IUnknown**>(&m_factory)), "DWriteCreateFactory");
 	ThrowOnError(m_factory->GetSystemFontCollection(&m_systemFonts, FALSE), "GetSystemFontCollection");
 
 	IDWriteFontFallbackBuilderPtr builder;
@@ -265,7 +265,7 @@ FontReplacement::RasterGlyph FontReplacement::GlyphRasterizer::RasterizeRun(
 	const GlyphTransform& transform,
 	float originY) const {
 	// Grayscale is the mean of the three subpixels; aliased text has no ClearType.
-	const auto subpixel = m_subpixelOrder != SubpixelOrder::None && parameters.RenderMode != DWRITE_RENDERING_MODE_ALIASED;
+	const auto subpixel = m_subpixelOrder != SubpixelOrder::None && parameters.RenderMode != DWRITE_RENDERING_MODE1_ALIASED;
 	const auto analysis = CreateAnalysis(face, px, glyphs, advances, offsets, count, originX, originY, parameters, transform,
 		subpixel ? DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE : DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE);
 
@@ -333,12 +333,15 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 
 	auto measuringMode = parameters.MeasureMode;
 	auto renderingMode = parameters.RenderMode;
-	if (renderingMode == DWRITE_RENDERING_MODE_DEFAULT)
-		face->GetRecommendedRenderingMode(px, 1, measuringMode, nullptr, &renderingMode);
+	if (renderingMode == DWRITE_RENDERING_MODE1_DEFAULT) {
+		DWRITE_RENDERING_MODE recommended;
+		face->GetRecommendedRenderingMode(px, 1, measuringMode, nullptr, &recommended);
+		renderingMode = static_cast<DWRITE_RENDERING_MODE1>(recommended);
+	}
 
 	// Outlines can't be rasterized.
-	if (renderingMode == DWRITE_RENDERING_MODE_OUTLINE || renderingMode == DWRITE_RENDERING_MODE_DEFAULT)
-		renderingMode = DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC;
+	if (renderingMode == DWRITE_RENDERING_MODE1_OUTLINE || renderingMode == DWRITE_RENDERING_MODE1_DEFAULT)
+		renderingMode = DWRITE_RENDERING_MODE1_NATURAL_SYMMETRIC;
 
 	auto gridFitMode = parameters.GridFitMode;
 	for (auto attempt = 0;; attempt++) {
@@ -359,7 +362,7 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 			ThrowOnError(hr, "CreateGlyphRunAnalysis");
 
 		// Parameters DirectWrite refuses are tried again as the defaults.
-		renderingMode = DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC;
+		renderingMode = DWRITE_RENDERING_MODE1_NATURAL_SYMMETRIC;
 		measuringMode = DWRITE_MEASURING_MODE_NATURAL;
 		gridFitMode = DWRITE_GRID_FIT_MODE_DEFAULT;
 	}

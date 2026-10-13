@@ -30,8 +30,10 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource&
 	j = nlohmann::json::object({{"Enabled", v.Enabled}});
 	if (v.IsPreset())
 		j["Preset"] = v.Preset;
-	else
+	else {
 		j["Font"] = v.Font;
+		j["MonospacedDigits"] = v.MonospacedDigits;
+	}
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySource& v) {
@@ -39,12 +41,12 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySourc
 	Read(j, "Enabled", v.Enabled);
 	Read(j, "Preset", v.Preset);
 	Read(j, "Font", v.Font);
+	Read(j, "MonospacedDigits", v.MonospacedDigits);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamily& v) {
 	j = nlohmann::json::object({
 		{"Enabled", v.Enabled},
-		{"MonospacedDigits", v.MonospacedDigits},
 		{"Sources", v.Sources},
 	});
 }
@@ -52,7 +54,6 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamily& v) {
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamily& v) {
 	v = {};
 	Read(j, "Enabled", v.Enabled);
-	Read(j, "MonospacedDigits", v.MonospacedDigits);
 	Read(j, "Sources", v.Sources);
 }
 
@@ -71,6 +72,23 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 	Read(j, "Min", v.Min);
 	Read(j, "Max", v.Max);
 	Read(j, "Softness", v.Softness);
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAtlasConfig& v) {
+	j = nlohmann::json::object({
+		{"AxisPageSize", v.AxisPageSize},
+		{"AxisMaxPages", v.AxisMaxPages},
+		{"OtherPageSize", v.OtherPageSize},
+		{"OtherMaxPages", v.OtherMaxPages},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAtlasConfig& v) {
+	v = {};
+	Read(j, "AxisPageSize", v.AxisPageSize);
+	Read(j, "AxisMaxPages", v.AxisMaxPages);
+	Read(j, "OtherPageSize", v.OtherPageSize);
+	Read(j, "OtherMaxPages", v.OtherMaxPages);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode& v) {

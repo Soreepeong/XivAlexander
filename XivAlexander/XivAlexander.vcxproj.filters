@@ -774,7 +774,7 @@
     <None Include="Exports_x64.def">
       <Filter>Project Items</Filter>
     </None>
-    <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgeSquares.hlsli">
+    <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgeSquares.hlsli">
       <Filter>MainApp\FontReplacement</Filter>
     </None>
     <None Include="Version.rc2">
@@ -787,13 +787,13 @@
     </Manifest>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontSubpixelPS.hlsl">
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontSubpixelPS.hlsl">
       <Filter>MainApp\FontReplacement</Filter>
     </FxCompile>
     <FxCompile Include="MainApp\FontReplacement\FontSubpixelHighlightPS.hlsl">
       <Filter>MainApp\FontReplacement</Filter>
     </FxCompile>
-    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgePS.hlsl">
       <Filter>MainApp\FontReplacement</Filter>
     </FxCompile>
   </ItemGroup>

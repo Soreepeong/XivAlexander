@@ -4,7 +4,7 @@
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Square B8G8R8A8 pages, a glyph plane per channel; may be smaller than the game's as shaders divide UVs by the bound texture's size.
-	// Only the edge/glare texel step follows the font's claimed texture width. Indices start at FirstTextureIndex, above the game's textures.
+	// Only the edge/glare texel step follows the font's claimed texture width. A page's index is the texture index its glyphs have in a copy.
 	// Subpixel atlases have odd sizes (how FontSubpixelPS tells them apart); glyphs take R, G, B for subpixel coverage and A (SubpixelPlane) for grayscale.
 	class GlyphAtlas {
 	public:
@@ -12,14 +12,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		static constexpr int SubpixelPlane = 3;
 
-		// Past the textures of every font in the game's tables (7 in the global client). Set before the first atlas is made.
-		static int FirstTextureIndex;
-
-		[[nodiscard]] static int MaxPages();
-
-		[[nodiscard]] static int MaxPlanes() { return MaxPages() * PlanesPerPage; }
-
 		[[nodiscard]] static int PaddedArea(int width, int height);
+
+		[[nodiscard]] bool CanHold(int width, int height) const;
 
 	private:
 		struct Shelf {
@@ -64,14 +59,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int m_frontier = 1;
 
 	public:
-		// size: page side length, up to 4096 (glyph positions take 12 bits); odd for a subpixel atlas.
-		GlyphAtlas(int size, std::string name, bool subpixel = false);
+		// size: page side length, up to 4096 (glyph positions take 12 bits); odd for a subpixel atlas. maxPages: at most a font's texture slots.
+		GlyphAtlas(int size, int maxPages, std::string name, bool subpixel = false);
 		GlyphAtlas(const GlyphAtlas&) = delete;
 		GlyphAtlas& operator=(const GlyphAtlas&) = delete;
 		~GlyphAtlas();
-
-		// Called on the thread that allocates, after a page was added, without the atlas's lock held.
-		std::function<void()> PageAdded;
 
 		[[nodiscard]] int Size() const { return m_size; }
 
@@ -79,13 +71,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] bool Subpixel() const { return m_subpixel; }
 
+		[[nodiscard]] int MaxPages() const { return m_maxPages; }
+
+		[[nodiscard]] int MaxPlanes() const { return m_maxPages * PlanesPerPage; }
+
 		[[nodiscard]] int PageCount() const { return m_pageCount.load(std::memory_order_acquire); }
 
 		// page < PageCount().
 		[[nodiscard]] uintptr_t GetKernelTexture(int page) const { return m_pages[page]->Texture.Kernel(); }
-
-		// The renderer only has vertex buffers for texture indices below a font's texture count, so a page must exist before the first glyph.
-		void EnsurePage();
 
 		// Keeps the textures (fonts refer to them). Game thread, between frames: no glyph referring to the old contents may be drawn afterwards.
 		void Clear();
@@ -109,7 +102,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		void Upload();
 
 	private:
-		// Adds pages up to count; the textures are made without the lock. false if count is past MaxPages().
+		// Adds pages up to count; the textures are made without the lock. false if count is past m_maxPages.
 		bool TryEnsurePages(int count);
 
 		[[nodiscard]] int FirstPlane() const { return m_subpixel ? SubpixelPlane : 0; }

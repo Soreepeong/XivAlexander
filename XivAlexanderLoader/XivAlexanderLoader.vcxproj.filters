@@ -83,7 +83,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl" />
+    <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgePS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json">

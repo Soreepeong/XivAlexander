@@ -58,7 +58,10 @@ namespace Dll {
 	std::wstring GetGameCommandLine();
 	[[nodiscard]] bool IsOriginalCommandLineObfuscated();
 	void ReplaceOriginalCommandLine(XivAlexander::Game::CommandLine::ArgumentList params);
+	/// False also when the game's command line couldn't be read.
 	[[nodiscard]] bool IsLanguageRegionModifiable();
+	/// Why the game's command line couldn't be read, leaving what depends on it off; empty if it could.
+	[[nodiscard]] const std::string& GetCommandLineError();
 
 	void SetLoadedFromEntryPoint();
 	[[nodiscard]] bool IsLoadedFromEntryPoint();

@@ -229,8 +229,10 @@ uint32_t FontReplacement::SubpixelText::Decide(uintptr_t server, const DrawState
 bool FontReplacement::SubpixelText::EnsureShader(uintptr_t server, PassShader& pass) {
 	const auto current = GetShaderObject(server, pass.Pass, false, {});
 
-	// A UI shader reload drops the patched object, so its game shader is ours to release.
-	if (pass.PatchedObject && current != pass.PatchedObject) {
+	// A UI shader reload drops the patched object (a new one may take its address) or makes it bind another shader, so its
+	// game shader is ours to release.
+	if (pass.PatchedObject && (current != pass.PatchedObject
+		|| *reinterpret_cast<ID3D11PixelShader**>(current + m_d3dShader) != pass.Shader.GetInterfacePtr())) {
 		if (pass.Original)
 			pass.Original->Release();
 		pass.PatchedObject = 0;
@@ -238,10 +240,10 @@ bool FontReplacement::SubpixelText::EnsureShader(uintptr_t server, PassShader& p
 	}
 	if (!current)
 		return false;
+	if (pass.PatchedObject)
+		return true;
 
 	const auto slot = reinterpret_cast<ID3D11PixelShader**>(current + m_d3dShader);
-	if (current == pass.PatchedObject)
-		return *slot == pass.Shader.GetInterfacePtr();
 
 	if (!*slot || !GetShaderObject(server, pass.Pass, true, pass.File))
 		return false;

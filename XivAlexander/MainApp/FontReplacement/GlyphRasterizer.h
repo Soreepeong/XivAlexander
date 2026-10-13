@@ -112,7 +112,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 
 	struct DirectWriteParams {
-		DWRITE_RENDERING_MODE RenderMode = DWRITE_RENDERING_MODE_NATURAL;
+		DWRITE_RENDERING_MODE1 RenderMode = DWRITE_RENDERING_MODE1_NATURAL;
 		DWRITE_MEASURING_MODE MeasureMode = DWRITE_MEASURING_MODE_GDI_CLASSIC;
 		DWRITE_GRID_FIT_MODE GridFitMode = DWRITE_GRID_FIT_MODE_ENABLED;
 
@@ -122,7 +122,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 
 	class GlyphRasterizer {
-		IDWriteFactory2Ptr m_factory;
+		IDWriteFactory3Ptr m_factory;
 		IDWriteFontCollectionPtr m_systemFonts;
 		IDWriteFontFallbackPtr m_noFallback;
 		std::unique_ptr<FreeTypeFonts> m_freeType;

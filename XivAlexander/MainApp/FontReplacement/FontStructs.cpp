@@ -9,9 +9,6 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The most textures a font of the global client's tables has.
-	constexpr int GlobalMaxFontTextureCount = 7;
-
 	// Set once BuildFont has built the font.
 	constexpr int ReadyFontFlag = 2;
 
@@ -104,24 +101,6 @@ void FontReplacement::ResolveGameFontStructs() {
 	GameFontManager::Resolve();
 	GameFontSet::Resolve();
 	GameFont::Resolve();
-}
-
-int FontReplacement::GetMaxGameFontTextureCount() {
-	Game::Resolved::Fonts::FontTablesLayout tables;
-	try {
-		tables = ResolveGameCode(Game::Resolved::Fonts::FontTables);
-	} catch (const std::exception& e) {
-		Host::Warning("The font tables weren't found; taking the global client's texture count: {}", e.what());
-		return GlobalMaxFontTextureCount;
-	}
-
-	// An entry's texture count is its first field.
-	auto max = 0;
-	for (const auto table : {tables.Game, tables.LobbyA, tables.LobbyB}) {
-		for (auto i = 0; i < tables.Count; i++)
-			max = (std::max)(max, static_cast<int>(*reinterpret_cast<const uint64_t*>(static_cast<const uint8_t*>(table) + static_cast<size_t>(i) * tables.EntrySize)));
-	}
-	return max;
 }
 
 float FontReplacement::GameFontSet::ScaledSizeY() const {

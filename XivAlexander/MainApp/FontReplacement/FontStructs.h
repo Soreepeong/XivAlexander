@@ -37,9 +37,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	void ResolveGameFontStructs();
 
-	// Most textures a font of the FontTables (game's and lobby's two) has, so indices from there on are free; the global client's if not found.
-	[[nodiscard]] int GetMaxGameFontTextureCount();
-
 	// The fonts of one font type, and the per-draw state the text analyzers keep in it. Opaque: only used through pointers.
 	struct GameFontSet {
 		GameFontSet() = delete;
@@ -128,7 +125,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		static int StructSize;
 
-		// The text renderer keeps vertex counts and buffers for this many textures.
+		// The text renderer keeps vertex counts and buffers for this many textures, and a font's texture arrays are this long (LoadFont's limit).
 		static int MaxTextures;
 
 		uint32_t& KerningCount();

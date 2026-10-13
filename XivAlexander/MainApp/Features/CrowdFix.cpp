@@ -370,15 +370,82 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		};
 
+		/// Hooks the game's import of a HANDLE-first function only for calls on the given handles; a stub jumps straight to the import for the rest,
+		/// so no other thread can be left blocked inside the detour (and the hook's destructor waiting on it) when it goes away.
+		class HandleFilteredImport final : public Misc::Hooks::Function<DWORD, HANDLE, DWORD> {
+			using Super = Misc::Hooks::Function<DWORD, HANDLE, DWORD>;
+
+			std::vector<uint8_t, Utils::Win32::HeapAllocator<uint8_t>> m_stub;
+
+			static Utils::Win32::HeapAllocator<uint8_t>& ExecutableAllocator() {
+				static Utils::Win32::HeapAllocator<uint8_t> allocator(HEAP_CREATE_ENABLE_EXECUTE);
+				return allocator;
+			}
+
+		public:
+			HandleFilteredImport(const char* szName, const char* szDllName, const char* szFunctionName)
+				: Super(szName, reinterpret_cast<FunctionType>(Utils::Win32::Process::Current().FindImportedFunction(GetModuleHandleW(nullptr), szDllName, szFunctionName, 0).first))
+				, m_stub(ExecutableAllocator()) {
+				if (m_pAddress)
+					m_bridge = *reinterpret_cast<FunctionType*>(m_pAddress);
+			}
+
+			/// Once, before SetHook; the handles are read by the stub in place, so they must outlive it unchanged.
+			void SetHandles(std::span<const HANDLE> handles) {
+				auto& code = m_stub;
+				code.clear();
+				const auto append = [&code](uint64_t value, size_t size) {
+					for (size_t i = 0; i < size; i++)
+						code.push_back(static_cast<uint8_t>(value >> (i * 8)));
+				};
+				code.insert(code.end(), {0x49, 0xBA});  // mov r10, handles
+				append(reinterpret_cast<uint64_t>(handles.data()), 8);
+				code.insert(code.end(), {0x41, 0xBB});  // mov r11d, count
+				append(handles.size(), 4);
+				code.insert(code.end(), {
+					0x45, 0x85, 0xDB,  // loop: test r11d, r11d
+					0x74, 0x1C,  // jz other
+					0x49, 0x3B, 0x0A,  // cmp rcx, [r10]
+					0x74, 0x09,  // je filtered
+					0x49, 0x83, 0xC2, 0x08,  // add r10, 8
+					0x41, 0xFF, 0xCB,  // dec r11d
+					0xEB, 0xED,  // jmp loop
+					0xFF, 0x25, 0x00, 0x00, 0x00, 0x00,  // filtered: jmp [rip]
+				});
+				append(m_binder.GetBinder<uint64_t>(), 8);
+				code.insert(code.end(), {0xFF, 0x25, 0x00, 0x00, 0x00, 0x00});  // other: jmp [rip]
+				append(reinterpret_cast<uint64_t>(m_bridge), 8);
+			}
+
+			DWORD operator()(HANDLE handle, DWORD milliseconds) const override {
+				return (*reinterpret_cast<FunctionType*>(m_pAddress))(handle, milliseconds);
+			}
+
+		protected:
+			void HookEnable() override {
+				if (m_stub.empty())
+					throw std::logic_error("HandleFilteredImport: SetHandles was not called");
+				WriteAtomically(reinterpret_cast<void*>(m_pAddress), static_cast<void*>(m_stub.data()));
+			}
+
+			void HookDisable() override {
+				try {
+					WriteAtomically(reinterpret_cast<void*>(m_pAddress), reinterpret_cast<void*>(m_bridge));
+				} catch (...) {
+					// Runs from a destructor; the slot stays hooked if it cannot be made writable.
+				}
+			}
+		};
+
 		/// Instead of waking all, a job submit wakes one sleeping worker, and each woken worker wakes the next while work remains (game's own counters).
 		class JobWakeChain final : public FixBase {
 			static constexpr int32_t MaxWorkers = 256;  // a larger count is from a pool that is not set up yet
 
 			Resolved::ChainWorkerWakeupsFunctions m_functions;
 			std::optional<PointerFunctionOf<Resolved::JobPoolWakeAllFn>> m_wakeAll;
-			Misc::Hooks::ImportedFunction<DWORD, HANDLE, DWORD> m_wait{"kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject"};
+			HandleFilteredImport m_wait{"kernel32!WaitForSingleObject", "kernel32.dll", "WaitForSingleObject"};
 
-			// Filled once: sleeping workers may still read it after the hooks are gone.
+			// Filled once: the wait hook's stub reads it in place, and threads in it may still do so after the hooks are gone.
 			std::vector<HANDLE> m_workerEvents;
 			void* m_pool{};
 
@@ -427,6 +494,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 					const auto threads = At<uint8_t**>(pool, layout.Threads);
 					for (int32_t i = 0, count = At<int32_t>(pool, layout.ThreadCount); i < count; i++)
 						m_workerEvents.push_back(At<HANDLE>(threads[i], layout.ThreadEvent));
+					m_wait.SetHandles(m_workerEvents);
 				}
 
 				m_pool = pool;
@@ -479,8 +547,7 @@ namespace XivAlexander::Apps::MainApp::Features {
 			DWORD WaitDetour(HANDLE handle, DWORD milliseconds) {
 				const auto result = m_wait.bridge(handle, milliseconds);
 				const auto queue = static_cast<const volatile uint32_t*>(m_functions.QueueIndices);
-				if (result == WAIT_OBJECT_0 && milliseconds == INFINITE && queue[1] != queue[0]
-					&& std::ranges::find(m_workerEvents, handle) != m_workerEvents.end())
+				if (result == WAIT_OBJECT_0 && milliseconds == INFINITE && queue[1] != queue[0])
 					WakeOne(m_pool, false);
 
 				return result;

@@ -34,6 +34,10 @@ bool Loader::Json::Document::Parse(const char* data, size_t size) {
 	Free(m_tokens);
 	m_tokens = nullptr;
 	m_count = 0;
+	if (size >= 3 && static_cast<unsigned char>(data[0]) == 0xEF && static_cast<unsigned char>(data[1]) == 0xBB && static_cast<unsigned char>(data[2]) == 0xBF) {
+		data += 3;
+		size -= 3;
+	}
 	m_text = data;
 
 	jsmn_parser parser;
@@ -46,10 +50,7 @@ bool Loader::Json::Document::Parse(const char* data, size_t size) {
 	if (jsmn_parse(&parser, data, size, m_tokens, static_cast<unsigned>(count)) != count)
 		return false;
 
-	// One value, with nothing but whitespace (and a UTF-8 byte order mark) around it.
-	auto first = 0;
-	if (size >= 3 && static_cast<unsigned char>(data[0]) == 0xEF && static_cast<unsigned char>(data[1]) == 0xBB && static_cast<unsigned char>(data[2]) == 0xBF)
-		first = 3;
+	// One value, with nothing but whitespace around it.
 	m_count = count;
 	const auto root = Root();
 	auto start = m_tokens[0].start;
@@ -59,7 +60,7 @@ bool Loader::Json::Document::Parse(const char* data, size_t size) {
 		--start;
 		++end;
 	}
-	for (auto i = first; i < start; ++i) {
+	for (auto i = 0; i < start; ++i) {
 		if (!IsWhitespace(data[i]))
 			return m_count = 0, false;
 	}

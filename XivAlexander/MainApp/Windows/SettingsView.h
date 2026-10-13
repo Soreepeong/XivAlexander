@@ -59,6 +59,8 @@ namespace XivAlexander::Apps::MainApp::Window {
 			bool Tabbed = false;
 			// For an item: shown after its group's inline groups, instead of before them.
 			bool AfterInlineGroups = false;
+			// For a number after a check box: on the check box's line, after it; its label is the unit after the box.
+			bool BesideCheck = false;
 			// For a group: (label string resource, or 0 for the menu text; command) buttons atop its page, sending commands to the owner.
 			std::vector<std::pair<UINT, UINT>> Actions;
 			// For a group: the items of another node, shown at the end of its page under a heading.

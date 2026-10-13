@@ -436,8 +436,8 @@ void FontReplacement::OutlineElementFont::ApplyTo(IDWriteTextLayout* layout, DWR
 	ThrowOnError(layout->SetFontStretch(font.LayoutStretch(), range), "SetFontStretch");
 	ThrowOnError(layout->SetFontStyle(font.LayoutStyle(), range), "SetFontStyle");
 	ThrowOnError(layout->SetFontSize(emSize, range), "SetFontSize");
-	if (!lookup.Language.empty())
-		ThrowOnError(layout->SetLocaleName(xivres::util::unicode::convert<std::wstring>(lookup.Language).c_str(), range), "SetLocaleName");
+	if (!lookup.LanguageCode.empty())
+		ThrowOnError(layout->SetLocaleName(xivres::util::unicode::convert<std::wstring>(lookup.LanguageCode).c_str(), range), "SetLocaleName");
 
 	if (const auto typography = GetTypography())
 		ThrowOnError(layout->SetTypography(typography, range), "SetTypography");

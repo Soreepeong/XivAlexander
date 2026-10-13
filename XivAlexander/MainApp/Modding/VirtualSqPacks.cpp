@@ -228,7 +228,8 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 				ReflectUsedEntries_FindPlaceholders(view, tempData, pathSpec);
 			applied.clear();
 
-			for (const auto& [pathSpec, file] : *Sources.GetReplacementFiles(pack->Key, pack->IndexPath)) {
+			const auto replacementFiles = Sources.GetReplacementFiles(pack->Key, pack->IndexPath);
+			for (const auto& [pathSpec, file] : *replacementFiles) {
 				applied.emplace_back(pathSpec);
 				ReflectUsedEntries_FindPlaceholders(view, tempData, pathSpec);
 				if (const auto it = tempData.Replacements.find(pathSpec); it != tempData.Replacements.end()) {

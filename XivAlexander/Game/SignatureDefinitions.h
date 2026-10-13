@@ -23,10 +23,20 @@ namespace XivAlexander::Game::Resolved {
 
 	using StringIndirectionResolverFn = const char8_t*(*)(const char8_t* str);
 	using CutSceneLanguageGetterFn = int(*)(void* p);
+	// LayoutWorld::AddRsvString: keeps the text the server sent for a "_rsv_" key, which sheet cells holding the key show.
+	using AddRsvStringFn = bool(*)(void* layoutWorld, const char* key, const uint8_t* value, size_t valueLength);
+
+	// What a sheet cell holding a "_rsv_" key shows: the text kept for the key, or an empty string.
+	using ResolveRsvStringFn = const char*(*)(const char* key);
+	struct RsvStringFunctions {
+		AddRsvStringFn Add{};
+		ResolveRsvStringFn Resolve{};  // what Framework::Setup sets as the cells' resolver
+	};
 
 	struct TextHooksFunctions {
 		std::optional<CutSceneLanguageGetterFn> CutSceneLanguageGetter;
 		std::vector<StringIndirectionResolverFn> StringIndirectionResolvers;
+		std::optional<RsvStringFunctions> RsvStrings;
 	};
 
 	struct OpcodeGuesserCandidates {
@@ -179,6 +189,7 @@ namespace XivAlexander::Game::Resolved {
 	[[nodiscard]] std::string to_string(const DisplayLanguageFunctions& value);
 
 	[[nodiscard]] std::string to_string(const SqpackLookupHooksFunctions& value);
+	[[nodiscard]] std::string to_string(const RsvStringFunctions& value);
 	[[nodiscard]] std::string to_string(const TextHooksFunctions& value);
 	[[nodiscard]] std::string to_string(const OpcodeGuesserCandidates& value);
 	[[nodiscard]] std::string to_string(const AudioResamplerFunctions& value);
@@ -492,6 +503,7 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 namespace XivAlexander::Game::Resolved::Fonts {
 	// What AtkModule's shader and font reload calls, which the other signatures look into.
 	struct ModuleInitFunctions {
+		void* Reload{};  // AtkModule's shader and font reload, the function matched
 		void* LoadShaders{};  // AtkServer::LoadShaders(server)
 		void* InitFontManager{};  // AtkFontManager's initialization
 		int32_t Server{};  // AtkServer, in AtkModule
@@ -525,6 +537,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		void* GetGlyph{};
 		void* LayOutCharacter{};
 		void* BuildFont{};
+		void* UnloadFont{};  // AtkFontManager's unload of every loaded font (manager)
 		int32_t MaxTextures{};
 		int32_t Textures{};  // Kernel::Texture*[MaxTextures]
 		int32_t KerningCount{};  // uint32_t

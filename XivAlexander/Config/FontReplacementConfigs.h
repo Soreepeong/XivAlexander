@@ -24,6 +24,8 @@ namespace XivAlexander {
 
 		FontReplacementFamilyFont Font;
 
+		bool MonospacedDigits = true;
+
 		[[nodiscard]] bool IsPreset() const { return !Preset.empty(); }
 
 		bool operator==(const FontReplacementFamilySource&) const = default;
@@ -33,9 +35,6 @@ namespace XivAlexander {
 	struct FontReplacementFamily {
 		/// If false, the game's own font is kept, as for a family without sources.
 		bool Enabled = true;
-
-		/// Uses the system font's tabular figures (tnum) if it has them, else puts each digit in a cell as wide as its 0.
-		bool MonospacedDigits = true;
 
 		/// In order: of a preset only the family's faces are used, and later sources draw over earlier ones glyph by glyph.
 		std::vector<FontReplacementFamilySource> Sources;
@@ -67,6 +66,22 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
 	};
 
+	/// Glyph atlases, one per game font family: side length of a page in texels and how many pages one may take, for AXIS (most of the UI's text)
+	/// and for the other families. Pages are made as glyphs need them; a 4096 page takes 64 MB of video memory, a 2048 one 16 MB.
+	struct FontReplacementAtlasConfig {
+		int AxisPageSize = 4096;
+		int AxisMaxPages = 4;
+		int OtherPageSize = 2048;
+		int OtherMaxPages = 2;
+
+		/// Sizes 256 to 4096 (glyph positions take 12 bits), 1 to 64 pages (texture indices take 6 bits); the game's texture slots may allow fewer.
+		[[nodiscard]] FontReplacementAtlasConfig Clamped() const {
+			return {std::clamp(AxisPageSize, 256, 4096), std::clamp(AxisMaxPages, 1, 64), std::clamp(OtherPageSize, 256, 4096), std::clamp(OtherMaxPages, 1, 64)};
+		}
+
+		bool operator==(const FontReplacementAtlasConfig&) const = default;
+	};
+
 	/// Subpixel text; System follows Windows' ClearType setting for the game's monitor.
 	enum class FontReplacementSubpixelMode : uint8_t {
 		Off,
@@ -87,23 +102,17 @@ namespace XivAlexander {
 
 		ConfigItem<bool> Enabled{this, "Enabled", false};
 
-		/// What the faces are made from; a change reloads them.
 		class FacesGroup : public ConfigGroup {
 		public:
 			using ConfigGroup::ConfigGroup;
-
-			/// Families missing here, off, or without sources (and faces their sources lack) use the game's glyphs, with SystemFallback for the rest.
 			ConfigItem<std::map<std::string, FontReplacementFamily>> Families{this, "Families"};
-
-			/// Whether characters the presets lack are drawn with Windows' fallback fonts, instead of the game's.
 			ConfigItem<bool> SystemFallback{this, "SystemFallback", true};
 		} Faces{this, "Faces"};
 
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
-
-		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::System};
-
+		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::Off};
 		ConfigItem<FontReplacementNamePlateMode> NamePlates{this, "NamePlates", FontReplacementNamePlateMode::BakedAtFullSize};
+		ConfigItem<FontReplacementAtlasConfig> Atlas{this, "Atlas", {}, [](const FontReplacementAtlasConfig& v) { return v.Clamped(); }};
 	};
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
@@ -114,6 +123,8 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, FontReplacementFamily&);
 	void to_json(nlohmann::json&, const FontReplacementEdgeConfig&);
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
+	void to_json(nlohmann::json&, const FontReplacementAtlasConfig&);
+	void from_json(const nlohmann::json&, FontReplacementAtlasConfig&);
 	void to_json(nlohmann::json&, const FontReplacementSubpixelMode&);
 	void from_json(const nlohmann::json&, FontReplacementSubpixelMode&);
 	void to_json(nlohmann::json&, const FontReplacementNamePlateMode&);

@@ -179,7 +179,7 @@
     </ItemGroup>
     <!-- XivAlexander.rc embeds these. -->
     <ItemGroup>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontSubpixelPS.hlsl">
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontSubpixelPS.hlsl">
             <ShaderType>Pixel</ShaderType>
             <ShaderModel>5.0</ShaderModel>
             <EntryPointName>main</EntryPointName>
@@ -197,7 +197,7 @@
             <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
             <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
         </FxCompile>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\FontEdgePS.hlsl">
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgePS.hlsl">
             <ShaderType>Pixel</ShaderType>
             <ShaderModel>5.0</ShaderModel>
             <EntryPointName>main</EntryPointName>
@@ -221,4 +221,8 @@
     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
     <ImportGroup Label="ExtensionTargets">
     </ImportGroup>
+    <!-- A relinked target is unsigned, but the signing step would count its old log as up to date. -->
+    <Target Name="ForgetSigningOnRelink" AfterTargets="Link" Condition="'$(LinkSkippedExecution)' == 'false'">
+        <Delete Files="$(TargetPath).sign.txt"/>
+    </Target>
 </Project>

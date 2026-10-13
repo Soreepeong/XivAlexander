@@ -1331,13 +1331,20 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				// Sheets with subrows can't be generated; theirs pass through as they are.
 				if (subRowStride)
 					return {};
-				size_t emptyInSource = 0;
+				size_t emptyInSource = 0, reservedInSource = 0;
 				for (auto it = base.Rows.begin(), it2 = sourceData.Rows.begin(); it != base.Rows.end(); ++it, ++it2) {
-					for (const auto& c : m_strings)
-						emptyInSource += GetString(it2->second, fixedSize, c.Offset).empty() && !GetString(it->second, fixedSize, c.Offset).empty();
+					for (const auto& c : m_strings) {
+						const auto text = GetString(it2->second, fixedSize, c.Offset);
+						const auto baseText = GetString(it->second, fixedSize, c.Offset);
+						emptyInSource += text.empty() && !baseText.empty();
+						// The key names the source's language, but the server sends the text under the base language's.
+						reservedInSource += text.starts_with("_rsv_") && text != baseText;
+					}
 				}
 				if (emptyInSource)
 					return std::format("{} cell(s) empty in the source but not in the base language", emptyInSource);
+				if (reservedInSource)
+					return std::format("{} reserved cell(s) keyed differently from the base language", reservedInSource);
 
 				const auto steps = ColumnSteps();
 				if (std::ranges::all_of(steps, &std::vector<const StepList*>::empty))
@@ -1626,7 +1633,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				}();
 				info["columnMapMethod"] = columnMethod;
 
-				// Step. Columns the source leaves empty but the base fills, filled from the most alike sibling.
+				// Step. Cells the source leaves empty but the base fills, filled from the most alike sibling column.
 				std::map<uint16_t, uint16_t> fillFrom;
 				if (m_options.FillPluralColumns) {
 					const auto sourceOf = [&](uint16_t offset) -> std::optional<uint16_t> {
@@ -1637,12 +1644,10 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						const auto src = sourceOf(c.Offset);
 						if (!src)
 							continue;
-						size_t baseFilled = 0, sourceFilled = 0;
-						for (const auto& [id, row] : matched) {
+						size_t baseFilled = 0;
+						for (const auto& id : matched | std::views::keys)
 							baseFilled += !GetString(base.Rows.at(id), tFixed, c.Offset).empty();
-							sourceFilled += !GetString(row, sFixed, *src).empty();
-						}
-						if (baseFilled < 10 || sourceFilled * 20 > baseFilled)
+						if (baseFilled < 10)
 							continue;
 
 						std::optional<std::pair<double, uint16_t>> best;

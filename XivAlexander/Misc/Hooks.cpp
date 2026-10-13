@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Misc/Hooks.h"
 
+#include <tlhelp32.h>
+
 std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::Binder::CreateThunkBody(void* this_, void* templateMethod) {
 	static Utils::Win32::HeapAllocator<char> allocator(HEAP_CREATE_ENABLE_EXECUTE);
 
@@ -222,6 +224,37 @@ namespace {
 	}
 }
 
+namespace {
+	/// Suspended threads stop between instructions, so none sees a partly written one; the returned handles need resuming and closing.
+	std::vector<HANDLE> SuspendOtherThreads() {
+		std::vector<DWORD> ids;
+		if (const auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0); snapshot != INVALID_HANDLE_VALUE) {
+			THREADENTRY32 entry{.dwSize = sizeof entry};
+			for (auto ok = Thread32First(snapshot, &entry); ok; ok = Thread32Next(snapshot, &entry)) {
+				if (entry.th32OwnerProcessID == GetCurrentProcessId() && entry.th32ThreadID != GetCurrentThreadId())
+					ids.push_back(entry.th32ThreadID);
+			}
+			CloseHandle(snapshot);
+		}
+
+		// Nothing may allocate once a thread is suspended, as it may hold the heap's lock.
+		std::vector<HANDLE> suspended;
+		suspended.reserve(ids.size());
+		for (const auto id : ids) {
+			if (const auto thread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT, FALSE, id)) {
+				if (SuspendThread(thread) != static_cast<DWORD>(-1)) {
+					// SuspendThread returns before the thread stops; this waits for it.
+					CONTEXT context{.ContextFlags = CONTEXT_CONTROL};
+					GetThreadContext(thread, &context);
+					suspended.push_back(thread);
+				} else
+					CloseHandle(thread);
+			}
+		}
+		return suspended;
+	}
+}
+
 void* XivAlexander::Misc::Hooks::CallSitePatch::TargetOf(const void* callInstruction) {
 	const auto call = static_cast<const uint8_t*>(callInstruction);
 	if (call[0] != 0xE8)
@@ -231,12 +264,10 @@ void* XivAlexander::Misc::Hooks::CallSitePatch::TargetOf(const void* callInstruc
 
 XivAlexander::Misc::Hooks::CallSitePatch::CallSitePatch(void* callInstruction, void* destination)
 	: m_call(static_cast<uint8_t*>(callInstruction))
-	, m_original(*reinterpret_cast<const int32_t*>(m_call + 1)) {
-	void(TargetOf(m_call));
-
+	, m_original(*reinterpret_cast<const int32_t*>(m_call + 1))
 	// A locked store split across cache lines may not be atomic everywhere.
-	if ((reinterpret_cast<uintptr_t>(m_call + 1) & 63) > 60)
-		throw std::runtime_error("The call's displacement spans two cache lines.");
+	, m_split((reinterpret_cast<uintptr_t>(m_call + 1) & 63) > 60) {
+	void(TargetOf(m_call));
 
 	m_stub = AllocateNear(m_call, CallSiteStubSize);
 	const auto displacement = reinterpret_cast<intptr_t>(m_stub) - reinterpret_cast<intptr_t>(m_call + 5);
@@ -295,7 +326,18 @@ bool XivAlexander::Misc::Hooks::CallSitePatch::Exchange(int32_t from, int32_t to
 	DWORD oldProtect;
 	if (!VirtualProtect(m_call + 1, sizeof to, PAGE_EXECUTE_READWRITE, &oldProtect))
 		return false;
-	const auto previous = InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(m_call + 1), to, from);
+	int32_t previous;
+	if (m_split) {
+		const auto suspended = SuspendOtherThreads();
+		previous = Current();
+		if (previous == from)
+			std::memcpy(m_call + 1, &to, sizeof to);
+		for (const auto thread : suspended) {
+			ResumeThread(thread);
+			CloseHandle(thread);
+		}
+	} else
+		previous = InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(m_call + 1), to, from);
 	VirtualProtect(m_call + 1, sizeof to, oldProtect, &oldProtect);
 	FlushInstructionCache(GetCurrentProcess(), m_call, 5);
 	return previous == from;

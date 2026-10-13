@@ -47,6 +47,9 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 	, m_path(Utils::Win32::Process::Current().PathOf())
 	, m_bUseElevation(Utils::Win32::IsUserAnAdmin())
 	, m_launchParameters([this]() -> decltype(m_launchParameters) {
+	// Already warned about; restarting stays off without them.
+	if (!Dll::GetCommandLineError().empty())
+		return {};
 	try {
 		auto res = Game::CommandLine::FromString(Dll::GetOriginalCommandLine(), &m_bUseParameterObfuscation);
 		if (m_config->Runtime.Launch.RememberedLanguage != xivres::game_language::Unspecified)
@@ -75,7 +78,7 @@ XivAlexander::Apps::MainApp::Window::MainWindow::MainWindow(App& app, std::funct
 		m_gameReleaseInfo = Misc::GameInstallationDetector::GetGameReleaseInfo();
 
 		if (m_gameReleaseInfo.Region == xivres::game_release_publisher::SquareEnix && !m_launchParameters.empty()) {
-			m_gameLanguage = Game::CommandLine::WellKnown::GetLanguage(m_launchParameters, xivres::game_language::English);
+			m_gameLanguage = Game::CommandLine::WellKnown::GetEffectiveLanguage(m_launchParameters);
 			m_gameRegion = Game::CommandLine::WellKnown::GetRegion(m_launchParameters, xivres::game_publisher::SquareEnixAmerica);
 		} else if (m_gameReleaseInfo.Region == xivres::game_release_publisher::ShengquGames) {
 			m_gameLanguage = xivres::game_language::ChineseSimplified;

@@ -85,6 +85,7 @@ namespace {
 		std::function<void()> Action;
 		bool Enabled = true;
 		bool Default = false;
+		bool Checked = false;
 	};
 
 	void ShowPopupMenu(HWND hWnd, POINT ptScreen, const std::vector<PopupMenuItem>& items, UINT flags = TPM_RIGHTBUTTON) {
@@ -95,7 +96,7 @@ namespace {
 				AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
 				continue;
 			}
-			AppendMenuW(hMenu, MF_STRING | (items[i].Enabled ? 0 : MF_GRAYED), i + 1, items[i].Text.c_str());
+			AppendMenuW(hMenu, MF_STRING | (items[i].Enabled ? 0 : MF_GRAYED) | (items[i].Checked ? MF_CHECKED : 0), i + 1, items[i].Text.c_str());
 			if (items[i].Default)
 				SetMenuDefaultItem(hMenu, static_cast<UINT>(i + 1), FALSE);
 		}
@@ -216,6 +217,34 @@ namespace {
 			}
 		} else {
 			MessageBeep(MB_ICONWARNING);
+		}
+	}
+
+	/// With the file type's "edit" verb; .json usually has none, so then with what opens it (or "Open with").
+	void EditFile(HWND hOwner, const std::filesystem::path& path) {
+		std::error_code ec;
+		if (!is_regular_file(path, ec)) {
+			MessageBeep(MB_ICONWARNING);
+			return;
+		}
+		for (const auto verb : {L"edit", static_cast<const wchar_t*>(nullptr)}) {
+			SHELLEXECUTEINFOW shex{
+				.cbSize = sizeof shex,
+				.fMask = verb ? static_cast<ULONG>(SEE_MASK_FLAG_NO_UI) : 0,
+				.hwnd = hOwner,
+				.lpVerb = verb,
+				.lpFile = path.c_str(),
+				.nShow = SW_SHOW,
+			};
+			if (ShellExecuteExW(&shex))
+				return;
+			const auto err = GetLastError();
+			if (err == ERROR_CANCELLED)
+				return;
+			if (verb)
+				continue;
+			Dll::MessageBoxF(hOwner, MB_OK | MB_ICONERROR, IDS_ERROR_UNEXPECTED, Utils::Win32::Error(err, "ShellExecuteExW").what());
+			return;
 		}
 	}
 
@@ -419,6 +448,23 @@ namespace {
 		return std::format(L"{}", value);
 	}
 
+	// A press on the tree's empty area below its items moves the window, as the title bar would.
+	constexpr UINT_PTR TreeSubclassId = 2;
+	LRESULT CALLBACK TreeSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
+		if (uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONDBLCLK) {
+			TVHITTESTINFO hit{.pt = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)}};
+			TreeView_HitTest(hWnd, &hit);
+			if (!hit.hItem) {
+				ReleaseCapture();
+				SendMessageW(GetAncestor(hWnd, GA_ROOT), WM_NCLBUTTONDOWN, HTCAPTION, 0);
+				return 0;
+			}
+		} else if (uMsg == WM_NCDESTROY) {
+			RemoveWindowSubclass(hWnd, TreeSubclassProc, TreeSubclassId);
+		}
+		return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+	}
+
 	// The tree's label edit box takes Enter and Esc, which the dialog would otherwise take first as OK and Cancel.
 	constexpr UINT_PTR LabelEditSubclassId = 1;
 	LRESULT CALLBACK LabelEditSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
@@ -516,6 +562,7 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 	// Edit/combo rows without a description share a line per group: labels fit their text, controls are LineWidth (100% zoom), the last takes the rest.
 	int LineGroup = 0;
 	int LineWidth = 0;
+	bool BesideCheck = false;  // Of an edit row: on the line of the check row before it, its label the unit after it.
 	bool CommitOnChange = false;  // Of an edit row: as it is typed into, rather than when left.
 	bool Bold = false;  // Of a check row that is a group's heading.
 	bool Expanded = false;  // Of a rich text row: all of it shown.
@@ -789,6 +836,7 @@ XivAlexander::Apps::MainApp::Window::SettingsView::SettingsView(App& app, HWND h
 
 	m_hTree = create(m_hWnd, 0, WC_TREEVIEWW, WS_VISIBLE | WS_TABSTOP | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_FULLROWSELECT | TVS_EDITLABELS);
 	TreeView_SetExtendedStyle(m_hTree, TVS_EX_DOUBLEBUFFER, TVS_EX_DOUBLEBUFFER);
+	SetWindowSubclass(m_hTree, TreeSubclassProc, TreeSubclassId, 0);
 
 	m_hPage = create(m_hWnd, WS_EX_CONTROLPARENT, PageClassName, WS_VSCROLL | WS_CLIPCHILDREN);
 	SetWindowLongPtrW(m_hPage, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
@@ -969,6 +1017,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 
 	label(rt.Ui.MainWindow.NotifyWhenHidden, IDS_SETTINGS_NOTIFYWHENHIDDEN);
 	label(rt.FramerateControl.BackgroundLimit, IDS_SETTINGS_BACKGROUNDLIMIT);
+	m_itemInfo[&rt.FramerateControl.BackgroundLimit].BesideCheck = true;
 	label(rt.FramerateControl.Lock.Interval, IDS_SETTINGS_LOCK_INTERVAL);
 	label(rt.FramerateControl.Lock.Automatic, IDS_SETTINGS_LOCK_AUTOMATIC);
 	label(rt.FramerateControl.Lock.TargetFramerateRangeFrom, IDS_SETTINGS_LOCK_RANGEFROM);
@@ -1163,6 +1212,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Opcodes.VersionSensitiveFeaturesAllowedGameVersion),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Atlas),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -2329,6 +2379,16 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddTextTransformationRow
 		.SetChecked = SetToggledPathEnabled(item),
 		.MoveRow = MoveIn(item),
 		.Activate = openRow,
+		.ShowContextMenu = [this, &item, openRow](size_t row, POINT ptScreen) {
+			if (row >= item.Value().size())
+				return;
+			const auto path = Config::TranslatePath(item.Value()[row].Path);
+			const auto& rt = m_config->Runtime;
+			ShowPopupMenu(m_hWnd, ptScreen, {
+				{rt.GetStringRes(IDS_SETTINGS_EDITFILE), [&] { EditFile(m_hWndOwner, path); }},
+				{rt.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [&] { openRow(row); }, true, true},
+			});
+		},
 	});
 	CreateActionRow(ToggledPathButtons(rt, m_hWndOwner, item, grid, IDS_SETTINGS_EXCEL_ADDFILE, PickKind::Json, std::format("PathList.{}", item.Name), openRow));
 	CreateNoteRow(rt.GetStringRes(IDS_SETTINGS_EXCEL_ORDER_DESC));
@@ -3482,11 +3542,19 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			}},
 			{rt.GetStringRes(IDS_SETTINGS_FONT_ADDFONT), [add] { add({.Font = {.Name = "Segoe UI"}}, true); }},
 			{rt.GetStringRes(IDS_SETTINGS_REMOVE), remove},
+			{rt.GetStringRes(IDS_SETTINGS_FONT_REMOVEALL), [this, family, get, set, pGrid] {
+				if (get().empty())
+					return;
+				if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_CONFIRMREMOVEALL, Wide(family))) != IDYES)
+					return;
+				set({});
+				(*pGrid)->Refresh();
+			}},
 			{{}, {}},
 			{rt.GetStringRes(IDS_SETTINGS_FONT_COPYTOOTHERS), [this, &item, family, get] {
 				if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_CONFIRMCOPY, Wide(family))) != IDYES)
 					return;
-				// Only the sources; whether the others are on, and their digits, stay as they are.
+				// Only the sources, with their digits; whether the others are on stays as it is.
 				auto all = item.Value();
 				for (const auto& other : m_fontFamilies) {
 					if (other == family)
@@ -3501,13 +3569,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			{{}, {}},
 			{rt.GetStringRes(IDS_SETTINGS_FONT_OPENPRESETFOLDER), [this] { OpenInExplorer(m_hWndOwner, GetFontPresetFolder()); }},
 		});
-
-	CreateChoiceRow(rt.GetStringRes(IDS_SETTINGS_FONT_MONOSPACEDDIGITS), true, [getFamily] { return getFamily().MonospacedDigits; }, [getFamily, setFamily] {
-		auto settings = getFamily();
-		settings.MonospacedDigits = !settings.MonospacedDigits;
-		setFamily(std::move(settings));
-	}, true);
-	AddHelp(m_rows.size() - 1, IDS_SETTINGS_FONT_MONOSPACEDDIGITS_TIP);
 
 	auto& grid = CreateGridRow({}, IDS_SETTINGS_FONT_SOURCES_DESC, 200, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
@@ -3579,15 +3640,24 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			MoveWithin(sources, from, to);
 			set(std::move(sources));
 		},
-		.ShowContextMenu = [this, get, remove](size_t row, POINT ptScreen) {
+		.ShowContextMenu = [this, get, edit, remove](size_t row, POINT ptScreen) {
 			if (row >= get().size())
 				return;
-			const auto preset = get()[row].Preset;
-			ShowPopupMenu(m_hWnd, ptScreen, {
+			const auto source = get()[row];
+			const auto& preset = source.Preset;
+			std::vector<PopupMenuItem> items{
 				{m_config->Runtime.GetStringRes(IDS_SETTINGS_REMOVE), remove},
 				{},
-				{m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [&] { OpenInExplorer(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset)); }, !preset.empty()},
-			});
+			};
+			if (!source.IsPreset()) {
+				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_FONT_MONOSPACEDDIGITS), [&] {
+					edit(row, [](FontReplacementFamilySource& s) { s.MonospacedDigits = !s.MonospacedDigits; });
+				}, true, false, source.MonospacedDigits});
+			} else {
+				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_EDITFILE), [&] { EditFile(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset)); }, !preset.empty()});
+				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [&] { OpenInExplorer(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset)); }, !preset.empty()});
+			}
+			ShowPopupMenu(m_hWnd, ptScreen, items);
 		},
 		.KeyDown = [remove](UINT vk) {
 			if (vk != VK_DELETE)
@@ -3951,8 +4021,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 		return;
 	}
 
-	if (itemInfo)
+	if (itemInfo) {
 		row.PickFiles = itemInfo->PickFiles;
+		row.BesideCheck = itemInfo->BesideCheck;
+	}
 
 	if (&item == &rt.Modding.Languages.ResourceOverride || &item == &rt.Modding.Languages.VoiceResourceOverride) {
 		// Unspecified leaves the game's own language.
@@ -4234,6 +4306,9 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 		auto flowX = pad;
 		auto lineGroup = 0;
 		auto lineX = pad;
+		auto besideX = -1;  // Where a number beside the check box just placed starts.
+		auto lastRowY = 0;
+		auto lastRowHeight = 0;
 		for (const auto& row : m_rows) {
 			if (row->TabOwner) {
 				const auto shown = row->TabIndex == row->TabOwner->ActiveTab;
@@ -4246,8 +4321,19 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 			}
 			const auto previousFlowGroup = std::exchange(flowGroup, 0);
 			const auto previousLineGroup = std::exchange(lineGroup, 0);
+			const auto previousBesideX = std::exchange(besideX, -1);
 			SelectObject(hdc, *m_font);
 			int rowHeight;
+			if (row->BesideCheck && row->Type == Row::RowType::Edit && previousBesideX >= 0) {
+				// On the check box's line, the box taller than the line, centered on it; the label after it is the unit.
+				const auto numberWidth = scale(72);
+				const auto editY = lastRowY + (lastRowHeight - controlHeight) / 2;
+				const auto labelX = previousBesideX + numberWidth + scale(6);
+				place(row->Control, previousBesideX, editY, numberWidth, controlHeight);
+				place(row->Label, labelX, lastRowY + std::max(0, (lastRowHeight - lineHeight) / 2), std::max(0, pad + inner - labelX), lineHeight);
+				y = std::max(y, editY + controlHeight + rowGap);
+				continue;
+			}
 			if (row->LineGroup) {
 				// On the previous row's line if the label and a little of the control fit; the group's (or line's) last takes the rest.
 				const auto next = &row + 1 != m_rows.data() + m_rows.size() ? (&row)[1].get() : nullptr;
@@ -4473,6 +4559,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 						lineEnd -= menuWidth + gap;
 					}
 					place(row->Control, pad, controlY, controlWidth, textHeight);
+					if (textHeight <= lineHeight + 2 && !row->Button1 && !row->Description)
+						besideX = pad + controlWidth + rowHelpSpace + gap;
 					place(row->Help, pad + controlWidth + scale(4), controlY + 1, helpWidth, lineHeight);
 
 					// At the end of the check box's line if that is a single one with room for it, or else on lines of its own under it.
@@ -4550,6 +4638,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::LayoutPage() {
 					break;
 				}
 			}
+			lastRowY = y;
+			lastRowHeight = rowHeight;
 			y += rowHeight + rowGap;
 		}
 		return y;

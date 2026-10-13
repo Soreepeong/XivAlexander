@@ -260,7 +260,7 @@ FontReplacement::Presets::Faces FontReplacement::PresetController::MakeFamilyFac
 		if (source.IsPreset()) {
 			if (const auto& faces = read(source.Preset))
 				Presets::Overlay(combined, Presets::FacesOfFamily(*faces, family));
-		} else if (const auto generated = MakeFaces(family, source.Font, settings.MonospacedDigits, failures)) {
+		} else if (const auto generated = MakeFaces(family, source.Font, source.MonospacedDigits, failures)) {
 			Presets::Overlay(combined, *generated);
 			if (usesFont)
 				*usesFont = true;

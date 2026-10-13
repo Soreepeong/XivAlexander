@@ -36,6 +36,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	private:
 		void Install();
+		// Forgets the patched object unless it is current and still binds the shader: a UI shader reload dropped it (a new
+		// object may take its address) or made it bind another shader, so its game shader is ours to release.
+		void ForgetIfReplaced(uintptr_t current);
 		// False while the game hasn't loaded its edge shader.
 		bool CreateFromGame();
 

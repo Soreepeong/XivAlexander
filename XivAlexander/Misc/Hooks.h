@@ -190,6 +190,7 @@ namespace XivAlexander::Misc::Hooks {
 		const int32_t m_original;
 		int32_t m_redirected{};
 		uint8_t* m_stub{};  // jmp [rip+2]; int3 x2; the destination, 8 byte aligned
+		const bool m_split;  // the displacement spans two cache lines, so it's written with other threads suspended
 
 	public:
 		/// Throws if it isn't a call rel32.

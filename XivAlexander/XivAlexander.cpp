@@ -3,6 +3,7 @@
 #include <XivAlexander/XivAlexander.h>
 #include "Game/CommandLine.h"
 #include "Utils/Win32/Resource.h"
+#include "Utils/Win32/TaskDialogBuilder.h"
 
 #include "Config.h"
 #include "LoaderInterface.h"
@@ -34,6 +35,7 @@ namespace {
 
 	std::wstring s_gameCommandLineW;
 	std::string s_gameCommandLineA;
+	std::string s_commandLineError;
 
 	[[nodiscard]] bool IsGameProcess() {
 		return lstrcmpiW(Utils::Win32::Process::Current().PathOf().filename().wstring().c_str(), Dll::GameExecutableNameW) == 0;
@@ -90,8 +92,37 @@ namespace {
 			if (XA_LOADERINFO_HAS(&s_loaderInfo, SetCreateProcessArgumentFilter) && s_loaderInfo.SetCreateProcessArgumentFilter)
 				s_loaderInfo.SetCreateProcessArgumentFilter(&FilterCreateProcessArguments);
 		} catch (const std::exception& e) {
+			s_commandLineError = *e.what() ? e.what() : "unknown error";
 			OutputDebugStringW(std::format(L"Error in CheckObfuscatedArguments: {}\n", e.what()).c_str());
 		}
+	}
+
+	// Lets the user log in again rather than play without what depends on the command line.
+	void AskAboutCommandLineError() {
+		const auto config = XivAlexander::Config::Acquire();
+		const auto& runtime = config->Runtime;
+		XivAlexander::Misc::Logger::Acquire()->Format<XivAlexander::LogLevel::Warning>(XivAlexander::LogCategory::General,
+			"Could not read the game's command line; the remembered language and region, restarting the game, login sessions, the display language, and text merging stay off: {}",
+			s_commandLineError);
+
+		static constexpr int IdContinue = 1001;
+		static constexpr int IdExit = 1002;
+		auto dialog = Utils::Win32::TaskDialog::Builder()
+			.WithWindowTitle(Dll::GetGenericMessageBoxTitle())
+			.WithInstance(Dll::Module())
+			.WithAllowDialogCancellation()
+			.WithMainIcon(IDI_TRAY_ICON)
+			.WithMainInstruction(std::wstring(runtime.GetStringRes(IDS_COMMANDLINE_ERROR_TITLE)))
+			.WithContent(runtime.FormatStringRes(IDS_COMMANDLINE_ERROR_CONTENT, xivres::util::unicode::convert<std::wstring>(s_commandLineError)))
+			.WithButton({.IdSet = true, .Id = IdContinue, .Text = std::wstring(runtime.GetStringRes(IDS_COMMANDLINE_ERROR_CONTINUE))})
+			.WithButton({.IdSet = true, .Id = IdExit, .Text = std::wstring(runtime.GetStringRes(IDS_COMMANDLINE_ERROR_EXIT))})
+			.WithButtonCommandLinks()
+			.WithButtonDefault(IdContinue)
+			.Build();
+		// There's no game window to be in front of yet.
+		dialog.OnCreated = [](Utils::Win32::TaskDialog& d) { SetForegroundWindow(d.GetHwnd()); };
+		if (dialog.Show().Button == IdExit)
+			TerminateProcess(GetCurrentProcess(), 0);
 	}
 
 	// What has to be in place before the game's own initialization runs.
@@ -141,7 +172,7 @@ namespace {
 
 		// Started without a command line, as in double-clicking the game; use the session the launcher stored last.
 		try {
-			if (Game::CommandLine::FromString(Dll::GetOriginalCommandLine()).empty()) {
+			if (s_commandLineError.empty() && Game::CommandLine::FromString(Dll::GetOriginalCommandLine()).empty()) {
 				if (auto stored = XivAlexander::Apps::MainApp::Features::LoginSessions::GetMostRecentlyStoredArguments()) {
 					XivAlexander::Misc::Logger::Acquire()->Format(XivAlexander::LogCategory::General, "Started without arguments; using login session \"{}\"", stored->first);
 					// The session keeps the language and region it was stored with; the remembered ones apply as on restarting.
@@ -260,6 +291,13 @@ extern "C" int32_t __stdcall XA_Initialize(const LoaderInterface::LoaderInfo* pI
 
 		const auto activationContextCleanup = Dll::ActivationContext().With();
 		CheckObfuscatedArguments();
+		if (!s_commandLineError.empty()) {
+			try {
+				AskAboutCommandLineError();
+			} catch (const std::exception& e) {
+				Utils::Win32::DebugPrint(L"XA_Initialize: could not ask about the command line: {}", e.what());
+			}
+		}
 		s_crashMessageBoxHandler = std::make_unique<XivAlexander::Misc::CrashMessageBoxHandler>();
 
 		if (Dll::IsLoadedFromEntryPoint() && IsGameProcess())
@@ -344,7 +382,13 @@ void Dll::ReplaceOriginalCommandLine(XivAlexander::Game::CommandLine::ArgumentLi
 	SetGameCommandLine(std::move(params));
 }
 
+const std::string& Dll::GetCommandLineError() {
+	return s_commandLineError;
+}
+
 bool Dll::IsLanguageRegionModifiable() {
+	if (!s_commandLineError.empty())
+		return false;
 	static std::optional<bool> s_modifiable;
 	if (!s_modifiable.has_value()) {
 		try {

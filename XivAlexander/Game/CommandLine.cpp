@@ -201,14 +201,51 @@ xivres::game_publisher XivAlexander::Game::CommandLine::WellKnown::GetRegion(con
 }
 
 void XivAlexander::Game::CommandLine::WellKnown::SetLanguage(ArgumentList& args, xivres::game_language language) {
-	if (language != xivres::game_language::Unspecified)
-		return ModifyParameter(args, Keys::Language, std::format("{}", static_cast<int>(language) - 1));
+	if (language == xivres::game_language::Unspecified)
+		return;
+	// The game takes the last of either, so the other one can't be left to override this.
+	std::erase_if(args, [](const auto& pair) { return pair.first == Keys::LanguageAlternative; });
+	ModifyParameter(args, Keys::Language, std::format("{}", static_cast<int>(language) - 1));
 }
 
 xivres::game_language XivAlexander::Game::CommandLine::WellKnown::GetLanguage(const ArgumentList& args, xivres::game_language fallback /*= xivres::game_language::Unspecified*/) {
+	auto language = fallback;
 	for (const auto& pair : args) {
-		if (pair.first == Keys::Language)
-			return static_cast<xivres::game_language>(1 + std::strtol(pair.second.c_str(), nullptr, 0));
+		if (pair.first != Keys::Language && pair.first != Keys::LanguageAlternative)
+			continue;
+		// Values past 7 make the game ignore the argument.
+		if (const auto value = std::strtol(pair.second.c_str(), nullptr, 10); value >= 0 && value <= 7)
+			language = static_cast<xivres::game_language>(1 + value);
+		else
+			language = fallback;
 	}
-	return fallback;
+	return language;
+}
+
+xivres::game_language XivAlexander::Game::CommandLine::WellKnown::GetEffectiveLanguage(const ArgumentList& args) {
+	if (const auto language = GetLanguage(args); language != xivres::game_language::Unspecified)
+		return language;
+
+	try {
+		// Launchers may name the folder holding it.
+		std::filesystem::path folder;
+		for (const auto& [key, value] : args) {
+			if (key == Keys::UserPath)
+				folder = xivres::util::unicode::convert<std::wstring>(value);
+		}
+		if (folder.empty())
+			folder = Win32::EnsureKnownFolderPath(FOLDERID_Documents) / L"My Games" / L"FINAL FANTASY XIV - A Realm Reborn";
+		std::ifstream in(folder / L"FFXIV.cfg");
+		for (std::string line; std::getline(in, line);) {
+			if (!line.starts_with("Language\t"))
+				continue;
+			// The game reads 7 as 0.
+			if (const auto value = std::strtol(line.c_str() + 9, nullptr, 10); value > 0 && value < 7)
+				return static_cast<xivres::game_language>(1 + value);
+			break;
+		}
+	} catch (...) {
+		// Read as missing.
+	}
+	return xivres::game_language::Japanese;
 }

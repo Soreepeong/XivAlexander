@@ -73,6 +73,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		App.RunOnGameLoop([&] {
 			try {
 				Replacer = std::make_unique<FontReplacer>();
+				Replacer->SetAtlas(Config->Runtime.FontReplacement.Atlas.Value());
 				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
 				ApplySubpixel(window);
 				NamePlates = Optional<NamePlateText>("Nameplate text");
@@ -120,6 +121,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			Cleanup += settings.Edge.OnChange(markPending);
 			Cleanup += settings.Subpixel.OnChange(markPending);
 			Cleanup += settings.NamePlates.OnChange(markPending);
+			Cleanup += settings.Atlas.OnChange(markPending);
 
 			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
 				const auto lock = std::scoped_lock(PendingMutex);
@@ -198,6 +200,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 		if (settings) {
 			const auto& current = Config->Runtime.FontReplacement;
+			Replacer->SetAtlas(current.Atlas.Value());
 			Replacer->SetEdge(current.Edge.Value());
 			if (NamePlates)
 				NamePlates->SetMode(current.NamePlates.Value());

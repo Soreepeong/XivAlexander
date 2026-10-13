@@ -62,6 +62,20 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			return res;
 		}
 
+		/// The PE header's TimeDateStamp of this DLL, which every build changes.
+		uint32_t BuildStamp() {
+			const auto base = reinterpret_cast<const uint8_t*>(static_cast<HMODULE>(Dll::Module()));
+			const auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+			return reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew)->FileHeader.TimeDateStamp;
+		}
+
+		/// 0 if it can't be read.
+		int64_t LastWriteTicks(const std::filesystem::path& path) {
+			std::error_code ec;
+			const auto time = std::filesystem::last_write_time(path, ec);
+			return ec ? 0 : time.time_since_epoch().count();
+		}
+
 		/// The language the game was started in, as the server knows it.
 		xivres::game_language DetectClientLanguage() {
 			try {
@@ -75,9 +89,11 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 					default:
 						break;
 				}
-				return Game::CommandLine::WellKnown::GetLanguage(Game::CommandLine::FromString(Dll::GetGameCommandLine()), xivres::game_language::English);
+				if (!Dll::GetCommandLineError().empty())
+					return xivres::game_language::Unspecified;
+				return Game::CommandLine::WellKnown::GetEffectiveLanguage(Game::CommandLine::FromString(Dll::GetGameCommandLine()));
 			} catch (...) {
-				return xivres::game_language::English;
+				return xivres::game_language::Unspecified;
 			}
 		}
 
@@ -137,13 +153,18 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 
 			Options options;
 			options.BaseLanguage = DetectClientLanguage();
+			// The RSV keys kept from it must be in the language the server is told.
+			if (options.BaseLanguage == xivres::game_language::Unspecified) {
+				logger->Format<LogLevel::Warning>(LogCategory::VirtualSqPacks, "[ExcelMerge] Skipped, as the game's language isn't known");
+				return {};
+			}
 			options.FallbackLanguages = rt.GetFallbackLanguageList();
 			options.AllowContentMatching = true;
 			options.FillPluralColumns = true;
 			if (const auto display = rt.Modding.Languages.ResourceOverride.Value(); display != xivres::game_language::Unspecified)
 				options.Languages.push_back(display);
 
-			auto cacheKey = std::format("format:{}\ntarget:{}\nbase:{}\n", CacheFormatVersion, DescribeVersions(gameRoot), static_cast<int>(options.BaseLanguage));
+			auto cacheKey = std::format("format:{}\nbuild:{:08X}\ntarget:{}\nbase:{}\n", CacheFormatVersion, BuildStamp(), DescribeVersions(gameRoot), static_cast<int>(options.BaseLanguage));
 
 			std::vector<Source> sources;
 			for (const auto& root : roots) {
@@ -162,12 +183,12 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 			cacheKey += "\nlanguages:";
 			for (const auto lang : options.Languages)
 				cacheKey += std::format("{},", static_cast<int>(lang));
-			cacheKey += std::format("\ncontent:{}\nplural:{}\n", options.AllowContentMatching, options.FillPluralColumns);
+			cacheKey += std::format("\ncontent:{}\nplural:{}\nfill:cell\n", options.AllowContentMatching, options.FillPluralColumns);
 
 			for (const auto& file : ToggledPath::EnabledOf(rt.Modding.TextTransformationFiles.Value())) {
 				const auto path = Config::TranslatePath(file);
 				const auto content = ReadFile(path);
-				cacheKey += std::format("override:{}:{}\n", ToUtf8(path), Sha1Hex(content));
+				cacheKey += std::format("override:{}:{}:{}\n", ToUtf8(path), Sha1Hex(content), LastWriteTicks(path));
 				try {
 					auto parsed = nlohmann::ordered_json::parse(content);
 					if (!parsed.is_object())

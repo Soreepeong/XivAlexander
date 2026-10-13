@@ -2,6 +2,8 @@
 #include "MainApp/Modding/TextHooks.h"
 
 #include <deque>
+#include <map>
+#include <mutex>
 
 #include <xivres/util.on_dtor.h>
 #include <xivres/xivstring.h>
@@ -12,12 +14,38 @@
 #include "Misc/Logger.h"
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
+	namespace {
+		/// "_rsv_<row>_<subrow>_<language>_..." with the language field blanked; nullopt if not shaped so.
+		std::optional<std::string> RsvKeyWithoutLanguage(std::string_view key) {
+			constexpr std::string_view Prefix = "_rsv_";
+			if (!key.starts_with(Prefix))
+				return std::nullopt;
+			size_t start = Prefix.size();
+			for (auto field = 0; field < 2; field++) {
+				start = key.find('_', start);
+				if (start == std::string_view::npos)
+					return std::nullopt;
+				start++;
+			}
+			const auto end = key.find('_', start);
+			if (end == std::string_view::npos)
+				return std::nullopt;
+			return std::format("{}{}", key.substr(0, start), key.substr(end));
+		}
+	}
+
 	struct TextHooks::Implementation {
 		const std::shared_ptr<Config> Config;
 		const std::shared_ptr<Misc::Logger> Logger;
 
 		std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::CutSceneLanguageGetterFn>> CutSceneLanguageGetter;
 		std::deque<Misc::Hooks::PointerFunctionOf<Game::Resolved::StringIndirectionResolverFn>> FoundStringIndirectionResolverFunctions{};
+		std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::AddRsvStringFn>> AddRsvString;
+		std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::ResolveRsvStringFn>> ResolveRsvString;
+
+		std::mutex RsvMutex;
+		// Received keys by the key without its language, for cells whose key was received in another language.
+		std::map<std::string, std::string> RsvReceivedKeys;
 
 		xivres::util::on_dtor::multi Cleanup;
 
@@ -39,6 +67,31 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 						std::ranges::find(Languages::LipSyncLanguages, language) != std::end(Languages::LipSyncLanguages))
 						return static_cast<int>(language) - 1;
 					return CutSceneLanguageGetter->bridge(p);
+				});
+			}
+
+			if (functions.RsvStrings) {
+				const auto rsv = *functions.RsvStrings;
+				AddRsvString.emplace("LayoutWorld::AddRsvString", rsv.Add);
+				Cleanup += AddRsvString->SetHook([this](void* layoutWorld, const char* key, const uint8_t* value, size_t valueLength) {
+					// The packet holds the key in 0x30 bytes.
+					const auto keyView = std::string_view(key, strnlen(key, 0x30));
+					if (auto general = RsvKeyWithoutLanguage(keyView)) {
+						const auto lock = std::lock_guard(RsvMutex);
+						RsvReceivedKeys.insert_or_assign(std::move(*general), std::string(keyView));
+					}
+					return AddRsvString->bridge(layoutWorld, key, value, valueLength);
+				});
+
+				ResolveRsvString.emplace("ResolveRsvString", rsv.Resolve);
+				Cleanup += ResolveRsvString->SetHook([this](const char* key) {
+					const auto result = ResolveRsvString->bridge(key);
+					if (*result)
+						return result;
+					if (const auto general = RsvKeyWithoutLanguage(key))
+						if (const auto received = ResolveInOtherLanguage(*general, key); *received)
+							return received;
+					return result;
 				});
 			}
 
@@ -90,6 +143,17 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 					return s;
 				});
 			}
+		}
+
+		/// The text received for the same cell in another language, which is closer than nothing; empty if none.
+		const char* ResolveInOtherLanguage(const std::string& general, const char* key) {
+			std::string received;
+			{
+				const auto lock = std::lock_guard(RsvMutex);
+				if (const auto it = RsvReceivedKeys.find(general); it != RsvReceivedKeys.end() && it->second != key)
+					received = it->second;
+			}
+			return received.empty() ? "" : ResolveRsvString->bridge(received.c_str());
 		}
 
 		~Implementation() {

@@ -53,6 +53,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Copied from Sources, by packed UTF-8 value; nullptr if none could be.
 		std::unordered_map<uint32_t, GameGlyph*> GameGlyphs;
 
+		// Copies of the game glyphs GetGlyph gave for a copy's game font, by that glyph; never nullptr (blank if unreadable).
+		std::unordered_map<const GameGlyph*, GameGlyph*> Converted;
+
 		// Pick's, by codepoint.
 		mutable std::unordered_map<char32_t, GlyphSource> Picks;
 
@@ -60,8 +63,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] const GlyphSource& Pick(char32_t codepoint) const;
 	};
 
-	// Hooks PickFont (swaps in a copy at the exact on-screen half-px size so the renderer doesn't scale) and GetGlyph (the copy's glyphs, else the game's).
-	// Copies borrow the game font's glyph map and textures, retaken after BuildFont; game thread; no glyph pointer outlives a frame.
+	// Hooks PickFont (swaps in a copy at the exact on-screen half-px size so the renderer doesn't scale) and GetGlyph (the copy's glyphs, game glyphs copied in).
+	// Copies borrow the game font's glyph map (retaken after BuildFont); every texture slot is an atlas page or blank, so no game glyph may reach a copy's draw.
+	// Game thread; no glyph pointer outlives a frame.
 	class FontReplacer {
 		enum class CellState : uint8_t {
 			// No pixels: an empty glyph, a blank, or one whose pixels couldn't be placed.
@@ -103,11 +107,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			FontReplacer::Cell Cell;
 		};
 
-		// In half pixels.
+		// In half pixels. AppliedPages: atlas pages in the copy's texture slots.
 		struct CopyInfo {
 			GameFont* Original;
 			int HalfPx;
 			SizedFont* Sized;
+			int AppliedPages = 0;
 		};
 
 		// The character being laid out on this thread, for GetGlyph's shaped-run lookup. MeasuringOnly: no pixels needed yet; State's flags hold
@@ -126,6 +131,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<Host::Hook<void, uintptr_t>> m_buildFontCacheHook;
 		std::optional<Host::Hook<uintptr_t, uintptr_t, const uint8_t**, uintptr_t>> m_layOutCharacterHook;
 		std::optional<Host::Hook<int, uintptr_t, uint16_t>> m_buildFontHook;
+		std::optional<Host::Hook<uintptr_t, uintptr_t>> m_unloadFontHook;
 		std::unique_ptr<TextShaper> m_shaper;
 
 		// Italic bits of the layout state's flags and of GameFontSet.DrawFlags (node italics go there only when drawing; the italic macro sets the
@@ -162,8 +168,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameTextureReader m_gameTextures;
 		std::unique_ptr<GlyphRasterizer> m_rasterizer;
 
-		// One atlas per game font family so one family's text can't push another's out; AXIS (most UI text) has game-size pages, others smaller.
+		// One atlas per game font family so one family's text can't push another's out; AXIS (most UI text) has its own page size and count.
 		std::map<std::string, std::unique_ptr<GlyphAtlas>, LessIgnoringCase> m_atlases;
+		FontReplacementAtlasConfig m_atlasConfig;
+
+		// In copies' texture slots without a page; drawn by a glyph that slipped through with a game texture index. Cleared at the first upload.
+		std::optional<Host::Texture> m_blankTexture;
+		bool m_blankCleared = false;
 
 		std::map<std::pair<GameFont*, int>, GameFont*> m_copiesByKey;
 		std::map<GameFont*, CopyInfo> m_copies;
@@ -217,7 +228,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread, between frames; switching it on or off remakes the atlases and every glyph.
 		void SetSubpixel(const SubpixelSettings& settings);
 
-		[[nodiscard]] static int GetAtlasSize(std::string_view family);
+		[[nodiscard]] const FontReplacementAtlasConfig& Atlas() const { return m_atlasConfig; }
+
+		// Game thread, between frames; a change remakes the atlases and every glyph.
+		void SetAtlas(const FontReplacementAtlasConfig& config);
 
 		// Texture width a copy at px claims for an edge (clamped settings): the edge shader's radius is atlasSize over it.
 		[[nodiscard]] static uint16_t GetClaimedTextureWidth(const FontReplacementEdgeConfig& edge, int atlasSize, float px);
@@ -256,6 +270,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		GlyphAtlas* GetAtlas(const std::string& family);
 
+		void RemakeAtlases();
+
 		static void ForgetPickedFonts();
 
 		// A font cache keeps glyph pointers laid out at the node's unscaled size while draws pick the on-screen size's
@@ -270,32 +286,47 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int BuildFontDetour(uintptr_t manager, uint16_t index);
 		void OnFontBuilt(GameFont* font);
 
+		// The game is about to release its fonts' texture handles: glyph pixels not read from those textures yet are dropped, to be copied again after BuildFont.
+		uintptr_t UnloadFontDetour(uintptr_t manager);
+		void OnFontsUnloading(const GameFontManager& manager);
+
 		GameFont* PickFontDetour(GameFontSet* set, uint8_t useCache);
 		uintptr_t LayOutCharacterDetour(uintptr_t analyzer, const uint8_t** text, uintptr_t state);
 
 		// Italic macros are seen by measuring too; text node italics only by drawing (the bit is in the font set's own flags, before any macro).
 		ItalicMode GetItalicMode(GameFontSet* set) const;
 
-		// The geta mark (U+3013), '-' and U+3400 bypass GetGlyph in the game, so the copy's own glyphs are given instead.
-		GameGlyph* GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, GameFont* font);
+		// For a glyph GetGlyph has nothing for, the game takes the geta mark (U+3013), '-' or U+3400 straight from the game font's glyph map, which
+		// would be drawn with a game texture index; the copy's own glyph of those is given instead, else an empty one. Never nullptr.
+		GameGlyph* GetMissingGlyph(GameFontSet* set, const CopyInfo& info, uint32_t utf8Value);
 
 		GameGlyph* GetGlyphDetour(GameFontSet* set, uint32_t utf8Value, GameFont* font);
+
+		// The copy's glyph, a game glyph copied into the atlas, or nullptr if neither the face nor the game has it.
+		GameGlyph* FindCopyGlyph(GameFontSet* set, const CopyInfo& info, uint32_t utf8Value);
 
 		// Drawn from the game's texture, the edge would step by atlas-width texels (a font's textures share one width), so the game glyph is copied
 		// into the atlas, scaled; pixels are read at the next upload. nullptr if no source has it readable.
 		GameGlyph* GetGameGlyph(SizedFont& sized, uint32_t utf8Value);
 
+		// A game glyph of font (a game font) copied into sized's atlas; nullptr if its texture can't be read.
+		GameGlyph* CopyGameGlyph(const SizedFont& sized, GameFont* font, const GameGlyph& game, uint32_t utf8Value);
+
+		// GetGlyph's answer for the copy's game font, copied; an empty glyph of its advance if unreadable.
+		GameGlyph* ConvertGameGlyph(SizedFont& sized, GameFont* font, const GameGlyph* game, uint32_t utf8Value);
+
 		static RasterGlyph WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha);
 
-		// Borrows the game font's glyph map, glyphs, textures and flags, keeping the copy's size, metrics and pages; redone after BuildFont frees them.
-		void Sync(GameFont* copy, const CopyInfo& info) const;
+		// Borrows the game font's glyph map, glyphs and flags, keeping the copy's size, metrics and pages; redone after BuildFont frees them.
+		void Sync(GameFont* copy, CopyInfo& info);
 
 		GameFont* GetOrCreateCopy(GameFont* original, int halfPx);
 
-		// Atlas pages go after the game font's textures.
-		static void ApplyPages(GameFont* copy, const GlyphAtlas& atlas);
+		// Every texture slot: the atlas's page of that index, else the blank texture.
+		void ApplyPages(GameFont* copy, CopyInfo& info);
 
-		void OnPageAdded(GlyphAtlas* atlas);
+		// Pages may be added on another thread (EvictPlane); slots only change here, on the game thread, before the copy's text is drawn.
+		void RefreshPages(GameFont* copy, CopyInfo& info);
 
 		// nullptr to leave it to the game.
 		GameGlyph* CreateGlyph(SizedFont& sized, uint32_t utf8Value);
@@ -313,7 +344,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Present thread, after this frame's layout: the next frame lays out with the new places and the following upload writes them.
 		void EvictPlane(GlyphAtlas* atlas);
 
-		// page * planes per page + channel.
+		// texture index (page) * planes per page + channel.
 		static int PlaneOf(const GameGlyph* glyph);
 
 		static void WriteCell(const GameGlyph* glyph, const Cell& cell);

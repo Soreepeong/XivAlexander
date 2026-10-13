@@ -135,7 +135,8 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 				creator.reserve_space(pathSpec, size);
 		}
 
-		for (const auto& [pathSpec, file] : *GetReplacementFiles(FutureReservations::PackKey(creator), indexFile)) {
+		const auto replacements = GetReplacementFiles(FutureReservations::PackKey(creator), indexFile);
+		for (const auto& [pathSpec, file] : *replacements) {
 			try {
 				creator.reserve_space(pathSpec, static_cast<uint32_t>(file.Stream->size()));
 			} catch (const std::exception& e) {

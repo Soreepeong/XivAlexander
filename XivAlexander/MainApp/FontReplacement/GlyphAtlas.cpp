@@ -13,12 +13,6 @@ namespace {
 	constexpr int ChannelOffsets[]{2, 1, 0, 3};
 }
 
-int FontReplacement::GlyphAtlas::FirstTextureIndex = 0;
-
-int FontReplacement::GlyphAtlas::MaxPages() {
-	return GameFont::MaxTextures - FirstTextureIndex;
-}
-
 int FontReplacement::GlyphAtlas::PaddedArea(int width, int height) {
 	return (width + 2 * Padding) * (height + 2 * Padding);
 }
@@ -45,11 +39,11 @@ void FontReplacement::GlyphAtlas::Page::ClearDirty() {
 	DirtyRight = DirtyBottom = 0;
 }
 
-FontReplacement::GlyphAtlas::GlyphAtlas(int size, std::string name, bool subpixel)
+FontReplacement::GlyphAtlas::GlyphAtlas(int size, int maxPages, std::string name, bool subpixel)
 	: m_size(size)
 	, m_name(std::move(name))
 	, m_subpixel(subpixel)
-	, m_maxPages((std::max)(0, MaxPages()))
+	, m_maxPages((std::max)(0, maxPages))
 	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages))
 	, m_current(FirstPlane())
 	, m_frontier(FirstPlane() + PlaneStep()) {
@@ -59,11 +53,6 @@ FontReplacement::GlyphAtlas::~GlyphAtlas() {
 	const auto lock = std::scoped_lock(m_mutex);
 	for (auto i = m_pageCount.exchange(0); i-- > 0;)
 		m_pages[i].reset();
-}
-
-void FontReplacement::GlyphAtlas::EnsurePage() {
-	if (!TryEnsurePages(1))
-		throw std::runtime_error("Could not add an atlas page.");
 }
 
 void FontReplacement::GlyphAtlas::Clear() {
@@ -97,11 +86,15 @@ void FontReplacement::GlyphAtlas::ClearPlane(int page, int plane) {
 	m_current = page * PlanesPerPage + plane;
 }
 
+bool FontReplacement::GlyphAtlas::CanHold(int width, int height) const {
+	return width + 2 * Padding <= m_size && height + 2 * Padding <= m_size;
+}
+
 bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, int& plane, int& x, int& y) {
 	page = plane = x = y = 0;
 	const auto w = width + 2 * Padding;
 	const auto h = height + 2 * Padding;
-	if (w > m_size || h > m_size)
+	if (!CanHold(width, height))
 		return false;
 
 	if (!TryEnsurePages(1))
@@ -250,8 +243,6 @@ bool FontReplacement::GlyphAtlas::TryEnsurePages(int count) {
 		}
 
 		Host::Information("Added {} atlas page {} ({} x {})", m_name, added + 1, m_size, m_size);
-		if (PageAdded)
-			PageAdded();
 	}
 	return true;
 }

@@ -470,7 +470,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 					BeginEdit(row, column);
 				return result;
 			}
-			break;
+			// Not on a cell: the empty area moves the window, as the title bar would.
+			ReleaseCapture();
+			SendMessageW(GetAncestor(m_hList, GA_ROOT), WM_NCLBUTTONDOWN, HTCAPTION, 0);
+			return 0;
 		}
 
 		case WM_LBUTTONDBLCLK: {

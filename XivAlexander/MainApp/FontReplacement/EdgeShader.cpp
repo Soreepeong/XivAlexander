@@ -63,11 +63,14 @@ bool FontReplacement::EdgeShader::CreateFromGame() {
 
 void FontReplacement::EdgeShader::Install() {
 	const auto target = GetEdgeShaderObject(true);
-	const auto slot = reinterpret_cast<ID3D11PixelShader**>(target + m_d3dShader);
-	if (!target || (target == m_patchedObject && *slot == m_shader.GetInterfacePtr()))
+	if (!target)
+		return;
+	ForgetIfReplaced(target);
+	if (m_patchedObject)
 		return;
 
 	// The game's object owns a reference to what it binds: it gets one of this shader.
+	const auto slot = reinterpret_cast<ID3D11PixelShader**>(target + m_d3dShader);
 	m_patchedObject = target;
 	m_original = *slot;
 	m_shader->AddRef();
@@ -85,16 +88,21 @@ uintptr_t FontReplacement::EdgeShader::GetEdgeShaderObject(bool check) const {
 	return *reinterpret_cast<const uintptr_t*>(server + m_pixelShaders + static_cast<size_t>(m_edgePass) * 8);
 }
 
+void FontReplacement::EdgeShader::ForgetIfReplaced(uintptr_t current) {
+	if (!m_patchedObject)
+		return;
+	if (current == m_patchedObject && *reinterpret_cast<ID3D11PixelShader**>(current + m_d3dShader) == m_shader.GetInterfacePtr())
+		return;
+	if (m_original)
+		m_original->Release();
+	m_patchedObject = 0;
+	m_original = nullptr;
+}
+
 uint8_t FontReplacement::EdgeShader::LoadShadersDetour(uintptr_t server) {
 	const auto result = m_loadShadersHook->Original(server);
 	try {
-		if (m_patchedObject && GetEdgeShaderObject(false) != m_patchedObject) {
-			if (m_original)
-				m_original->Release();
-			m_patchedObject = 0;
-			m_original = nullptr;
-		}
-
+		ForgetIfReplaced(GetEdgeShaderObject(false));
 		if (m_used && (m_shader || CreateFromGame()))
 			Install();
 	} catch (const std::exception& e) {
@@ -123,6 +131,9 @@ void FontReplacement::EdgeShader::Restore() {
 	if (GetEdgeShaderObject(false) == m_patchedObject && *slot == m_shader.GetInterfacePtr()) {
 		*slot = m_original;
 		m_shader->Release();
+	} else if (m_original) {
+		// The slot doesn't hold ours any more, so the game shader's reference is ours to release.
+		m_original->Release();
 	}
 
 	m_patchedObject = 0;
