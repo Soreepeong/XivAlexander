@@ -291,6 +291,9 @@ void FontReplacement::SubpixelText::Restore(PassShader& pass) {
 	if (GetShaderObject(m_server, pass.Pass, false, {}) == pass.PatchedObject && *slot == pass.Shader.GetInterfacePtr()) {
 		*slot = pass.Original;
 		pass.Shader->Release();
+	} else if (pass.Original) {
+		// The slot doesn't hold ours any more, so the game shader's reference is ours to release.
+		pass.Original->Release();
 	}
 	pass.PatchedObject = 0;
 	pass.Original = nullptr;
