@@ -120,6 +120,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			};
 			Cleanup += settings.Edge.OnChange(markPending);
 			Cleanup += settings.Subpixel.OnChange(markPending);
+			Cleanup += settings.ClearType.OnChange(markPending);
 			Cleanup += settings.NamePlates.OnChange(markPending);
 			Cleanup += settings.Atlas.OnChange(markPending);
 
@@ -179,7 +180,8 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	void ApplySubpixel(HWND window) {
 		LastSubpixelQuery = GetTickCount64();
 		try {
-			Replacer->SetSubpixel(SubpixelSettings::Of(Config->Runtime.FontReplacement.Subpixel.Value(), window));
+			const auto& settings = Config->Runtime.FontReplacement;
+			Replacer->SetSubpixel(SubpixelSettings::Of(settings.Subpixel.Value(), settings.ClearType.Value(), window));
 		} catch (const std::exception& e) {
 			Host::Error("Applying the subpixel text setting failed: {}", e.what());
 		}

@@ -59,6 +59,7 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamily& v) 
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementEdgeConfig& v) {
 	j = nlohmann::json::object({
+		{"Enabled", v.Enabled},
 		{"Scale", v.Scale},
 		{"Min", v.Min},
 		{"Max", v.Max},
@@ -72,6 +73,12 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 	Read(j, "Min", v.Min);
 	Read(j, "Max", v.Max);
 	Read(j, "Softness", v.Softness);
+
+	// Saved before it could be turned off: on if set to other than the defaults.
+	if (j.contains("Enabled"))
+		Read(j, "Enabled", v.Enabled);
+	else
+		v.Enabled = v != FontReplacementEdgeConfig{};
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAtlasConfig& v) {
@@ -89,6 +96,21 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAtlasConfig
 	Read(j, "AxisMaxPages", v.AxisMaxPages);
 	Read(j, "OtherPageSize", v.OtherPageSize);
 	Read(j, "OtherMaxPages", v.OtherMaxPages);
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementClearTypeConfig& v) {
+	j = nlohmann::json::object({
+		{"Level", v.Level},
+		{"Contrast", v.Contrast},
+		{"Gamma", v.Gamma},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementClearTypeConfig& v) {
+	v = {};
+	Read(j, "Level", v.Level);
+	Read(j, "Contrast", v.Contrast);
+	Read(j, "Gamma", v.Gamma);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode& v) {

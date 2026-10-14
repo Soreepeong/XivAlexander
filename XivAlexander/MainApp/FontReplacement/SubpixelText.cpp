@@ -44,11 +44,8 @@ namespace {
 	}
 }
 
-FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontReplacementSubpixelMode mode, HWND window) {
+FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::OfWindows(HWND window) {
 	SubpixelSettings res;
-	if (mode == FontReplacementSubpixelMode::Off)
-		return res;
-
 	auto geometry = DWRITE_PIXEL_GEOMETRY_RGB;
 	try {
 		IDWriteFactoryPtr factory;
@@ -66,25 +63,27 @@ FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontRepl
 	} catch (const std::exception& e) {
 		Host::Warning("Windows' ClearType settings couldn't be read; using the defaults: {}", e.what());
 	}
+	res.Order = geometry == DWRITE_PIXEL_GEOMETRY_RGB ? SubpixelOrder::Rgb : geometry == DWRITE_PIXEL_GEOMETRY_BGR ? SubpixelOrder::Bgr : SubpixelOrder::None;
+	return res;
+}
 
-	switch (mode) {
-		case FontReplacementSubpixelMode::System: {
-			UINT smoothing = 0, type = 0;
-			if (!SystemParametersInfoW(SPI_GETFONTSMOOTHING, 0, &smoothing, 0) || !smoothing
-				|| !SystemParametersInfoW(SPI_GETFONTSMOOTHINGTYPE, 0, &type, 0) || type != FE_FONTSMOOTHINGCLEARTYPE)
-				return res;
-			res.Order = geometry == DWRITE_PIXEL_GEOMETRY_RGB ? SubpixelOrder::Rgb : geometry == DWRITE_PIXEL_GEOMETRY_BGR ? SubpixelOrder::Bgr : SubpixelOrder::None;
-			break;
-		}
-		case FontReplacementSubpixelMode::Rgb:
-			res.Order = SubpixelOrder::Rgb;
-			break;
-		case FontReplacementSubpixelMode::Bgr:
-			res.Order = SubpixelOrder::Bgr;
-			break;
-		default:
-			break;
+FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, HWND window) {
+	if (mode == FontReplacementSubpixelMode::Off)
+		return {};
+
+	auto res = OfWindows(window);
+	if (mode == FontReplacementSubpixelMode::System) {
+		UINT smoothing = 0, type = 0;
+		if (!SystemParametersInfoW(SPI_GETFONTSMOOTHING, 0, &smoothing, 0) || !smoothing
+			|| !SystemParametersInfoW(SPI_GETFONTSMOOTHINGTYPE, 0, &type, 0) || type != FE_FONTSMOOTHINGCLEARTYPE)
+			res.Order = SubpixelOrder::None;
+		return res;
 	}
+
+	res.Order = mode == FontReplacementSubpixelMode::Bgr ? SubpixelOrder::Bgr : SubpixelOrder::Rgb;
+	res.Level = clearType.Level;
+	res.Contrast = clearType.Contrast;
+	res.Gamma = clearType.Gamma;
 	return res;
 }
 

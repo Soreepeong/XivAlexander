@@ -1042,7 +1042,7 @@ BEGIN
     IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "使用しない"
     IDS_SETTINGS_FALLBACKPRIORITY "言語の優先順位"
     IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "キャラクター別の言語"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "縁取り"
+    IDS_SETTINGS_EDGE_USE "文字の縁取りをカスタマイズする"
     IDS_SETTINGS_DIRS_GAME  "ゲーム"
     IDS_SETTINGS_DIRS_GAMENOTFOUND "見つかりません"
     IDS_SETTINGS_DIRS_DETECTING "確認中…"
@@ -1386,16 +1386,23 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_SUBPIXEL "サブピクセルレンダリング"
-    IDS_SETTINGS_SUBPIXEL_OFF "オフ (グレースケール)"
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Windows の ClearType 設定に従う"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (赤・緑・青の順)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (青・緑・赤の順)"
-    IDS_SETTINGS_SUBPIXEL_DESC "置き換えた文字を ClearType のように、画面の赤・緑・青のサブピクセルごとに描きます。縦長の画面、OLED など並びが縦や三角形の画面ではオフにしてください。濃さとコントラストは Windows の ClearType テキスト チューナーの設定を使います。拡大縮小して描かれる文字と、名前の表示はグレースケールのままです。"
+    IDS_SETTINGS_SUBPIXEL_DESC "置き換えた文字を ClearType のように、画面の赤・緑・青のサブピクセルごとに描きます。縦長の画面、OLED など並びが縦や三角形の画面ではオフにしてください。Windows の ClearType 設定に従うと、並び、色分けの強さ、コントラスト、ガンマはゲームのモニターに ClearType テキスト チューナーで設定した値を使います。拡大縮小して描かれる文字と、名前の表示はグレースケールのままです。"
     IDS_SETTINGS_NAMEPLATES "名前の表示の文字"
     IDS_SETTINGS_NAMEPLATES_GAME "ゲームと同じ (一度描いて拡大縮小)"
     IDS_SETTINGS_NAMEPLATES_BAKED "最大の大きさで一度だけ描く"
     IDS_SETTINGS_NAMEPLATES_LIVE "毎フレーム描く (最も鮮明、負荷大)"
     IDS_SETTINGS_NAMEPLATES_TIP "ゲームは名前の表示を一度だけ描いて保存し、距離に応じて拡大縮小するため、ぼやけます。「最大の大きさで一度だけ描く」は近くで見たときの大きさで描き、そこから縮小します。「毎フレーム描く」は表示する大きさで毎フレーム描くため最も鮮明ですが、名前の表示が多いと負荷が高くなります。"
+    IDS_SETTINGS_SUBPIXEL_USE "サブピクセル レンダリングを使う"
+    IDS_SETTINGS_SUBPIXEL_LAYOUT "サブピクセルの並び"
+    IDS_SETTINGS_CLEARTYPE_LEVEL "色分けの強さ"
+    IDS_SETTINGS_CLEARTYPE_CONTRAST "コントラスト強調"
+    IDS_SETTINGS_CLEARTYPE_GAMMA "ガンマ"
+    IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "1つのピクセルの赤・緑・青のサブピクセルをどれだけ別々に描くか (ClearType レベル)。0 はグレースケール、1 は完全な ClearType です。下げると色のにじみが弱まりますが、線がぼやけます。"
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "部分的に覆われたピクセルを濃くし、線を太く見せます。0 では変えません。"
+    IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "混ぜ合わせるときに補正する画面のガンマです。上げると明るい文字は太く、暗い文字は細くなります。"
 END
 
 
@@ -2456,7 +2463,7 @@ BEGIN
     IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "사용하지 않음"
     IDS_SETTINGS_FALLBACKPRIORITY "언어 우선순위"
     IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "캐릭터별 언어"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "테두리"
+    IDS_SETTINGS_EDGE_USE "글자 테두리 사용자 지정"
     IDS_SETTINGS_DIRS_GAME  "게임"
     IDS_SETTINGS_DIRS_GAMENOTFOUND "찾을 수 없음"
     IDS_SETTINGS_DIRS_DETECTING "확인 중..."
@@ -2801,16 +2808,23 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_SUBPIXEL "서브픽셀 렌더링"
-    IDS_SETTINGS_SUBPIXEL_OFF "끄기 (회색조)"
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Windows ClearType 설정 따르기"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (빨강, 초록, 파랑 순)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (파랑, 초록, 빨강 순)"
-    IDS_SETTINGS_SUBPIXEL_DESC "바꾼 글자를 ClearType처럼 화면의 빨강, 초록, 파랑 서브픽셀마다 따로 그립니다. 세로로 돌린 화면이나 OLED처럼 배열이 세로 또는 삼각형인 화면에서는 끄세요. 강도와 대비는 Windows ClearType 텍스트 조정기의 설정을 따릅니다. 확대하거나 축소해서 그리는 글자와 이름표는 회색조로 그립니다."
+    IDS_SETTINGS_SUBPIXEL_DESC "바꾼 글자를 ClearType처럼 화면의 빨강, 초록, 파랑 서브픽셀마다 따로 그립니다. 세로로 돌린 화면이나 OLED처럼 배열이 세로 또는 삼각형인 화면에서는 끄세요. Windows ClearType 설정을 따르면 배열, 색 분리 강도, 대비, 감마는 게임 모니터에 ClearType 텍스트 조정기로 정한 값을 씁니다. 확대하거나 축소해서 그리는 글자와 이름표는 회색조로 그립니다."
     IDS_SETTINGS_NAMEPLATES "이름표 글자"
     IDS_SETTINGS_NAMEPLATES_GAME "게임과 같게 (한 번 그려 확대/축소)"
     IDS_SETTINGS_NAMEPLATES_BAKED "가장 큰 크기로 한 번만 그리기"
     IDS_SETTINGS_NAMEPLATES_LIVE "매 프레임 그리기 (가장 선명, 부하 큼)"
     IDS_SETTINGS_NAMEPLATES_TIP "게임은 이름표를 한 번만 그려 저장해 두고 거리에 따라 확대/축소하므로 흐려집니다. '가장 큰 크기로 한 번만 그리기'는 가까이서 보이는 크기로 그린 뒤 거기서 줄여 보여 줍니다. '매 프레임 그리기'는 보이는 크기로 매 프레임 그려 가장 선명하지만, 이름표가 많으면 부하가 큽니다."
+    IDS_SETTINGS_SUBPIXEL_USE "서브픽셀 렌더링"
+    IDS_SETTINGS_SUBPIXEL_LAYOUT "서브픽셀 배열"
+    IDS_SETTINGS_CLEARTYPE_LEVEL "색 분리 강도"
+    IDS_SETTINGS_CLEARTYPE_CONTRAST "대비 강화"
+    IDS_SETTINGS_CLEARTYPE_GAMMA "감마"
+    IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "한 픽셀의 빨강, 초록, 파랑 서브픽셀을 얼마나 따로 그릴지 정합니다 (ClearType 레벨). 0은 회색조, 1은 완전한 ClearType입니다. 낮추면 색 번짐이 줄지만 획이 흐려집니다."
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "일부만 덮인 픽셀을 진하게 해 획을 굵어 보이게 합니다. 0이면 그대로 둡니다."
+    IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "섞을 때 보정하는 화면의 감마입니다. 높이면 밝은 글자는 굵게, 어두운 글자는 가늘게 보입니다."
 END
 
 
@@ -3969,7 +3983,7 @@ BEGIN
     IDS_SETTINGS_LANGUAGEOVERRIDE_DISABLE "Disable"
     IDS_SETTINGS_FALLBACKPRIORITY "Fallback language priority"
     IDS_SETTINGS_FORCEDCHARACTERLANGUAGES "Per-character languages"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE "Edge"
+    IDS_SETTINGS_EDGE_USE "Use text border customization"
     IDS_SETTINGS_DIRS_GAME  "Game"
     IDS_SETTINGS_DIRS_GAMENOTFOUND "Not found"
     IDS_SETTINGS_DIRS_DETECTING "Checking..."
@@ -4332,16 +4346,23 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_SUBPIXEL "Subpixel rendering"
-    IDS_SETTINGS_SUBPIXEL_OFF "Off (grayscale)"
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Follow Windows ClearType settings"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (red, green, blue from the left)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (blue, green, red from the left)"
-    IDS_SETTINGS_SUBPIXEL_DESC "Draws replaced text per red, green and blue subpixel of the screen, as ClearType does. Turn it off on rotated screens and on screens whose subpixels are not in vertical stripes (most OLED panels). Strength and contrast come from the Windows ClearType Text Tuner. Text drawn scaled, and nameplates, stay grayscale."
+    IDS_SETTINGS_SUBPIXEL_DESC "Draws replaced text per red, green and blue subpixel of the screen, as ClearType does. Turn it off on rotated screens and on screens whose subpixels are not in vertical stripes (most OLED panels). Following Windows' ClearType settings takes the layout, color separation, contrast and gamma that the ClearType Text Tuner set for the game's monitor. Text drawn scaled, and nameplates, stay grayscale."
     IDS_SETTINGS_NAMEPLATES "Nameplate text"
     IDS_SETTINGS_NAMEPLATES_GAME "As the game (baked, resampled)"
     IDS_SETTINGS_NAMEPLATES_BAKED "Baked once at full size"
     IDS_SETTINGS_NAMEPLATES_LIVE "Live every frame (sharpest, costly)"
     IDS_SETTINGS_NAMEPLATES_TIP "The game bakes each nameplate's text once and resamples it as the plate scales with distance, which blurs it. Baked once at full size bakes it at the size the plate has up close and draws it scaled down from there. Live draws it every frame at the size shown: always sharp, but costly with many nameplates."
+    IDS_SETTINGS_SUBPIXEL_USE "Use subpixel rendering"
+    IDS_SETTINGS_SUBPIXEL_LAYOUT "Subpixel layout"
+    IDS_SETTINGS_CLEARTYPE_LEVEL "Color separation"
+    IDS_SETTINGS_CLEARTYPE_CONTRAST "Enhanced contrast"
+    IDS_SETTINGS_CLEARTYPE_GAMMA "Gamma"
+    IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "How differently the red, green and blue subpixels of a pixel are drawn (the ClearType level): 0 is grayscale, 1 is full ClearType. Lower values weaken color fringes but blur strokes."
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "Darkens partly covered pixels, making strokes look heavier. 0 leaves them as they are."
+    IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "The display's gamma, which blending corrects for. Higher values make light text heavier and dark text lighter."
 END
 
 

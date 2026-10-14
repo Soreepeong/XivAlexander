@@ -277,7 +277,7 @@ void FontReplacement::FontReplacer::SetAtlas(const FontReplacementAtlasConfig& c
 }
 
 void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
-	edge = edge.Clamped();
+	edge = edge.Drawn();
 	if (edge == m_edge)
 		return;
 
@@ -290,7 +290,7 @@ void FontReplacement::FontReplacer::SetEdge(FontReplacementEdgeConfig edge) {
 	// Round edge of any width, set per font by its claimed texture width, unless edges are the game's own (1 px). Fallback: the game's fixed
 	// pattern, widened only by claiming a narrower texture (blocky past ~1.5 px).
 	try {
-		m_edgeShader.Set(edge != FontReplacementEdgeConfig{}, edge.Softness);
+		m_edgeShader.Set(edge.Enabled && edge != FontReplacementEdgeConfig{.Enabled = true}, edge.Softness);
 	} catch (const std::exception& e) {
 		Host::Error("Using the edge shader failed; edges are widened with the game's: {}", e.what());
 		m_edgeShader.Set(false);

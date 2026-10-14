@@ -44,6 +44,9 @@ namespace XivAlexander {
 
 	/// Edge outline width at text size px: clamp(Scale * px, Min, Max) pixels; the defaults (1 px at every size) are the game's own.
 	struct FontReplacementEdgeConfig {
+		/// If false, the game's own edge is drawn, as with the defaults.
+		bool Enabled = false;
+
 		/// Width per pixel of text size (0: Min at every size).
 		float Scale = 0;
 		float Min = 1;
@@ -60,7 +63,12 @@ namespace XivAlexander {
 		/// Within what the edge can do: 0.25 to 8 px, softness 0 to 8.
 		[[nodiscard]] FontReplacementEdgeConfig Clamped() const {
 			const auto min = std::clamp(Min, 0.25f, 8.f);
-			return {std::clamp(Scale, 0.f, 1.f), min, std::clamp(Max, min, 8.f), std::clamp(Softness, 0.f, 8.f)};
+			return {Enabled, std::clamp(Scale, 0.f, 1.f), min, std::clamp(Max, min, 8.f), std::clamp(Softness, 0.f, 8.f)};
+		}
+
+		/// As drawn: clamped if enabled, else the defaults.
+		[[nodiscard]] FontReplacementEdgeConfig Drawn() const {
+			return Enabled ? Clamped() : FontReplacementEdgeConfig{};
 		}
 
 		bool operator==(const FontReplacementEdgeConfig&) const = default;
@@ -80,6 +88,20 @@ namespace XivAlexander {
 		}
 
 		bool operator==(const FontReplacementAtlasConfig&) const = default;
+	};
+
+	/// ClearType level, enhanced contrast and gamma of RGB and BGR subpixel text; System takes Windows' for the game's monitor (the ClearType Text Tuner's).
+	struct FontReplacementClearTypeConfig {
+		float Level = 1;
+		float Contrast = 0.5f;
+		float Gamma = 1.8f;
+
+		/// Level 0 to 1, contrast 0 to 4, gamma 1 to 3.
+		[[nodiscard]] FontReplacementClearTypeConfig Clamped() const {
+			return {std::clamp(Level, 0.f, 1.f), std::clamp(Contrast, 0.f, 4.f), std::clamp(Gamma, 1.f, 3.f)};
+		}
+
+		bool operator==(const FontReplacementClearTypeConfig&) const = default;
 	};
 
 	/// Subpixel text; System follows Windows' ClearType setting for the game's monitor.
@@ -111,6 +133,7 @@ namespace XivAlexander {
 
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
 		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::Off};
+		ConfigItem<FontReplacementClearTypeConfig> ClearType{this, "ClearType", {}, [](const FontReplacementClearTypeConfig& v) { return v.Clamped(); }};
 		ConfigItem<FontReplacementNamePlateMode> NamePlates{this, "NamePlates", FontReplacementNamePlateMode::BakedAtFullSize};
 		ConfigItem<FontReplacementAtlasConfig> Atlas{this, "Atlas", {}, [](const FontReplacementAtlasConfig& v) { return v.Clamped(); }};
 	};
@@ -125,6 +148,8 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, FontReplacementEdgeConfig&);
 	void to_json(nlohmann::json&, const FontReplacementAtlasConfig&);
 	void from_json(const nlohmann::json&, FontReplacementAtlasConfig&);
+	void to_json(nlohmann::json&, const FontReplacementClearTypeConfig&);
+	void from_json(const nlohmann::json&, FontReplacementClearTypeConfig&);
 	void to_json(nlohmann::json&, const FontReplacementSubpixelMode&);
 	void from_json(const nlohmann::json&, FontReplacementSubpixelMode&);
 	void to_json(nlohmann::json&, const FontReplacementNamePlateMode&);

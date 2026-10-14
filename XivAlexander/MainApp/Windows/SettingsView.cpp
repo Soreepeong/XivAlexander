@@ -17,6 +17,7 @@
 
 #include "MainApp/FontReplacement/GameFontNames.h"
 #include "MainApp/FontReplacement/Presets.h"
+#include "MainApp/FontReplacement/SubpixelText.h"
 #include "MainApp/Modding/NestedTtmp.h"
 #include "MainApp/Modding/ResourceOverrider.h"
 #include "MainApp/Modding/VirtualSqPacks.h"
@@ -977,8 +978,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.CrowdFix.Fixes, IDS_SETTINGS_GROUP_CROWDFIX_FIXES);
 	label(rt.FontReplacement, IDS_SETTINGS_GROUP_FONTREPLACEMENT);
 	label(rt.FontReplacement.Faces, IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES);
-	label(rt.FontReplacement.Edge, IDS_SETTINGS_GROUP_FONTREPLACEMENT_EDGE);
+	label(rt.FontReplacement.Edge, IDS_SETTINGS_EDGE_USE);
 	m_itemInfo[&rt.FontReplacement.Edge].AfterInlineGroups = true;
+	label(rt.FontReplacement.ClearType, IDS_SETTINGS_SUBPIXEL_USE);
+	m_itemInfo[&rt.FontReplacement.ClearType].AfterInlineGroups = true;
 
 	// Items that have a menu command are labelled as it is.
 	menu(rt.Ui.MainWindow.Show, IDR_TRAY_MENU, ID_FILE_SHOWCONTROLWINDOW);
@@ -1145,7 +1148,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK);
 	tip(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP);
 	label(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL);
-	tip(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL_DESC);
 	label(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES);
 	tip(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES_TIP);
 
@@ -1213,6 +1215,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Atlas),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Subpixel),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -3160,7 +3163,15 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddChoicesFileRows() {
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddEdgeRows() {
 	auto& rt = m_config->Runtime;
 	auto& edge = rt.FontReplacement.Edge;
-	CreateHeadingRow(GetItemLabel(edge));
+	CreateChoiceRow(GetItemLabel(edge), true, [&edge] { return edge.Value().Enabled; }, [&edge] {
+		auto config = edge.Value();
+		config.Enabled = !config.Enabled;
+		edge = config;
+	}, true);
+	m_rows.back()->Bold = true;
+	SendMessageW(m_rows.back()->Control, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
+	const auto firstSlider = m_rows.size();
+
 	const auto setter = [&edge](float FontReplacementEdgeConfig::* field) {
 		return [&edge, field](double value) {
 			auto config = edge.Value();
@@ -3174,7 +3185,85 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddEdgeRows() {
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_MAX), 0.25, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Max); }, setter(&FontReplacementEdgeConfig::Max));
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_EDGE_SOFTNESS), 0, 8, 0.05, [&edge] { return static_cast<double>(edge.Value().Softness); }, setter(&FontReplacementEdgeConfig::Softness));
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_EDGE_SOFTNESS_DESC);
+
+	// Set while customized; the game's own edge is drawn otherwise.
+	for (auto i = firstSlider; i < m_rows.size(); i++) {
+		auto& row = *m_rows[i];
+		row.Refresh = [&row, &edge, refresh = std::move(row.Refresh)] {
+			const auto enabled = edge.Value().Enabled;
+			EnableWindow(row.Control, enabled);
+			EnableWindow(row.Secondary, enabled);
+			refresh();
+		};
+	}
 	PostOnChange(edge, WmRefreshRows);
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
+	auto& rt = m_config->Runtime;
+	auto& clearType = rt.FontReplacement.ClearType;
+	auto& mode = rt.FontReplacement.Subpixel;
+
+	// System takes every value from Windows, which are shown then; RGB and BGR take the ones set here.
+	const auto own = [&mode] { return mode.Value() == FontReplacementSubpixelMode::Rgb || mode.Value() == FontReplacementSubpixelMode::Bgr; };
+	const auto windows = [this] {
+		const auto settings = FontReplacement::SubpixelSettings::OfWindows(m_app.GetGameWindowHandle());
+		return FontReplacementClearTypeConfig{settings.Level, settings.Contrast, settings.Gamma};
+	};
+	const auto shown = [&clearType, windows, own] { return own() ? clearType.Value() : windows(); };
+
+	CreateChoiceRow(GetItemLabel(clearType), true, [&mode] { return mode.Value() != FontReplacementSubpixelMode::Off; }, [&mode] {
+		mode = mode.Value() == FontReplacementSubpixelMode::Off ? FontReplacementSubpixelMode::System : FontReplacementSubpixelMode::Off;
+	}, true);
+	m_rows.back()->Bold = true;
+	SendMessageW(m_rows.back()->Control, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
+
+	static constexpr std::array layouts{FontReplacementSubpixelMode::System, FontReplacementSubpixelMode::Rgb, FontReplacementSubpixelMode::Bgr};
+	CreateComboRow(rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_LAYOUT), {
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_SYSTEM),
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_RGB),
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_BGR),
+	}, [&mode] {
+		const auto it = std::ranges::find(layouts, mode.Value());
+		return it == layouts.end() ? 0 : static_cast<int>(it - layouts.begin());
+	}, [&mode, &clearType, windows](int choice) {
+		// The first choice of a stripe order starts from Windows' values.
+		if (layouts[choice] != FontReplacementSubpixelMode::System && clearType.Value() == FontReplacementClearTypeConfig{})
+			clearType = windows();
+		mode = layouts[choice];
+	});
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_SUBPIXEL_DESC);
+	const auto firstRow = m_rows.size() - 1;
+
+	const auto setter = [&clearType](float FontReplacementClearTypeConfig::* field) {
+		return [&clearType, field](double value) {
+			auto config = clearType.Value();
+			config.*field = static_cast<float>(value);
+			clearType = config;
+		};
+	};
+	// As FontReplacementClearTypeConfig::Clamped has them.
+	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_LEVEL), 0, 1, 0.01, [shown] { return static_cast<double>(shown().Level); }, setter(&FontReplacementClearTypeConfig::Level));
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_LEVEL_TIP);
+	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_CONTRAST), 0, 4, 0.05, [shown] { return static_cast<double>(shown().Contrast); }, setter(&FontReplacementClearTypeConfig::Contrast));
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP);
+	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_GAMMA), 1, 3, 0.05, [shown] { return static_cast<double>(shown().Gamma); }, setter(&FontReplacementClearTypeConfig::Gamma));
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_GAMMA_TIP);
+
+	// The layout can be chosen while subpixel rendering is on, and the values set with a stripe order; refreshed in place, as
+	// rebuilding the page would scroll it to the top.
+	for (auto i = firstRow; i < m_rows.size(); i++) {
+		auto& row = *m_rows[i];
+		row.Refresh = [&row, &mode, own, refresh = std::move(row.Refresh), layout = i == firstRow] {
+			const auto enabled = layout ? mode.Value() != FontReplacementSubpixelMode::Off : own();
+			EnableWindow(row.Control, enabled);
+			if (row.Secondary)
+				EnableWindow(row.Secondary, enabled);
+			refresh();
+		};
+	}
+	PostOnChange(mode, WmRefreshRows);
+	PostOnChange(clearType, WmRefreshRows);
 }
 
 const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::GetFontPresetFolder() {
@@ -3987,6 +4076,7 @@ bool XivAlexander::Apps::MainApp::Window::SettingsView::CreateSpecialRows(const 
 		{&rt.Modding.Languages.ForcedCharacterLanguages, [this] { AddForcedLanguageRows(); }},
 		{&rt.Modding.Ttmp.ChoicesFiles, [this] { AddChoicesFileRows(); }},
 		{&rt.FontReplacement.Edge, [this] { AddEdgeRows(); }},
+		{&rt.FontReplacement.ClearType, [this] { AddSubpixelRows(); }},
 		{&rt.Modding.AdditionalSqpackRootDirectories, [this] { AddSqpackRootRows(); }},
 		{&rt.Modding.TextTransformationFiles, [this] { AddTextTransformationRows(); }},
 		{&rt.Modding.GameResourceFileEntryRootDirectories, [this, &rt] {
@@ -4120,14 +4210,6 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateRow(ConfigItemBase
 			for (auto i = 0; i <= static_cast<int>(xivres::game_publisher::UserjoyGames); ++i)
 				res.emplace_back(static_cast<xivres::game_publisher>(i), rt.GetRegionNameLocalized(static_cast<xivres::game_publisher>(i)));
 			return res;
-		})
-		|| BindEnum<FontReplacementSubpixelMode>(row, [&rt] {
-			return std::vector<std::pair<FontReplacementSubpixelMode, std::wstring>>{
-				{FontReplacementSubpixelMode::Off, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_OFF)},
-				{FontReplacementSubpixelMode::System, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_SYSTEM)},
-				{FontReplacementSubpixelMode::Rgb, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_RGB)},
-				{FontReplacementSubpixelMode::Bgr, rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_BGR)},
-			};
 		})
 		|| BindEnum<FontReplacementNamePlateMode>(row, [&rt] {
 			return std::vector<std::pair<FontReplacementNamePlateMode, std::wstring>>{

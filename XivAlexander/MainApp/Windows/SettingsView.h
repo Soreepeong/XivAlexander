@@ -267,6 +267,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddSqpackRootRows();
 		void AddTextTransformationRows();
 		void AddEdgeRows();
+		void AddSubpixelRows();
 		void AddFontFamilyRows(const std::string& family);
 		[[nodiscard]] RECT GetDividerRect() const;
 		void DragWindow() const;
