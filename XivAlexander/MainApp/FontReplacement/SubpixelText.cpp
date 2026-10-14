@@ -16,9 +16,10 @@ _COM_SMARTPTR_TYPEDEF(IDWriteRenderingParams, __uuidof(IDWriteRenderingParams));
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// FontSubpixelPS.hlsl's ClearTypeLevel and Contrast, as float bits.
+	// FontSubpixelPS.hlsl's ClearTypeLevel, Contrast and Gamma, as float bits.
 	constexpr uint32_t ClearTypeLevelSentinel = 0x3E703291;
 	constexpr uint32_t ContrastSentinel = 0x3EB0FCD4;
+	constexpr uint32_t GammaSentinel = 0x3EE9E044;
 
 	// PackedBlendStateDesc fields hold D3D11_BLEND minus one.
 	constexpr int SrcBlendShift = 4;
@@ -61,6 +62,7 @@ FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontRepl
 		geometry = params->GetPixelGeometry();
 		res.Level = std::clamp(params->GetClearTypeLevel(), 0.f, 1.f);
 		res.Contrast = (std::max)(params->GetEnhancedContrast(), 0.f);
+		res.Gamma = (std::max)(params->GetGamma(), 1.f);
 	} catch (const std::exception& e) {
 		Host::Warning("Windows' ClearType settings couldn't be read; using the defaults: {}", e.what());
 	}
@@ -98,7 +100,7 @@ void FontReplacement::SubpixelText::Set(const SubpixelSettings& settings) {
 		Resolve();
 
 	const auto lock = std::scoped_lock(m_mutex);
-	const auto shaderChanged = settings.Level != m_settings.Level || settings.Contrast != m_settings.Contrast;
+	const auto shaderChanged = settings.Level != m_settings.Level || settings.Contrast != m_settings.Contrast || settings.Gamma != m_settings.Gamma;
 	m_settings = settings;
 	m_enabled = settings.Order != SubpixelOrder::None;
 
@@ -272,8 +274,8 @@ uintptr_t FontReplacement::SubpixelText::GetShaderObject(uintptr_t server, int p
 
 std::vector<uint8_t> FontReplacement::SubpixelText::GetShaderCode(const SubpixelSettings& settings, bool highlight) {
 	auto code = ReadShaderCode(highlight ? IDR_FONTSUBPIXELHIGHLIGHTPS : IDR_FONTSUBPIXELPS);
-	if (EdgeShaderCode::PatchConstants(code, {{ClearTypeLevelSentinel, settings.Level}, {ContrastSentinel, settings.Contrast}}) < 2)
-		Host::Warning("FontSubpixelPS.cso doesn't have both of its settings to set; text is drawn with the values it was compiled with.");
+	if (EdgeShaderCode::PatchConstants(code, {{ClearTypeLevelSentinel, settings.Level}, {ContrastSentinel, settings.Contrast}, {GammaSentinel, settings.Gamma}}) < 3)
+		Host::Warning("FontSubpixelPS.cso doesn't have all of its settings to set; text is drawn with the values it was compiled with.");
 	return code;
 }
 

@@ -17,7 +17,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// k of coverage * (k + 1) / (coverage * k + 1).
 		float Contrast = 0.5f;
 
-		// Level and contrast from Windows for the window's monitor; System takes the stripe order from there too.
+		// The display's gamma, which blending corrects for.
+		float Gamma = 1.8f;
+
+		// Level, contrast and gamma from Windows for the window's monitor; System takes the stripe order from there too.
 		[[nodiscard]] static SubpixelSettings Of(FontReplacementSubpixelMode mode, HWND window);
 
 		bool operator==(const SubpixelSettings&) const = default;
@@ -85,7 +88,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread. Throws if a signature isn't found; Order None puts the game's shaders back.
 		void Set(const SubpixelSettings& settings);
 
-		// FontSubpixelPS's bytecode with the settings' level and contrast.
+		// FontSubpixelPS's bytecode with the settings' level, contrast and gamma.
 		[[nodiscard]] static std::vector<uint8_t> GetShaderCode(const SubpixelSettings& settings, bool highlight);
 
 		// On, with the hooks in place. Game thread.

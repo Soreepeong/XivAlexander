@@ -3486,8 +3486,14 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			all[family] = std::move(settings);
 		item = std::move(all);
 	};
-	const auto get = [getFamily] { return getFamily().Sources; };
+	// Later sources take priority; the rows list them from the top priority.
+	const auto get = [getFamily] {
+		auto sources = getFamily().Sources;
+		std::ranges::reverse(sources);
+		return sources;
+	};
 	const auto set = [getFamily, setFamily](std::vector<FontReplacementFamilySource> sources) {
+		std::ranges::reverse(sources);
 		auto settings = getFamily();
 		settings.Sources = std::move(sources);
 		setFamily(std::move(settings));
@@ -3505,14 +3511,14 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 	const auto pGrid = std::make_shared<GridView*>();
 	const auto add = [get, set, pGrid](FontReplacementFamilySource source, bool editName) {
 		auto sources = get();
-		sources.push_back(std::move(source));
+		sources.insert(sources.begin(), std::move(source));
 		set(std::move(sources));
 		auto& grid = **pGrid;
 		grid.Refresh();
 		if (editName)
-			grid.BeginEdit(get().size() - 1, 2);
+			grid.BeginEdit(0, 2);
 		else
-			grid.Select(get().size() - 1);
+			grid.Select(0);
 	};
 	const auto remove = [get, set, pGrid] {
 		auto& grid = **pGrid;
@@ -3551,16 +3557,17 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 				(*pGrid)->Refresh();
 			}},
 			{{}, {}},
-			{rt.GetStringRes(IDS_SETTINGS_FONT_COPYTOOTHERS), [this, &item, family, get] {
+			{rt.GetStringRes(IDS_SETTINGS_FONT_COPYTOOTHERS), [this, &item, family, getFamily] {
 				if (Dll::MessageBoxF(m_hWndOwner, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2, m_config->Runtime.FormatStringRes(IDS_SETTINGS_FONT_CONFIRMCOPY, Wide(family))) != IDYES)
 					return;
 				// Only the sources, with their digits; whether the others are on stays as it is.
 				auto all = item.Value();
+				const auto sources = getFamily().Sources;
 				for (const auto& other : m_fontFamilies) {
 					if (other == family)
 						continue;
 					auto& settings = all[other];
-					settings.Sources = get();
+					settings.Sources = sources;
 					if (settings == FontReplacementFamily{})
 						all.erase(other);
 				}
@@ -3570,7 +3577,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			{rt.GetStringRes(IDS_SETTINGS_FONT_OPENPRESETFOLDER), [this] { OpenInExplorer(m_hWndOwner, GetFontPresetFolder()); }},
 		});
 
-	auto& grid = CreateGridRow({}, IDS_SETTINGS_FONT_SOURCES_DESC, 200, {
+	auto& grid = CreateGridRow({}, 0, 200, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_FONT_SOURCE_TYPE), .Kind = GridView::CellKind::ReadOnly, .Width = 100},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_NAME), .Kind = GridView::CellKind::ComboEdit, .Width = 220, .GetChoices = [this, get](size_t row) {

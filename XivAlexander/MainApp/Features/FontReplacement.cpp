@@ -31,7 +31,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
 	bool PendingSettings = true;
 
-	// How often System mode re-reads Windows' ClearType settings and the game's monitor.
+	// How often Windows' ClearType settings are re-read for the game's monitor, which the window may move to.
 	static constexpr uint64_t SubpixelRefreshMs = 2000;
 	uint64_t LastSubpixelQuery = 0;
 
@@ -205,7 +205,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			if (NamePlates)
 				NamePlates->SetMode(current.NamePlates.Value());
 			ApplySubpixel(App.GetGameWindowHandle());
-		} else if (Config->Runtime.FontReplacement.Subpixel.Value() == FontReplacementSubpixelMode::System && GetTickCount64() - LastSubpixelQuery >= SubpixelRefreshMs) {
+		} else if (Config->Runtime.FontReplacement.Subpixel.Value() != FontReplacementSubpixelMode::Off && GetTickCount64() - LastSubpixelQuery >= SubpixelRefreshMs) {
 			ApplySubpixel(App.GetGameWindowHandle());
 		}
 

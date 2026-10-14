@@ -839,8 +839,6 @@ BEGIN
     IDS_SETTINGS_EDITFILE   "編集"
     IDS_SETTINGS_FONT_COPYTOOTHERS "他のファミリーにコピー"
     IDS_SETTINGS_FONT_CONFIRMCOPY "他のすべてのファミリーのソースを{}のもので置き換えますか？"
-    IDS_SETTINGS_FONT_SOURCES_DESC 
-                            "後のソースが字ごとに前のものの上に描かれます。プリセットはこのファミリーのフォントだけが使われます。"
     IDS_SETTINGS_EDGE_SOFTNESS "縁のぼかし"
     IDS_SETTINGS_EDGE_SCALE "文字サイズ1ピクセルあたりの縁の太さ"
     IDS_SETTINGS_EDGE_MIN   "縁の最小の太さ (px)"
@@ -2252,8 +2250,6 @@ BEGIN
     IDS_SETTINGS_EDITFILE   "편집"
     IDS_SETTINGS_FONT_COPYTOOTHERS "다른 글꼴 패밀리에 복사"
     IDS_SETTINGS_FONT_CONFIRMCOPY "다른 모든 글꼴 패밀리의 소스를 {}의 것으로 바꾸시겠습니까?"
-    IDS_SETTINGS_FONT_SOURCES_DESC 
-                            "뒤에 있는 소스가 글자별로 앞의 것을 덮어씁니다. 프리셋은 이 글꼴 패밀리의 글꼴만 사용합니다."
     IDS_SETTINGS_EDGE_SOFTNESS "테두리 흐림"
     IDS_SETTINGS_EDGE_SCALE "글자 크기 1픽셀당 테두리 두께"
     IDS_SETTINGS_EDGE_MIN   "최소 테두리 두께 (px)"
@@ -3751,8 +3747,6 @@ BEGIN
     IDS_SETTINGS_FONT_COPYTOOTHERS "Copy to Other Families"
     IDS_SETTINGS_FONT_CONFIRMCOPY 
                             "Replace the sources of every other family with those of {}?"
-    IDS_SETTINGS_FONT_SOURCES_DESC 
-                            "Later sources are drawn over earlier ones, glyph by glyph. Of a preset, only this family's faces are used."
     IDS_SETTINGS_EDGE_SOFTNESS "Edge softness"
     IDS_SETTINGS_EDGE_SCALE "Edge width per pixel of text size"
     IDS_SETTINGS_EDGE_MIN   "Minimum edge width (px)"
