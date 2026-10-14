@@ -177,36 +177,6 @@
     <ItemGroup>
         <ResourceCompile Include="..\XivAlexander\XivAlexander.rc"/>
     </ItemGroup>
-    <!-- XivAlexander.rc embeds these. -->
-    <ItemGroup>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontSubpixelPS.hlsl">
-            <ShaderType>Pixel</ShaderType>
-            <ShaderModel>5.0</ShaderModel>
-            <EntryPointName>main</EntryPointName>
-            <DisableOptimizations>false</DisableOptimizations>
-            <EnableDebuggingInformation>false</EnableDebuggingInformation>
-            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
-            <ObjectFileOutput>$(IntDir)FontSubpixelPS.cso</ObjectFileOutput>
-        </FxCompile>
-        <FxCompile Include="..\XivAlexander\MainApp\FontReplacement\FontSubpixelHighlightPS.hlsl">
-            <ShaderType>Pixel</ShaderType>
-            <ShaderModel>5.0</ShaderModel>
-            <EntryPointName>main</EntryPointName>
-            <DisableOptimizations>false</DisableOptimizations>
-            <EnableDebuggingInformation>false</EnableDebuggingInformation>
-            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
-            <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-        </FxCompile>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgePS.hlsl">
-            <ShaderType>Pixel</ShaderType>
-            <ShaderModel>5.0</ShaderModel>
-            <EntryPointName>main</EntryPointName>
-            <DisableOptimizations>false</DisableOptimizations>
-            <EnableDebuggingInformation>false</EnableDebuggingInformation>
-            <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
-            <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
-        </FxCompile>
-    </ItemGroup>
     <ItemGroup>
         <None Include="vcpkg.json"/>
     </ItemGroup>

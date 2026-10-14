@@ -1772,6 +1772,7 @@ END
 3 TEXTINCLUDE 
 BEGIN
     "#include ""Version.rc2""\r\n"
+    "#include ""Shaders.rc2""\r\n"
     "\0"
 END
 
@@ -3191,19 +3192,6 @@ IDR_RT_MANIFEST_LATE_ACTIVATION RT_MANIFEST             "DummyAssemblyIdentity.m
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// RCDATA
-//
-
-IDR_FONTEDGEPS          RCDATA                  "FontEdgePS.cso"
-
-
-IDR_FONTSUBPIXELPS      RCDATA                  "FontSubpixelPS.cso"
-
-IDR_FONTSUBPIXELHIGHLIGHTPS RCDATA              "FontSubpixelHighlightPS.cso"
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
 // Accelerator
 //
 
@@ -4374,6 +4362,7 @@ END
 // Generated from the TEXTINCLUDE 3 resource.
 //
 #include "Version.rc2"
+#include "Shaders.rc2"
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

@@ -780,6 +780,9 @@
     <None Include="Version.rc2">
       <Filter>Project Items</Filter>
     </None>
+    <None Include="Shaders.rc2">
+      <Filter>Project Items</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="DummyAssemblyIdentity.manifest">

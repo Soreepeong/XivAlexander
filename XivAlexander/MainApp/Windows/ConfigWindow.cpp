@@ -9,6 +9,11 @@
 #include "resource.h"
 #include "XivAlexander.h"
 
+#include <lexilla/lexlib/LexerModule.h>
+
+// Lexilla's CreateLexer would link every lexer it has.
+extern const Lexilla::LexerModule lmJSON;
+
 constexpr int BaseFontSize = 11;
 
 namespace {
@@ -64,7 +69,7 @@ void XivAlexander::Apps::MainApp::Window::ConfigWindow::Initialize() {
 	m_direct(m_directPtr, SCI_SETMARGINTYPEN, 0, SC_MARGIN_NUMBER);
 	m_direct(m_directPtr, SCI_SETMARGINWIDTHN, 1, 0);
 	m_direct(m_directPtr, SCI_STYLESETFONT, STYLE_DEFAULT, reinterpret_cast<sptr_t>("Consolas"));
-	if (const auto pLexer = CreateLexer("json")) {
+	if (const auto pLexer = lmJSON.Create()) {
 		m_direct(m_directPtr, SCI_SETILEXER, 0, reinterpret_cast<sptr_t>(pLexer));
 		m_direct(m_directPtr, SCI_SETKEYWORDS, 0, reinterpret_cast<sptr_t>("true false null"));
 	}

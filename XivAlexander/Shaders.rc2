@@ -1,0 +1,7 @@
+// The main DLL's compiled shaders, kept out of XivAlexanderLoader.exe, which builds XivAlexander.rc too.
+
+#ifndef XIVALEXANDER_LOADER_EXE
+IDR_FONTEDGEPS              RCDATA  "FontEdgePS.cso"
+IDR_FONTSUBPIXELPS          RCDATA  "FontSubpixelPS.cso"
+IDR_FONTSUBPIXELHIGHLIGHTPS RCDATA  "FontSubpixelHighlightPS.cso"
+#endif

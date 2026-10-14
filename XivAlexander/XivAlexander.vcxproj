@@ -468,6 +468,7 @@
         <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgeSquares.hlsli"/>
         <None Include="Exports_x64.def"/>
         <None Include="Version.rc2"/>
+        <None Include="Shaders.rc2"/>
         <None Include="vcpkg.json"/>
     </ItemGroup>
     <ItemGroup>
