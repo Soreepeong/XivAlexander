@@ -87,6 +87,10 @@ namespace XivAlexander::Apps::MainApp::Window {
 		std::optional<size_t> m_dropBefore;  // Where a dragged row would go: before this row, or last if the row count.
 		bool m_selectionChangePosted = false;
 
+		HWND m_hTip{};
+		std::optional<std::pair<size_t, size_t>> m_tipCell;
+		std::wstring m_tipText;
+
 	public:
 		GridView(HWND hParent, UINT id, std::vector<Column> columns, Source source);
 		GridView(const GridView&) = delete;
@@ -133,6 +137,8 @@ namespace XivAlexander::Apps::MainApp::Window {
 		[[nodiscard]] std::optional<std::pair<size_t, size_t>> HitTest(POINT ptClient) const;
 		[[nodiscard]] size_t GetDropTarget(POINT ptClient) const;
 		void EndDrag(bool drop);
+		void UpdateTip(POINT ptClient);
+		void HideTip();
 		[[nodiscard]] size_t GetRowCount() const { return m_source.GetRowCount ? m_source.GetRowCount() : 0; }
 	};
 }

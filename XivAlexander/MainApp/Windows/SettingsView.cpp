@@ -3666,6 +3666,27 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			{rt.GetStringRes(IDS_SETTINGS_FONT_OPENPRESETFOLDER), [this] { OpenInExplorer(m_hWndOwner, GetFontPresetFolder()); }},
 		});
 
+	const auto cellText = [this, &rt, get](size_t row, size_t column, bool editing) -> std::wstring {
+		const auto sources = get();
+		const auto& source = sources[row];
+		switch (column) {
+			case 1:
+				return rt.GetStringRes(source.IsPreset() ? IDS_SETTINGS_FONT_SOURCE_PRESET : IDS_SETTINGS_FONT_SOURCE_FONT);
+			case 2:
+				if (source.IsPreset())
+					return editing ? Wide(source.Preset) : std::filesystem::path(Wide(source.Preset)).filename().wstring();
+				return SystemFontDisplayName(source.Font.Name);
+			case 3:
+				return source.IsPreset() ? std::wstring() : NamedValue(rt, FontWeights, source.Font.Weight);
+			case 4:
+				return source.IsPreset() ? std::wstring() : NamedValue(rt, FontStretches, source.Font.Stretch);
+			case 5:
+				return source.IsPreset() ? std::wstring() : NamedValue(rt, FontStyles, source.Font.Style);
+			default:
+				return {};
+		}
+	};
+
 	auto& grid = CreateGridRow({}, 0, 200, {
 		{.Title = rt.GetStringRes(IDS_SETTINGS_GRID_ENABLED), .Kind = GridView::CellKind::Check, .Width = 60},
 		{.Title = rt.GetStringRes(IDS_SETTINGS_FONT_SOURCE_TYPE), .Kind = GridView::CellKind::ReadOnly, .Width = 100},
@@ -3682,24 +3703,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 		{.Title = rt.GetStringRes(IDS_SETTINGS_FONT_STYLE), .Kind = GridView::CellKind::ComboChoice, .Width = 90, .GetChoices = [&rt](size_t) { return NamedValues(rt, FontStyles); }},
 	}, {
 		.GetRowCount = [get] { return get().size(); },
-		.GetText = [this, &rt, get](size_t row, size_t column) -> std::wstring {
-			const auto sources = get();
-			const auto& source = sources[row];
-			switch (column) {
-				case 1:
-					return rt.GetStringRes(source.IsPreset() ? IDS_SETTINGS_FONT_SOURCE_PRESET : IDS_SETTINGS_FONT_SOURCE_FONT);
-				case 2:
-					return source.IsPreset() ? Wide(source.Preset) : SystemFontDisplayName(source.Font.Name);
-				case 3:
-					return source.IsPreset() ? std::wstring() : NamedValue(rt, FontWeights, source.Font.Weight);
-				case 4:
-					return source.IsPreset() ? std::wstring() : NamedValue(rt, FontStretches, source.Font.Stretch);
-				case 5:
-					return source.IsPreset() ? std::wstring() : NamedValue(rt, FontStyles, source.Font.Style);
-				default:
-					return {};
-			}
-		},
+		.GetText = [cellText](size_t row, size_t column) { return cellText(row, column, false); },
+		.GetEditText = [cellText](size_t row, size_t column) { return cellText(row, column, true); },
 		.GetChecked = [get](size_t row, size_t) { return get()[row].Enabled; },
 		.IsEditable = [get](size_t row, size_t column) { return column <= 2 || !get()[row].IsPreset(); },
 		.SetText = [this, edit, parseNumber](size_t row, size_t column, const std::wstring& text) {

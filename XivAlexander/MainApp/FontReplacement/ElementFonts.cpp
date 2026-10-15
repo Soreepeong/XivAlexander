@@ -515,7 +515,8 @@ FontReplacement::ImageElementFont::ImageElementFont(FontChanger::Structs::GlyphI
 	: m_settings(std::move(settings))
 	, m_gamma(gamma)
 	, m_transform(transform) {
-	for (const auto& codepoint : FontChanger::GlyphFiles::LoadGlyphSet(m_settings)->Glyphs | std::views::keys)
+	const auto set = FontChanger::GlyphFiles::LoadGlyphSet(m_settings);
+	for (const auto& codepoint : set->Glyphs | std::views::keys)
 		m_codepoints.insert(codepoint);
 }
 

@@ -49,11 +49,21 @@ XivAlexander::Apps::MainApp::Window::GridView::GridView(HWND hParent, UINT id, s
 	}
 	SetWindowSubclass(m_hList, ListSubclassProc, ListSubclassId, reinterpret_cast<DWORD_PTR>(this));
 
+	m_hTip = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, m_hList, nullptr, Dll::Module(), nullptr);
+	if (m_hTip) {
+		SendMessageW(m_hTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, 30000);
+		TTTOOLINFOW ti{.cbSize = sizeof ti, .uFlags = TTF_SUBCLASS | TTF_TRANSPARENT, .hwnd = m_hList, .lpszText = const_cast<LPWSTR>(L"")};
+		SendMessageW(m_hTip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+	}
+
 	Refresh();
 }
 
 XivAlexander::Apps::MainApp::Window::GridView::~GridView() {
 	m_editor.reset();
+	if (m_hTip)
+		DestroyWindow(m_hTip);
 	if (IsWindow(m_hWnd))
 		DestroyWindow(m_hWnd);
 }
@@ -63,6 +73,7 @@ void XivAlexander::Apps::MainApp::Window::GridView::Refresh() {
 	ListView_SetItemCountEx(m_hList, static_cast<int>(count), LVSICF_NOSCROLL | LVSICF_NOINVALIDATEALL);
 	if (count && m_row >= count)
 		m_row = count - 1;
+	HideTip();
 	InvalidateRect(m_hList, nullptr, FALSE);
 }
 
@@ -189,6 +200,43 @@ void XivAlexander::Apps::MainApp::Window::GridView::EndDrag(bool drop) {
 	InvalidateRect(m_hList, nullptr, FALSE);
 	if (drop && from && to)
 		MoveRow(*from, *to);
+}
+
+void XivAlexander::Apps::MainApp::Window::GridView::UpdateTip(POINT ptClient) {
+	if (!m_hTip)
+		return;
+	const auto cell = m_dragRow ? std::nullopt : HitTest(ptClient);
+	if (cell == m_tipCell)
+		return;
+	m_tipCell = cell;
+
+	// The tool covers the cell only while its text is cut short; elsewhere it has no area, and shows nothing.
+	TTTOOLINFOW ti{.cbSize = sizeof ti, .hwnd = m_hList};
+	m_tipText.clear();
+	if (cell && m_source.GetText) {
+		if (const auto [row, column] = *cell; row < GetRowCount() && column < m_columns.size() && m_columns[column].Kind != CellKind::Check) {
+			const auto rc = GetCellRect(row, column);
+			auto text = m_source.GetText(row, column);
+			if (ListView_GetStringWidth(m_hList, text.c_str()) + static_cast<int>(12 * m_zoom) > rc.right - rc.left) {
+				ti.rect = rc;
+				m_tipText = std::move(text);
+			}
+		}
+	}
+	SendMessageW(m_hTip, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&ti));
+	ti.lpszText = m_tipText.data();
+	SendMessageW(m_hTip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&ti));
+}
+
+void XivAlexander::Apps::MainApp::Window::GridView::HideTip() {
+	if (!m_hTip)
+		return;
+	SendMessageW(m_hTip, TTM_POP, 0, 0);
+	m_tipCell.reset();
+	m_tipText.clear();
+	TTTOOLINFOW ti{.cbSize = sizeof ti, .hwnd = m_hList, .lpszText = m_tipText.data()};
+	SendMessageW(m_hTip, TTM_NEWTOOLRECTW, 0, reinterpret_cast<LPARAM>(&ti));
+	SendMessageW(m_hTip, TTM_UPDATETIPTEXTW, 0, reinterpret_cast<LPARAM>(&ti));
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::BeginEdit(size_t row, size_t column, std::optional<wchar_t> typed) {
@@ -421,6 +469,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 
 		case WM_MOUSEWHEEL: {
 			EndEdit(EndEditMode::ApplyOrCancel);
+			HideTip();
 
 			// Scroll the list while it can, then its parent; otherwise the list takes every wheel turn even with nothing left to scroll.
 			SCROLLINFO si{.cbSize = sizeof si, .fMask = SIF_RANGE | SIF_PAGE | SIF_POS};
@@ -437,6 +486,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 		case WM_VSCROLL:
 		case WM_HSCROLL:
 			EndEdit(EndEditMode::ApplyOrCancel);
+			HideTip();
 			break;
 
 		case WM_LBUTTONDOWN: {
@@ -523,9 +573,10 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 			}
 			break;
 
-		case WM_MOUSEMOVE:
+		case WM_MOUSEMOVE: {
+			const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+			UpdateTip(pt);
 			if (m_dragRow) {
-				const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 				SetCursor(LoadCursorW(nullptr, IDC_SIZENS));
 				if (const auto target = GetDropTarget(pt); target != m_dropBefore) {
 					m_dropBefore = target;
@@ -545,6 +596,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 				return 0;
 			}
 			break;
+		}
 
 		case WM_LBUTTONUP:
 			if (m_dragRow) {
@@ -559,8 +611,11 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 			break;
 
 		case WM_NOTIFY: {
-			// The header's, in dark mode: its text in the theme's color.
 			const auto nmhdr = reinterpret_cast<LPNMHDR>(lParam);
+			if (nmhdr->hwndFrom == ListView_GetHeader(m_hList) && (nmhdr->code == HDN_ENDTRACKW || nmhdr->code == HDN_DIVIDERDBLCLICKW))
+				HideTip();
+
+			// The header's, in dark mode: its text in the theme's color.
 			if (m_dark && nmhdr->hwndFrom == ListView_GetHeader(m_hList) && nmhdr->code == NM_CUSTOMDRAW) {
 				const auto nmcd = reinterpret_cast<LPNMCUSTOMDRAW>(lParam);
 				if (nmcd->dwDrawStage == CDDS_PREPAINT)
@@ -747,6 +802,7 @@ std::optional<LRESULT> XivAlexander::Apps::MainApp::Window::GridView::OnCustomDr
 void XivAlexander::Apps::MainApp::Window::GridView::UpdateColumnWidths() {
 	if (m_columns.empty())
 		return;
+	HideTip();
 	RECT rc;
 	GetClientRect(m_hList, &rc);
 	auto fillIndex = m_columns.size() - 1;
@@ -777,6 +833,8 @@ void XivAlexander::Apps::MainApp::Window::GridView::ApplyTheme(bool dark) {
 	ListView_SetTextColor(m_hList, colors.GetForeground());
 	if (m_editor)
 		ApplyDarkModeToControl(m_editor->Window, dark);
+	if (m_hTip)
+		ApplyDarkModeToControl(m_hTip, dark);
 	RedrawWindow(m_hList, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN);
 }
 
@@ -786,5 +844,9 @@ void XivAlexander::Apps::MainApp::Window::GridView::SetZoom(double zoom, HFONT h
 	SendMessageW(m_hList, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
 	if (m_editor)
 		SendMessageW(m_editor->Window, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+	if (m_hTip) {
+		SendMessageW(m_hTip, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+		SendMessageW(m_hTip, TTM_SETMAXTIPWIDTH, 0, static_cast<LPARAM>(600 * zoom));
+	}
 	UpdateColumnWidths();
 }
