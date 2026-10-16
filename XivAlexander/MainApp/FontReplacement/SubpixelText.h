@@ -5,6 +5,7 @@
 
 namespace XivAlexander {
 	enum class FontReplacementSubpixelMode : uint8_t;
+	enum class FontReplacementVerticalSubpixelRenderer : uint8_t;
 	struct FontReplacementClearTypeConfig;
 }
 
@@ -21,11 +22,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// The display's gamma, which blending corrects for.
 		float Gamma = 1.8f;
 
+		// For vertical orders, whether FreeType draws fonts set to DirectWrite (GlyphRasterizer::SetVerticalWithFreeType).
+		bool VerticalWithFreeType = true;
+
 		// Level, contrast, gamma and stripe order from Windows for the window's monitor (the ClearType Text Tuner's).
 		[[nodiscard]] static SubpixelSettings OfWindows(HWND window);
 
-		// System takes everything from Windows; RGB and BGR take level, contrast and gamma from clearType.
-		[[nodiscard]] static SubpixelSettings Of(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, HWND window);
+		// System takes everything from Windows; the stripe orders take level, contrast and gamma from clearType.
+		[[nodiscard]] static SubpixelSettings Of(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, FontReplacementVerticalSubpixelRenderer vertical, HWND window);
 
 		bool operator==(const SubpixelSettings&) const = default;
 	};

@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/GlyphRasterizer.h"
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include <FontChanger.Presets/ElementFonts.h>
+
 #include "MainApp/FontReplacement/FreeTypeFonts.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities.h"
@@ -266,23 +271,37 @@ FontReplacement::RasterGlyph FontReplacement::GlyphRasterizer::RasterizeRun(
 	float originY) const {
 	// Grayscale is the mean of the three subpixels; aliased text has no ClearType.
 	const auto subpixel = m_subpixelOrder != SubpixelOrder::None && parameters.RenderMode != DWRITE_RENDERING_MODE1_ALIASED;
+	if (subpixel && IsVertical(m_subpixelOrder) && m_verticalWithFreeType) {
+		if (auto drawn = RasterizeWithFreeType(face, px, glyphs, advances, offsets, count, originX, advance, parameters, transform, originY))
+			return std::move(*drawn);
+	}
+
+	// ClearType's stripes are horizontal: for vertical ones, the glyphs are drawn turned a quarter and turned back.
+	const auto turned = subpixel && IsVertical(m_subpixelOrder);
 	const auto analysis = CreateAnalysis(face, px, glyphs, advances, offsets, count, originX, originY, parameters, transform,
-		subpixel ? DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE : DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+		subpixel ? DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE : DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE, turned);
 
 	RECT bounds;
 	if (subpixel) {
 		ThrowOnError(analysis->GetAlphaTextureBounds(DWRITE_TEXTURE_CLEARTYPE_3x1, &bounds), "GetAlphaTextureBounds");
-		const auto w = bounds.right - bounds.left;
-		const auto h = bounds.bottom - bounds.top;
+		auto w = bounds.right - bounds.left;
+		auto h = bounds.bottom - bounds.top;
 		if (w > 0 && h > 0) {
 			std::vector<uint8_t> lcd(static_cast<size_t>(w) * h * 3);
 			ThrowOnError(analysis->CreateAlphaTexture(DWRITE_TEXTURE_CLEARTYPE_3x1, &bounds, lcd.data(), static_cast<UINT32>(lcd.size())), "CreateAlphaTexture");
+			if (turned) {
+				lcd = TurnBack(lcd, w, h, 3);
+				bounds = TurnBack(bounds);
+				std::swap(w, h);
+			}
+
 			std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
+			const auto blueFirst = IsBlueFirst(m_subpixelOrder);
 			for (size_t i = 0; i < alpha.size(); i++) {
 				auto& r = lcd[i * 3];
 				auto& b = lcd[i * 3 + 2];
 				alpha[i] = static_cast<uint8_t>((r + lcd[i * 3 + 1] + b + 1) / 3);
-				if (m_subpixelOrder == SubpixelOrder::Bgr)
+				if (blueFirst)
 					std::swap(r, b);
 			}
 			return {advance, bounds.left, bounds.top, w, h, std::move(alpha), std::move(lcd)};
@@ -299,10 +318,85 @@ FontReplacement::RasterGlyph FontReplacement::GlyphRasterizer::RasterizeRun(
 	if (w > 0 && h > 0) {
 		alpha.resize(static_cast<size_t>(w) * h);
 		ThrowOnError(analysis->CreateAlphaTexture(DWRITE_TEXTURE_ALIASED_1x1, &bounds, alpha.data(), static_cast<UINT32>(alpha.size())), "CreateAlphaTexture");
+		if (turned) {
+			alpha = TurnBack(alpha, w, h, 1);
+			bounds = TurnBack(bounds);
+			std::swap(w, h);
+		}
 	} else {
 		w = h = 0;
 	}
 	return {advance, bounds.left, bounds.top, w, h, std::move(alpha)};
+}
+
+void FontReplacement::GlyphRasterizer::SetSubpixelOrder(SubpixelOrder order) {
+	m_subpixelOrder = order;
+	if (m_freeType)
+		m_freeType->SetSubpixelOrder(order);
+}
+
+std::optional<FontReplacement::RasterGlyph> FontReplacement::GlyphRasterizer::RasterizeWithFreeType(
+	IDWriteFontFace* face,
+	float px,
+	const uint16_t* glyphs,
+	const float* advances,
+	const DWRITE_GLYPH_OFFSET* offsets,
+	uint32_t count,
+	float originX,
+	int advance,
+	const DirectWriteParams& parameters,
+	const GlyphTransform& transform,
+	float originY) const {
+	if (!m_freeType)
+		return std::nullopt;
+	const auto ftFace = m_freeType->Open(face);
+	if (!ftFace || !FreeTypeFonts::IsScalable(ftFace))
+		return std::nullopt;
+
+	// DirectWrite's oblique simulation slants as synthesis does, before the transformation; its bold simulation makes glyphs 1/50 em wider and taller.
+	const auto simulations = face->GetSimulations();
+	auto t = transform;
+	if (simulations & DWRITE_FONT_SIMULATIONS_OBLIQUE)
+		t = transform.After({1, -FontChanger::ElementFonts::SynthesizedFace::ObliqueSlope, 0, 1});
+	const auto embolden = simulations & DWRITE_FONT_SIMULATIONS_BOLD ? 1.f / 50 : 0.f;
+
+	// GDI's modes hint both ways, the natural ones vertically only (FT_LOAD_TARGET_NORMAL, _LIGHT); with the font's own hinting, as DirectWrite
+	// does: FreeType's light mode auto-hints TrueType fonts otherwise, which rounds heights differently (Comic Sans gains a row above and below).
+	const FreeTypeParams ftParams{
+		.LoadFlags = parameters.GridFitMode == DWRITE_GRID_FIT_MODE_DISABLED ? FT_LOAD_NO_HINTING : FT_LOAD_NO_AUTOHINT,
+		.RenderMode = parameters.RenderMode == DWRITE_RENDERING_MODE1_GDI_CLASSIC || parameters.RenderMode == DWRITE_RENDERING_MODE1_GDI_NATURAL
+			? FT_RENDER_MODE_NORMAL
+			: FT_RENDER_MODE_LIGHT,
+	};
+
+	// A variable face's axis values.
+	std::map<uint32_t, float> axes;
+	if (IDWriteFontFace5Ptr face5; SUCCEEDED(face->QueryInterface(__uuidof(IDWriteFontFace5), reinterpret_cast<void**>(&face5))) && face5->HasVariations()) {
+		std::vector<DWRITE_FONT_AXIS_VALUE> values(face5->GetFontAxisValueCount());
+		if (SUCCEEDED(face5->GetFontAxisValues(values.data(), static_cast<UINT32>(values.size())))) {
+			for (const auto& v : values)
+				axes[static_cast<uint32_t>(v.axisTag)] = v.value;
+		}
+	}
+
+	return m_freeType->RasterizeRun(ftFace, px, glyphs, advances, offsets, count, originX, advance, ftParams, t, axes.empty() ? nullptr : &axes, embolden, originY);
+}
+
+std::vector<uint8_t> FontReplacement::GlyphRasterizer::TurnBack(const std::vector<uint8_t>& pixels, int width, int height, int channels) {
+	std::vector<uint8_t> res(pixels.size());
+	for (auto y = 0; y < height; y++) {
+		for (auto x = 0; x < width; x++) {
+			const auto from = (static_cast<size_t>(y) * width + x) * channels;
+			const auto to = (static_cast<size_t>(x) * height + (height - 1 - y)) * channels;
+			std::copy_n(&pixels[from], channels, &res[to]);
+		}
+	}
+	return res;
+}
+
+RECT FontReplacement::GlyphRasterizer::TurnBack(const RECT& turned) {
+	// Drawn (u, v) is (y, -x) on screen.
+	return {.left = -turned.bottom, .top = turned.left, .right = -turned.top, .bottom = turned.right};
 }
 
 IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
@@ -316,9 +410,12 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 	float originY,
 	const DirectWriteParams& parameters,
 	const GlyphTransform& transform,
-	DWRITE_TEXT_ANTIALIAS_MODE antialiasMode) const {
+	DWRITE_TEXT_ANTIALIAS_MODE antialiasMode,
+	bool turned) const {
 	// DirectWrite transforms row vectors; the origin is on screen, after the transformation.
-	const DWRITE_MATRIX matrix{transform.M11, transform.M21, transform.M12, transform.M22, originX, originY};
+	auto matrix = DWRITE_MATRIX{transform.M11, transform.M21, transform.M12, transform.M22, originX, originY};
+	if (turned)
+		matrix = {matrix.m12, -matrix.m11, matrix.m22, -matrix.m21, matrix.dy, -matrix.dx};
 
 	const DWRITE_GLYPH_RUN run{
 		.fontFace = face,
@@ -344,6 +441,13 @@ IDWriteGlyphRunAnalysisPtr FontReplacement::GlyphRasterizer::CreateAnalysis(
 		renderingMode = DWRITE_RENDERING_MODE1_NATURAL_SYMMETRIC;
 
 	auto gridFitMode = parameters.GridFitMode;
+
+	// Turned, the other modes leave the text's horizontal unantialiased, and hint across it.
+	if (turned) {
+		renderingMode = DWRITE_RENDERING_MODE1_NATURAL_SYMMETRIC;
+		gridFitMode = DWRITE_GRID_FIT_MODE_DISABLED;
+	}
+
 	for (auto attempt = 0;; attempt++) {
 		IDWriteGlyphRunAnalysisPtr analysis;
 		const auto hr = m_factory->CreateGlyphRunAnalysis(

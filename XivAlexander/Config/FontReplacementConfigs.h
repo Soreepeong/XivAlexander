@@ -98,18 +98,28 @@ namespace XivAlexander {
 
 		/// Level 0 to 1, contrast 0 to 4, gamma 1 to 3.
 		[[nodiscard]] FontReplacementClearTypeConfig Clamped() const {
-			return {std::clamp(Level, 0.f, 1.f), std::clamp(Contrast, 0.f, 4.f), std::clamp(Gamma, 1.f, 3.f)};
+			return {std::clamp(Level, 0.f, 1.f), std::clamp(Contrast, 0.f, 4.f), std::clamp(Gamma, 1.f, 2.2f)};
 		}
 
 		bool operator==(const FontReplacementClearTypeConfig&) const = default;
 	};
 
-	/// Subpixel text; System follows Windows' ClearType setting for the game's monitor.
+	/// Subpixel text; System follows Windows' ClearType setting for the game's monitor. The vertical ones stack the stripes top to bottom, which Windows
+	/// doesn't know of: a monitor turned to portrait, or a portrait panel turned to landscape.
 	enum class FontReplacementSubpixelMode : uint8_t {
 		Off,
 		System,
 		Rgb,
 		Bgr,
+		VerticalRgb,
+		VerticalBgr,
+	};
+
+	/// What draws fonts set to DirectWrite for vertical subpixel layouts, for which DirectWrite has no ClearType of its own: FreeType's LCD_V rendering,
+	/// hinted as their grid fitting says, or DirectWrite's ClearType of the text turned a quarter and turned back, without hinting.
+	enum class FontReplacementVerticalSubpixelRenderer : uint8_t {
+		FreeType,
+		DirectWrite,
 	};
 
 	enum class FontReplacementNamePlateMode : uint8_t {
@@ -134,6 +144,7 @@ namespace XivAlexander {
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
 		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::Off};
 		ConfigItem<FontReplacementClearTypeConfig> ClearType{this, "ClearType", {}, [](const FontReplacementClearTypeConfig& v) { return v.Clamped(); }};
+		ConfigItem<FontReplacementVerticalSubpixelRenderer> VerticalSubpixel{this, "VerticalSubpixel", FontReplacementVerticalSubpixelRenderer::FreeType};
 		ConfigItem<FontReplacementNamePlateMode> NamePlates{this, "NamePlates", FontReplacementNamePlateMode::BakedAtFullSize};
 		ConfigItem<FontReplacementAtlasConfig> Atlas{this, "Atlas", {}, [](const FontReplacementAtlasConfig& v) { return v.Clamped(); }};
 	};
@@ -152,6 +163,8 @@ namespace XivAlexander {
 	void from_json(const nlohmann::json&, FontReplacementClearTypeConfig&);
 	void to_json(nlohmann::json&, const FontReplacementSubpixelMode&);
 	void from_json(const nlohmann::json&, FontReplacementSubpixelMode&);
+	void to_json(nlohmann::json&, const FontReplacementVerticalSubpixelRenderer&);
+	void from_json(const nlohmann::json&, FontReplacementVerticalSubpixelRenderer&);
 	void to_json(nlohmann::json&, const FontReplacementNamePlateMode&);
 	void from_json(const nlohmann::json&, FontReplacementNamePlateMode&);
 }

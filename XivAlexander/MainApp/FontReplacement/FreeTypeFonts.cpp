@@ -4,6 +4,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
+#include FT_LCD_FILTER_H
 #include FT_MULTIPLE_MASTERS_H
 #include FT_OUTLINE_H
 
@@ -55,6 +56,10 @@ std::unique_ptr<FontReplacement::FreeTypeFonts> FontReplacement::FreeTypeFonts::
 		Host::Warning("FreeType can't be used; its elements are drawn with DirectWrite (error {})", error);
 		return nullptr;
 	}
+
+	// A library built for ClearType-style rendering filters subpixel coverage across neighbors, against color fringes; one rendering the Harmony way
+	// samples each color at its stripe's place instead, and has no filter to set.
+	FT_Library_SetLcdFilter(library, FT_LCD_FILTER_DEFAULT);
 	return std::unique_ptr<FreeTypeFonts>(new FreeTypeFonts(library));
 }
 
@@ -116,6 +121,11 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeFonts::RasterizeRun(
 	// Emboldening needs outlines.
 	const auto loadFlags = parameters.LoadFlags | ((parameters.RenderMode & 15) << LoadTargetShift) | (strength ? FT_LOAD_NO_BITMAP : 0);
 
+	// For vertical stripes, antialiased modes give per-subpixel coverage; hinted as the parameters' mode is.
+	auto renderMode = static_cast<FT_Render_Mode>(parameters.RenderMode);
+	if (IsVertical(m_subpixelOrder) && renderMode != FT_RENDER_MODE_MONO && renderMode != FT_RENDER_MODE_SDF)
+		renderMode = FT_RENDER_MODE_LCD_V;
+
 	// FreeType transforms column vectors with y growing upwards (16.16 fixed point).
 	FT_Matrix matrix{
 		.xx = static_cast<FT_Fixed>(std::round(transform.M11 * 65536)),
@@ -145,7 +155,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeFonts::RasterizeRun(
 				FT_Outline_EmboldenXY(&slot->outline, strength, strength);
 			FT_Outline_Transform(&slot->outline, &matrix);
 			FT_Outline_Translate(&slot->outline, static_cast<FT_Pos>(std::round((gx - std::floor(gx)) * 64)), static_cast<FT_Pos>(std::round(gy * 64)));
-			if (FT_Render_Glyph(slot, static_cast<FT_Render_Mode>(parameters.RenderMode)))
+			if (FT_Render_Glyph(slot, renderMode))
 				continue;
 		}
 
@@ -233,11 +243,35 @@ float FontReplacement::FreeTypeFonts::SetSize(FT_FaceRec_* face, float px) {
 FontReplacement::RasterGlyph FontReplacement::FreeTypeFonts::ReadBitmap(void* slotPtr) {
 	const auto slot = static_cast<FT_GlyphSlot>(slotPtr);
 	const auto bitmap = &slot->bitmap;
-	const auto w = static_cast<int>(bitmap->width), h = static_cast<int>(bitmap->rows);
+	auto w = static_cast<int>(bitmap->width), h = static_cast<int>(bitmap->rows);
+	if (bitmap->pixel_mode == FT_PIXEL_MODE_LCD)
+		w /= 3;
+	else if (bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V)
+		h /= 3;
 	if (w == 0 || h == 0)
 		return {};
 
 	std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
+	if (bitmap->pixel_mode == FT_PIXEL_MODE_LCD || bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V) {
+		// Subpixels follow each other in a row (LCD) or in three rows (LCD_V), in the stripes' order.
+		const auto vertical = bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V;
+		const auto blueFirst = IsBlueFirst(m_subpixelOrder);
+		std::vector<uint8_t> lcd(alpha.size() * 3);
+		for (auto y = 0; y < h; y++) {
+			for (auto x = 0; x < w; x++) {
+				const auto i = static_cast<size_t>(y) * w + x;
+				auto sum = 0;
+				for (auto c = 0; c < 3; c++) {
+					const auto v = vertical ? bitmap->buffer[(y * 3 + c) * bitmap->pitch + x] : bitmap->buffer[y * bitmap->pitch + x * 3 + c];
+					lcd[i * 3 + (blueFirst ? 2 - c : c)] = v;
+					sum += v;
+				}
+				alpha[i] = static_cast<uint8_t>((sum + 1) / 3);
+			}
+		}
+		return {0, slot->bitmap_left, -slot->bitmap_top, w, h, std::move(alpha), std::move(lcd)};
+	}
+
 	if (bitmap->pixel_mode == FT_PIXEL_MODE_BGRA) {
 		for (auto y = 0; y < h; y++) {
 			for (auto x = 0; x < w; x++)

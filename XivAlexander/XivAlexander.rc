@@ -1389,7 +1389,7 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Windows の ClearType 設定に従う"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (赤・緑・青の順)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (青・緑・赤の順)"
-    IDS_SETTINGS_SUBPIXEL_DESC "置き換えた文字を ClearType のように、画面の赤・緑・青のサブピクセルごとに描きます。縦長の画面、OLED など並びが縦や三角形の画面ではオフにしてください。Windows の ClearType 設定に従うと、並び、色分けの強さ、コントラスト、ガンマはゲームのモニターに ClearType テキスト チューナーで設定した値を使います。拡大縮小して描かれる文字と、名前の表示はグレースケールのままです。"
+    IDS_SETTINGS_SUBPIXEL_DESC "置き換えた文字を ClearType のように、画面の赤・緑・青のサブピクセルごとに描きます。縦向きに回した画面や、縦長のパネルを横向きにした携帯機では縦の並びを選んでください (Windows は縦の並びを扱いません)。OLED など並びが三角形の画面ではオフにしてください。Windows の ClearType 設定に従うと、並び、色分けの強さ、コントラスト、ガンマはゲームのモニターに ClearType テキスト チューナーで設定した値を使います。拡大縮小して描かれる文字と、名前の表示はグレースケールのままです。"
     IDS_SETTINGS_NAMEPLATES "名前の表示の文字"
     IDS_SETTINGS_NAMEPLATES_GAME "ゲームと同じ (一度描いて拡大縮小)"
     IDS_SETTINGS_NAMEPLATES_BAKED "最大の大きさで一度だけ描く"
@@ -1401,8 +1401,14 @@ BEGIN
     IDS_SETTINGS_CLEARTYPE_CONTRAST "コントラスト強調"
     IDS_SETTINGS_CLEARTYPE_GAMMA "ガンマ"
     IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "1つのピクセルの赤・緑・青のサブピクセルをどれだけ別々に描くか (ClearType レベル)。0 はグレースケール、1 は完全な ClearType です。下げると色のにじみが弱まりますが、線がぼやけます。"
-    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "部分的に覆われたピクセルを濃くし、線を太く見せます。0 では変えません。"
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "部分的に覆われたピクセルを濃くし、線を太く見せます。0 では変えません。DirectWrite と同じく、明るい文字ほど弱くかかり、明るさ 0.75 以上ではかかりません。"
     IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "混ぜ合わせるときに補正する画面のガンマです。上げると明るい文字は太く、暗い文字は細くなります。"
+    IDS_SETTINGS_SUBPIXEL_VRGB "RGB 縦 (赤・緑・青が上から)"
+    IDS_SETTINGS_SUBPIXEL_VBGR "BGR 縦 (青・緑・赤が上から)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL "縦の並びの描画"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (ヒンティングあり)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite、回して描画 (ヒンティングなし)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite には縦の並びの ClearType がないため、DirectWrite で描くフォントは FreeType で描くか、文字を 90 度回して DirectWrite で描いてから戻します。FreeType はヒンティングされますが、見た目が少し変わります。DirectWrite はヒンティングされないため柔らかく、文字の位置が最大 1/3 ピクセルずれることがあります。FreeType で描くフォントは常に FreeType で描きます。"
 END
 
 
@@ -2811,7 +2817,7 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Windows ClearType 설정 따르기"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (빨강, 초록, 파랑 순)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (파랑, 초록, 빨강 순)"
-    IDS_SETTINGS_SUBPIXEL_DESC "바꾼 글자를 ClearType처럼 화면의 빨강, 초록, 파랑 서브픽셀마다 따로 그립니다. 세로로 돌린 화면이나 OLED처럼 배열이 세로 또는 삼각형인 화면에서는 끄세요. Windows ClearType 설정을 따르면 배열, 색 분리 강도, 대비, 감마는 게임 모니터에 ClearType 텍스트 조정기로 정한 값을 씁니다. 확대하거나 축소해서 그리는 글자와 이름표는 회색조로 그립니다."
+    IDS_SETTINGS_SUBPIXEL_DESC "바꾼 글자를 ClearType처럼 화면의 빨강, 초록, 파랑 서브픽셀마다 따로 그립니다. 세로로 돌린 화면이나 세로 패널을 가로로 쓰는 휴대용 기기에서는 세로 배열을 고르세요 (Windows는 세로 배열을 다루지 않습니다). OLED처럼 배열이 삼각형인 화면에서는 끄세요. Windows ClearType 설정을 따르면 배열, 색 분리 강도, 대비, 감마는 게임 모니터에 ClearType 텍스트 조정기로 정한 값을 씁니다. 확대하거나 축소해서 그리는 글자와 이름표는 회색조로 그립니다."
     IDS_SETTINGS_NAMEPLATES "이름표 글자"
     IDS_SETTINGS_NAMEPLATES_GAME "게임과 같게 (한 번 그려 확대/축소)"
     IDS_SETTINGS_NAMEPLATES_BAKED "가장 큰 크기로 한 번만 그리기"
@@ -2823,8 +2829,14 @@ BEGIN
     IDS_SETTINGS_CLEARTYPE_CONTRAST "대비 강화"
     IDS_SETTINGS_CLEARTYPE_GAMMA "감마"
     IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "한 픽셀의 빨강, 초록, 파랑 서브픽셀을 얼마나 따로 그릴지 정합니다 (ClearType 레벨). 0은 회색조, 1은 완전한 ClearType입니다. 낮추면 색 번짐이 줄지만 획이 흐려집니다."
-    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "일부만 덮인 픽셀을 진하게 해 획을 굵어 보이게 합니다. 0이면 그대로 둡니다."
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "일부만 덮인 픽셀을 진하게 해 획을 굵어 보이게 합니다. 0이면 그대로 둡니다. DirectWrite처럼 밝은 글자일수록 약하게 적용되고, 밝기 0.75 이상에서는 적용되지 않습니다."
     IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "섞을 때 보정하는 화면의 감마입니다. 높이면 밝은 글자는 굵게, 어두운 글자는 가늘게 보입니다."
+    IDS_SETTINGS_SUBPIXEL_VRGB "RGB 세로 (위에서부터 빨강, 초록, 파랑)"
+    IDS_SETTINGS_SUBPIXEL_VBGR "BGR 세로 (위에서부터 파랑, 초록, 빨강)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL "세로 배열 렌더링"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (힌팅 사용)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite, 돌려서 그리기 (힌팅 없음)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite에는 세로 배열용 ClearType이 없으므로, DirectWrite로 그리는 글꼴은 FreeType으로 그리거나 글자를 90도 돌려 DirectWrite로 그린 뒤 되돌립니다. FreeType은 힌팅되지만 모양이 조금 달라집니다. DirectWrite는 힌팅되지 않아 더 부드럽고, 글자 위치가 최대 1/3픽셀 어긋날 수 있습니다. FreeType으로 그리도록 정한 글꼴은 항상 FreeType으로 그립니다."
 END
 
 
@@ -4349,7 +4361,7 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_SYSTEM "Follow Windows ClearType settings"
     IDS_SETTINGS_SUBPIXEL_RGB "RGB (red, green, blue from the left)"
     IDS_SETTINGS_SUBPIXEL_BGR "BGR (blue, green, red from the left)"
-    IDS_SETTINGS_SUBPIXEL_DESC "Draws replaced text per red, green and blue subpixel of the screen, as ClearType does. Turn it off on rotated screens and on screens whose subpixels are not in vertical stripes (most OLED panels). Following Windows' ClearType settings takes the layout, color separation, contrast and gamma that the ClearType Text Tuner set for the game's monitor. Text drawn scaled, and nameplates, stay grayscale."
+    IDS_SETTINGS_SUBPIXEL_DESC "Draws replaced text per red, green and blue subpixel of the screen, as ClearType does. On a screen turned to portrait, or a handheld whose portrait panel is turned to landscape, choose a vertical layout (Windows doesn't know of them). Turn it off on screens whose subpixels are not in stripes (most OLED panels). Following Windows' ClearType settings takes the layout, color separation, contrast and gamma that the ClearType Text Tuner set for the game's monitor. Text drawn scaled, and nameplates, stay grayscale."
     IDS_SETTINGS_NAMEPLATES "Nameplate text"
     IDS_SETTINGS_NAMEPLATES_GAME "As the game (baked, resampled)"
     IDS_SETTINGS_NAMEPLATES_BAKED "Baked once at full size"
@@ -4361,8 +4373,14 @@ BEGIN
     IDS_SETTINGS_CLEARTYPE_CONTRAST "Enhanced contrast"
     IDS_SETTINGS_CLEARTYPE_GAMMA "Gamma"
     IDS_SETTINGS_CLEARTYPE_LEVEL_TIP "How differently the red, green and blue subpixels of a pixel are drawn (the ClearType level): 0 is grayscale, 1 is full ClearType. Lower values weaken color fringes but blur strokes."
-    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "Darkens partly covered pixels, making strokes look heavier. 0 leaves them as they are."
+    IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP "Darkens partly covered pixels, making strokes look heavier. 0 leaves them as they are. As in DirectWrite, light text gets less of it, and none from a lightness of 0.75."
     IDS_SETTINGS_CLEARTYPE_GAMMA_TIP "The display's gamma, which blending corrects for. Higher values make light text heavier and dark text lighter."
+    IDS_SETTINGS_SUBPIXEL_VRGB "RGB vertical (red, green, blue from the top)"
+    IDS_SETTINGS_SUBPIXEL_VBGR "BGR vertical (blue, green, red from the top)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL "Vertical layout rendering"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (hinted)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite, turned (unhinted)"
+    IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite has no ClearType for vertical layouts, so fonts set to DirectWrite are drawn either by FreeType (hinted, but looking somewhat different) or by DirectWrite with the text turned a quarter and turned back (unhinted, so softer, and letters may be up to a third of a pixel off). Fonts set to FreeType are always drawn by FreeType."
 END
 
 

@@ -14,12 +14,19 @@ _COM_SMARTPTR_TYPEDEF(IDWriteLocalFontFileLoader, __uuidof(IDWriteLocalFontFileL
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FreeTypeFonts;
 
-	// Left to right; None draws grayscale.
+	// Left to right, or top to bottom for the vertical ones (a panel turned to portrait, or one made so and turned to landscape); None draws grayscale.
 	enum class SubpixelOrder : uint8_t {
 		None,
 		Rgb,
 		Bgr,
+		VerticalRgb,
+		VerticalBgr,
 	};
+
+	[[nodiscard]] constexpr bool IsVertical(SubpixelOrder order) { return order == SubpixelOrder::VerticalRgb || order == SubpixelOrder::VerticalBgr; }
+
+	// R, G, B coverage is stored swapped from the stripes' order.
+	[[nodiscard]] constexpr bool IsBlueFirst(SubpixelOrder order) { return order == SubpixelOrder::Bgr || order == SubpixelOrder::VerticalBgr; }
 
 	// On screen, y down: x' = M11 x + M12 y, y' = M21 x + M22 y (FontChanger's screen matrix); advances scale by M11, line metrics by |M22|.
 	struct GlyphTransform {
@@ -128,6 +135,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unique_ptr<FreeTypeFonts> m_freeType;
 		GlyphRunCollector m_runCollector;
 		SubpixelOrder m_subpixelOrder = SubpixelOrder::None;
+		bool m_verticalWithFreeType = true;
 
 	public:
 		GlyphRasterizer();
@@ -145,9 +153,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] GlyphRunCollector& RunCollector() { return m_runCollector; }
 
-		// Game thread, before glyphs are made again.
+		// FreeType's too. Game thread, before glyphs are made again.
 		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_subpixelOrder; }
-		void SetSubpixelOrder(SubpixelOrder order) { m_subpixelOrder = order; }
+		void SetSubpixelOrder(SubpixelOrder order);
+
+		// For vertical orders, which DirectWrite has no ClearType for: runs are drawn with FreeType's LCD_V rendering; else (or if FreeType can't open
+		// the font) DirectWrite draws them turned a quarter, unhinted. Game thread, before glyphs are made again.
+		[[nodiscard]] bool GetVerticalWithFreeType() const { return m_verticalWithFreeType; }
+		void SetVerticalWithFreeType(bool value) { m_verticalWithFreeType = value; }
 
 		// Closest match, simulated if the family lacks the style; nullptr if the family isn't installed.
 		[[nodiscard]] IDWriteFontPtr FindFont(const std::string& name, DWRITE_FONT_WEIGHT weight, DWRITE_FONT_STRETCH stretch, DWRITE_FONT_STYLE style) const;
@@ -170,6 +183,23 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			float originY = 0) const;
 
 	private:
+		// As RasterizeRun with FreeType: the face's file, its simulations made as FreeType makes them, its axis values, and hinted as the parameters'
+		// rendering and grid fitting modes are; nullopt if FreeType can't open it, or it has only bitmaps.
+		[[nodiscard]] std::optional<RasterGlyph> RasterizeWithFreeType(
+			IDWriteFontFace* face,
+			float px,
+			const uint16_t* glyphs,
+			const float* advances,
+			const DWRITE_GLYPH_OFFSET* offsets,
+			uint32_t count,
+			float originX,
+			int advance,
+			const DirectWriteParams& parameters,
+			const GlyphTransform& transform,
+			float originY) const;
+
+		// turned draws the run turned a quarter, its screen's (x, y) at (y, -x), so ClearType's horizontal stripes are vertical when turned back
+		// (TurnBack): antialiased both ways and unhinted, as both are then needed across the text.
 		[[nodiscard]] IDWriteGlyphRunAnalysisPtr CreateAnalysis(
 			IDWriteFontFace* face,
 			float px,
@@ -181,6 +211,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			float originY,
 			const DirectWriteParams& parameters,
 			const GlyphTransform& transform,
-			DWRITE_TEXT_ANTIALIAS_MODE antialiasMode) const;
+			DWRITE_TEXT_ANTIALIAS_MODE antialiasMode,
+			bool turned) const;
+
+		// Pixels of a run drawn turned, width by height with channels bytes each, turned back: rows become columns, the last on the left. A pixel's
+		// channels stay in order, now top to bottom.
+		[[nodiscard]] static std::vector<uint8_t> TurnBack(const std::vector<uint8_t>& pixels, int width, int height, int channels);
+
+		// The box of a run drawn turned, turned back.
+		[[nodiscard]] static RECT TurnBack(const RECT& turned);
 	};
 }

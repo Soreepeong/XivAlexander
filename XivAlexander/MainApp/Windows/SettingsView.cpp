@@ -1148,6 +1148,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK);
 	tip(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP);
 	label(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL);
+	label(rt.FontReplacement.VerticalSubpixel, IDS_SETTINGS_SUBPIXEL_VERTICAL);
 	label(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES);
 	tip(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES_TIP);
 
@@ -1216,6 +1217,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Atlas),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Subpixel),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.VerticalSubpixel),
 	})
 		m_itemInfo[item].Hidden = true;
 
@@ -3203,9 +3205,11 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	auto& rt = m_config->Runtime;
 	auto& clearType = rt.FontReplacement.ClearType;
 	auto& mode = rt.FontReplacement.Subpixel;
+	auto& vertical = rt.FontReplacement.VerticalSubpixel;
 
-	// System takes every value from Windows, which are shown then; RGB and BGR take the ones set here.
-	const auto own = [&mode] { return mode.Value() == FontReplacementSubpixelMode::Rgb || mode.Value() == FontReplacementSubpixelMode::Bgr; };
+	// System takes every value from Windows, which are shown then; the stripe orders take the ones set here.
+	const auto own = [&mode] { return mode.Value() != FontReplacementSubpixelMode::Off && mode.Value() != FontReplacementSubpixelMode::System; };
+	const auto isVertical = [&mode] { return mode.Value() == FontReplacementSubpixelMode::VerticalRgb || mode.Value() == FontReplacementSubpixelMode::VerticalBgr; };
 	const auto windows = [this] {
 		const auto settings = FontReplacement::SubpixelSettings::OfWindows(m_app.GetGameWindowHandle());
 		return FontReplacementClearTypeConfig{settings.Level, settings.Contrast, settings.Gamma};
@@ -3218,11 +3222,19 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	m_rows.back()->Bold = true;
 	SendMessageW(m_rows.back()->Control, WM_SETFONT, reinterpret_cast<WPARAM>(*m_boldFont), FALSE);
 
-	static constexpr std::array layouts{FontReplacementSubpixelMode::System, FontReplacementSubpixelMode::Rgb, FontReplacementSubpixelMode::Bgr};
+	static constexpr std::array layouts{
+		FontReplacementSubpixelMode::System,
+		FontReplacementSubpixelMode::Rgb,
+		FontReplacementSubpixelMode::Bgr,
+		FontReplacementSubpixelMode::VerticalRgb,
+		FontReplacementSubpixelMode::VerticalBgr,
+	};
 	CreateComboRow(rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_LAYOUT), {
 		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_SYSTEM),
 		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_RGB),
 		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_BGR),
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_VRGB),
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_VBGR),
 	}, [&mode] {
 		const auto it = std::ranges::find(layouts, mode.Value());
 		return it == layouts.end() ? 0 : static_cast<int>(it - layouts.begin());
@@ -3234,6 +3246,19 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	});
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_SUBPIXEL_DESC);
 	const auto firstRow = m_rows.size() - 1;
+
+	static constexpr std::array renderers{FontReplacementVerticalSubpixelRenderer::FreeType, FontReplacementVerticalSubpixelRenderer::DirectWrite};
+	CreateComboRow(GetItemLabel(vertical), {
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE),
+		rt.GetStringRes(IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE),
+	}, [&vertical] {
+		const auto it = std::ranges::find(renderers, vertical.Value());
+		return it == renderers.end() ? 0 : static_cast<int>(it - renderers.begin());
+	}, [&vertical](int choice) {
+		vertical = renderers[choice];
+	});
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP);
+	const auto rendererRow = m_rows.size() - 1;
 
 	const auto setter = [&clearType](float FontReplacementClearTypeConfig::* field) {
 		return [&clearType, field](double value) {
@@ -3247,15 +3272,15 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_LEVEL_TIP);
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_CONTRAST), 0, 4, 0.05, [shown] { return static_cast<double>(shown().Contrast); }, setter(&FontReplacementClearTypeConfig::Contrast));
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP);
-	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_GAMMA), 1, 3, 0.05, [shown] { return static_cast<double>(shown().Gamma); }, setter(&FontReplacementClearTypeConfig::Gamma));
+	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_GAMMA), 1, 2.2, 0.05, [shown] { return static_cast<double>(shown().Gamma); }, setter(&FontReplacementClearTypeConfig::Gamma));
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_GAMMA_TIP);
 
-	// The layout can be chosen while subpixel rendering is on, and the values set with a stripe order; refreshed in place, as
-	// rebuilding the page would scroll it to the top.
+	// The layout can be chosen while subpixel rendering is on, what draws vertical stripes with one of them, and the values set with
+	// a stripe order; refreshed in place, as rebuilding the page would scroll it to the top.
 	for (auto i = firstRow; i < m_rows.size(); i++) {
 		auto& row = *m_rows[i];
-		row.Refresh = [&row, &mode, own, refresh = std::move(row.Refresh), layout = i == firstRow] {
-			const auto enabled = layout ? mode.Value() != FontReplacementSubpixelMode::Off : own();
+		row.Refresh = [&row, &mode, own, isVertical, refresh = std::move(row.Refresh), layout = i == firstRow, renderer = i == rendererRow] {
+			const auto enabled = layout ? mode.Value() != FontReplacementSubpixelMode::Off : renderer ? isVertical() : own();
 			EnableWindow(row.Control, enabled);
 			if (row.Secondary)
 				EnableWindow(row.Secondary, enabled);
@@ -3264,6 +3289,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	}
 	PostOnChange(mode, WmRefreshRows);
 	PostOnChange(clearType, WmRefreshRows);
+	PostOnChange(vertical, WmRefreshRows);
 }
 
 const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::GetFontPresetFolder() {

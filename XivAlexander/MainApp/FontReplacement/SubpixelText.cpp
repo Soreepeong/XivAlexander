@@ -67,11 +67,12 @@ FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::OfWindows(H
 	return res;
 }
 
-FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, HWND window) {
+FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, FontReplacementVerticalSubpixelRenderer vertical, HWND window) {
 	if (mode == FontReplacementSubpixelMode::Off)
 		return {};
 
 	auto res = OfWindows(window);
+	res.VerticalWithFreeType = vertical == FontReplacementVerticalSubpixelRenderer::FreeType;
 	if (mode == FontReplacementSubpixelMode::System) {
 		UINT smoothing = 0, type = 0;
 		if (!SystemParametersInfoW(SPI_GETFONTSMOOTHING, 0, &smoothing, 0) || !smoothing
@@ -80,7 +81,19 @@ FontReplacement::SubpixelSettings FontReplacement::SubpixelSettings::Of(FontRepl
 		return res;
 	}
 
-	res.Order = mode == FontReplacementSubpixelMode::Bgr ? SubpixelOrder::Bgr : SubpixelOrder::Rgb;
+	switch (mode) {
+		case FontReplacementSubpixelMode::Bgr:
+			res.Order = SubpixelOrder::Bgr;
+			break;
+		case FontReplacementSubpixelMode::VerticalRgb:
+			res.Order = SubpixelOrder::VerticalRgb;
+			break;
+		case FontReplacementSubpixelMode::VerticalBgr:
+			res.Order = SubpixelOrder::VerticalBgr;
+			break;
+		default:
+			res.Order = SubpixelOrder::Rgb;
+	}
 	res.Level = clearType.Level;
 	res.Contrast = clearType.Contrast;
 	res.Gamma = clearType.Gamma;

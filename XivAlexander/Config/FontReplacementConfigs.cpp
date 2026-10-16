@@ -124,6 +124,12 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode&
 		case FontReplacementSubpixelMode::Bgr:
 			j = "BGR";
 			break;
+		case FontReplacementSubpixelMode::VerticalRgb:
+			j = "VerticalRGB";
+			break;
+		case FontReplacementSubpixelMode::VerticalBgr:
+			j = "VerticalBGR";
+			break;
 		case FontReplacementSubpixelMode::Off:
 		default:
 			j = "Off";
@@ -138,8 +144,28 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementSubpixelMod
 		v = FontReplacementSubpixelMode::Rgb;
 	else if (_stricmp(s.c_str(), "BGR") == 0)
 		v = FontReplacementSubpixelMode::Bgr;
+	else if (_stricmp(s.c_str(), "VerticalRGB") == 0)
+		v = FontReplacementSubpixelMode::VerticalRgb;
+	else if (_stricmp(s.c_str(), "VerticalBGR") == 0)
+		v = FontReplacementSubpixelMode::VerticalBgr;
 	else
 		v = FontReplacementSubpixelMode::Off;
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementVerticalSubpixelRenderer& v) {
+	switch (v) {
+		case FontReplacementVerticalSubpixelRenderer::DirectWrite:
+			j = "DirectWrite";
+			break;
+		case FontReplacementVerticalSubpixelRenderer::FreeType:
+		default:
+			j = "FreeType";
+	}
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementVerticalSubpixelRenderer& v) {
+	const auto s = j.is_string() ? j.get<std::string>() : std::string();
+	v = _stricmp(s.c_str(), "DirectWrite") == 0 ? FontReplacementVerticalSubpixelRenderer::DirectWrite : FontReplacementVerticalSubpixelRenderer::FreeType;
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementNamePlateMode& v) {

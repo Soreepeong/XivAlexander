@@ -319,7 +319,11 @@ void FontReplacement::FontReplacer::SetSubpixel(const SubpixelSettings& settings
 	const auto active = m_subpixelText.Active();
 	const auto order = active ? settings.Order : SubpixelOrder::None;
 	const auto atlasesChange = std::ranges::any_of(m_atlases | std::views::values, [active](const auto& atlas) { return atlas->Subpixel() != active; });
-	if (order == m_rasterizer->GetSubpixelOrder() && !atlasesChange)
+
+	// What draws vertical orders only matters while one is used.
+	const auto rendererChange = settings.VerticalWithFreeType != m_rasterizer->GetVerticalWithFreeType() && IsVertical(order);
+	m_rasterizer->SetVerticalWithFreeType(settings.VerticalWithFreeType);
+	if (order == m_rasterizer->GetSubpixelOrder() && !atlasesChange && !rendererChange)
 		return;
 	m_rasterizer->SetSubpixelOrder(order);
 	if (!atlasesChange) {

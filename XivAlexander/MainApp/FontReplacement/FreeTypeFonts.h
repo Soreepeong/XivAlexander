@@ -43,6 +43,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::map<FT_FaceRec_*, std::vector<Axis>> m_faceAxes;
 		std::map<FT_FaceRec_*, std::vector<long>> m_faceCoordinates;
 
+		SubpixelOrder m_subpixelOrder = SubpixelOrder::None;
+
 		explicit FreeTypeFonts(FT_LibraryRec_* library);
 
 	public:
@@ -57,6 +59,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// A face with only bitmaps is drawn by scaling its nearest bitmap size.
 		static bool IsScalable(FT_FaceRec_* face);
+
+		// Vertical orders render LCD_V, with R, G, B coverage; others as the parameters say.
+		void SetSubpixelOrder(SubpixelOrder order) { m_subpixelOrder = order; }
 
 		// As GlyphRasterizer::RasterizeRun does with DirectWrite; axes are DWRITE_FONT_AXIS_TAG (others at defaults), embolden is in ems, before the transform.
 		RasterGlyph RasterizeRun(
@@ -81,7 +86,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Outline faces get px exactly (returns 1); bitmap faces the smallest size not below it, else the largest, returning the scale to px.
 		float SetSize(FT_FaceRec_* face, float px);
 
-		// Reads a glyph slot's bitmap as 8-bit coverage (converting 1, 2 and 4-bit, and taking BGRA's alpha).
+		// Reads a glyph slot's bitmap as 8-bit coverage (converting 1, 2 and 4-bit, and taking BGRA's alpha); an LCD or LCD_V one as R, G, B coverage
+		// too, with their mean as coverage.
 		RasterGlyph ReadBitmap(void* slot);
 	};
 }
