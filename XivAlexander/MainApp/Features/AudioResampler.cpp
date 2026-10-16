@@ -3,7 +3,10 @@
 
 #include <array>
 #include <atomic>
+#include <cstring>
 #include <deque>
+#include <list>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -36,6 +39,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		constexpr size_t OutputBufferCount = VoiceMaxQueuedBuffers + 1;
 
+		constexpr size_t RecordingCacheBytes = 256 << 20;
+		constexpr size_t MaxRecordingBytes = 16 << 20;
+		constexpr uint32_t StatsInterval = 512;
+
 		// As of 7.56h.
 		constexpr uint64_t MarkContext = 1;
 
@@ -48,16 +55,66 @@ namespace XivAlexander::Apps::MainApp::Features {
 			}
 		}
 
+		// Only tells submitted buffers apart; not collision resistant.
+		uint64_t HashBytes(const void* data, size_t size) {
+			auto p = static_cast<const uint8_t*>(data);
+			auto h = 0x9E3779B97F4A7C15ULL ^ size;
+			for (; size >= sizeof(uint64_t); p += sizeof(uint64_t), size -= sizeof(uint64_t)) {
+				uint64_t w;
+				std::memcpy(&w, p, sizeof w);
+				h = (h ^ w) * 0xBF58476D1CE4E5B9ULL;
+				h ^= h >> 31;
+			}
+			uint64_t w = 0;
+			std::memcpy(&w, p, size);
+			h = (h ^ w) * 0x94D049BB133111EBULL;
+			return h ^ (h >> 29);
+		}
+
+		struct RecordingKey {
+			int32_t SourceRate{};
+			int32_t MixRate{};
+			int32_t Channels{};
+			VoiceFormat Format{};
+			uint64_t FirstBytes{};
+			uint64_t FirstHash{};
+
+			auto operator<=>(const RecordingKey&) const = default;
+		};
+
+		/// A voice's whole output from the first buffer of a sound to its end, for later voices given the same buffers.
+		struct Recording {
+			struct Input {
+				uint64_t Bytes{};
+				uint64_t Hash{};
+
+				bool operator==(const Input&) const = default;
+			};
+
+			SoxrResamplerConfig Filter;
+			std::vector<Input> Inputs;
+			std::vector<uint8_t> Output;
+
+			[[nodiscard]] size_t Bytes() const { return Output.size() + Inputs.size() * sizeof(Input); }
+		};
+
 		struct Voice {
 			int32_t SourceRate{};
 			int32_t MixRate{};
 			int32_t Channels{};
 			VoiceFormat SourceFormat{};
 			double Ratio{};
+			SoxrResamplerConfig Filter;
 
 			std::recursive_mutex Mtx;
 			std::unique_ptr<SoxrResampler> Resampler;
 			const uint8_t* EndOfData{};
+
+			RecordingKey Key;
+			std::shared_ptr<const Recording> Replay;
+			size_t ReplayInput = 0;
+			size_t ReplayOutput = 0;
+			std::unique_ptr<Recording> Recorded;
 
 			std::array<std::vector<uint8_t>, OutputBufferCount> Output;
 			size_t NextOutput = 0;
@@ -78,6 +135,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 				PendingMarks.clear();
 				LastMarked = false;
 				HeldBack = 0;
+				Replay.reset();
+				ReplayInput = ReplayOutput = 0;
+				Recorded.reset();
 			}
 
 			[[nodiscard]] int64_t ToOutputFrame(int64_t inFrame) const {
@@ -116,6 +176,20 @@ namespace XivAlexander::Apps::MainApp::Features {
 
 		std::mutex VoicesLock;
 		std::unordered_map<const void*, std::shared_ptr<Voice>> Voices;
+
+		struct CacheEntry {
+			std::shared_ptr<const Recording> Recording;
+			std::list<RecordingKey>::iterator Lru;
+		};
+
+		std::mutex CacheLock;
+		std::map<RecordingKey, CacheEntry> Cache;
+		std::list<RecordingKey> CacheLru;
+		size_t CacheBytes = 0;
+
+		std::atomic_uint32_t Streams;
+		std::atomic_uint32_t ReplayedStreams;
+		std::atomic_uint32_t DivergedStreams;
 
 		xivres::util::on_dtor::multi Cleanup;
 		xivres::util::on_dtor::multi HookCleanup;
@@ -231,16 +305,109 @@ namespace XivAlexander::Apps::MainApp::Features {
 			v.reset();
 		}
 
-		std::unique_ptr<SoxrResampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format) {
+		std::unique_ptr<SoxrResampler> MakeResampler(int32_t rate, int32_t mix, int32_t channels, VoiceFormat format, const SoxrResamplerConfig& filter) {
 			const auto sampleFormat = format == VoiceFormat::Int16 ? SampleFormat::Int16 : SampleFormat::Float;
 			std::string error;
-			auto r = std::make_unique<SoxrResampler>(rate, mix, channels, sampleFormat, Config->Runtime.Audio.SoxrResampler.Filter.Snapshot(), error);
+			auto r = std::make_unique<SoxrResampler>(rate, mix, channels, sampleFormat, filter, error);
 			if (!error.empty()) {
 				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
 					"soxr ({} -> {} Hz, {} ch) failed: {}", rate, mix, channels, error);
 				return nullptr;
 			}
 			return r;
+		}
+
+		std::shared_ptr<const Recording> FindRecording(const RecordingKey& key, const SoxrResamplerConfig& filter) {
+			std::lock_guard lock(CacheLock);
+			const auto it = Cache.find(key);
+			if (it == Cache.end() || it->second.Recording->Filter != filter)
+				return nullptr;
+			CacheLru.splice(CacheLru.begin(), CacheLru, it->second.Lru);
+			return it->second.Recording;
+		}
+
+		void StoreRecording(const RecordingKey& key, std::unique_ptr<Recording> recording) {
+			recording->Inputs.shrink_to_fit();
+			recording->Output.shrink_to_fit();
+			const auto bytes = recording->Bytes();
+
+			std::lock_guard lock(CacheLock);
+			if (const auto it = Cache.find(key); it != Cache.end()) {
+				CacheBytes -= it->second.Recording->Bytes();
+				CacheLru.erase(it->second.Lru);
+				Cache.erase(it);
+			}
+			CacheLru.push_front(key);
+			Cache.emplace(key, CacheEntry{std::move(recording), CacheLru.begin()});
+			CacheBytes += bytes;
+
+			while (CacheBytes > RecordingCacheBytes && CacheLru.size() > 1) {
+				const auto it = Cache.find(CacheLru.back());
+				CacheBytes -= it->second.Recording->Bytes();
+				Cache.erase(it);
+				CacheLru.pop_back();
+			}
+		}
+
+		void CountStream(bool replayed) {
+			if (replayed)
+				++ReplayedStreams;
+			if (++Streams % StatsInterval)
+				return;
+
+			size_t count, bytes;
+			{
+				std::lock_guard lock(CacheLock);
+				count = Cache.size();
+				bytes = CacheBytes;
+			}
+			Logger->Format<LogLevel::Info>(LogCategory::AudioResampler,
+				"last {} sounds: {} replayed, {} fell back to soxr midway; {} resampled sound(s) cached in {:.1f} MiB",
+				StatsInterval, ReplayedStreams.exchange(0), DivergedStreams.exchange(0), count, static_cast<double>(bytes) / (1 << 20));
+		}
+
+		void BeginStream(Voice& v, uint64_t bytes, uint64_t hash) {
+			v.Replay.reset();
+			v.ReplayInput = v.ReplayOutput = 0;
+			v.Recorded.reset();
+			v.Key = {v.SourceRate, v.MixRate, v.Channels, v.SourceFormat, bytes, hash};
+			v.Replay = FindRecording(v.Key, v.Filter);
+			if (!v.Replay) {
+				v.Recorded = std::make_unique<Recording>();
+				v.Recorded->Filter = v.Filter;
+			}
+			CountStream(v.Replay != nullptr);
+		}
+
+		/// \returns Whether the recording held this buffer; if not, the voice resamples live from here on.
+		bool ReplayNext(Voice& v, uint64_t bytes, uint64_t hash, bool ending, std::vector<uint8_t>& out) {
+			const auto& rec = *v.Replay;
+			if (v.ReplayInput >= rec.Inputs.size() || rec.Inputs[v.ReplayInput] != Recording::Input{bytes, hash}) {
+				++DivergedStreams;
+				v.Replay.reset();
+				return false;
+			}
+
+			const auto last = ++v.ReplayInput == rec.Inputs.size();
+			const auto mapped = static_cast<size_t>(std::llround(static_cast<double>(v.InFrames - v.InBase) * v.Ratio)) * v.SourceFrameBytes();
+			const auto end = last ? rec.Output.size() : std::clamp(mapped, v.ReplayOutput, rec.Output.size());
+			out.assign(rec.Output.begin() + static_cast<ptrdiff_t>(v.ReplayOutput), rec.Output.begin() + static_cast<ptrdiff_t>(end));
+			v.ReplayOutput = end;
+			if (last || ending) {
+				v.Replay.reset();
+				v.Drained = true;
+			}
+			return true;
+		}
+
+		void Record(Voice& v, uint64_t bytes, uint64_t hash, const std::vector<uint8_t>& out, bool ending) {
+			auto& rec = *v.Recorded;
+			rec.Inputs.push_back({bytes, hash});
+			rec.Output.insert(rec.Output.end(), out.begin(), out.end());
+			if (rec.Output.size() > MaxRecordingBytes)
+				v.Recorded.reset();
+			else if (ending)
+				StoreRecording(v.Key, std::move(v.Recorded));
 		}
 
 		const uint8_t* EndOfDataFor(const SoundVoiceCallback* callback) {
@@ -263,21 +430,18 @@ namespace XivAlexander::Apps::MainApp::Features {
 				|| channels <= 0 || channels > VoiceMaxChannels || format == VoiceFormat::None)
 				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
 
-			auto resampler = MakeResampler(rate, mix, channels, format);
-			if (!resampler)
-				return InitHook->bridge(voice, rate, channels, format, a5, a6, a7, a8, a9, a10, a11);
-
 			const auto result = InitHook->bridge(voice, mix, channels, format, a5, a6, a7, a8, a9, a10, a11);
 			if (result != 0)
 				return result;
 
+			// soxr is made at the first buffer the cache cannot answer.
 			auto v = std::make_shared<Voice>();
 			v->SourceRate = rate;
 			v->MixRate = mix;
 			v->Channels = channels;
 			v->SourceFormat = format;
 			v->Ratio = static_cast<double>(mix) / rate;
-			v->Resampler = std::move(resampler);
+			v->Filter = Config->Runtime.Audio.SoxrResampler.Filter.Snapshot();
 			v->EndOfData = EndOfDataFor(a5);
 
 			std::lock_guard lock(VoicesLock);
@@ -304,6 +468,10 @@ namespace XivAlexander::Apps::MainApp::Features {
 			auto& out = v->Output[v->NextOutput];
 			out.clear();
 
+			const auto hash = HashBytes(data, bytes);
+			if ((v->InFrames == 0 || v->Drained) && framesIn != 0)
+				BeginStream(*v, bytes, hash);
+
 			if (v->Drained) {
 				v->InBase = v->InFrames;
 				v->OutBase = v->OutFrames;
@@ -316,14 +484,23 @@ namespace XivAlexander::Apps::MainApp::Features {
 				v->PendingMarks.push_back(v->ToOutputFrame(v->InFrames));
 			v->InFrames += static_cast<int64_t>(framesIn);
 
-			auto ok = v->Resampler->Process(data, framesIn, out);
-			if (ok && v->EndOfData && *v->EndOfData != 0) {
-				ok = v->Resampler->Drain(out);
-				v->Drained = true;
-			}
-			if (!ok) {
-				Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
-					"voice {:p}: soxr failed on {} frames", voice, framesIn);
+			const auto ending = v->EndOfData && *v->EndOfData != 0;
+			if (!v->Replay || !ReplayNext(*v, bytes, hash, ending, out)) {
+				if (!v->Resampler && !(v->Resampler = MakeResampler(v->SourceRate, v->MixRate, v->Channels, v->SourceFormat, v->Filter)))
+					return VoiceFailure;
+
+				auto ok = v->Resampler->Process(data, framesIn, out);
+				if (ok && ending) {
+					ok = v->Resampler->Drain(out);
+					v->Drained = true;
+				}
+				if (!ok) {
+					Logger->Format<LogLevel::Error>(LogCategory::AudioResampler,
+						"voice {:p}: soxr failed on {} frames", voice, framesIn);
+					v->Recorded.reset();
+				} else if (v->Recorded) {
+					Record(*v, bytes, hash, out, ending);
+				}
 			}
 
 			if (out.empty()) {
@@ -388,7 +565,8 @@ namespace XivAlexander::Apps::MainApp::Features {
 					const auto result = FlushHook->bridge(voice);
 					if (const auto v = Find(voice)) {
 						const auto lock = std::lock_guard(v->Mtx);
-						v->Resampler->Reset();
+						if (v->Resampler)
+							v->Resampler->Reset();
 						v->ResetPosition();
 					}
 					return result;
