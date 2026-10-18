@@ -3,15 +3,15 @@
 // Game UI structures the font replacement reads at offsets from the game's code; each group is resolved by the part that uses it.
 namespace XivAlexander::Apps::MainApp::FontReplacement::GameUi {
 	// AtkResNode.Type of text nodes; types from FirstComponentNodeType on are component nodes.
-	extern int TextNodeType;
-	extern int FirstComponentNodeType;
+	constexpr int TextNodeType = 3;
+	constexpr int FirstComponentNodeType = 1000;
 
-	// AtkStage, or 0 before it is made.
+	// 0 before the game makes it.
 	[[nodiscard]] uintptr_t Stage();
 
 	void ResolveStage();
 
-	// GetLoadedUnits and the node accessors.
+	// Covers GetLoadedUnits and the node accessors.
 	void ResolveUnits();
 
 	void ResolveResourceHandles();
@@ -27,12 +27,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::GameUi {
 	[[nodiscard]] uintptr_t GetNode(uintptr_t uld, int index);
 	[[nodiscard]] uint16_t GetNodeType(uintptr_t node);
 
-	// The ULD manager of the node's component; 0 if it has none.
+	// 0 if the node has no component.
 	[[nodiscard]] uintptr_t GetComponentUld(uintptr_t componentNode);
 
 	// Stored as an MSVC std::string: inline while shorter than 16.
 	[[nodiscard]] std::string GetFileName(uintptr_t handle);
 
-	// Gets a Kernel::Texture's ID3D11Texture2D.
 	[[nodiscard]] uintptr_t GetD3D11Texture(uintptr_t kernelTexture);
 }

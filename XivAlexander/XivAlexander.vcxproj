@@ -180,28 +180,51 @@
         <ClCompile Include="MainApp\App.cpp"/>
         <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp"/>
         <ClCompile Include="MainApp\Features\CrowdFix.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\EdgeShader.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\EdgeShaderCode.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\ElementFonts.cpp"/>
-        <ClCompile Include="MainApp\Features\FontReplacement.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\FontReplacer.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFont.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFontElement.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\GameFontDataFaceSource.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\ImageFaceSource.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\MergingFaceSource.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\NominalFaceSource.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\LookupFont.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\OutlineFaceSource.Baselines.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\OutlineFaceSource.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\OutlineFaceSource.Shaping.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\OutlineFaceSource.TextFont.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.Cells.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.Copies.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.Hooks.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\FontServices.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\GlyphAtlas.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\SizedFont.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Rasterization\DirectWriteGlyphRasterizer.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Rasterization\FontFileKey.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Rasterization\FreeTypeGlyphRasterizer.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Records\RasterGlyph.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\EdgeShader.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\PixelShaderSwap.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\SubpixelShaders.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\SubpixelShaders.Settings.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\DirectWriteTextAnalyzer.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\GameTextLayout.Cells.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\GameTextLayout.Clusters.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\GameTextLayout.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\GameTextLayout.Text.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\SystemFallbackFonts.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Text\TextAnalysisSource.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\FontStructs.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\FreeTypeFonts.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\GameFontNames.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\GameTextureReader.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Game\FontNames.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Game\KernelTextureWrapper.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Game\LineBreaker.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Game\NamePlateText.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Game\TextureReader.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\GameUi.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\GlyphAtlas.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\GlyphRasterizer.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\GlyphRunCollector.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\Host.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\LineBreaker.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\LookupFont.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\NamePlateText.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\PresetController.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\PluginInterface\PresetController.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\Presets.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\ReplacementFace.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\SubpixelText.cpp"/>
-        <ClCompile Include="MainApp\FontReplacement\TextShaper.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Utilities\GameUtf8.cpp"/>
+        <ClCompile Include="MainApp\Features\FontReplacement.cpp"/>
         <ClCompile Include="Config\FontReplacementConfigs.cpp"/>
         <ClCompile Include="MainApp\Features\DisplayLanguage.cpp"/>
         <ClCompile Include="MainApp\Features\ImeModeIndicator.cpp"/>
@@ -306,30 +329,56 @@
         <ClInclude Include="MainApp\AudioResamplers\SoxrResampler.h"/>
         <ClInclude Include="MainApp\Features\MainThreadTimingHandler.h"/>
         <ClInclude Include="MainApp\Features\CrowdFix.h"/>
-        <ClInclude Include="MainApp\FontReplacement\EdgeShader.h"/>
-        <ClInclude Include="MainApp\FontReplacement\EdgeShaderCode.h"/>
-        <ClInclude Include="MainApp\FontReplacement\ElementFonts.h"/>
-        <ClInclude Include="MainApp\Features\FontReplacement.h"/>
-        <ClInclude Include="MainApp\FontReplacement\FontReplacer.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\Baseline.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\ItalicMode.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\SubpixelOrder.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\IFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFont.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFontElement.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\EmptyFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\GameFontDataFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\ImageFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\MergingFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\NominalFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\LookupFont.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\OutlineFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\FontReplacer.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\FontServices.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\GlyphAtlas.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\SizedFont.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Rasterization\DirectWriteGlyphRasterizer.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Rasterization\FontFileKey.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Rasterization\FreeTypeGlyphRasterizer.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\FontAlignment.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\GlyphOffset.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\GlyphRun.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\RasterGlyph.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\RasterizeOptions.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\ScriptToken.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\ShapedCluster.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Records\TextRun.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Shaders\EdgeShader.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Shaders\PixelShaderSwap.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Shaders\SubpixelShaders.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Text\DirectWriteTextAnalyzer.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Text\GameTextLayout.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Text\SystemFallbackFonts.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Text\TextAnalysisSource.h"/>
         <ClInclude Include="MainApp\FontReplacement\FontStructs.h"/>
-        <ClInclude Include="MainApp\FontReplacement\FreeTypeFonts.h"/>
-        <ClInclude Include="MainApp\FontReplacement\GameFontNames.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Game\FontNames.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Game\KernelTextureWrapper.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Game\LineBreaker.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Game\NamePlateText.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Game\TextureReader.h"/>
         <ClInclude Include="MainApp\FontReplacement\GameCode.h"/>
-        <ClInclude Include="MainApp\FontReplacement\GameTextureReader.h"/>
         <ClInclude Include="MainApp\FontReplacement\GameUi.h"/>
-        <ClInclude Include="MainApp\FontReplacement\GlyphAtlas.h"/>
-        <ClInclude Include="MainApp\FontReplacement\GlyphRasterizer.h"/>
-        <ClInclude Include="MainApp\FontReplacement\GlyphRunCollector.h"/>
         <ClInclude Include="MainApp\FontReplacement\Host.h"/>
-        <ClInclude Include="MainApp\FontReplacement\Utilities.h"/>
-        <ClInclude Include="MainApp\FontReplacement\LineBreaker.h"/>
-        <ClInclude Include="MainApp\FontReplacement\LookupFont.h"/>
-        <ClInclude Include="MainApp\FontReplacement\NamePlateText.h"/>
-        <ClInclude Include="MainApp\FontReplacement\PresetController.h"/>
+        <ClInclude Include="MainApp\FontReplacement\PluginInterface\PresetController.h"/>
         <ClInclude Include="MainApp\FontReplacement\Presets.h"/>
-        <ClInclude Include="MainApp\FontReplacement\ReplacementFace.h"/>
-        <ClInclude Include="MainApp\FontReplacement\SubpixelText.h"/>
-        <ClInclude Include="MainApp\FontReplacement\TextShaper.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Utilities\GameUtf8.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Utilities\Matrix2x2.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Utilities\Misc.h"/>
+        <ClInclude Include="MainApp\Features\FontReplacement.h"/>
         <ClInclude Include="Config\FontReplacementConfigs.h"/>
         <ClInclude Include="MainApp\Features\DisplayLanguage.h"/>
         <ClInclude Include="MainApp\Features\ImeModeIndicator.h"/>
@@ -436,7 +485,7 @@
         <Image Include="..\Graphics\Icon.ico"/>
     </ItemGroup>
     <ItemGroup>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontSubpixelPS.hlsl">
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Fonts\Shaders\FontSubpixelPS.hlsl">
             <ShaderType>Pixel</ShaderType>
             <ShaderModel>5.0</ShaderModel>
             <EntryPointName>main</EntryPointName>
@@ -445,7 +494,7 @@
             <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
             <ObjectFileOutput>$(IntDir)FontSubpixelPS.cso</ObjectFileOutput>
         </FxCompile>
-        <FxCompile Include="MainApp\FontReplacement\FontSubpixelHighlightPS.hlsl">
+        <FxCompile Include="MainApp\FontReplacement\Fonts\Shaders\FontSubpixelHighlightPS.hlsl">
             <ShaderType>Pixel</ShaderType>
             <ShaderModel>5.0</ShaderModel>
             <EntryPointName>main</EntryPointName>
@@ -454,7 +503,7 @@
             <AdditionalOptions>/O3 %(AdditionalOptions)</AdditionalOptions>
             <ObjectFileOutput>$(IntDir)%(Filename).cso</ObjectFileOutput>
         </FxCompile>
-        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgePS.hlsl">
+        <FxCompile Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Fonts\Shaders\FontEdgePS.hlsl">
             <ShaderType>Pixel</ShaderType>
             <ShaderModel>5.0</ShaderModel>
             <EntryPointName>main</EntryPointName>
@@ -465,7 +514,7 @@
         </FxCompile>
     </ItemGroup>
     <ItemGroup>
-        <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Rendering\Shaders\FontEdgeSquares.hlsli"/>
+        <None Include="..\FFXIV-FontChanger\FontChanger.DalamudPlugin\Fonts\Shaders\FontEdgeSquares.hlsli"/>
         <None Include="Exports_x64.def"/>
         <None Include="Version.rc2"/>
         <None Include="Shaders.rc2"/>

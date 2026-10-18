@@ -160,6 +160,15 @@ void XivAlexander::RuntimeConfigRepository::Migrate(nlohmann::json& config) cons
 
 	for (const auto& [from, item] : moved)
 		MoveKey(config, from, *item);
+
+	// FontReplacement.Fonts was FontReplacement.Faces.
+	if (config.is_object()) {
+		if (const auto group = config.find(FontReplacement.Name); group != config.end() && group->is_object() && group->contains("Faces")) {
+			if (!group->contains(FontReplacement.Fonts.Name))
+				(*group)[FontReplacement.Fonts.Name] = std::move((*group)["Faces"]);
+			group->erase("Faces");
+		}
+	}
 }
 
 WORD XivAlexander::RuntimeConfigRepository::GetLangId() const {

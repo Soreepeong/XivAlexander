@@ -6,11 +6,11 @@
 #include "Config.h"
 #include "Game/SignatureDefinitions.h"
 #include "MainApp/App.h"
-#include "MainApp/FontReplacement/FontReplacer.h"
+#include "MainApp/FontReplacement/Fonts/FontReplacer.h"
+#include "MainApp/FontReplacement/Game/LineBreaker.h"
+#include "MainApp/FontReplacement/Game/NamePlateText.h"
 #include "MainApp/FontReplacement/Host.h"
-#include "MainApp/FontReplacement/LineBreaker.h"
-#include "MainApp/FontReplacement/NamePlateText.h"
-#include "MainApp/FontReplacement/PresetController.h"
+#include "MainApp/FontReplacement/PluginInterface/PresetController.h"
 
 namespace XivAlexander::Apps::MainApp::Features {
 	using namespace MainApp::FontReplacement;
@@ -28,7 +28,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	// Changes since the last frame, applied on the game's thread between frames.
 	std::mutex PendingMutex;
-	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
+	std::optional<std::pair<Presets::Fonts, bool>> PendingPreset;
 	bool PendingSettings = true;
 
 	// How often Windows' ClearType settings are re-read for the game's monitor, which the window may move to.
@@ -73,9 +73,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		App.RunOnGameLoop([&] {
 			try {
 				Replacer = std::make_unique<FontReplacer>();
-				Replacer->SetAtlas(Config->Runtime.FontReplacement.Atlas.Value());
-				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
-				ApplySubpixel(window);
+				ApplySettings(window);
 				NamePlates = Optional<NamePlateText>("Nameplate text");
 				if (NamePlates)
 					NamePlates->SetMode(Config->Runtime.FontReplacement.NamePlates.Value());
@@ -109,7 +107,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		try {
 			// Subscribed before the controller loads the settings, so a change in between isn't lost; edge and nameplates apply before the next frame.
 			auto& settings = Config->Runtime.FontReplacement;
-			Cleanup += settings.Faces.OnChange([this] {
+			Cleanup += settings.Fonts.OnChange([this] {
 				const auto lock = std::scoped_lock(PendingMutex);
 				if (Controller)
 					Controller->Reload();
@@ -125,18 +123,14 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			Cleanup += settings.NamePlates.OnChange(markPending);
 			Cleanup += settings.Atlas.OnChange(markPending);
 
-			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
+			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Fonts fonts, bool systemFallback) {
 				const auto lock = std::scoped_lock(PendingMutex);
-				PendingPreset.emplace(std::move(faces), systemFallback);
+				PendingPreset.emplace(std::move(fonts), systemFallback);
 			});
 			const auto lock = std::scoped_lock(PendingMutex);
 			Controller = std::move(controller);
 		} catch (...) {
-			// As the destructor does: unsubscribe and unhook first, so nothing reaches the replacer while it's torn down.
-			Cleanup.clear();
-			Controller.reset();
-			PresentCall.reset();
-			Present.reset();
+			Unhook();
 			App.RunOnGameLoop([this] { TearDown(); });
 			throw;
 		}
@@ -144,14 +138,19 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	~Implementation() {
 		InitThread.join();
-		Cleanup.clear();
-		Controller.reset();
-		PresentCall.reset();
-		Present.reset();
+		Unhook();
 
 		// Between frames on the game's thread.
 		if (Replacer || NamePlates || Breaker)
 			App.RunOnGameLoop([this] { TearDown(); });
+	}
+
+	// Comes before TearDown, so that nothing reaches the replacer while it's torn down.
+	void Unhook() {
+		Cleanup.clear();
+		Controller.reset();
+		PresentCall.reset();
+		Present.reset();
 	}
 
 	template<typename T>
@@ -178,11 +177,22 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	}
 
 	// Game thread, between frames.
+	void ApplySettings(HWND window) {
+		const auto& settings = Config->Runtime.FontReplacement;
+		Replacer->SetAtlas(settings.Atlas.Value());
+		Replacer->SetEdge(settings.Edge.Value());
+		Replacer->SetVerticalSubpixel(settings.VerticalSubpixel.Value());
+		if (NamePlates)
+			NamePlates->SetMode(settings.NamePlates.Value());
+		ApplySubpixel(window);
+	}
+
+	// Game thread, between frames.
 	void ApplySubpixel(HWND window) {
 		LastSubpixelQuery = GetTickCount64();
 		try {
 			const auto& settings = Config->Runtime.FontReplacement;
-			Replacer->SetSubpixel(SubpixelSettings::Of(settings.Subpixel.Value(), settings.ClearType.Value(), settings.VerticalSubpixel.Value(), window));
+			Replacer->SetSubpixel(SubpixelShaders::SettingsRecord::From(settings.Subpixel.Value(), settings.ClearType.Value(), window));
 		} catch (const std::exception& e) {
 			Host::Error("Applying the subpixel text setting failed: {}", e.what());
 		}
@@ -192,34 +202,29 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (!Replacer)
 			return;
 
-		std::optional<std::pair<Presets::Faces, bool>> preset;
+		std::optional<std::pair<Presets::Fonts, bool>> preset;
 		auto settings = false;
 		{
 			const auto lock = std::scoped_lock(PendingMutex);
-			preset = std::move(PendingPreset);
-			PendingPreset.reset();
+			preset = std::exchange(PendingPreset, std::nullopt);
 			settings = std::exchange(PendingSettings, false);
 		}
 
 		if (settings) {
-			const auto& current = Config->Runtime.FontReplacement;
-			Replacer->SetAtlas(current.Atlas.Value());
-			Replacer->SetEdge(current.Edge.Value());
-			if (NamePlates)
-				NamePlates->SetMode(current.NamePlates.Value());
-			ApplySubpixel(App.GetGameWindowHandle());
+			ApplySettings(App.GetGameWindowHandle());
 		} else if (Config->Runtime.FontReplacement.Subpixel.Value() != FontReplacementSubpixelMode::Off && GetTickCount64() - LastSubpixelQuery >= SubpixelRefreshMs) {
 			ApplySubpixel(App.GetGameWindowHandle());
 		}
 
 		if (preset) {
 			try {
-				Replacer->SetPreset(preset->first, preset->second);
+				Replacer->SetFonts({std::move(preset->first), preset->second});
 			} catch (const std::exception& e) {
 				Host::Error("Applying the preset failed: {}", e.what());
 			}
 		}
 
+		Replacer->EndFrame();
 		Replacer->Upload();
 	}
 };

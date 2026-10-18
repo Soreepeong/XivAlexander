@@ -3,7 +3,7 @@
 #include "Utils/Win32/Closeable.h"
 
 namespace XivAlexander::Apps::MainApp::Window {
-	/// Spreadsheet-like report list view: arrows move the current cell; F2, Enter, double click or typing edit it (Enter or leaving
+	/// Spreadsheet-like report list view: arrows move the current cell; F2, Enter, a click on it, double click or typing edit it (Enter or leaving
 	/// applies, Esc cancels, Tab applies and moves on); Space or click toggles checkboxes; drag or Ctrl+Up/Down reorders rows.
 	class GridView {
 	public:
@@ -40,6 +40,9 @@ namespace XivAlexander::Apps::MainApp::Window {
 
 			// A double click on a row, or Enter on a cell that can't be edited; editing the cell if none.
 			std::function<void(size_t row)> Activate;
+
+			// A double click on a cell; true if handled, else as above. If set, a click on the current cell edits it only once it isn't a double click.
+			std::function<bool(size_t row, size_t column)> DoubleClick;
 
 			std::function<void(size_t row, POINT ptScreen)> ShowContextMenu;
 
@@ -82,6 +85,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		};
 		std::optional<Editor> m_editor;
 		bool m_endingEdit = false;
+		std::optional<std::pair<size_t, size_t>> m_clickEditCell;  // Edited when the double click time passes.
 
 		std::optional<size_t> m_dragRow;
 		std::optional<size_t> m_dropBefore;  // Where a dragged row would go: before this row, or last if the row count.
@@ -128,6 +132,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		std::optional<LRESULT> OnCustomDraw(NMLVCUSTOMDRAW& nmcd);
 
 		bool EndEdit(EndEditMode mode);
+		void CancelClickEdit();
 		void MoveCurrent(size_t row, size_t column);
 		void Toggle(size_t row, size_t column);
 		void MoveRow(size_t from, size_t to);

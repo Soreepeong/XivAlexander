@@ -4,12 +4,11 @@
 #include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Host.h"
-#include "MainApp/FontReplacement/Utilities.h"
+#include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// Set once BuildFont has built the font.
 	constexpr int ReadyFontFlag = 2;
 
 	struct {
@@ -41,7 +40,6 @@ namespace {
 		int SecondaryRatio;
 		int TextureCount;
 		int Flags;
-		int ReadyFlag;
 		int ItalicCorrection = -1;
 	} s_font{};
 }
@@ -193,7 +191,7 @@ uint16_t& FontReplacement::GameFont::TextureCount() {
 }
 
 bool FontReplacement::GameFont::IsReady() const {
-	return (At<uint8_t>(this, s_font.Flags) & s_font.ReadyFlag) != 0;
+	return (At<uint8_t>(this, s_font.Flags) & ReadyFontFlag) != 0;
 }
 
 void FontReplacement::GameFont::SetItalicCorrection(int8_t value) {
@@ -245,45 +243,7 @@ void FontReplacement::GameFont::Resolve() {
 	s_font.SecondaryRatio = font.SecondaryRatio;
 	s_font.TextureCount = font.TextureCount;
 	s_font.Flags = font.Flags;
-	s_font.ReadyFlag = ReadyFontFlag;
 
 	// Optional: only changed in copies.
 	s_font.ItalicCorrection = font.XShift.value_or(-1);
-}
-
-int FontReplacement::GameUtf8::Decode(const uint8_t* p, int length) {
-	if (length <= 0)
-		return -1;
-	const auto b = p[0];
-	int expected, cp, min;
-	if (b < 0x80)
-		return length == 1 ? b : -1;
-	if (b < 0xC2)
-		return -1;
-	if (b < 0xE0)
-		expected = 2, cp = b & 0x1F, min = 0x80;
-	else if (b < 0xF0)
-		expected = 3, cp = b & 0x0F, min = 0x800;
-	else if (b < 0xF5)
-		expected = 4, cp = b & 0x07, min = 0x10000;
-	else
-		return -1;
-	if (length != expected)
-		return -1;
-	for (auto i = 1; i < expected; i++) {
-		if ((p[i] & 0xC0) != 0x80)
-			return -1;
-		cp = (cp << 6) | (p[i] & 0x3F);
-	}
-	if (cp < min || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
-		return -1;
-	return cp;
-}
-
-int FontReplacement::GameUtf8::Unpack(uint32_t value) {
-	uint8_t buf[4];
-	const auto n = value > 0xFFFFFF ? 4 : value > 0xFFFF ? 3 : value > 0xFF ? 2 : 1;
-	for (auto i = 0; i < n; i++)
-		buf[i] = static_cast<uint8_t>(value >> (8 * (n - 1 - i)));
-	return Decode(buf, n);
 }

@@ -2,16 +2,66 @@
 #include "FontReplacementConfigs.h"
 
 namespace {
+	using XivAlexander::FontReplacementAtlasTextureFormat;
+	using XivAlexander::FontReplacementNamePlateMode;
+	using XivAlexander::FontReplacementSubpixelMode;
+	using XivAlexander::FontReplacementVerticalSubpixelRenderer;
+
 	template<typename T>
 	void Read(const nlohmann::json& j, const char* key, T& value) {
 		if (const auto it = j.find(key); it != j.end())
 			value = it->get<T>();
 	}
+
+	// The first name of each is the default, which unknown values are written and read as.
+	constexpr std::pair<FontReplacementAtlasTextureFormat, const char*> AtlasTextureFormatNames[]{
+		{FontReplacementAtlasTextureFormat::Bgra8888, "BGRA8888"},
+		{FontReplacementAtlasTextureFormat::Bgra4444, "BGRA4444"},
+	};
+
+	constexpr std::pair<FontReplacementSubpixelMode, const char*> SubpixelModeNames[]{
+		{FontReplacementSubpixelMode::Off, "Off"},
+		{FontReplacementSubpixelMode::System, "System"},
+		{FontReplacementSubpixelMode::Rgb, "RGB"},
+		{FontReplacementSubpixelMode::Bgr, "BGR"},
+		{FontReplacementSubpixelMode::VerticalRgb, "VerticalRGB"},
+		{FontReplacementSubpixelMode::VerticalBgr, "VerticalBGR"},
+	};
+
+	constexpr std::pair<FontReplacementVerticalSubpixelRenderer, const char*> VerticalSubpixelRendererNames[]{
+		{FontReplacementVerticalSubpixelRenderer::FreeType, "FreeType"},
+		{FontReplacementVerticalSubpixelRenderer::DirectWrite, "DirectWrite"},
+	};
+
+	constexpr std::pair<FontReplacementNamePlateMode, const char*> NamePlateModeNames[]{
+		{FontReplacementNamePlateMode::BakedAtFullSize, "BakedAtFullSize"},
+		{FontReplacementNamePlateMode::Game, "Game"},
+		{FontReplacementNamePlateMode::Live, "Live"},
+	};
+
+	template<typename T, size_t N>
+	const char* NameOf(T value, const std::pair<T, const char*> (&names)[N]) {
+		for (const auto& [v, name] : names) {
+			if (v == value)
+				return name;
+		}
+		return names[0].second;
+	}
+
+	template<typename T, size_t N>
+	T ParseName(const nlohmann::json& j, const std::pair<T, const char*> (&names)[N]) {
+		const auto s = j.is_string() ? j.get<std::string>() : std::string();
+		for (const auto& [value, name] : names) {
+			if (_stricmp(s.c_str(), name) == 0)
+				return value;
+		}
+		return names[0].first;
+	}
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilyFont& v) {
 	j = nlohmann::json::object({
-		{"Name", v.Name},
+		{"FamilyName", v.FamilyName},
 		{"Weight", v.Weight},
 		{"Stretch", v.Stretch},
 		{"Style", v.Style},
@@ -20,10 +70,34 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilyFont& v
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilyFont& v) {
 	v = {};
-	Read(j, "Name", v.Name);
+	Read(j, "Name", v.FamilyName); // What earlier versions called it.
+	Read(j, "FamilyName", v.FamilyName);
 	Read(j, "Weight", v.Weight);
 	Read(j, "Stretch", v.Stretch);
 	Read(j, "Style", v.Style);
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAdjustments& v) {
+	j = nlohmann::json::object({
+		{"Scripts", v.Scripts},
+		{"NonCjkSize", v.NonCjkSize},
+		{"CjkSize", v.CjkSize},
+		{"Raise", v.Raise},
+		{"NonCjkSpacing", v.NonCjkSpacing},
+		{"CjkSpacing", v.CjkSpacing},
+		{"StrokeWeight", v.StrokeWeight},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAdjustments& v) {
+	v = {};
+	Read(j, "Scripts", v.Scripts);
+	Read(j, "NonCjkSize", v.NonCjkSize);
+	Read(j, "CjkSize", v.CjkSize);
+	Read(j, "Raise", v.Raise);
+	Read(j, "NonCjkSpacing", v.NonCjkSpacing);
+	Read(j, "CjkSpacing", v.CjkSpacing);
+	Read(j, "StrokeWeight", v.StrokeWeight);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource& v) {
@@ -33,6 +107,8 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource&
 	else {
 		j["Font"] = v.Font;
 		j["MonospacedDigits"] = v.MonospacedDigits;
+		if (v.Adjustments != FontReplacementAdjustments{})
+			j["Adjustments"] = v.Adjustments;
 	}
 }
 
@@ -42,6 +118,7 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySourc
 	Read(j, "Preset", v.Preset);
 	Read(j, "Font", v.Font);
 	Read(j, "MonospacedDigits", v.MonospacedDigits);
+	Read(j, "Adjustments", v.Adjustments);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamily& v) {
@@ -83,19 +160,33 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAtlasConfig& v) {
 	j = nlohmann::json::object({
-		{"AxisPageSize", v.AxisPageSize},
+		{"AxisPageWidth", v.AxisPageWidth},
+		{"AxisPageHeight", v.AxisPageHeight},
 		{"AxisMaxPages", v.AxisMaxPages},
-		{"OtherPageSize", v.OtherPageSize},
+		{"OtherPageWidth", v.OtherPageWidth},
+		{"OtherPageHeight", v.OtherPageHeight},
 		{"OtherMaxPages", v.OtherMaxPages},
+		{"Format", NameOf(v.Format, AtlasTextureFormatNames)},
 	});
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAtlasConfig& v) {
 	v = {};
-	Read(j, "AxisPageSize", v.AxisPageSize);
+
+	// Square pages were one size before.
+	Read(j, "AxisPageSize", v.AxisPageWidth);
+	Read(j, "AxisPageSize", v.AxisPageHeight);
+	Read(j, "OtherPageSize", v.OtherPageWidth);
+	Read(j, "OtherPageSize", v.OtherPageHeight);
+
+	Read(j, "AxisPageWidth", v.AxisPageWidth);
+	Read(j, "AxisPageHeight", v.AxisPageHeight);
 	Read(j, "AxisMaxPages", v.AxisMaxPages);
-	Read(j, "OtherPageSize", v.OtherPageSize);
+	Read(j, "OtherPageWidth", v.OtherPageWidth);
+	Read(j, "OtherPageHeight", v.OtherPageHeight);
 	Read(j, "OtherMaxPages", v.OtherMaxPages);
+	if (const auto it = j.find("Format"); it != j.end())
+		v.Format = ParseName(*it, AtlasTextureFormatNames);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementClearTypeConfig& v) {
@@ -114,80 +205,25 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementClearTypeCo
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode& v) {
-	switch (v) {
-		case FontReplacementSubpixelMode::System:
-			j = "System";
-			break;
-		case FontReplacementSubpixelMode::Rgb:
-			j = "RGB";
-			break;
-		case FontReplacementSubpixelMode::Bgr:
-			j = "BGR";
-			break;
-		case FontReplacementSubpixelMode::VerticalRgb:
-			j = "VerticalRGB";
-			break;
-		case FontReplacementSubpixelMode::VerticalBgr:
-			j = "VerticalBGR";
-			break;
-		case FontReplacementSubpixelMode::Off:
-		default:
-			j = "Off";
-	}
+	j = NameOf(v, SubpixelModeNames);
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementSubpixelMode& v) {
-	const auto s = j.is_string() ? j.get<std::string>() : std::string();
-	if (_stricmp(s.c_str(), "System") == 0)
-		v = FontReplacementSubpixelMode::System;
-	else if (_stricmp(s.c_str(), "RGB") == 0)
-		v = FontReplacementSubpixelMode::Rgb;
-	else if (_stricmp(s.c_str(), "BGR") == 0)
-		v = FontReplacementSubpixelMode::Bgr;
-	else if (_stricmp(s.c_str(), "VerticalRGB") == 0)
-		v = FontReplacementSubpixelMode::VerticalRgb;
-	else if (_stricmp(s.c_str(), "VerticalBGR") == 0)
-		v = FontReplacementSubpixelMode::VerticalBgr;
-	else
-		v = FontReplacementSubpixelMode::Off;
+	v = ParseName(j, SubpixelModeNames);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementVerticalSubpixelRenderer& v) {
-	switch (v) {
-		case FontReplacementVerticalSubpixelRenderer::DirectWrite:
-			j = "DirectWrite";
-			break;
-		case FontReplacementVerticalSubpixelRenderer::FreeType:
-		default:
-			j = "FreeType";
-	}
+	j = NameOf(v, VerticalSubpixelRendererNames);
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementVerticalSubpixelRenderer& v) {
-	const auto s = j.is_string() ? j.get<std::string>() : std::string();
-	v = _stricmp(s.c_str(), "DirectWrite") == 0 ? FontReplacementVerticalSubpixelRenderer::DirectWrite : FontReplacementVerticalSubpixelRenderer::FreeType;
+	v = ParseName(j, VerticalSubpixelRendererNames);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementNamePlateMode& v) {
-	switch (v) {
-		case FontReplacementNamePlateMode::Game:
-			j = "Game";
-			break;
-		case FontReplacementNamePlateMode::Live:
-			j = "Live";
-			break;
-		case FontReplacementNamePlateMode::BakedAtFullSize:
-		default:
-			j = "BakedAtFullSize";
-	}
+	j = NameOf(v, NamePlateModeNames);
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementNamePlateMode& v) {
-	const auto s = j.is_string() ? j.get<std::string>() : std::string();
-	if (_stricmp(s.c_str(), "Game") == 0)
-		v = FontReplacementNamePlateMode::Game;
-	else if (_stricmp(s.c_str(), "Live") == 0)
-		v = FontReplacementNamePlateMode::Live;
-	else
-		v = FontReplacementNamePlateMode::BakedAtFullSize;
+	v = ParseName(j, NamePlateModeNames);
 }
