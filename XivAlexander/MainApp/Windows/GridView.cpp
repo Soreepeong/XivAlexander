@@ -9,6 +9,7 @@ namespace {
 	constexpr UINT_PTR ListSubclassId = 1;
 	constexpr UINT_PTR EditorSubclassId = 2;
 	constexpr UINT WmSelectionChanged = WM_APP + 1;
+	constexpr UINT_PTR TimerIdClickEdit = 0x4756;  // Apart from the list view's own timers.
 }
 
 XivAlexander::Apps::MainApp::Window::GridView::GridView(HWND hParent, UINT id, std::vector<Column> columns, Source source)
@@ -168,6 +169,13 @@ void XivAlexander::Apps::MainApp::Window::GridView::MoveRow(size_t from, size_t 
 	m_source.MoveRow(from, to);
 	Refresh();
 	MoveCurrent(to > from ? to - 1 : to, m_column);
+}
+
+void XivAlexander::Apps::MainApp::Window::GridView::CancelClickEdit() {
+	if (m_clickEditCell) {
+		KillTimer(m_hList, TimerIdClickEdit);
+		m_clickEditCell.reset();
+	}
 }
 
 void XivAlexander::Apps::MainApp::Window::GridView::CommitEdit() {
@@ -406,6 +414,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 		}
 
 		case WM_KEYDOWN: {
+			CancelClickEdit();
 			if (m_source.KeyDown && m_source.KeyDown(static_cast<UINT>(wParam)))
 				return 0;
 			const auto ctrl = GetKeyState(VK_CONTROL) < 0;
@@ -490,6 +499,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 			break;
 
 		case WM_LBUTTONDOWN: {
+			CancelClickEdit();
 			EndEdit(EndEditMode::ApplyOrCancel);
 			const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
 			if (const auto hit = HitTest(pt)) {
@@ -514,10 +524,14 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 				if (m_dragRow)
 					return result;
 				MoveCurrent(row, column);
-				if (column < m_columns.size() && m_columns[column].Kind == CellKind::Check)
+				if (column < m_columns.size() && m_columns[column].Kind == CellKind::Check) {
 					Toggle(row, column);
-				else if (wasCurrent)
+				} else if (wasCurrent && m_source.DoubleClick) {
+					m_clickEditCell = *hit;
+					SetTimer(m_hList, TimerIdClickEdit, GetDoubleClickTime(), nullptr);
+				} else if (wasCurrent) {
 					BeginEdit(row, column);
+				}
 				return result;
 			}
 			// Not on a cell: the empty area moves the window, as the title bar would.
@@ -528,9 +542,12 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 
 		case WM_LBUTTONDBLCLK: {
 			const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+			CancelClickEdit();
 			if (const auto hit = HitTest(pt)) {
 				if (hit->second < m_columns.size() && m_columns[hit->second].Kind == CellKind::Check)
 					Toggle(hit->first, hit->second);
+				else if (m_source.DoubleClick && m_source.DoubleClick(hit->first, hit->second))
+					InvalidateRect(m_hList, nullptr, FALSE);
 				else if (m_source.Activate)
 					m_source.Activate(hit->first);
 				else
@@ -539,6 +556,15 @@ LRESULT XivAlexander::Apps::MainApp::Window::GridView::ListProc(UINT uMsg, WPARA
 			}
 			break;
 		}
+
+		case WM_TIMER:
+			if (wParam != TimerIdClickEdit)
+				break;
+			if (const auto cell = m_clickEditCell) {
+				CancelClickEdit();
+				BeginEdit(cell->first, cell->second);
+			}
+			return 0;
 
 		case WM_CONTEXTMENU:
 			if (m_source.ShowContextMenu) {

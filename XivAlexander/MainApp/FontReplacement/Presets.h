@@ -2,15 +2,15 @@
 
 #include <FontChanger.Presets/Structs.h>
 
-#include "MainApp/FontReplacement/Utilities.h"
+#include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace XivAlexander {
 	class Config;
 }
 
-// Faces by game font name (FontChanger.Presets' Preset), read with FontChanger.Presets.Native's model.
+// Fonts by game font name (FontChanger.Presets' Preset), read with FontChanger.Presets.Native's model.
 namespace XivAlexander::Apps::MainApp::FontReplacement::Presets {
-	using Faces = std::map<std::string, std::shared_ptr<const FontChanger::Structs::Face>, LessIgnoringCase>;
+	using Fonts = std::map<std::string, std::shared_ptr<const FontChanger::Structs::Font>, LessIgnoringCase>;
 
 	// <configuration folder>\FontPresets, created if missing; a source's preset is relative to it, or absolute if used in place.
 	[[nodiscard]] std::filesystem::path Folder(Config& config);
@@ -26,17 +26,20 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Presets {
 	// Returns the path relative to folder; a preset with glyph image folders (all copyable) gets its own folder holding copies of them.
 	std::filesystem::path Import(const std::filesystem::path& path, const std::filesystem::path& folder, const std::vector<std::filesystem::path>& glyphImageFolders);
 
-	// One font set (faces at the top) or several (fontSets), the first winning per name; relative glyph image folders are made absolute.
-	[[nodiscard]] Faces Load(const std::filesystem::path& path);
+	// One font set (fonts at the top) or several (fontSets), the first winning per name; relative glyph image folders are made absolute.
+	[[nodiscard]] Fonts Load(const std::filesystem::path& path);
 
-	// For a face in several, the last preset's wins.
-	void Combine(Faces& into, const Faces& from);
+	// For a font in several, the last preset's wins.
+	void Combine(Fonts& into, const Fonts& from);
 
-	// A face in both gets from's elements after into's, drawn over them glyph by glyph; sizes scaled to into's first element.
-	void Overlay(Faces& into, const Faces& from);
+	// A font in both gets from's elements after into's, drawn over them glyph by glyph; sizes scaled to into's first element.
+	void Overlay(Fonts& into, const Fonts& from);
 
-	[[nodiscard]] Faces FacesOfFamily(const Faces& faces, std::string_view family);
+	// The game font's family (AXIS of AXIS_12, JupiterN of Jupiter_45), else the name before the last underscore.
+	[[nodiscard]] std::string FamilyOf(std::string_view fontName);
+
+	[[nodiscard]] Fonts FontsOfFamily(const Fonts& fonts, std::string_view family);
 
 	// To watch them for changes.
-	[[nodiscard]] std::vector<std::filesystem::path> GlyphImageFolders(const Faces& faces);
+	[[nodiscard]] std::vector<std::filesystem::path> GlyphImageFolders(const Fonts& fonts);
 }

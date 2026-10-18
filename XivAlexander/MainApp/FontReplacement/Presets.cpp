@@ -1,14 +1,14 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Presets.h"
 
+#include <FontChanger.FixedSizeFont/fontdata_fixed_size_font.h>
+
 #include "Config.h"
-#include "MainApp/FontReplacement/GameFontNames.h"
 #include "Utils/StringUtils.h"
 #include "Utils/Win32.h"
 #include "resource.h"
 
 namespace Presets = XivAlexander::Apps::MainApp::FontReplacement::Presets;
-namespace GameFontNames = XivAlexander::Apps::MainApp::FontReplacement::GameFontNames;
 
 namespace {
 	// Comments are allowed: FontChanger writes none, but people may.
@@ -43,8 +43,8 @@ std::filesystem::path Presets::Resolve(const std::filesystem::path& folder, cons
 std::vector<std::filesystem::path> Presets::RelativeGlyphImageFolders(const std::filesystem::path& path) {
 	std::vector<std::filesystem::path> res;
 	for (const auto& fontSet : ReadPresetFile(path).FontSets) {
-		for (const auto& face : fontSet->Faces) {
-			for (const auto& element : face->Elements) {
+		for (const auto& font : fontSet->Fonts) {
+			for (const auto& element : font->Elements) {
 				if (!element->UsesProjectDirectory())
 					continue;
 				auto folder = std::filesystem::path(xivres::util::unicode::convert<std::wstring>(element->RendererSpecific.GlyphImages.Path)).lexically_normal();
@@ -89,41 +89,41 @@ std::filesystem::path Presets::Import(const std::filesystem::path& path, const s
 	return directoryName / path.filename();
 }
 
-Presets::Faces Presets::Load(const std::filesystem::path& path) {
+Presets::Fonts Presets::Load(const std::filesystem::path& path) {
 	auto set = ReadPresetFile(path);
 
 	const auto directory = absolute(path).parent_path();
-	Faces faces;
+	Fonts fonts;
 	for (const auto& fontSet : set.FontSets) {
-		for (auto& face : fontSet->Faces) {
-			if (face->Name.empty() || faces.contains(face->Name))
+		for (auto& font : fontSet->Fonts) {
+			if (font->Name.empty() || fonts.contains(font->Name))
 				continue;
-			for (auto& element : face->Elements) {
+			for (auto& element : font->Elements) {
 				auto& images = element->RendererSpecific.GlyphImages;
 				if (images.IsEmbedded() || images.Path.empty())
 					continue;
 				if (const auto p = std::filesystem::path(xivres::util::unicode::convert<std::wstring>(images.Path)); p.is_relative())
 					images.Path = xivres::util::unicode::convert<std::string>((directory / p).lexically_normal().wstring());
 			}
-			// The name is copied first: the face is moved from.
-			auto name = face->Name;
-			faces.emplace(std::move(name), std::make_shared<FontChanger::Structs::Face>(std::move(*face)));
+			// The name is copied first: the font is moved from.
+			auto name = font->Name;
+			fonts.emplace(std::move(name), std::make_shared<FontChanger::Structs::Font>(std::move(*font)));
 		}
 	}
 
-	if (faces.empty())
-		throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPRESET_ERROR_NOFACES));
-	return faces;
+	if (fonts.empty())
+		throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPRESET_ERROR_NOFONTS));
+	return fonts;
 }
 
-void Presets::Combine(Faces& into, const Faces& from) {
-	for (const auto& [name, face] : from)
-		into.insert_or_assign(name, face);
+void Presets::Combine(Fonts& into, const Fonts& from) {
+	for (const auto& [name, font] : from)
+		into.insert_or_assign(name, font);
 }
 
-void Presets::Overlay(Faces& into, const Faces& from) {
+void Presets::Overlay(Fonts& into, const Fonts& from) {
 	using FontChanger::FixedSizeFont::codepoint_merge_mode;
-	using FontChanger::Structs::RendererEnum;
+	using FontChanger::Structs::ElementSourceEnum;
 
 	for (const auto& [name, top] : from) {
 		const auto it = into.find(name);
@@ -134,12 +134,12 @@ void Presets::Overlay(Faces& into, const Faces& from) {
 		if (top->Elements.empty())
 			continue;
 
-		auto merged = std::make_shared<FontChanger::Structs::Face>(*it->second);
+		auto merged = std::make_shared<FontChanger::Structs::Font>(*it->second);
 		const auto bottomSize = merged->Elements.front()->Size;
 		const auto topSize = top->Elements.front()->Size;
 		const auto factor = bottomSize > 0 && topSize > 0 ? bottomSize / topSize : 1.f;
-		const auto append = [&](const FontChanger::Structs::FaceElement& element, codepoint_merge_mode mode) {
-			auto& copy = *merged->Elements.emplace_back(std::make_unique<FontChanger::Structs::FaceElement>(element));
+		const auto append = [&](const FontChanger::Structs::FontElement& element, codepoint_merge_mode mode) {
+			auto& copy = *merged->Elements.emplace_back(std::make_unique<FontChanger::Structs::FontElement>(element));
 			copy.MergeMode = mode;
 			if (factor != 1.f) {
 				copy.OnFontCreateParametersChange();
@@ -147,16 +147,16 @@ void Presets::Overlay(Faces& into, const Faces& from) {
 			}
 		};
 
-		// Leading AddNew fonts would only fill the gaps below; as AddAll in reverse, they take what they have and the first still wins.
+		// Leading AddNew elements would only fill the gaps below; as AddAll in reverse, they take what they have and the first still wins.
 		const auto& elements = top->Elements;
-		const auto firstGame = std::ranges::find_if(elements, [](const auto& e) { return e->Renderer == RendererEnum::PrerenderedGameInstallation; });
+		const auto firstGame = std::ranges::find_if(elements, [](const auto& e) { return e->Source == ElementSourceEnum::Game; });
 		const auto leading = static_cast<size_t>(firstGame - elements.begin());
 		for (auto i = leading; i-- > 0;) {
 			if (elements[i]->MergeMode == codepoint_merge_mode::AddNew)
 				append(*elements[i], codepoint_merge_mode::AddAll);
 		}
 
-		// A system font face's game element (AddNew) then fills only gaps, and its Replace elements draw over where their font has the glyph.
+		// A font made from a system font then has its game element (AddNew) fill only gaps, and its Replace elements draw over where their font has the glyph.
 		for (size_t i = 0; i < elements.size(); i++) {
 			if (i >= leading || elements[i]->MergeMode != codepoint_merge_mode::AddNew)
 				append(*elements[i], elements[i]->MergeMode);
@@ -167,21 +167,28 @@ void Presets::Overlay(Faces& into, const Faces& from) {
 	}
 }
 
-Presets::Faces Presets::FacesOfFamily(const Faces& faces, std::string_view family) {
-	Faces res;
-	for (const auto& [name, face] : faces) {
-		if (Utils::EqualsI(GameFontNames::FamilyOf(name), family))
-			res.emplace(name, face);
+std::string Presets::FamilyOf(std::string_view fontName) {
+	if (const auto def = FontChanger::FixedSizeFont::find_fontdata_definition(fontName))
+		return def->Family;
+	const auto underscore = fontName.rfind('_');
+	return std::string(underscore == std::string_view::npos || underscore == 0 ? fontName : fontName.substr(0, underscore));
+}
+
+Presets::Fonts Presets::FontsOfFamily(const Fonts& fonts, std::string_view family) {
+	Fonts res;
+	for (const auto& [name, font] : fonts) {
+		if (Utils::EqualsI(FamilyOf(name), family))
+			res.emplace(name, font);
 	}
 	return res;
 }
 
-std::vector<std::filesystem::path> Presets::GlyphImageFolders(const Faces& faces) {
+std::vector<std::filesystem::path> Presets::GlyphImageFolders(const Fonts& fonts) {
 	std::vector<std::filesystem::path> res;
-	for (const auto& face : faces | std::views::values) {
-		for (const auto& element : face->Elements) {
+	for (const auto& font : fonts | std::views::values) {
+		for (const auto& element : font->Elements) {
 			const auto& images = element->RendererSpecific.GlyphImages;
-			if (element->Renderer != FontChanger::Structs::RendererEnum::GlyphImages || images.IsEmbedded() || images.Path.empty())
+			if (element->Source != FontChanger::Structs::ElementSourceEnum::GlyphImages || images.IsEmbedded() || images.Path.empty())
 				continue;
 			auto folder = std::filesystem::path(xivres::util::unicode::convert<std::wstring>(images.Path));
 			if (std::ranges::find(res, folder) == res.end())

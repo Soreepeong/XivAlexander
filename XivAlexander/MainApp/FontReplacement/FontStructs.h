@@ -1,7 +1,6 @@
 #pragma once
 
 // Structures that moved over the patches (font manager, font sets, fonts) use offsets from the game's code; the rest are C++ structs.
-// RE write-up: private-scratch/ffxiv/ui/font_rendering_756h.md and ffxiv/xivalexander/code-notes/font-replacement.md.
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFont;
 	struct GameFontSet;
@@ -168,24 +167,4 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		static void Resolve();
 	};
-
-	namespace GameUtf8 {
-		// As the game steps through text (LayOutCharacter).
-		[[nodiscard]] inline int SequenceLength(uint8_t b) {
-			return b < 0xC0 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : b < 0xF8 ? 4 : 1;
-		}
-
-		[[nodiscard]] inline uint32_t PackSequence(const uint8_t* p, int length) {
-			uint32_t v = 0;
-			for (auto i = 0; i < length; i++)
-				v = (v << 8) | p[i];
-			return v;
-		}
-
-		// -1 if it isn't valid UTF-8 (or is shorter than it says).
-		[[nodiscard]] int Decode(const uint8_t* p, int length);
-
-		// -1 if it isn't valid UTF-8.
-		[[nodiscard]] int Unpack(uint32_t value);
-	}
 }

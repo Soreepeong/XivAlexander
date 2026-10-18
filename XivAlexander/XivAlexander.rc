@@ -460,7 +460,7 @@ BEGIN
     IDS_FONTPRESET_ERROR_CANNOTREAD "{} を読み込めません。"
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "グリフ画像のフォルダー {} がプリセットのフォルダーの中にありません。"
-    IDS_FONTPRESET_ERROR_NOFACES "このプリセットにはフォントがありません。"
+    IDS_FONTPRESET_ERROR_NOFONTS "このプリセットにはフォントがありません。"
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "新しいゲームのバグのフィックス"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\n理由: {}\n\n終了する場合は{}のボタンを、\nXivAlexanderのヘルプページを開く場合は{}のボタンを、\nXivAlexanderをロードせずに続ける場合は{}のボタンを押してください。"
@@ -708,7 +708,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "フォント置き換え"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "フォント"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FONTS "フォント"
     IDS_SETTINGS_BACKGROUNDLIMIT "fps"
     IDS_SETTINGS_LOCK_INTERVAL "描画間隔（µs、0で無効）"
     IDS_SETTINGS_LOCK_AUTOMATIC "間隔を自動で決める"
@@ -1409,6 +1409,28 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (ヒンティングあり)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite、回して描画 (ヒンティングなし)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite には縦の並びの ClearType がないため、DirectWrite で描くフォントは FreeType で描くか、文字を 90 度回して DirectWrite で描いてから戻します。FreeType はヒンティングされますが、見た目が少し変わります。DirectWrite はヒンティングされないため柔らかく、文字の位置が最大 1/3 ピクセルずれることがあります。FreeType で描くフォントは常に FreeType で描きます。"
+    IDS_SETTINGS_ATLAS_FORMAT "グリフ テクスチャの形式"
+    IDS_SETTINGS_ATLAS_FORMAT_8888 "BGRA8888 (256 段階)"
+    IDS_SETTINGS_ATLAS_FORMAT_4444 "BGRA4444 (16 段階、メモリ半分)"
+    IDS_SETTINGS_ATLAS_FORMAT_TIP "描いたグリフを置くテクスチャの形式です。BGRA4444 はビデオ メモリを半分しか使いませんが、文字の縁の濃さが 16 段階になります。ゲームのデバイスが BGRA4444 に対応していない場合は BGRA8888 を使います。変えるとグリフをすべて描き直します。"
+    IDS_SETTINGS_FONT_ADJUSTMENTS "選択したシステムフォントの調整"
+    IDS_SETTINGS_FONT_USEFOR "用途:"
+    IDS_SETTINGS_FONT_USEFOR_NONCJK "CJK 以外"
+    IDS_SETTINGS_FONT_USEFOR_HAN "漢字"
+    IDS_SETTINGS_FONT_USEFOR_KANA "かな"
+    IDS_SETTINGS_FONT_USEFOR_HANGUL "ハングル"
+    IDS_SETTINGS_FONT_USEFOR_GAMESYMBOLS "ゲームの記号 (PUA)"
+    IDS_SETTINGS_FONT_NONCJKSIZE "CJK 以外のサイズ (%)"
+    IDS_SETTINGS_FONT_CJKSIZE "CJK のサイズ (%)"
+    IDS_SETTINGS_FONT_RAISE "上下の位置 (サイズの %)"
+    IDS_SETTINGS_FONT_NONCJKSPACING "CJK 以外の字間 (サイズの %)"
+    IDS_SETTINGS_FONT_CJKSPACING "CJK の字間 (サイズの %)"
+    IDS_SETTINGS_FONT_STROKEWEIGHT "線の太さ"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_LIGHTER "細く"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_NORMAL "普通"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIER "太く"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIEST "最も太く"
+    IDS_SETTINGS_FONT_RESETADJUSTMENTS "調整をリセット"
 END
 
 
@@ -1882,7 +1904,7 @@ BEGIN
     IDS_FONTPRESET_ERROR_CANNOTREAD "{}을(를) 읽을 수 없습니다."
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "글리프 이미지 폴더 {}이(가) 프리셋 폴더 안에 있지 않습니다."
-    IDS_FONTPRESET_ERROR_NOFACES "이 프리셋에는 글꼴이 없습니다."
+    IDS_FONTPRESET_ERROR_NOFONTS "이 프리셋에는 글꼴이 없습니다."
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "새 게임 버그 수정"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\n이유: {}\n\n종료하려면 {} 버튼을,\nXivAlexander 도움말 웹페이지를 열려면 {} 버튼을,\nXivAlexander를 불러들이지 않고 계속하려면 {} 버튼을 누르세요."
@@ -2131,7 +2153,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "글꼴 바꾸기"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "글꼴"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FONTS "글꼴"
     IDS_SETTINGS_BACKGROUNDLIMIT "fps"
     IDS_SETTINGS_LOCK_INTERVAL "렌더링 간격 (µs, 0이면 사용하지 않음)"
     IDS_SETTINGS_LOCK_AUTOMATIC "간격 자동으로 정하기"
@@ -2837,6 +2859,28 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (힌팅 사용)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite, 돌려서 그리기 (힌팅 없음)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite에는 세로 배열용 ClearType이 없으므로, DirectWrite로 그리는 글꼴은 FreeType으로 그리거나 글자를 90도 돌려 DirectWrite로 그린 뒤 되돌립니다. FreeType은 힌팅되지만 모양이 조금 달라집니다. DirectWrite는 힌팅되지 않아 더 부드럽고, 글자 위치가 최대 1/3픽셀 어긋날 수 있습니다. FreeType으로 그리도록 정한 글꼴은 항상 FreeType으로 그립니다."
+    IDS_SETTINGS_ATLAS_FORMAT "글리프 텍스처 형식"
+    IDS_SETTINGS_ATLAS_FORMAT_8888 "BGRA8888 (256단계)"
+    IDS_SETTINGS_ATLAS_FORMAT_4444 "BGRA4444 (16단계, 메모리 절반)"
+    IDS_SETTINGS_ATLAS_FORMAT_TIP "그린 글리프를 담는 텍스처의 형식입니다. BGRA4444는 비디오 메모리를 절반만 쓰지만, 글자 가장자리의 농도가 16단계로 줄어듭니다. 게임의 장치가 BGRA4444를 지원하지 않으면 BGRA8888을 씁니다. 바꾸면 모든 글리프를 다시 그립니다."
+    IDS_SETTINGS_FONT_ADJUSTMENTS "선택한 시스템 글꼴의 조정"
+    IDS_SETTINGS_FONT_USEFOR "사용할 곳:"
+    IDS_SETTINGS_FONT_USEFOR_NONCJK "CJK 외"
+    IDS_SETTINGS_FONT_USEFOR_HAN "한자"
+    IDS_SETTINGS_FONT_USEFOR_KANA "가나"
+    IDS_SETTINGS_FONT_USEFOR_HANGUL "한글"
+    IDS_SETTINGS_FONT_USEFOR_GAMESYMBOLS "게임 기호 (PUA)"
+    IDS_SETTINGS_FONT_NONCJKSIZE "CJK 외 크기 (%)"
+    IDS_SETTINGS_FONT_CJKSIZE "CJK 크기 (%)"
+    IDS_SETTINGS_FONT_RAISE "위아래 위치 (크기의 %)"
+    IDS_SETTINGS_FONT_NONCJKSPACING "CJK 외 자간 (크기의 %)"
+    IDS_SETTINGS_FONT_CJKSPACING "CJK 자간 (크기의 %)"
+    IDS_SETTINGS_FONT_STROKEWEIGHT "획 굵기"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_LIGHTER "가늘게"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_NORMAL "보통"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIER "굵게"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIEST "가장 굵게"
+    IDS_SETTINGS_FONT_RESETADJUSTMENTS "조정 초기화"
 END
 
 
@@ -3361,7 +3405,7 @@ BEGIN
     IDS_FONTPRESET_ERROR_CANNOTREAD "{} can't be read."
     IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE 
                             "The glyph image folder {} isn't under the preset's folder."
-    IDS_FONTPRESET_ERROR_NOFACES "The preset has no faces."
+    IDS_FONTPRESET_ERROR_NOFONTS "The preset has no fonts."
     IDS_SETTINGS_PATCHCODE_DEFAULTNAME "New Game Fix"
     IDS_ERROR_LOAD_INSTALLED 
                             "{}\nReason: {}\n\nPress {} to exit.\nPress {} to open the XivAlexander help webpage.\nPress {} to skip loading XivAlexander."
@@ -3631,7 +3675,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_SETTINGS_GROUP_FONTREPLACEMENT "Font Replacement"
-    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES "Faces"
+    IDS_SETTINGS_GROUP_FONTREPLACEMENT_FONTS "Fonts"
     IDS_SETTINGS_BACKGROUNDLIMIT "fps"
     IDS_SETTINGS_LOCK_INTERVAL "Render interval (µs; 0 to disable)"
     IDS_SETTINGS_LOCK_AUTOMATIC "Choose the interval automatically"
@@ -4381,6 +4425,28 @@ BEGIN
     IDS_SETTINGS_SUBPIXEL_VERTICAL_FREETYPE "FreeType (hinted)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_DIRECTWRITE "DirectWrite, turned (unhinted)"
     IDS_SETTINGS_SUBPIXEL_VERTICAL_TIP "DirectWrite has no ClearType for vertical layouts, so fonts set to DirectWrite are drawn either by FreeType (hinted, but looking somewhat different) or by DirectWrite with the text turned a quarter and turned back (unhinted, so softer, and letters may be up to a third of a pixel off). Fonts set to FreeType are always drawn by FreeType."
+    IDS_SETTINGS_ATLAS_FORMAT "Glyph texture format"
+    IDS_SETTINGS_ATLAS_FORMAT_8888 "BGRA8888 (256 levels)"
+    IDS_SETTINGS_ATLAS_FORMAT_4444 "BGRA4444 (16 levels, half the memory)"
+    IDS_SETTINGS_ATLAS_FORMAT_TIP "The format of the textures drawn glyphs are kept in. BGRA4444 takes half the video memory, but glyph edges get only 16 levels of coverage. If the game's device doesn't support BGRA4444, BGRA8888 is used. Changing it draws every glyph again."
+    IDS_SETTINGS_FONT_ADJUSTMENTS "Adjustments of the selected system font"
+    IDS_SETTINGS_FONT_USEFOR "Use for:"
+    IDS_SETTINGS_FONT_USEFOR_NONCJK "Non-CJK"
+    IDS_SETTINGS_FONT_USEFOR_HAN "Han"
+    IDS_SETTINGS_FONT_USEFOR_KANA "Kana"
+    IDS_SETTINGS_FONT_USEFOR_HANGUL "Hangul"
+    IDS_SETTINGS_FONT_USEFOR_GAMESYMBOLS "Game symbols (PUA)"
+    IDS_SETTINGS_FONT_NONCJKSIZE "Non-CJK size (%)"
+    IDS_SETTINGS_FONT_CJKSIZE "CJK size (%)"
+    IDS_SETTINGS_FONT_RAISE "Raise / lower (% of size)"
+    IDS_SETTINGS_FONT_NONCJKSPACING "Non-CJK letter spacing (% of size)"
+    IDS_SETTINGS_FONT_CJKSPACING "CJK letter spacing (% of size)"
+    IDS_SETTINGS_FONT_STROKEWEIGHT "Stroke weight"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_LIGHTER "Lighter"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_NORMAL "Normal"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIER "Heavier"
+    IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIEST "Heaviest"
+    IDS_SETTINGS_FONT_RESETADJUSTMENTS "Reset adjustments"
 END
 
 

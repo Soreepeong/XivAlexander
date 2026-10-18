@@ -6,11 +6,11 @@
 #include "Config.h"
 #include "Game/SignatureDefinitions.h"
 #include "MainApp/App.h"
-#include "MainApp/FontReplacement/FontReplacer.h"
+#include "MainApp/FontReplacement/Fonts/FontReplacer.h"
+#include "MainApp/FontReplacement/Game/LineBreaker.h"
+#include "MainApp/FontReplacement/Game/NamePlateText.h"
 #include "MainApp/FontReplacement/Host.h"
-#include "MainApp/FontReplacement/LineBreaker.h"
-#include "MainApp/FontReplacement/NamePlateText.h"
-#include "MainApp/FontReplacement/PresetController.h"
+#include "MainApp/FontReplacement/PluginInterface/PresetController.h"
 
 namespace XivAlexander::Apps::MainApp::Features {
 	using namespace MainApp::FontReplacement;
@@ -28,7 +28,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	// Changes since the last frame, applied on the game's thread between frames.
 	std::mutex PendingMutex;
-	std::optional<std::pair<Presets::Faces, bool>> PendingPreset;
+	std::optional<std::pair<Presets::Fonts, bool>> PendingPreset;
 	bool PendingSettings = true;
 
 	// How often Windows' ClearType settings are re-read for the game's monitor, which the window may move to.
@@ -75,6 +75,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 				Replacer = std::make_unique<FontReplacer>();
 				Replacer->SetAtlas(Config->Runtime.FontReplacement.Atlas.Value());
 				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
+				Replacer->SetVerticalSubpixel(Config->Runtime.FontReplacement.VerticalSubpixel.Value());
 				ApplySubpixel(window);
 				NamePlates = Optional<NamePlateText>("Nameplate text");
 				if (NamePlates)
@@ -109,7 +110,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		try {
 			// Subscribed before the controller loads the settings, so a change in between isn't lost; edge and nameplates apply before the next frame.
 			auto& settings = Config->Runtime.FontReplacement;
-			Cleanup += settings.Faces.OnChange([this] {
+			Cleanup += settings.Fonts.OnChange([this] {
 				const auto lock = std::scoped_lock(PendingMutex);
 				if (Controller)
 					Controller->Reload();
@@ -125,9 +126,9 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			Cleanup += settings.NamePlates.OnChange(markPending);
 			Cleanup += settings.Atlas.OnChange(markPending);
 
-			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Faces faces, bool systemFallback) {
+			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Fonts fonts, bool systemFallback) {
 				const auto lock = std::scoped_lock(PendingMutex);
-				PendingPreset.emplace(std::move(faces), systemFallback);
+				PendingPreset.emplace(std::move(fonts), systemFallback);
 			});
 			const auto lock = std::scoped_lock(PendingMutex);
 			Controller = std::move(controller);
@@ -182,7 +183,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		LastSubpixelQuery = GetTickCount64();
 		try {
 			const auto& settings = Config->Runtime.FontReplacement;
-			Replacer->SetSubpixel(SubpixelSettings::Of(settings.Subpixel.Value(), settings.ClearType.Value(), settings.VerticalSubpixel.Value(), window));
+			Replacer->SetSubpixel(SubpixelShaders::SettingsRecord::From(settings.Subpixel.Value(), settings.ClearType.Value(), window));
 		} catch (const std::exception& e) {
 			Host::Error("Applying the subpixel text setting failed: {}", e.what());
 		}
@@ -192,7 +193,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (!Replacer)
 			return;
 
-		std::optional<std::pair<Presets::Faces, bool>> preset;
+		std::optional<std::pair<Presets::Fonts, bool>> preset;
 		auto settings = false;
 		{
 			const auto lock = std::scoped_lock(PendingMutex);
@@ -205,6 +206,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			const auto& current = Config->Runtime.FontReplacement;
 			Replacer->SetAtlas(current.Atlas.Value());
 			Replacer->SetEdge(current.Edge.Value());
+			Replacer->SetVerticalSubpixel(current.VerticalSubpixel.Value());
 			if (NamePlates)
 				NamePlates->SetMode(current.NamePlates.Value());
 			ApplySubpixel(App.GetGameWindowHandle());
@@ -214,12 +216,13 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 		if (preset) {
 			try {
-				Replacer->SetPreset(preset->first, preset->second);
+				Replacer->SetFonts({std::move(preset->first), preset->second});
 			} catch (const std::exception& e) {
 				Host::Error("Applying the preset failed: {}", e.what());
 			}
 		}
 
+		Replacer->EndFrame();
 		Replacer->Upload();
 	}
 };

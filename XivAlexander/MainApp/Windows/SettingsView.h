@@ -12,6 +12,7 @@ namespace XivAlexander {
 	class ConfigItemBase;
 	class ConfigNode;
 	template<typename T> class ConfigItem;
+	struct FontReplacementFamilyFont;
 }
 
 namespace XivAlexander::Apps::MainApp::Features::Modding {
@@ -256,7 +257,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		GridView& CreateListGridRow(ConfigItemBase& item, UINT descriptionId, int height, std::vector<GridView::Column> columns, GridView::Source source);
 		// Posts the message to the view whenever source changes, until the page's rows go.
 		template<typename T> void PostOnChange(T& source, UINT message);
-		void CreateSliderRow(const std::wstring& label, double minimum, double maximum, double step, std::function<double()> getValue, std::function<void(double)> setValue);
+		void CreateSliderRow(const std::wstring& label, double minimum, double maximum, double step, std::function<double()> getValue, std::function<void(double)> setValue, bool applyOnRelease = false);
 		bool CreateSpecialRows(const ConfigItemBase& item);
 		void AddPathReplacementRows();
 		void AddPathFilterRows();
@@ -268,6 +269,7 @@ namespace XivAlexander::Apps::MainApp::Window {
 		void AddTextTransformationRows();
 		void AddEdgeRows();
 		void AddSubpixelRows();
+		void AddAtlasRows();
 		void AddFontFamilyRows(const std::string& family);
 		[[nodiscard]] RECT GetDividerRect() const;
 		void DragWindow() const;
@@ -299,6 +301,8 @@ namespace XivAlexander::Apps::MainApp::Window {
 		[[nodiscard]] std::wstring SystemFontDisplayName(const std::string& key);
 		// The name to keep for one typed or chosen; as typed if not installed.
 		[[nodiscard]] std::wstring SystemFontKey(const std::wstring& typed);
+		// By the common font dialog, starting at the given one.
+		std::optional<FontReplacementFamilyFont> ChooseSystemFont(const FontReplacementFamilyFont& current);
 		bool RenamePatchCode(const std::filesystem::path& path, const std::wstring& text);
 		bool RenamePatchCodeName(const std::filesystem::path& path, const std::string& digest, const std::wstring& text);
 		void DeletePatchCode(const std::string& digest, const std::filesystem::path& path);

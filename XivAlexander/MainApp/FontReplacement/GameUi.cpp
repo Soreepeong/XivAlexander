@@ -2,7 +2,7 @@
 #include "MainApp/FontReplacement/GameUi.h"
 
 #include "MainApp/FontReplacement/GameCode.h"
-#include "MainApp/FontReplacement/Utilities.h"
+#include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace GameUi = XivAlexander::Apps::MainApp::FontReplacement::GameUi;
 namespace Fonts = XivAlexander::Game::Resolved::Fonts;

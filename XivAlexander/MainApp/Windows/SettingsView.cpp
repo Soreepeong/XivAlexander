@@ -15,9 +15,9 @@
 #include "MainApp/Features/NetworkTimingHandler.h"
 #include <FontChanger.FixedSizeFont/image_glyph_files.h>
 
-#include "MainApp/FontReplacement/GameFontNames.h"
+#include "MainApp/FontReplacement/Game/FontNames.h"
 #include "MainApp/FontReplacement/Presets.h"
-#include "MainApp/FontReplacement/SubpixelText.h"
+#include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
 #include "MainApp/Modding/NestedTtmp.h"
 #include "MainApp/Modding/ResourceOverrider.h"
 #include "MainApp/Modding/VirtualSqPacks.h"
@@ -295,6 +295,8 @@ namespace {
 _COM_SMARTPTR_TYPEDEF(IDWriteFactory, __uuidof(IDWriteFactory));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFamily, __uuidof(IDWriteFontFamily));
+_COM_SMARTPTR_TYPEDEF(IDWriteFont, __uuidof(IDWriteFont));
+_COM_SMARTPTR_TYPEDEF(IDWriteGdiInterop, __uuidof(IDWriteGdiInterop));
 _COM_SMARTPTR_TYPEDEF(IDWriteLocalizedStrings, __uuidof(IDWriteLocalizedStrings));
 
 namespace {
@@ -577,6 +579,8 @@ struct XivAlexander::Apps::MainApp::Window::SettingsView::Row {
 
 	std::function<void()> Refresh;
 	std::function<void()> Commit;
+	// Of a slider applied when let go: shows where it is being dragged to, instead of applying it.
+	std::function<void()> Preview;
 	// Takes the RowPart clicked.
 	std::function<void(int)> Click;
 };
@@ -977,11 +981,13 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.CrowdFix, IDS_SETTINGS_GROUP_CROWDFIX);
 	label(rt.CrowdFix.Fixes, IDS_SETTINGS_GROUP_CROWDFIX_FIXES);
 	label(rt.FontReplacement, IDS_SETTINGS_GROUP_FONTREPLACEMENT);
-	label(rt.FontReplacement.Faces, IDS_SETTINGS_GROUP_FONTREPLACEMENT_FACES);
+	label(rt.FontReplacement.Fonts, IDS_SETTINGS_GROUP_FONTREPLACEMENT_FONTS);
 	label(rt.FontReplacement.Edge, IDS_SETTINGS_EDGE_USE);
 	m_itemInfo[&rt.FontReplacement.Edge].AfterInlineGroups = true;
 	label(rt.FontReplacement.ClearType, IDS_SETTINGS_SUBPIXEL_USE);
 	m_itemInfo[&rt.FontReplacement.ClearType].AfterInlineGroups = true;
+	label(rt.FontReplacement.Atlas, IDS_SETTINGS_ATLAS_FORMAT);
+	m_itemInfo[&rt.FontReplacement.Atlas].AfterInlineGroups = true;
 
 	// Items that have a menu command are labelled as it is.
 	menu(rt.Ui.MainWindow.Show, IDR_TRAY_MENU, ID_FILE_SHOWCONTROLWINDOW);
@@ -1145,8 +1151,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 
 	label(rt.FontReplacement.Enabled, IDS_SETTINGS_FONT_ENABLED);
 	tip(rt.FontReplacement.Enabled, IDS_SETTINGS_FONT_ENABLED_TIP);
-	label(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK);
-	tip(rt.FontReplacement.Faces.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP);
+	label(rt.FontReplacement.Fonts.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK);
+	tip(rt.FontReplacement.Fonts.SystemFallback, IDS_SETTINGS_FONT_SYSTEMFALLBACK_TIP);
 	label(rt.FontReplacement.Subpixel, IDS_SETTINGS_SUBPIXEL);
 	label(rt.FontReplacement.VerticalSubpixel, IDS_SETTINGS_SUBPIXEL_VERTICAL);
 	label(rt.FontReplacement.NamePlates, IDS_SETTINGS_NAMEPLATES);
@@ -1167,7 +1173,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.Audio.SoxrResampler),
 		static_cast<ConfigItemBase*>(&rt.Audio.SoxrResampler.Filter),
 		static_cast<ConfigItemBase*>(&rt.CrowdFix.Fixes),
-		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Fonts),
 	})
 		m_itemInfo[group].Inline = true;
 
@@ -1214,8 +1220,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 		static_cast<ConfigItemBase*>(&rt.FramerateControl.UseMainThreadTimingHandler),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.VersionSensitiveFeaturesAllowedGameVersion),
 		static_cast<ConfigItemBase*>(&rt.Opcodes.EnabledPatchCodes),
-		static_cast<ConfigItemBase*>(&rt.FontReplacement.Faces.Families),
-		static_cast<ConfigItemBase*>(&rt.FontReplacement.Atlas),
+		static_cast<ConfigItemBase*>(&rt.FontReplacement.Fonts.Families),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.Subpixel),
 		static_cast<ConfigItemBase*>(&rt.FontReplacement.VerticalSubpixel),
 	})
@@ -1236,10 +1241,10 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	})
 		m_itemInfo[item].VersionSensitive = true;
 
-	m_fontFamilies = Apps::MainApp::FontReplacement::GameFontNames::Families();
+	m_fontFamilies = Apps::MainApp::FontReplacement::FontNames::Families();
 	if (m_fontFamilies.empty())
 		m_fontFamilies = {"AXIS", "Jupiter", "JupiterN", "Meidinger", "MiedingerMid", "TrumpGothic"};
-	for (const auto& family : rt.FontReplacement.Faces.Families.Value() | std::views::keys) {
+	for (const auto& family : rt.FontReplacement.Fonts.Families.Value() | std::views::keys) {
 		if (std::ranges::find(m_fontFamilies, family) == m_fontFamilies.end())
 			m_fontFamilies.push_back(family);
 	}
@@ -2128,7 +2133,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::PostOnChange(T& source, 
 	m_rowCleanup += source.OnChange([this, message] { PostMessageW(m_hWnd, message, 0, 0); });
 }
 
-void XivAlexander::Apps::MainApp::Window::SettingsView::CreateSliderRow(const std::wstring& label, double minimum, double maximum, double step, std::function<double()> getValue, std::function<void(double)> setValue) {
+void XivAlexander::Apps::MainApp::Window::SettingsView::CreateSliderRow(const std::wstring& label, double minimum, double maximum, double step, std::function<double()> getValue, std::function<void(double)> setValue, bool applyOnRelease) {
 	auto pRow = std::make_unique<Row>();
 	auto& row = *pRow;
 	row.Type = Row::RowType::Slider;
@@ -2155,6 +2160,11 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::CreateSliderRow(const st
 		if (part == PartControl)
 			setValue(minimum + step * static_cast<double>(SendMessageW(row.Control, TBM_GETPOS, 0, 0)));
 	};
+	if (applyOnRelease) {
+		row.Preview = [&row, minimum, step] {
+			SetWindowTextW(row.Secondary, std::format(L"{:g}", minimum + step * static_cast<double>(SendMessageW(row.Control, TBM_GETPOS, 0, 0))).c_str());
+		};
+	}
 	m_rows.emplace_back(std::move(pRow));
 }
 
@@ -3211,7 +3221,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	const auto own = [&mode] { return mode.Value() != FontReplacementSubpixelMode::Off && mode.Value() != FontReplacementSubpixelMode::System; };
 	const auto isVertical = [&mode] { return mode.Value() == FontReplacementSubpixelMode::VerticalRgb || mode.Value() == FontReplacementSubpixelMode::VerticalBgr; };
 	const auto windows = [this] {
-		const auto settings = FontReplacement::SubpixelSettings::OfWindows(m_app.GetGameWindowHandle());
+		const auto settings = FontReplacement::SubpixelShaders::SettingsRecord::FromWindow(m_app.GetGameWindowHandle());
 		return FontReplacementClearTypeConfig{settings.Level, settings.Contrast, settings.Gamma};
 	};
 	const auto shown = [&clearType, windows, own] { return own() ? clearType.Value() : windows(); };
@@ -3290,6 +3300,26 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	PostOnChange(mode, WmRefreshRows);
 	PostOnChange(clearType, WmRefreshRows);
 	PostOnChange(vertical, WmRefreshRows);
+}
+
+void XivAlexander::Apps::MainApp::Window::SettingsView::AddAtlasRows() {
+	auto& rt = m_config->Runtime;
+	auto& atlas = rt.FontReplacement.Atlas;
+
+	static constexpr std::array formats{FontReplacementAtlasTextureFormat::Bgra8888, FontReplacementAtlasTextureFormat::Bgra4444};
+	CreateComboRow(GetItemLabel(atlas), {
+		rt.GetStringRes(IDS_SETTINGS_ATLAS_FORMAT_8888),
+		rt.GetStringRes(IDS_SETTINGS_ATLAS_FORMAT_4444),
+	}, [&atlas] {
+		const auto it = std::ranges::find(formats, atlas.Value().Format);
+		return it == formats.end() ? 0 : static_cast<int>(it - formats.begin());
+	}, [&atlas](int choice) {
+		auto config = atlas.Value();
+		config.Format = formats[choice];
+		atlas = config;
+	});
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_ATLAS_FORMAT_TIP);
+	PostOnChange(atlas, WmRefreshRows);
 }
 
 const std::filesystem::path& XivAlexander::Apps::MainApp::Window::SettingsView::GetFontPresetFolder() {
@@ -3503,6 +3533,56 @@ std::wstring XivAlexander::Apps::MainApp::Window::SettingsView::SystemFontKey(co
 	return name;
 }
 
+std::optional<XivAlexander::FontReplacementFamilyFont> XivAlexander::Apps::MainApp::Window::SettingsView::ChooseSystemFont(const FontReplacementFamilyFont& current) {
+	IDWriteFactoryPtr factory;
+	IDWriteGdiInteropPtr interop;
+	IDWriteFontCollectionPtr collection;
+	if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&factory)))
+		|| FAILED(factory->GetGdiInterop(&interop))
+		|| FAILED(factory->GetSystemFontCollection(&collection)))
+		return std::nullopt;
+
+	LOGFONTW lf{};
+	UINT32 index = 0;
+	BOOL exists = FALSE;
+	IDWriteFontFamilyPtr family;
+	IDWriteFontPtr font;
+	BOOL isSystemFont = FALSE;
+	const auto known = SUCCEEDED(collection->FindFamilyName(Wide(current.FamilyName).c_str(), &index, &exists)) && exists
+		&& SUCCEEDED(collection->GetFontFamily(index, &family))
+		&& SUCCEEDED(family->GetFirstMatchingFont(static_cast<DWRITE_FONT_WEIGHT>(current.Weight), static_cast<DWRITE_FONT_STRETCH>(current.Stretch), static_cast<DWRITE_FONT_STYLE>(current.Style), &font))
+		&& SUCCEEDED(interop->ConvertFontToLOGFONT(font, &lf, &isSystemFont));
+
+	// DirectWrite can't use bitmap fonts.
+	CHOOSEFONTW cf{
+		.lStructSize = sizeof cf,
+		.hwndOwner = m_hWndOwner,
+		.lpLogFont = &lf,
+		.Flags = static_cast<DWORD>(CF_SCREENFONTS | CF_SCALABLEONLY | CF_NOVERTFONTS | CF_FORCEFONTEXIST | (known ? CF_INITTOLOGFONTSTRUCT : 0)),
+	};
+	if (!ChooseFontW(&cf))
+		return std::nullopt;
+
+	IDWriteFontPtr picked;
+	IDWriteFontFamilyPtr pickedFamily;
+	IDWriteLocalizedStringsPtr names;
+	if (FAILED(interop->CreateFontFromLOGFONT(&lf, &picked))
+		|| FAILED(picked->GetFontFamily(&pickedFamily))
+		|| FAILED(pickedFamily->GetFamilyNames(&names))) {
+		MessageBeep(MB_ICONWARNING);
+		return std::nullopt;
+	}
+	auto key = GetPreferredLocalizedString(names, EnglishLocale);
+	if (key.empty())
+		return std::nullopt;
+	return FontReplacementFamilyFont{
+		.FamilyName = Utf8(key),
+		.Weight = static_cast<int>(picked->GetWeight()),
+		.Stretch = static_cast<int>(picked->GetStretch()),
+		.Style = static_cast<int>(picked->GetStyle()),
+	};
+}
+
 std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::ChooseFontPreset() {
 	auto& rt = m_config->Runtime;
 	const auto& folder = GetFontPresetFolder();
@@ -3585,7 +3665,7 @@ std::optional<std::string> XivAlexander::Apps::MainApp::Window::SettingsView::Ch
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const std::string& family) {
 	auto& rt = m_config->Runtime;
-	auto& item = rt.FontReplacement.Faces.Families;
+	auto& item = rt.FontReplacement.Fonts.Families;
 
 	// A family as the defaults have it (on, without sources) is left out.
 	const auto getFamily = [&item, family]() -> FontReplacementFamily {
@@ -3661,7 +3741,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 				if (const auto preset = ChooseFontPreset())
 					add({.Preset = *preset}, false);
 			}},
-			{rt.GetStringRes(IDS_SETTINGS_FONT_ADDFONT), [add] { add({.Font = {.Name = "Segoe UI"}}, true); }},
+			{rt.GetStringRes(IDS_SETTINGS_FONT_ADDFONT), [add] { add({.Font = {.FamilyName = "Segoe UI"}}, true); }},
 			{rt.GetStringRes(IDS_SETTINGS_REMOVE), remove},
 			{rt.GetStringRes(IDS_SETTINGS_FONT_REMOVEALL), [this, family, get, set, pGrid] {
 				if (get().empty())
@@ -3701,7 +3781,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			case 2:
 				if (source.IsPreset())
 					return editing ? Wide(source.Preset) : std::filesystem::path(Wide(source.Preset)).filename().wstring();
-				return SystemFontDisplayName(source.Font.Name);
+				return SystemFontDisplayName(source.Font.FamilyName);
 			case 3:
 				return source.IsPreset() ? std::wstring() : NamedValue(rt, FontWeights, source.Font.Weight);
 			case 4:
@@ -3743,8 +3823,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 						// A font is kept by its English name; one shown unchanged is left as saved.
 						if (source.IsPreset())
 							source.Preset = Utf8(value);
-						else if (value != SystemFontDisplayName(source.Font.Name))
-							source.Font.Name = Utf8(SystemFontKey(value));
+						else if (value != SystemFontDisplayName(source.Font.FamilyName))
+							source.Font.FamilyName = Utf8(SystemFontKey(value));
 						break;
 					case 3:
 						source.Font.Weight = parseNumber(value);
@@ -3767,6 +3847,18 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			MoveWithin(sources, from, to);
 			set(std::move(sources));
 		},
+		// The name is picked from a dialog; the other ways to edit it still type it in.
+		.DoubleClick = [this, get, edit](size_t row, size_t column) {
+			if (column != 2 || row >= get().size())
+				return false;
+			if (const auto source = get()[row]; source.IsPreset()) {
+				if (const auto preset = ChooseFontPreset())
+					edit(row, [&](FontReplacementFamilySource& s) { s.Preset = *preset; });
+			} else if (const auto font = ChooseSystemFont(source.Font)) {
+				edit(row, [&](FontReplacementFamilySource& s) { s.Font = *font; });
+			}
+			return true;
+		},
 		.ShowContextMenu = [this, get, edit, remove](size_t row, POINT ptScreen) {
 			if (row >= get().size())
 				return;
@@ -3774,18 +3866,16 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 			const auto& preset = source.Preset;
 			std::vector<PopupMenuItem> items{
 				{m_config->Runtime.GetStringRes(IDS_SETTINGS_REMOVE), remove},
-				{},
 			};
-			if (!source.IsPreset()) {
-				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_FONT_MONOSPACEDDIGITS), [&] {
-					edit(row, [](FontReplacementFamilySource& s) { s.MonospacedDigits = !s.MonospacedDigits; });
-				}, true, false, source.MonospacedDigits});
-			} else {
+			// A system font's options are in the rows below the grid.
+			if (source.IsPreset()) {
+				items.push_back({});
 				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_EDITFILE), [&] { EditFile(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset)); }, !preset.empty()});
 				items.push_back({m_config->Runtime.GetStringRes(IDS_SETTINGS_SHOWINEXPLORER), [&] { OpenInExplorer(m_hWndOwner, FontReplacement::Presets::Resolve(GetFontPresetFolder(), preset)); }, !preset.empty()});
 			}
 			ShowPopupMenu(m_hWnd, ptScreen, items);
 		},
+		.SelectionChanged = [this](std::optional<size_t>) { RefreshRows(); },
 		.KeyDown = [remove](UINT vk) {
 			if (vk != VK_DELETE)
 				return false;
@@ -3795,6 +3885,80 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddFontFamilyRows(const 
 	});
 	*pGrid = &grid;
 	PostOnChange(item, WmRefreshRows);
+
+	// Below the grid, the options of the system font selected in it, which adjust the fonts made from it; disabled if none is.
+	const auto selectedFont = [get, pGrid]() -> std::optional<size_t> {
+		const auto row = (*pGrid)->GetSelectedRow();
+		if (const auto sources = get(); !row || *row >= sources.size() || sources[*row].IsPreset())
+			return std::nullopt;
+		return row;
+	};
+	const auto getSelected = [get, selectedFont] {
+		const auto row = selectedFont();
+		return row ? get()[*row] : FontReplacementFamilySource{};
+	};
+	const auto editSelected = [edit, selectedFont](auto&& fn) {
+		if (const auto row = selectedFont())
+			edit(*row, fn);
+	};
+	const auto firstOptionRow = m_rows.size();
+
+	CreateHeadingRow(rt.GetStringRes(IDS_SETTINGS_FONT_ADJUSTMENTS));
+	CreateNoteRow(rt.GetStringRes(IDS_SETTINGS_FONT_USEFOR));
+	for (const auto& [labelId, flag] : std::initializer_list<std::pair<UINT, uint32_t>>{
+			{IDS_SETTINGS_FONT_USEFOR_NONCJK, 1},
+			{IDS_SETTINGS_FONT_USEFOR_HAN, 2},
+			{IDS_SETTINGS_FONT_USEFOR_KANA, 4},
+			{IDS_SETTINGS_FONT_USEFOR_HANGUL, 8},
+			{IDS_SETTINGS_FONT_USEFOR_GAMESYMBOLS, 16},
+		}) {
+		CreateChoiceRow(rt.GetStringRes(labelId), true,
+			[getSelected, flag] { return (getSelected().Adjustments.Scripts & flag) != 0; },
+			[editSelected, flag] { editSelected([flag](FontReplacementFamilySource& s) { s.Adjustments.Scripts ^= flag; }); },
+			true, 1);
+	}
+	CreateChoiceRow(rt.GetStringRes(IDS_SETTINGS_FONT_MONOSPACEDDIGITS), true,
+		[getSelected] { return getSelected().MonospacedDigits; },
+		[editSelected] { editSelected([](FontReplacementFamilySource& s) { s.MonospacedDigits = !s.MonospacedDigits; }); },
+		true, 2);
+
+	// In percent: the sliders move by whole ones, and a value typed in may have decimals.
+	const auto percentRow = [this, &rt, getSelected, editSelected](UINT labelId, double limit, float FontReplacementAdjustments::* field) {
+		CreateSliderRow(rt.GetStringRes(labelId), -limit, limit, 1,
+			[getSelected, field] { return std::round(getSelected().Adjustments.*field * 10000.) / 100.; },
+			[editSelected, field](double value) { editSelected([field, value](FontReplacementFamilySource& s) { s.Adjustments.*field = static_cast<float>(value / 100); }); },
+			true);
+	};
+	percentRow(IDS_SETTINGS_FONT_NONCJKSIZE, 15, &FontReplacementAdjustments::NonCjkSize);
+	percentRow(IDS_SETTINGS_FONT_CJKSIZE, 15, &FontReplacementAdjustments::CjkSize);
+	percentRow(IDS_SETTINGS_FONT_RAISE, 10, &FontReplacementAdjustments::Raise);
+	percentRow(IDS_SETTINGS_FONT_NONCJKSPACING, 10, &FontReplacementAdjustments::NonCjkSpacing);
+	percentRow(IDS_SETTINGS_FONT_CJKSPACING, 10, &FontReplacementAdjustments::CjkSpacing);
+
+	CreateComboRow(rt.GetStringRes(IDS_SETTINGS_FONT_STROKEWEIGHT), {
+			rt.GetStringRes(IDS_SETTINGS_FONT_STROKEWEIGHT_LIGHTER),
+			rt.GetStringRes(IDS_SETTINGS_FONT_STROKEWEIGHT_NORMAL),
+			rt.GetStringRes(IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIER),
+			rt.GetStringRes(IDS_SETTINGS_FONT_STROKEWEIGHT_HEAVIEST),
+		},
+		[getSelected] { return std::clamp(getSelected().Adjustments.StrokeWeight, 0, 3); },
+		[editSelected](int choice) { editSelected([choice](FontReplacementFamilySource& s) { s.Adjustments.StrokeWeight = choice; }); });
+
+	CreateActionRow({
+		{rt.GetStringRes(IDS_SETTINGS_FONT_RESETADJUSTMENTS), [editSelected] { editSelected([](FontReplacementFamilySource& s) { s.Adjustments = {}; }); }},
+	});
+
+	for (auto i = firstOptionRow; i < m_rows.size(); i++) {
+		auto& row = *m_rows[i];
+		row.Refresh = [&row, refresh = std::move(row.Refresh), selectedFont] {
+			const auto enabled = selectedFont().has_value();
+			for (const auto hWnd : {row.Label, row.Control, row.Secondary, row.Button1})
+				if (hWnd)
+					EnableWindow(hWnd, enabled);
+			if (refresh)
+				refresh();
+		};
+	}
 }
 
 void XivAlexander::Apps::MainApp::Window::SettingsView::CreateChoiceRow(const std::wstring& label, bool enabled, std::function<bool()> isChosen, std::function<void()> choose, bool checkBox, int flowGroup) {
@@ -4108,6 +4272,7 @@ bool XivAlexander::Apps::MainApp::Window::SettingsView::CreateSpecialRows(const 
 		{&rt.Modding.Ttmp.ChoicesFiles, [this] { AddChoicesFileRows(); }},
 		{&rt.FontReplacement.Edge, [this] { AddEdgeRows(); }},
 		{&rt.FontReplacement.ClearType, [this] { AddSubpixelRows(); }},
+		{&rt.FontReplacement.Atlas, [this] { AddAtlasRows(); }},
 		{&rt.Modding.AdditionalSqpackRootDirectories, [this] { AddSqpackRootRows(); }},
 		{&rt.Modding.TextTransformationFiles, [this] { AddTextTransformationRows(); }},
 		{&rt.Modding.GameResourceFileEntryRootDirectories, [this, &rt] {
@@ -4929,7 +5094,11 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::PageProc(HWND hwnd, U
 
 		case WM_HSCROLL:
 			for (const auto& row : m_rows) {
-				if (row->Type == Row::RowType::Slider && row->Control == reinterpret_cast<HWND>(lParam) && row->Click)
+				if (row->Type != Row::RowType::Slider || row->Control != reinterpret_cast<HWND>(lParam))
+					continue;
+				if (row->Preview && LOWORD(wParam) == TB_THUMBTRACK)
+					row->Preview();
+				else if (row->Click)
 					row->Click(PartControl);
 			}
 			return 0;
@@ -5156,7 +5325,7 @@ LRESULT XivAlexander::Apps::MainApp::Window::SettingsView::ContainerProc(HWND hw
 				if (nmcd.dwDrawStage == CDDS_ITEMPREPAINT && nmcd.lItemlParam) {
 					const auto& node = *reinterpret_cast<const TreeNode*>(nmcd.lItemlParam);
 					const auto isFamilyDisabled = [this, &node] {
-						const auto& families = m_config->Runtime.FontReplacement.Faces.Families.Value();
+						const auto& families = m_config->Runtime.FontReplacement.Fonts.Families.Value();
 						const auto it = families.find(node.Family);
 						return it != families.end() && !it->second.Enabled;
 					};

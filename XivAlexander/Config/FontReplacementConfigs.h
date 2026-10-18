@@ -7,7 +7,7 @@
 namespace XivAlexander {
 	/// A system font by English family name and DWRITE_* weight, stretch and style, as FFXIV-FontChanger's plugin has it (FamilyFont).
 	struct FontReplacementFamilyFont {
-		std::string Name;
+		std::string FamilyName;
 		int Weight = 400;
 		int Stretch = 5;
 		int Style = 0;
@@ -15,7 +15,30 @@ namespace XivAlexander {
 		bool operator==(const FontReplacementFamilyFont&) const = default;
 	};
 
-	/// An FFXIV-FontChanger preset, or a system font made into faces as its FaceFromFont does.
+	/// Changes to the fonts made from a system font, as FFXIV-FontChanger's plugin has them (FontAdjustments): sizes are scaled from the fitted
+	/// ones, and moves and spacing are in fractions of the size of the font made.
+	struct FontReplacementAdjustments {
+		/// Flags of what the font draws: 1 non-CJK, 2 Han, 4 kana, 8 Hangul, 16 the game's symbols.
+		uint32_t Scripts = 31;
+
+		/// How much larger the glyphs of scripts other than CJK, and of CJK scripts, are drawn than fitted: 0.05 is 5% larger.
+		float NonCjkSize = 0;
+		float CjkSize = 0;
+
+		/// How far up the glyphs are moved, over the size; down if negative.
+		float Raise = 0;
+
+		/// Letter spacing of scripts other than CJK, and of CJK scripts, over the size.
+		float NonCjkSpacing = 0;
+		float CjkSpacing = 0;
+
+		/// 0 lighter, 1 normal, 2 heavier, 3 heaviest.
+		int StrokeWeight = 1;
+
+		bool operator==(const FontReplacementAdjustments&) const = default;
+	};
+
+	/// An FFXIV-FontChanger preset, or a system font made into fonts as its FontsFromSystemFont does.
 	struct FontReplacementFamilySource {
 		bool Enabled = true;
 
@@ -25,6 +48,8 @@ namespace XivAlexander {
 		FontReplacementFamilyFont Font;
 
 		bool MonospacedDigits = true;
+
+		FontReplacementAdjustments Adjustments;
 
 		[[nodiscard]] bool IsPreset() const { return !Preset.empty(); }
 
@@ -36,7 +61,7 @@ namespace XivAlexander {
 		/// If false, the game's own font is kept, as for a family without sources.
 		bool Enabled = true;
 
-		/// In order: of a preset only the family's faces are used, and later sources draw over earlier ones glyph by glyph.
+		/// In order: of a preset only the family's fonts are used, and later sources draw over earlier ones glyph by glyph.
 		std::vector<FontReplacementFamilySource> Sources;
 
 		bool operator==(const FontReplacementFamily&) const = default;
@@ -76,15 +101,32 @@ namespace XivAlexander {
 
 	/// Glyph atlases, one per game font family: side length of a page in texels and how many pages one may take, for AXIS (most of the UI's text)
 	/// and for the other families. Pages are made as glyphs need them; a 4096 page takes 64 MB of video memory, a 2048 one 16 MB.
-	struct FontReplacementAtlasConfig {
-		int AxisPageSize = 4096;
-		int AxisMaxPages = 4;
-		int OtherPageSize = 2048;
-		int OtherMaxPages = 2;
+	/// B4G4R4A4 halves the pages' memory at 16 coverage levels; used only where the game's device can sample it.
+	enum class FontReplacementAtlasTextureFormat {
+		Bgra8888,
+		Bgra4444,
+	};
 
-		/// Sizes 256 to 4096 (glyph positions take 12 bits), 1 to 64 pages (texture indices take 6 bits); the game's texture slots may allow fewer.
+	struct FontReplacementAtlasConfig {
+		int AxisPageWidth = 4096;
+		int AxisPageHeight = 4096;
+		int AxisMaxPages = 4;
+		int OtherPageWidth = 2048;
+		int OtherPageHeight = 2048;
+		int OtherMaxPages = 2;
+		FontReplacementAtlasTextureFormat Format = FontReplacementAtlasTextureFormat::Bgra8888;
+
+		/// Sides 256 to 4096 (glyph positions take 12 bits), 1 to 64 pages (texture indices take 6 bits); the game's texture slots may allow fewer.
 		[[nodiscard]] FontReplacementAtlasConfig Clamped() const {
-			return {std::clamp(AxisPageSize, 256, 4096), std::clamp(AxisMaxPages, 1, 64), std::clamp(OtherPageSize, 256, 4096), std::clamp(OtherMaxPages, 1, 64)};
+			return {
+				std::clamp(AxisPageWidth, 256, 4096),
+				std::clamp(AxisPageHeight, 256, 4096),
+				std::clamp(AxisMaxPages, 1, 64),
+				std::clamp(OtherPageWidth, 256, 4096),
+				std::clamp(OtherPageHeight, 256, 4096),
+				std::clamp(OtherMaxPages, 1, 64),
+				Format == FontReplacementAtlasTextureFormat::Bgra4444 ? Format : FontReplacementAtlasTextureFormat::Bgra8888,
+			};
 		}
 
 		bool operator==(const FontReplacementAtlasConfig&) const = default;
@@ -134,12 +176,12 @@ namespace XivAlexander {
 
 		ConfigItem<bool> Enabled{this, "Enabled", false};
 
-		class FacesGroup : public ConfigGroup {
+		class FontsGroup : public ConfigGroup {
 		public:
 			using ConfigGroup::ConfigGroup;
 			ConfigItem<std::map<std::string, FontReplacementFamily>> Families{this, "Families"};
 			ConfigItem<bool> SystemFallback{this, "SystemFallback", true};
-		} Faces{this, "Faces"};
+		} Fonts{this, "Fonts"};
 
 		ConfigItem<FontReplacementEdgeConfig> Edge{this, "Edge", {}, [](const FontReplacementEdgeConfig& v) { return v.Clamped(); }};
 		ConfigItem<FontReplacementSubpixelMode> Subpixel{this, "Subpixel", FontReplacementSubpixelMode::Off};
@@ -151,6 +193,8 @@ namespace XivAlexander {
 
 	void to_json(nlohmann::json&, const FontReplacementFamilyFont&);
 	void from_json(const nlohmann::json&, FontReplacementFamilyFont&);
+	void to_json(nlohmann::json&, const FontReplacementAdjustments&);
+	void from_json(const nlohmann::json&, FontReplacementAdjustments&);
 	void to_json(nlohmann::json&, const FontReplacementFamilySource&);
 	void from_json(const nlohmann::json&, FontReplacementFamilySource&);
 	void to_json(nlohmann::json&, const FontReplacementFamily&);

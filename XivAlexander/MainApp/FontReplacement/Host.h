@@ -93,21 +93,4 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 	private:
 		void PresentDetour(void* swapChain);
 	};
-
-	// A Kernel::Texture on the game's device; destroying it releases it once the game is done with it.
-	class Texture {
-		uintptr_t m_kernel = 0;
-		ID3D11ResourcePtr m_resource;
-		int m_decRef = 0;
-
-	public:
-		Texture(int width, int height);
-		Texture(const Texture&) = delete;
-		Texture& operator=(const Texture&) = delete;
-		~Texture();
-
-		[[nodiscard]] uintptr_t Kernel() const { return m_kernel; }
-
-		[[nodiscard]] ID3D11Resource* Resource() const { return m_resource.GetInterfacePtr(); }
-	};
 }

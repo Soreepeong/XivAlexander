@@ -11,7 +11,7 @@ namespace {
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilyFont& v) {
 	j = nlohmann::json::object({
-		{"Name", v.Name},
+		{"FamilyName", v.FamilyName},
 		{"Weight", v.Weight},
 		{"Stretch", v.Stretch},
 		{"Style", v.Style},
@@ -20,10 +20,34 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilyFont& v
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilyFont& v) {
 	v = {};
-	Read(j, "Name", v.Name);
+	Read(j, "Name", v.FamilyName); // What earlier versions called it.
+	Read(j, "FamilyName", v.FamilyName);
 	Read(j, "Weight", v.Weight);
 	Read(j, "Stretch", v.Stretch);
 	Read(j, "Style", v.Style);
+}
+
+void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAdjustments& v) {
+	j = nlohmann::json::object({
+		{"Scripts", v.Scripts},
+		{"NonCjkSize", v.NonCjkSize},
+		{"CjkSize", v.CjkSize},
+		{"Raise", v.Raise},
+		{"NonCjkSpacing", v.NonCjkSpacing},
+		{"CjkSpacing", v.CjkSpacing},
+		{"StrokeWeight", v.StrokeWeight},
+	});
+}
+
+void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAdjustments& v) {
+	v = {};
+	Read(j, "Scripts", v.Scripts);
+	Read(j, "NonCjkSize", v.NonCjkSize);
+	Read(j, "CjkSize", v.CjkSize);
+	Read(j, "Raise", v.Raise);
+	Read(j, "NonCjkSpacing", v.NonCjkSpacing);
+	Read(j, "CjkSpacing", v.CjkSpacing);
+	Read(j, "StrokeWeight", v.StrokeWeight);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource& v) {
@@ -33,6 +57,8 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamilySource&
 	else {
 		j["Font"] = v.Font;
 		j["MonospacedDigits"] = v.MonospacedDigits;
+		if (v.Adjustments != FontReplacementAdjustments{})
+			j["Adjustments"] = v.Adjustments;
 	}
 }
 
@@ -42,6 +68,7 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementFamilySourc
 	Read(j, "Preset", v.Preset);
 	Read(j, "Font", v.Font);
 	Read(j, "MonospacedDigits", v.MonospacedDigits);
+	Read(j, "Adjustments", v.Adjustments);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementFamily& v) {
@@ -83,19 +110,33 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementEdgeConfig&
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementAtlasConfig& v) {
 	j = nlohmann::json::object({
-		{"AxisPageSize", v.AxisPageSize},
+		{"AxisPageWidth", v.AxisPageWidth},
+		{"AxisPageHeight", v.AxisPageHeight},
 		{"AxisMaxPages", v.AxisMaxPages},
-		{"OtherPageSize", v.OtherPageSize},
+		{"OtherPageWidth", v.OtherPageWidth},
+		{"OtherPageHeight", v.OtherPageHeight},
 		{"OtherMaxPages", v.OtherMaxPages},
+		{"Format", v.Format == FontReplacementAtlasTextureFormat::Bgra4444 ? "BGRA4444" : "BGRA8888"},
 	});
 }
 
 void XivAlexander::from_json(const nlohmann::json& j, FontReplacementAtlasConfig& v) {
 	v = {};
-	Read(j, "AxisPageSize", v.AxisPageSize);
+
+	// Square pages were one size before.
+	Read(j, "AxisPageSize", v.AxisPageWidth);
+	Read(j, "AxisPageSize", v.AxisPageHeight);
+	Read(j, "OtherPageSize", v.OtherPageWidth);
+	Read(j, "OtherPageSize", v.OtherPageHeight);
+
+	Read(j, "AxisPageWidth", v.AxisPageWidth);
+	Read(j, "AxisPageHeight", v.AxisPageHeight);
 	Read(j, "AxisMaxPages", v.AxisMaxPages);
-	Read(j, "OtherPageSize", v.OtherPageSize);
+	Read(j, "OtherPageWidth", v.OtherPageWidth);
+	Read(j, "OtherPageHeight", v.OtherPageHeight);
 	Read(j, "OtherMaxPages", v.OtherMaxPages);
+	if (const auto it = j.find("Format"); it != j.end() && it->is_string() && _stricmp(it->get<std::string>().c_str(), "BGRA4444") == 0)
+		v.Format = FontReplacementAtlasTextureFormat::Bgra4444;
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementClearTypeConfig& v) {
