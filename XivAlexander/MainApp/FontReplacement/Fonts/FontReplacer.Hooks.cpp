@@ -81,7 +81,7 @@ void FontReplacement::FontReplacer::OnFontBuilt(GameFont* font) {
 bool FontReplacement::FontReplacer::ForgetGameGlyphsOf(GameFont* font) {
 	auto any = false;
 	for (const auto& sized : m_sizedFonts | std::views::values) {
-		if (std::ranges::find(sized->Sources, font) == sized->Sources.end()
+		if (std::ranges::none_of(sized->Fonts, [font](const auto& f) { return f.second == font; })
 			&& std::ranges::none_of(sized->ConvertedGlyphs | std::views::keys, [font](const auto& k) { return k.first == font; }))
 			continue;
 		sized->GameGlyphs.clear();
@@ -119,42 +119,29 @@ uintptr_t FontReplacement::FontReplacer::UnloadFontsDetour(uintptr_t manager) {
 	return m_unloadFontsHook->Original(manager);
 }
 
-void FontReplacement::FontReplacer::DropGameReads(const std::set<uintptr_t>& textures) {
-	std::erase_if(m_gameReads, [&](GameGlyph* glyph) {
-		auto& cell = CellOf(glyph);
-		if (!cell.Source || !textures.contains(cell.Source->Texture))
-			return false;
-		ReleasePixels(cell);
-		return true;
-	});
-}
-
 FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFontSet* set, uint8_t useCache) {
 	auto font = m_pickFontHook->Original(set, useCache);
 	if (!font)
 		return font;
 
-	// The cached pick may be an earlier copy: re-decide from its game font, as the picker's cache is keyed by a size copies aren't chosen by.
+	// The picker's cache is keyed by its own size, not the one copies are chosen by, so a copy picked before is decided again.
 	if (const auto it = m_copies.find(font); it != m_copies.end())
 		font = it->second.Original;
 
-	if (!m_enabled)
-		return font;
-
-	// Leave fonts not built yet (the glyph map may be gone).
-	if (!font->IsReady())
+	// A font not built yet (its glyph map may be gone) is left alone.
+	if (!m_enabled || !font->IsReady())
 		return font;
 
 	try {
 		ApplyPendingPages();
 
-		// On-screen size even where the game picked another (fixed font resolution node's unscaled size, or its own pick scale), so nothing is scaled.
+		// Picked for the on-screen size, even where the game picked for another (a node's fixed font resolution, or a pick scale of its own), so
+		// that the renderer doesn't scale the glyphs.
 		const auto size = set->ScaledSizeY();
 		const auto halfPx = std::clamp(static_cast<int>(StdRound(size * 2)), MinHalfPx, MaxHalfPx);
 		const auto copy = GetOrCreateCopy(font, halfPx);
 
-		// Rasterized at half-pixel sizes, but claim the exact size: any renderer scale other than exactly 1 resamples bilinearly (soft text), while
-		// a quarter pixel size error doesn't show.
+		// Any renderer scale but exactly 1 resamples bilinearly (soft text), while a quarter pixel of size error doesn't show.
 		if (halfPx < MaxHalfPx && halfPx > MinHalfPx)
 			copy->Size() = size;
 		set->CurrentFont() = copy;
@@ -181,8 +168,8 @@ uintptr_t FontReplacement::FontReplacer::LayOutCharacterDetour(uintptr_t analyze
 		s_current = outer;
 	});
 
-	// For an invalid lead byte the game takes its missing-glyph substitutes straight from the glyph map, which in a copy would draw a game glyph
-	// from an atlas page; laid out as U+3013 instead, GetGlyph answers (for a game font, with what the game would take).
+	// For an invalid lead byte the game takes its substitutes straight from the glyph map, which in a copy would draw a game glyph from an atlas
+	// page, so U+3013 is laid out through GetGlyph instead.
 	static constexpr uint8_t Geta[]{0xE3, 0x80, 0x93, 0};
 	if (const auto p = *text; m_enabled && ((*p >= 0x80 && *p < 0xC0) || *p >= 0xF8)) {
 		s_current.Character = nullptr;
@@ -213,12 +200,12 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, const CopyInfo& info) {
 	auto& sized = *info.Sized;
 
-	// Laid out by LayOutCharacter at a known text position: its shaped cluster's glyph, unless this is a lookup of the game's fallback characters.
+	// The character LayOutCharacter is at gets its shaped cluster's glyph, unless the lookup is of the game's fallback characters.
 	if (const auto p = s_current.Character; p && GameUtf8::Pack(p) == utf8Value) {
 		try {
 			const auto italic = GetItalicMode(set);
 			if (const auto shaped = m_layout->TryGetGlyph(sized, p, italic)) {
-				// Real italics draw unsheared: clear the italic bit while laid out (quads are emitted after this lookup); LayOutCharacterDetour restores it.
+				// The quad emitter runs after this lookup, so clearing the italic bit until LayOutCharacterDetour ends draws a real italic glyph unsheared.
 				if (italic != ItalicMode::Upright && shaped != &m_emptyGlyph->Glyph && CellOf(shaped).RealItalic) {
 					*reinterpret_cast<uint32_t*>(s_current.State + m_stateFlagsOffset) &= ~m_stateItalicFlag;
 					s_current.ItalicCleared = true;
@@ -253,8 +240,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFont
 		Host::Error("Copying the game's glyph 0x{:X} failed: {}", utf8Value, e.what());
 	}
 
-	// The game's glyph, looked up in the game font, whose glyph map the copy borrows: its texture index is of the game font's textures, so it is
-	// copied into the atlas too.
+	// The game font's own glyph has a texture index of the game font's textures, so it is copied into the atlas too.
 	const auto game = m_getGlyphHook->Original(set, utf8Value, info.Original);
 	if (!game)
 		return nullptr;

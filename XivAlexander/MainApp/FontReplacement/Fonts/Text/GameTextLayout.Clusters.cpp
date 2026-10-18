@@ -5,6 +5,9 @@
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
 #include "MainApp/FontReplacement/Fonts/Text/DirectWriteTextAnalyzer.h"
 
+// Clusters are placed one after another by their advances on screen (with the elements' transformations, emboldening, letter spacing and
+// monospacing), not where shaping put them.
+
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 void FontReplacement::GameTextLayout::Collect(int count, bool italicImages) {
@@ -14,7 +17,6 @@ void FontReplacement::GameTextLayout::Collect(int count, bool italicImages) {
 	auto pen = 0.f;
 	for (const auto& run : m_textRuns) {
 		for (auto start = run.Start; start < run.End;) {
-			// A piece of one glyph source, in italics or not.
 			const auto& source = m_textSource[start];
 			const auto inItalic = m_textItalic[start] != 0;
 			auto end = start + 1;
@@ -33,7 +35,7 @@ void FontReplacement::GameTextLayout::CollectPiece(const std::optional<GlyphSour
 	auto realItalic = false;
 	if (source && inItalic)
 		std::tie(source, realItalic) = source->GetItalic();
-	if (!glyphSource || !element || !source || run.RightToLeft) {
+	if (!source || run.RightToLeft) {
 		AddMissing(start, end, pen);
 		return;
 	}
@@ -54,9 +56,9 @@ void FontReplacement::GameTextLayout::CollectPiece(const std::optional<GlyphSour
 			AddCluster(*glyphSource, source, px, shaped, position, realItalic, italicImages, pen);
 		position += shapedLength;
 
-		// What the source lacks: a grapheme left to the per-character path.
+		// The source lacks this grapheme.
 		if (position < end) {
-			const auto length = (std::max)(1, NextGrapheme(position, end));
+			const auto length = NextGrapheme(position, end);
 			AddMissing(position, position + length, pen);
 			position += length;
 		}
@@ -67,26 +69,21 @@ void FontReplacement::GameTextLayout::AddCluster(const GlyphSource& glyphSource,
 	const auto element = glyphSource.Element;
 	std::vector glyphs(shaped.GlyphIds);
 	std::vector offsets(shaped.Offsets);
-	auto real = realItalic;
 	const auto textStart = textOffset + shaped.TextStart;
 	const auto textEnd = textOffset + shaped.TextEnd;
+
+	// What shaping moved the glyphs by besides their own advances, towards the next cluster.
 	auto kerning = source->GetScreenAdvance(px, {glyphs, shaped.Advances, offsets}) - GetOwnWidth(*source, px, glyphs, offsets);
 
-	// In a node's italics, shaped upright: a glyph of one character is drawn with its font's italic, if it has one.
+	// In a node's italics shaped upright, only a glyph of one character can take its italic, which is looked up by codepoint.
 	if (italicImages && glyphs.size() == 1) {
-		std::optional<char32_t> codepoint;
-		const auto c0 = m_text[textStart];
-		if (textEnd - textStart == 1 && !IsSurrogate(c0))
-			codepoint = c0;
-		else if (textEnd - textStart == 2 && IS_HIGH_SURROGATE(c0) && IS_LOW_SURROGATE(m_text[textStart + 1]))
-			codepoint = static_cast<char32_t>(0x10000 + ((c0 - 0xD800) << 10) + (m_text[textStart + 1] - 0xDC00));
-		if (codepoint) {
+		if (const auto decoded = DecodeAt(textStart, textEnd); decoded && decoded->second == textEnd - textStart) {
 			if (const auto [italic, isReal] = source->GetItalic(); isReal) {
-				if (const auto id = italic->GetGlyphId(*codepoint)) {
+				if (const auto id = italic->GetGlyphId(decoded->first)) {
 					source = italic;
 					glyphs = {id};
 					offsets.clear();
-					real = true;
+					realItalic = true;
 				}
 			}
 		}
@@ -96,6 +93,8 @@ void FontReplacement::GameTextLayout::AddCluster(const GlyphSource& glyphSource,
 	const auto& mono = element->Def().WrapModifiers.Monospacing;
 	const auto monospaced = mono.is_enabled();
 	const auto rawAdvance = monospaced ? static_cast<int>(StdRound(width - kerning)) : 0;
+
+	// As in xivres's wrapping_fixed_size_font, a monospaced cluster that drops its kerning drops that of the cluster before it too.
 	if (monospaced && mono.DropKerning && rawAdvance > 0) {
 		kerning = 0;
 		if (!m_clusters.empty()) {
@@ -122,11 +121,10 @@ void FontReplacement::GameTextLayout::AddCluster(const GlyphSource& glyphSource,
 		.TextStart = textStart,
 		.TextEnd = textEnd,
 		.GlyphSource = glyphSource,
-		.RealItalic = real,
+		.RealItalic = realItalic,
 	};
 
 	if (monospaced) {
-		// The cell's advance, kerning (unless dropped) after it.
 		pen = static_cast<float>(cluster.X0 + GetRaster(cluster).Advance) + kerning;
 		cluster.X1 = static_cast<int>(StdRound(pen));
 	} else {
@@ -148,7 +146,7 @@ float FontReplacement::GameTextLayout::GetOwnWidth(IFaceSource& source, float px
 void FontReplacement::GameTextLayout::AddMissing(int start, int end, float pen) {
 	const auto x = static_cast<int>(StdRound(pen));
 	for (auto t = start; t < end;) {
-		const auto length = (std::max)(1, NextGrapheme(t, end));
+		const auto length = NextGrapheme(t, end);
 		m_clusters.push_back({.X0 = x, .X1 = x, .TextStart = t, .TextEnd = t + length});
 		t += length;
 	}
@@ -173,9 +171,19 @@ bool FontReplacement::GameTextLayout::CollectSpreadItalics(int count) {
 			return false;
 	}
 
-	// The difference is shared out after each cluster, the last ending where the upright run ends.
 	const auto share = static_cast<float>(upright[n - 1].X1 - italic[n - 1].X1) / static_cast<float>(n);
 	for (size_t i = 0; i < n; i++)
 		m_clusters.push_back(italic[i].MovedBy(share * static_cast<float>(i), share * static_cast<float>(i + 1)));
 	return true;
+}
+
+FontReplacement::GameTextLayout::Cluster FontReplacement::GameTextLayout::Cluster::MovedBy(float start, float end) const {
+	const auto pen = static_cast<float>(X0) + Origin + start;
+	const auto x0 = StdRound(pen);
+	auto res = *this;
+	res.Key.reset();
+	res.Origin = StdRound((pen - x0) * SubpixelSteps) / SubpixelSteps;
+	res.X0 = static_cast<int>(x0);
+	res.X1 = static_cast<int>(StdRound(static_cast<float>(X1) + end));
+	return res;
 }

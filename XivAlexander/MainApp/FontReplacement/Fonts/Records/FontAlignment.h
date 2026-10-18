@@ -3,7 +3,6 @@
 #include <FontChanger.FixedSizeFont/merged_fixed_size_font.h>
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Where a font's line is at a size, for elements aligned to it.
 	struct FontAlignment {
 		int Ascent = 0;
 		int LineHeight = 0;

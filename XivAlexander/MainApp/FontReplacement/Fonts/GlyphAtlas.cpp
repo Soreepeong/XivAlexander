@@ -7,10 +7,10 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// Glyph rectangles are padded by this much on each side: the edge and outline passes sample a texel around a glyph.
+	// The edge and outline passes sample a texel around a glyph.
 	constexpr int Padding = 1;
 
-	// A plane's byte offset in a B8G8R8A8 texel, and its bit shift in a B4G4R4A4 one: planes are the R, G, B and A channels.
+	// Planes are the R, G, B and A channels.
 	constexpr int Bgra8888ChannelOffsets[]{2, 1, 0, 3};
 	constexpr int Bgra4444ChannelShifts[]{8, 4, 0, 12};
 
@@ -20,10 +20,6 @@ namespace {
 			res[v] = static_cast<uint8_t>((v * 15 + 127) / 255);
 		return res;
 	}();
-}
-
-int FontReplacement::GlyphAtlas::MaxTextureSlots() {
-	return GameFont::MaxTextures;
 }
 
 int FontReplacement::GlyphAtlas::PaddedArea(int width, int height) {
@@ -45,7 +41,7 @@ FontReplacement::GlyphAtlas::Page::Page(int width, int height, bool format4444)
 	, Shadow(static_cast<size_t>(width) * (format4444 ? 2 : 4) * height)
 	, DirtyLeft(width)
 	, DirtyTop(height) {
-	// The texture's contents are undefined until written: upload the cleared copy once.
+	// The texture's contents are undefined until written, so the cleared copy is uploaded once.
 	MarkDirty(0, 0, width, height);
 }
 
@@ -69,7 +65,7 @@ FontReplacement::GlyphAtlas::GlyphAtlas(int width, int height, int maxPages, std
 	, m_subpixel(subpixel)
 	, m_format4444(format == AtlasTextureFormat::Bgra4444)
 	, m_bytesPerPixel(m_format4444 ? 2 : 4)
-	, m_maxPages(std::clamp(maxPages, 1, (std::max)(1, MaxTextureSlots())))
+	, m_maxPages(std::clamp(maxPages, 1, (std::max)(1, GameFont::MaxTextures)))
 	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages))
 	, m_current(FirstPlane())
 	, m_frontier(FirstPlane() + PlaneStep()) {
@@ -161,7 +157,6 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, int& page, 
 			return true;
 		}
 
-		// The current plane is full: on to one not used yet.
 		if (m_frontier >= MaxPlanes())
 			return false;
 

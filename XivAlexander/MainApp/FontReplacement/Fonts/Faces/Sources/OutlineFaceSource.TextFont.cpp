@@ -12,7 +12,7 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 using namespace FontChanger::FixedSizeFont;
 
 namespace {
-	// Into a fixed_size_font::draw buffer, keeping the larger value; (x, y) is where the coverage's top left goes.
+	// Overlapping glyphs keep the larger coverage; (x, y) is where the coverage's top left goes.
 	void BlitInto(uint8_t* buffer, size_t stride, int destWidth, int destHeight, const FontReplacement::RasterGlyph& g, int x, int y) {
 		for (auto row = (std::max)(0, -y); row < g.Height && row + y < destHeight; row++) {
 			for (auto col = (std::max)(0, -x); col < g.Width && col + x < destWidth; col++) {
@@ -23,8 +23,6 @@ namespace {
 	}
 }
 
-// Glyph merging's texts drawn with the font: shaped as the source shapes (with letter spacing), measured by the glyphs' outlines, drawn as the
-// source draws.
 class FontReplacement::OutlineFaceSource::TextFont final : public default_abstract_fixed_size_font {
 	OutlineFaceSource& m_font;
 	float m_size;
@@ -77,7 +75,6 @@ public:
 
 	const fixed_size_font* get_base_font(char32_t) const override { return this; }
 
-	// Each cluster advances letterSpacing further (and as emboldening does); glyphs the font lacks are left out.
 	std::optional<shaped_line> shape_line(std::u32string_view text, int letterSpacing) const override {
 		try {
 			const auto spacing = m_transform.M11 != 0 ? static_cast<float>(letterSpacing) / m_transform.M11 : 0.f;
@@ -129,7 +126,7 @@ public:
 	}
 
 	bool try_get_glyph_index_metrics(uint32_t glyphIndex, float originX, float originY, glyph_metrics& gm) const override {
-		if (!glyphIndex || glyphIndex >= m_font.m_font->GetFace(m_size)->GetGlyphCount())
+		if (!IsGlyph(glyphIndex))
 			return false;
 		const auto index = static_cast<uint16_t>(glyphIndex);
 		const auto g = m_font.RasterizeRun(m_size, &index, &s_zero, nullptr, 1, originX, 0, m_transform, originY);
@@ -138,14 +135,14 @@ public:
 	}
 
 	bool try_get_glyph_index_ink_extent(uint32_t glyphIndex, float& x1, float& x2) const override {
-		if (!glyphIndex || glyphIndex >= m_font.m_font->GetFace(m_size)->GetGlyphCount())
+		if (!IsGlyph(glyphIndex))
 			return false;
 		std::tie(x1, x2) = m_font.GetInkExtent(m_size, static_cast<uint16_t>(glyphIndex), m_transform);
 		return true;
 	}
 
 	bool draw_glyph_index(uint32_t glyphIndex, uint8_t* pBuf, size_t stride, float drawX, float drawY, int destWidth, int destHeight, uint8_t, uint8_t, uint8_t, uint8_t) const override {
-		if (!glyphIndex || glyphIndex >= m_font.m_font->GetFace(m_size)->GetGlyphCount())
+		if (!IsGlyph(glyphIndex))
 			return false;
 		const auto index = static_cast<uint16_t>(glyphIndex);
 		const auto g = m_font.RasterizeRun(m_size, &index, &s_zero, nullptr, 1, drawX, 0, m_transform, drawY);
@@ -155,6 +152,8 @@ public:
 
 private:
 	static constexpr float s_zero = 0;
+
+	[[nodiscard]] bool IsGlyph(uint32_t glyphIndex) const { return glyphIndex && glyphIndex < m_font.m_font->GetFace(m_size)->GetGlyphCount(); }
 };
 
 std::shared_ptr<fixed_size_font> FontReplacement::OutlineFaceSource::CreateMergeTextFont(float size, const Matrix2x2& transform) {

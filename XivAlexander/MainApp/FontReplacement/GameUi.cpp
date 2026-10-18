@@ -25,9 +25,6 @@ namespace {
 	int s_textureD3D11Texture2D;
 }
 
-int GameUi::TextNodeType = 3;
-int GameUi::FirstComponentNodeType = 1000;
-
 uintptr_t GameUi::Stage() {
 	return s_stageInstance ? At<uintptr_t>(s_stageInstance) : 0;
 }

@@ -10,7 +10,6 @@
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class DirectWriteTextAnalyzer;
 
-	// The DirectWrite factory, the system's fonts, and what draws and analyzes text with them.
 	class FontServices {
 		IDWriteFactory7Ptr m_factory;
 		IDWriteFontCollection3Ptr m_systemFonts;
@@ -39,11 +38,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] FreeTypeGlyphRasterizer& FreeType() const { return *m_freeType; }
 
-		// Both rasterizers'. Game thread.
+		// Game thread.
 		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_subpixelOrder; }
 		void SetSubpixelOrder(SubpixelOrder value);
 
-		// The family's font closest to the weight, stretch and style (simulated if the family lacks it); false if the family isn't installed.
+		// The closest match, simulated if the family lacks it.
 		bool TryFindFont(const FontChanger::Structs::LookupStruct& lookup, IDWriteFont3Ptr& match) const;
 	};
 }

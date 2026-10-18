@@ -9,9 +9,8 @@ namespace xivres::fontdata {
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// A game font's glyphs read from the game's files.
 	class GameFontDataFaceSource final : public NominalFaceSource {
-		// The installation and the textures read from it, kept while any source is.
+		// Shared by every source and released with the last one.
 		struct Shared;
 
 		static std::mutex s_sharedMutex;
@@ -26,13 +25,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameFontDataFaceSource(std::shared_ptr<Shared> shared, std::shared_ptr<const xivres::fontdata::stream> fdt, std::string textures, float size);
 
 	public:
-		~GameFontDataFaceSource() override;
-
-		// The font of the element's game font family closest to its size; nullptr if there is none, or it can't be read.
 		static std::unique_ptr<GameFontDataFaceSource> Create(const FontChanger::Structs::FontElement& def, const std::string& fontName);
 
-		// A game font by its name with its glyphs' metrics but no textures, for FontsFromSystemFont to fit fonts to; nullptr
-		// if there is none, or it can't be read.
+		// Without textures, as FontsFromSystemFont only fits fonts to its metrics.
 		static std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> OpenMetrics(const std::string& fontName);
 
 		const std::set<char32_t>& Codepoints() override { return m_codepoints; }
@@ -46,7 +41,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		static std::shared_ptr<Shared> GetShared();
 
-		// From the game font's glyphs to a size of the element: 1 within the half-pixel rounding of copy sizes.
+		// 1 within the half-pixel rounding of copy sizes, so that those draw the font's own glyphs.
 		[[nodiscard]] float GetScale(float px) const;
 	};
 }

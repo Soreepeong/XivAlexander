@@ -9,7 +9,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The game's lower clamp of a plate's distance factor.
+	// OnRequestedUpdate (SetCommonNamePlate's body, inlined in 7.56h) never scales a plate below this factor.
 	constexpr float MinDistanceFactor = 0.05f;
 
 	// Bake scales beyond these are not worth it (or are a measuring error).
@@ -25,16 +25,6 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	GameUi::ResolveUnits();
 	GameFontSet::Resolve();
 	const auto functions = ResolveGameCode(Game::Resolved::Fonts::NamePlates);
-
-	// Allocates a plate's bake region, sized by its TextW and TextH, when it NeedsToBeBaked.
-	const auto allocateBake = reinterpret_cast<uintptr_t>(functions.AllocateBake);
-
-	// Per-node text setup; for a bake (CurrentBakeData set), node scale 1.
-	const auto prepare = reinterpret_cast<uintptr_t>(functions.BakePrepare);
-
-	// Draws a baked plate centered on its node.
-	const auto drawBaked = reinterpret_cast<uintptr_t>(functions.DrawBaked);
-
 	m_addonBakePlate = functions.AddonBakePlate;
 	m_addonObjects = functions.AddonObjects;
 	m_objectSize = functions.ObjectSize;
@@ -57,9 +47,9 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 		m_bakePlateDrawHook.emplace("NamePlateDraw", reinterpret_cast<uintptr_t>(functions.Draw), [this](uintptr_t renderer, uintptr_t node) { BakePlateDrawDetour(renderer, node); });
 	else
 		Host::Warning("Live nameplate text is unavailable in this version of the game; it is drawn as baked at full size.");
-	m_allocateBakeHook.emplace("NamePlateAllocateBake", allocateBake, [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
-	m_prepareHook.emplace("NamePlateBakePrepare", prepare, [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });
-	m_drawBakedHook.emplace("NamePlateDrawBaked", drawBaked, [this](uintptr_t renderer, uintptr_t node, uintptr_t bake) { DrawBakedDetour(renderer, node, bake); });
+	m_allocateBakeHook.emplace("NamePlateAllocateBake", reinterpret_cast<uintptr_t>(functions.AllocateBake), [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
+	m_prepareHook.emplace("NamePlateBakePrepare", reinterpret_cast<uintptr_t>(functions.BakePrepare), [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });
+	m_drawBakedHook.emplace("NamePlateDrawBaked", reinterpret_cast<uintptr_t>(functions.DrawBaked), [this](uintptr_t renderer, uintptr_t node, uintptr_t bake) { DrawBakedDetour(renderer, node, bake); });
 	ForceRebake();
 }
 
@@ -67,7 +57,7 @@ FontReplacement::NamePlateText::~NamePlateText() {
 	m_bakePlateDrawHook.reset();
 	m_allocateBakeHook.reset();
 
-	// Regions baked at another scale must not be drawn unhooked; a plate needing a bake is drawn live (BakePlateRenderer.Draw) until rebaked.
+	// Plates are marked for rebaking (and drawn live until then) before the hooks that know their bake scale go.
 	try {
 		ForceRebake();
 	} catch (const std::exception& e) {
@@ -125,26 +115,21 @@ float& FontReplacement::NamePlateText::Transform(uintptr_t node, int index) cons
 	return reinterpret_cast<float*>(node + m_nodeTransform)[index];
 }
 
-std::optional<float> FontReplacement::NamePlateText::GetShownScale(uintptr_t obj) const {
+std::optional<float> FontReplacement::NamePlateText::GetFullSizeScale(uintptr_t obj) const {
 	const auto text = At<uintptr_t>(obj + m_objectNameText);
 	if (!text)
 		return std::nullopt;
-	auto scale = 1.f;
+	auto shown = 1.f;
 	for (auto node = text; node; node = At<uintptr_t>(node + m_nodeParent))
-		scale *= At<float>(node + m_nodeScaleX);
-	return std::isfinite(scale) && scale > 0 ? std::optional(scale) : std::nullopt;
-}
-
-std::optional<float> FontReplacement::NamePlateText::GetFullSizeScale(uintptr_t obj) const {
-	const auto shown = GetShownScale(obj);
-	if (!shown)
+		shown *= At<float>(node + m_nodeScaleX);
+	if (!std::isfinite(shown) || shown <= 0)
 		return std::nullopt;
 	const auto a = static_cast<float>(At<uint8_t>(obj + m_bakeAlpha)) / 255.f;
-	const auto factor = (std::max)(a * a * a * a, MinDistanceFactor);
-	const auto scale = *shown / factor;
+	const auto scale = shown / (std::max)(a * a * a * a, MinDistanceFactor);
 	return std::isfinite(scale) ? std::optional(scale) : std::nullopt;
 }
 
+// OnRequestedUpdate calls this for plates with NeedsToBeBaked, which it clears on success.
 uint8_t FontReplacement::NamePlateText::AllocateBakeDetour(uintptr_t renderer, uintptr_t obj) {
 	SeeRenderer(renderer);
 	auto previous = 0.f;
@@ -153,12 +138,11 @@ uint8_t FontReplacement::NamePlateText::AllocateBakeDetour(uintptr_t renderer, u
 		m_bakeScales.erase(it);
 	}
 
-	// As the game bakes while the replacement is off, and in the modes that don't bake at full size.
 	const auto fullSize = GetEffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize ? GetFullSizeScale(obj) : std::nullopt;
 	if (!fullSize)
 		return m_allocateBakeHook->Original(renderer, obj);
 
-	// At least what it was baked at before (it was shown that large); the full size is at least the size it is shown at now.
+	// Never below the previous bake scale, since the plate was shown that large.
 	const auto scale = std::clamp((std::max)(*fullSize, previous), MinBakeScale, MaxBakeScale);
 
 	auto& textW = At<int16_t>(obj + m_objectTextW);
@@ -177,7 +161,7 @@ uint8_t FontReplacement::NamePlateText::AllocateBakeDetour(uintptr_t renderer, u
 void FontReplacement::NamePlateText::PrepareDetour(uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) {
 	m_prepareHook->Original(renderer, rect, set, node);
 
-	// A bake of a region allocated at a scale: lay the text out at that scale (the original sets 1).
+	// The original sets the node scale to 1, so a region allocated at another scale needs its own.
 	const auto bake = At<uintptr_t>(renderer + m_rendererCurrentBakeData);
 	if (const auto it = bake ? m_bakeScales.find(bake) : m_bakeScales.end(); it != m_bakeScales.end()) {
 		set->NodeScaleX() = it->second;
@@ -199,13 +183,13 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 		transform[i] = Transform(node, i);
 	const auto shown = std::sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
 
-	// Shown larger than baked (over 100% up close, targeted): rebake at that size (BakeData is the object's first member); drawn live until then.
+	// Plates shown over 100 percent up close or when targeted outgrow their bake, and are drawn live until baked again.
 	const auto obj = bake;
 	if (shown > scale * (1 + ScaleTolerance) && !NeedsToBeBaked(obj) && GetEffectiveMode() == FontReplacementNamePlateMode::BakedAtFullSize)
 		SetNeedsToBeBaked(obj);
 
-	// The region is in bake pixels, so the node's size and text offset are scaled to match; near the bake scale the transform is snapped to exactly 1,
-	// the only case the original point samples (bilinear at fractional positions blurs even at 1:1). Plates aren't rotated.
+	// The original point samples only under an exact identity transform (bilinear blurs moving plates even at 1:1), so the
+	// node is given in bake pixels and a near-1 transform snaps to identity, as plates aren't rotated.
 	auto& widthField = At<uint16_t>(node + m_nodeWidth);
 	auto& heightField = At<uint16_t>(node + m_nodeHeight);
 	auto& textYOffsetField = At<int16_t>(bake + m_bakeTextYOffset);
@@ -228,6 +212,7 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 	m_drawBakedHook->Original(renderer, node, bake);
 }
 
+// Live mode borrows the renderer's own live mode, which the game's text render mode setting normally controls.
 void FontReplacement::NamePlateText::BakePlateDrawDetour(uintptr_t renderer, uintptr_t node) {
 	SeeRenderer(renderer);
 	if (GetEffectiveMode() != FontReplacementNamePlateMode::Live) {
@@ -235,7 +220,6 @@ void FontReplacement::NamePlateText::BakePlateDrawDetour(uintptr_t renderer, uin
 		return;
 	}
 
-	// The renderer's own live mode, which the game's text render mode setting sets.
 	auto& liveMode = At<uint8_t>(renderer + m_rendererFixedFontResolution);
 	const auto saved = liveMode;
 	liveMode = 1;

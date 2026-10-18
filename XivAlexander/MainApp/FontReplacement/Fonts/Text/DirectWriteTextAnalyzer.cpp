@@ -30,7 +30,7 @@ namespace {
 		return {a.script, static_cast<int>(a.shapes)};
 	}
 
-	// Lives where it is declared, as the source does.
+	// Not reference counted, as it lives on the stack for one call, like the source.
 	class ScriptSink final : public IDWriteTextAnalysisSink {
 		std::span<DWRITE_SCRIPT_ANALYSIS> m_scripts;
 

@@ -73,10 +73,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		App.RunOnGameLoop([&] {
 			try {
 				Replacer = std::make_unique<FontReplacer>();
-				Replacer->SetAtlas(Config->Runtime.FontReplacement.Atlas.Value());
-				Replacer->SetEdge(Config->Runtime.FontReplacement.Edge.Value());
-				Replacer->SetVerticalSubpixel(Config->Runtime.FontReplacement.VerticalSubpixel.Value());
-				ApplySubpixel(window);
+				ApplySettings(window);
 				NamePlates = Optional<NamePlateText>("Nameplate text");
 				if (NamePlates)
 					NamePlates->SetMode(Config->Runtime.FontReplacement.NamePlates.Value());
@@ -133,11 +130,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			const auto lock = std::scoped_lock(PendingMutex);
 			Controller = std::move(controller);
 		} catch (...) {
-			// As the destructor does: unsubscribe and unhook first, so nothing reaches the replacer while it's torn down.
-			Cleanup.clear();
-			Controller.reset();
-			PresentCall.reset();
-			Present.reset();
+			Unhook();
 			App.RunOnGameLoop([this] { TearDown(); });
 			throw;
 		}
@@ -145,14 +138,19 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	~Implementation() {
 		InitThread.join();
-		Cleanup.clear();
-		Controller.reset();
-		PresentCall.reset();
-		Present.reset();
+		Unhook();
 
 		// Between frames on the game's thread.
 		if (Replacer || NamePlates || Breaker)
 			App.RunOnGameLoop([this] { TearDown(); });
+	}
+
+	// Comes before TearDown, so that nothing reaches the replacer while it's torn down.
+	void Unhook() {
+		Cleanup.clear();
+		Controller.reset();
+		PresentCall.reset();
+		Present.reset();
 	}
 
 	template<typename T>
@@ -179,6 +177,17 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	}
 
 	// Game thread, between frames.
+	void ApplySettings(HWND window) {
+		const auto& settings = Config->Runtime.FontReplacement;
+		Replacer->SetAtlas(settings.Atlas.Value());
+		Replacer->SetEdge(settings.Edge.Value());
+		Replacer->SetVerticalSubpixel(settings.VerticalSubpixel.Value());
+		if (NamePlates)
+			NamePlates->SetMode(settings.NamePlates.Value());
+		ApplySubpixel(window);
+	}
+
+	// Game thread, between frames.
 	void ApplySubpixel(HWND window) {
 		LastSubpixelQuery = GetTickCount64();
 		try {
@@ -197,19 +206,12 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		auto settings = false;
 		{
 			const auto lock = std::scoped_lock(PendingMutex);
-			preset = std::move(PendingPreset);
-			PendingPreset.reset();
+			preset = std::exchange(PendingPreset, std::nullopt);
 			settings = std::exchange(PendingSettings, false);
 		}
 
 		if (settings) {
-			const auto& current = Config->Runtime.FontReplacement;
-			Replacer->SetAtlas(current.Atlas.Value());
-			Replacer->SetEdge(current.Edge.Value());
-			Replacer->SetVerticalSubpixel(current.VerticalSubpixel.Value());
-			if (NamePlates)
-				NamePlates->SetMode(current.NamePlates.Value());
-			ApplySubpixel(App.GetGameWindowHandle());
+			ApplySettings(App.GetGameWindowHandle());
 		} else if (Config->Runtime.FontReplacement.Subpixel.Value() != FontReplacementSubpixelMode::Off && GetTickCount64() - LastSubpixelQuery >= SubpixelRefreshMs) {
 			ApplySubpixel(App.GetGameWindowHandle());
 		}

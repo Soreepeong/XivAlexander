@@ -19,7 +19,6 @@ namespace {
 	std::vector<std::string> s_lobbyNamesB;
 	std::vector<std::string> s_families;
 
-	// Reads a table's FDT names as font names: without the extension, nor the lobby suffix.
 	std::vector<std::string> Read(uintptr_t table, int entrySize, int fdtNameOffset) {
 		std::vector<std::string> names(s_entryCount);
 		for (auto i = 0; i < s_entryCount; i++) {
@@ -34,7 +33,6 @@ namespace {
 		return names;
 	}
 
-	// From FontChanger.FixedSizeFont's data/game_fonts.json; 0 if it isn't a game font.
 	float SizeFromFdtFileName(const std::string& name) {
 		const auto def = FontChanger::FixedSizeFont::find_fontdata_definition(name);
 		return def ? def->Size : 0.f;
@@ -49,7 +47,6 @@ namespace {
 		return name.find("font_lobby") != std::string::npos;
 	}
 
-	// The lobby table whose sizes match the loaded lobby fonts.
 	const std::vector<std::string>& LobbyNames(const FontReplacement::GameFontManager* manager, int count) {
 		auto a = 0, b = 0;
 		for (auto i = 0; i < count; i++) {
@@ -62,7 +59,6 @@ namespace {
 		return b > a ? s_lobbyNamesB : s_lobbyNamesA;
 	}
 
-	// How many of the manager's fonts the tables name; nullptr if the tables weren't read or it has no fonts.
 	FontReplacement::GameFontManager* TryGetManager(int& count) {
 		const auto manager = FontReplacement::GameFontManager::Instance();
 		if (!s_gameNames || !manager || !manager->Fonts())
@@ -71,7 +67,6 @@ namespace {
 		return manager;
 	}
 
-	// A lobby font's from the lobby table, found once.
 	const std::string& NameAt(const FontReplacement::GameFontManager* manager, int index, int count, const std::vector<std::string>*& lobbyNames) {
 		if (!IsLobby(manager->Font(index)))
 			return (*s_gameNames)[index];
@@ -89,15 +84,10 @@ void FontNames::Initialize() {
 	const auto tables = ResolveGameCode(Game::Resolved::Fonts::FontTables);
 	GameUi::ResolveResourceHandles();
 	s_entryCount = tables.Count;
-	const auto entrySize = tables.EntrySize;
-	const auto fdtName = tables.FdtName;
-	const auto lobbyA = reinterpret_cast<uintptr_t>(tables.LobbyA);
-	const auto lobbyB = reinterpret_cast<uintptr_t>(tables.LobbyB);
-	const auto game = reinterpret_cast<uintptr_t>(tables.Game);
-
-	s_lobbyNamesA = Read(lobbyA, entrySize, fdtName);
-	s_lobbyNamesB = Read(lobbyB, entrySize, fdtName);
-	s_gameNames = Read(game, entrySize, fdtName);
+	const auto read = [&](const void* table) { return Read(reinterpret_cast<uintptr_t>(table), tables.EntrySize, tables.FdtName); };
+	s_lobbyNamesA = read(tables.LobbyA);
+	s_lobbyNamesB = read(tables.LobbyB);
+	s_gameNames = read(tables.Game);
 	s_families.clear();
 	for (const auto& name : *s_gameNames) {
 		auto family = Presets::FamilyOf(name);

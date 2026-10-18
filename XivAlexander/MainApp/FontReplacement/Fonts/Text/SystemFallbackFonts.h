@@ -8,11 +8,9 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFontFallback, __uuidof(IDWriteFontFallback));
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontServices;
 
-	// Finds the system font for text no font element has: private-use characters in the game's icon font, then Windows' UI fonts per script in
-	// order, then the system's fallback.
 	class SystemFallbackFonts {
 	public:
-		// Matched against when a preset font has no installed font of its own.
+		// For fonts that have no element drawn from an installed font.
 		static constexpr auto DefaultBaseFamily = "Segoe UI";
 
 	private:
@@ -24,7 +22,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		SystemFallbackFonts(const SystemFallbackFonts&) = delete;
 		SystemFallbackFonts& operator=(const SystemFallbackFonts&) = delete;
 
-		// The font the start of text is drawn with, matched against baseFamily (the preset font's), and the scale of its size; nullopt if none has it.
+		// baseFamily is the family the match is kept close to; nullopt if no font has the text's start.
 		[[nodiscard]] std::optional<std::pair<FontChanger::Structs::LookupStruct, float>> Find(std::wstring_view text, std::string_view baseFamily);
 	};
 }

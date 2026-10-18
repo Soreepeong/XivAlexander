@@ -2,53 +2,92 @@
 #include "MainApp/FontReplacement/Fonts/Text/GameTextLayout.h"
 
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
+#include "MainApp/FontReplacement/Utilities/GameUtf8.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The codepoint at u of text[..end], and its length in code units; U+FFFD and 1 for a lone surrogate.
-	std::pair<char32_t, int> DecodeAt(const std::vector<wchar_t>& text, int u, int end) {
-		const auto c = text[u];
-		if (IS_HIGH_SURROGATE(c) && u + 1 < end && IS_LOW_SURROGATE(text[u + 1]))
-			return {static_cast<char32_t>(0x10000 + ((c - 0xD800) << 10) + (text[u + 1] - 0xDC00)), 2};
-		if (FontReplacement::IsSurrogate(c))
-			return {U'\xFFFD', 1};
-		return {static_cast<char32_t>(c), 1};
+	constexpr uint8_t NewLineMacro = 0x10;
+	constexpr uint8_t ItalicMacro = 0x1A;
+}
+
+int FontReplacement::GameTextLayout::ReadRun(const uint8_t* p, ItalicMode italic, int& length) {
+	auto count = 0;
+	auto i = 0;
+	auto inItalic = italic != ItalicMode::Upright;
+	while (i < MaxRunBytes) {
+		const auto b = p[i];
+		if (b == 0 || b == 0x0A || b == 0x0D)
+			break;
+
+		if (b == GameUtf8::Stx) {
+			const auto macro = p[i + 1];
+			if (macro == NewLineMacro || (macro == ItalicMacro && italic == ItalicMode::Images))
+				break;
+			const auto total = GameUtf8::MacroLength(p + i);
+			if (total == 0 || i + total > MaxRunBytes)
+				break;
+
+			// <italic>'s argument must be a plain integer (1 on, 0 off); anything else ends the run.
+			if (macro == ItalicMacro) {
+				int payload, n, on, onLength;
+				if (!GameUtf8::TryReadInteger(p + i + 2, payload, n) || !GameUtf8::TryReadInteger(p + i + 2 + n, on, onLength) || onLength != payload)
+					break;
+				inItalic = on != 0;
+			}
+
+			i += total;
+			continue;
+		}
+
+		m_byteItalic[i] = inItalic ? 1 : 0;
+
+		// Stepped as the game does.
+		const auto charLength = GameUtf8::CharacterLength(p + i);
+		if (charLength == 0 || i + charLength > MaxRunBytes)
+			break;
+
+		// Control characters and broken sequences shape as a replacement character, which keeps them per character.
+		char32_t r = U'\xFFFD';
+		const auto valid = b >= 0x20 && GameUtf8::TryDecode(p + i, charLength, r);
+		if (!valid)
+			r = U'\xFFFD';
+		EnsureCapacity(count + 2);
+		m_textToByte[count] = valid ? i : -1;
+		const auto units = static_cast<int>(xivres::util::unicode::encode(&m_text[count], r));
+		if (units == 2)
+			m_textToByte[count + 1] = -1;
+		count += units;
+		i += charLength;
 	}
+
+	length = i;
+	return count;
 }
 
 void FontReplacement::GameTextLayout::Shape(SizedFont& sized, const uint8_t* p, int count, std::vector<GameGlyph*>& glyphs, ItalicMode italic) {
 	m_absorbed.clear();
-	m_shapingBytes = p;
-	m_shapingGlyphs = &glyphs;
 	m_shapingSized = &sized;
-	const auto cleanup = xivres::util::on_dtor([this] {
-		m_shapingBytes = nullptr;
-		m_shapingGlyphs = nullptr;
-		m_shapingSized = nullptr;
-	});
+	const auto cleanup = xivres::util::on_dtor([this] { m_shapingSized = nullptr; });
 
 	count = ComposeHangul(count);
 	AssignSources(count);
 
-	// Each code unit is in italics as its character's byte is (a low surrogate or control character as the one before).
-	for (auto t = 0; t < count; t++) {
-		const auto b = m_textToByte[t];
-		m_textItalic[t] = b >= 0 ? m_byteItalic[b] : t > 0 ? m_textItalic[t - 1] : italic != ItalicMode::Upright;
-	}
-
-	// A run in a node's italics is spaced to its upright width (or drawn per character at its upright places); the others are shaped whole, in
-	// italics where their italic macros say.
 	if (italic != ItalicMode::Images) {
+		// A code unit with no byte of its own is in the italics of the one before it.
+		for (auto t = 0; t < count; t++) {
+			const auto b = m_textToByte[t];
+			m_textItalic[t] = b >= 0 ? m_byteItalic[b] : t > 0 ? m_textItalic[t - 1] : italic != ItalicMode::Upright;
+		}
+
 		Collect(count, false);
 	} else if (!CollectSpreadItalics(count)) {
 		std::fill_n(m_textItalic.begin(), count, static_cast<uint8_t>(0));
 		Collect(count, true);
 	}
 
-	PlaceClusters();
+	PlaceClusters(p, glyphs);
 
-	// A jamo composed into its syllable is part of the syllable's cluster.
 	for (const auto& [b, owner] : m_absorbed) {
 		if (b >= 0 && owner >= 0)
 			glyphs[b] = glyphs[owner] ? m_emptyGlyph : nullptr;
@@ -87,23 +126,26 @@ int FontReplacement::GameTextLayout::ComposeHangul(int count) {
 void FontReplacement::GameTextLayout::AssignSources(int count) {
 	char32_t runes[MaxGraphemeRunes];
 	for (auto t = 0; t < count;) {
-		const auto length = (std::max)(1, NextGrapheme(t, count));
+		const auto length = NextGrapheme(t, count);
 		auto n = 0;
 		for (auto u = t; u < t + length && n < MaxGraphemeRunes;) {
-			const auto [rune, used] = DecodeAt(m_text, u, t + length);
+			const auto [rune, used] = DecodeAt(u, t + length).value_or(std::pair{U'\xFFFD', 1});
 			runes[n++] = rune;
 			u += used;
 		}
 
 		const auto source = m_shapingSized->Pick(std::span<const char32_t>(runes, n));
+
+		// Codepoint replacements are written into the text in place, so only where the UTF-16 length stays the same.
 		if (const auto element = source.Element; element && !element->DrawsGame()) {
 			for (auto u = t; u < t + length;) {
-				const auto [rune, used] = DecodeAt(m_text, u, t + length);
-				if (rune == U'\xFFFD' && used == 1 && IsSurrogate(m_text[u])) {
+				const auto decoded = DecodeAt(u, t + length);
+				if (!decoded) {
 					u++;
 					continue;
 				}
 
+				const auto [rune, used] = *decoded;
 				const auto drawn = element->GetDrawnCodepoint(rune);
 				if (drawn != rune && xivres::util::unicode::encode<wchar_t>(nullptr, drawn) == static_cast<size_t>(used))
 					xivres::util::unicode::encode(&m_text[u], drawn);

@@ -3,7 +3,7 @@
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// The face's first file; loader and key tell files apart. Loader is null if the face has no file.
+	// Of the face's first file only; Loader is null if the face has none.
 	struct FontFileKey {
 		IDWriteFontFilePtr File;
 		IDWriteFontFileLoaderPtr Loader;

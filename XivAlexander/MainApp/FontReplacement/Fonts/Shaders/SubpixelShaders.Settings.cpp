@@ -6,7 +6,6 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// How a monitor's picture is turned on its panel (DMDO_*): DMDO_DEFAULT (as made) if unknown.
 	DWORD GetOrientation(HMONITOR monitor) {
 		if (!monitor)
 			return DMDO_DEFAULT;
@@ -43,7 +42,7 @@ FontReplacement::SubpixelShaders::SettingsRecord FontReplacement::SubpixelShader
 	} catch (const std::exception& e) {
 		Host::Warning("Windows' ClearType settings couldn't be read; using the defaults: {}", e.what());
 	}
-	// Windows' settings are of the panel, left to right, whichever way the picture is turned on it.
+	// Windows' pixel geometry is the panel's, left to right, whichever way the picture is turned on it.
 	const auto bgr = geometry == DWRITE_PIXEL_GEOMETRY_BGR;
 	if (geometry != DWRITE_PIXEL_GEOMETRY_RGB && !bgr) {
 		res.Order = SubpixelOrder::None;
@@ -51,7 +50,7 @@ FontReplacement::SubpixelShaders::SettingsRecord FontReplacement::SubpixelShader
 	}
 	switch (GetOrientation(monitor)) {
 		case DMDO_90:
-			// The picture turned clockwise on the panel, which is turned counterclockwise: its left is at the bottom.
+			// The picture turned clockwise on a panel turned counterclockwise has its left at the bottom.
 			res.Order = bgr ? SubpixelOrder::VerticalRgb : SubpixelOrder::VerticalBgr;
 			break;
 		case DMDO_180:

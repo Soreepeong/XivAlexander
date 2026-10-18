@@ -2,13 +2,13 @@
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct RasterizeOptions {
-		// The fraction of a pixel the pen is at.
+		// The pen's fraction of a pixel.
 		float OriginX = 0;
 
-		// The advance the glyph is given; nullopt for its own, rounded.
+		// nullopt keeps the glyph's own, rounded.
 		std::optional<int> Advance;
 
-		// Narrowed by monospacing: outline fonts draw it so, the others resample it.
+		// Narrows for monospacing, which outline fonts draw so and the others resample.
 		float SqueezeX = 1;
 	};
 }

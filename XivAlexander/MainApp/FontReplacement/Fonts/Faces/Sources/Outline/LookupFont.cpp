@@ -17,27 +17,30 @@ FontReplacement::LookupFont::LookupFont(IDWriteFont3Ptr font, const LookupStruct
 
 	// A variable font starts from its instance (DirectWrite lists the named ones as fonts), less the optical size.
 	std::vector<DWRITE_FONT_AXIS_RANGE> ranges;
+	std::vector<DWRITE_FONT_AXIS_VALUE> instanceAxes;
 	if (m_face->HasVariations()) {
 		ThrowOnError(m_face->GetFontResource(&m_resource), "GetFontResource");
 		ranges.resize(m_resource->GetFontAxisCount());
 		ThrowOnError(m_resource->GetFontAxisRanges(ranges.data(), static_cast<UINT32>(ranges.size())), "GetFontAxisRanges");
-		m_axes.resize(m_face->GetFontAxisValueCount());
-		ThrowOnError(m_face->GetFontAxisValues(m_axes.data(), static_cast<UINT32>(m_axes.size())), "GetFontAxisValues");
+		instanceAxes.resize(m_face->GetFontAxisValueCount());
+		ThrowOnError(m_face->GetFontAxisValues(instanceAxes.data(), static_cast<UINT32>(instanceAxes.size())), "GetFontAxisValues");
 	}
 
 	std::map<uint32_t, float> axisValues;
-	for (const auto& a : m_axes) {
+	for (const auto& a : instanceAxes) {
 		if (a.axisTag != DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE)
 			axisValues[static_cast<uint32_t>(a.axisTag)] = a.value;
 	}
 
-	m_synthesis = FontChanger::ElementFonts::ResolveSynthesis(lookup, renderer, m_font);
-	m_simulations = m_synthesis.Simulations.value_or(m_font->GetSimulations());
-	for (const auto& [tag, value] : m_synthesis.AxisValues)
+	const auto synthesis = FontChanger::ElementFonts::ResolveSynthesis(lookup, renderer, m_font);
+	m_simulations = synthesis.Simulations.value_or(m_font->GetSimulations());
+	for (const auto& [tag, value] : synthesis.AxisValues)
 		axisValues[tag] = value;
 	for (const auto& [tag, value] : lookup.GetVariationAxisValues())
 		axisValues[tag] = value;
 	m_axisValues = axisValues;
+	m_transform = Matrix2x2::Of(synthesis.GetScreenMatrix());
+	m_embolden = synthesis.GetEmbolden();
 
 	if (IsVariable()) {
 		// Unless set, the optical size follows the text size.
@@ -53,8 +56,6 @@ FontReplacement::LookupFont::LookupFont(IDWriteFont3Ptr font, const LookupStruct
 		if (const auto it = std::ranges::find(ranges, DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE, &DWRITE_FONT_AXIS_RANGE::axisTag); it != ranges.end())
 			m_opticalSizeRange = *it;
 	} else {
-		m_axes.clear();
-
 		// The face of the font comes with the font's simulations; one with others is made from its resource.
 		if (m_simulations != m_face->GetSimulations())
 			m_face = WithSimulations(m_face, m_simulations);

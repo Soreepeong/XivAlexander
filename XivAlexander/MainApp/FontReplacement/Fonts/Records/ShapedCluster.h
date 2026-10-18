@@ -3,7 +3,7 @@
 #include "MainApp/FontReplacement/Fonts/Records/GlyphOffset.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Glyphs of the source that shaped it, and the code units it covers (relative to the text shaped). Offsets empty: none.
+	// TextStart and TextEnd are code units relative to the text shaped, and Offsets is empty if there are none.
 	struct ShapedCluster {
 		std::vector<uint32_t> GlyphIds;
 		std::vector<float> Advances;

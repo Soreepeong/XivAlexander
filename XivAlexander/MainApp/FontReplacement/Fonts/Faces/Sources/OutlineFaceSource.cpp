@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/OutlineFaceSource.h"
 
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/Outline/DirectWriteFaceSource.h"
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/Outline/FreeTypeFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/FontServices.h"
 #include "MainApp/FontReplacement/Fonts/Rasterization/FontFileKey.h"
 #include "MainApp/FontReplacement/Fonts/Rasterization/FreeTypeGlyphRasterizer.h"
@@ -12,10 +10,11 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 using FontChanger::Structs::FontElement;
 using FontChanger::Structs::ElementSourceEnum;
 
-FontReplacement::OutlineFaceSource::OutlineFaceSource(FontServices& services, FontElement def, std::unique_ptr<LookupFont> font, std::string fontName)
+FontReplacement::OutlineFaceSource::OutlineFaceSource(FontServices& services, FontElement def, std::unique_ptr<LookupFont> font, FT_FaceRec_* freeTypeFace, std::string fontName)
 	: m_services(services)
 	, m_def(std::move(def))
 	, m_font(std::move(font))
+	, m_freeTypeFace(freeTypeFace)
 	, m_fontName(std::move(fontName))
 	, m_transform(Matrix2x2::Of(m_def.Transform) * m_font->Transform()) {
 	if (m_def.Gamma != 1 && m_def.Gamma > 0)
@@ -35,12 +34,12 @@ std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFace
 }
 
 std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::FromFont(FontServices& services, FontElement def, std::unique_ptr<LookupFont> font, const std::string& fontName) {
-	if (const auto ftFace = services.FreeType().Open(font->Face()); ftFace && (def.Source == ElementSourceEnum::FreeType || !FreeTypeGlyphRasterizer::IsScalable(ftFace)))
-		return std::make_unique<FreeTypeFaceSource>(services, std::move(def), std::move(font), ftFace, fontName);
-
-	if (def.Source == ElementSourceEnum::FreeType)
+	// DirectWrite doesn't draw fonts with only bitmaps.
+	const auto ftFace = services.FreeType().Open(font->Face());
+	const auto useFreeType = ftFace && (def.Source == ElementSourceEnum::FreeType || !FreeTypeGlyphRasterizer::IsScalable(ftFace));
+	if (!useFreeType && def.Source == ElementSourceEnum::FreeType)
 		Host::Warning("{} can't be opened with FreeType; it is drawn with DirectWrite", def.Lookup.FamilyName);
-	return std::make_unique<DirectWriteFaceSource>(services, std::move(def), std::move(font), fontName);
+	return std::unique_ptr<OutlineFaceSource>(new OutlineFaceSource(services, std::move(def), std::move(font), useFreeType ? ftFace : nullptr, fontName));
 }
 
 void FontReplacement::OutlineFaceSource::SetMeasureMode(DWRITE_MEASURING_MODE value) {
@@ -127,7 +126,6 @@ std::optional<FontReplacement::RasterGlyph> FontReplacement::OutlineFaceSource::
 	if (count == 0)
 		return std::nullopt;
 
-	// Emboldening widens each glyph's advance.
 	const auto extra = GetExtraAdvance(px);
 	std::vector<uint16_t> glyphs(count);
 	std::vector<float> advances(count);
@@ -165,8 +163,22 @@ FontReplacement::RasterGlyph FontReplacement::OutlineFaceSource::RasterizeRun(
 	int advance,
 	const Matrix2x2& transform,
 	float originY) {
-	auto glyph = DrawRun(size, glyphs, advances, offsets, count, originX, advance, transform, originY);
+	RasterGlyph glyph;
+	if (m_freeTypeFace) {
+		const auto axes = m_font->GetAxisValues(size);
+		glyph = m_services.FreeType().RasterizeRun(
+			m_freeTypeFace, size, glyphs, advances, offsets, count, originX, advance, FreeTypeParams::Of(m_def.RendererSpecific.FreeType), transform, &axes,
+			m_font->Embolden(), originY);
+	} else {
+		auto parameters = DirectWriteParams::Of(m_def.RendererSpecific.DirectWrite);
+		parameters.MeasureMode = m_measureMode;
+		glyph = m_services.DirectWrite().RasterizeRun(m_font->GetFace(size), size, glyphs, advances, offsets, count, originX, advance, parameters, transform, originY);
+	}
 	return m_gamma ? glyph.WithCoverage(*m_gamma) : glyph;
+}
+
+float FontReplacement::OutlineFaceSource::GetExtraAdvance(float px) const {
+	return m_freeTypeFace ? m_font->Embolden() * px : 0;
 }
 
 bool FontReplacement::OutlineFaceSource::IsRealItalic(IDWriteFontFace5* face) {

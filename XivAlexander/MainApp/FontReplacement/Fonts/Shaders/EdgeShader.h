@@ -4,16 +4,8 @@
 #include "MainApp/FontReplacement/Host.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Swaps FFXIV-FontChanger's FontEdgePS.hlsl (round edge of any width, per font by its claimed texture width) into the edge pass's Kernel::PixelShader.
-	// AtkServer keeps a shader pair per pass; only LoadShaders remakes them.
+	// AtkServer keeps a shader pair per pass, and only LoadShaders remakes them.
 	class EdgeShader {
-	public:
-		// The bits of FontEdgePS.hlsl's Softness (0.123456789f), compiled as immediate operands.
-		static constexpr uint32_t Sentinel = 0x3DFCD6EA;
-
-		static constexpr float MaxSoftness = 8;
-
-	private:
 		// Resolved at first use; AtkModule embeds the font manager AtkStage points to.
 		int m_moduleFontManager = 0;
 		int m_moduleServer = 0;
@@ -31,14 +23,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		EdgeShader& operator=(const EdgeShader&) = delete;
 		~EdgeShader();
 
-		// The plugin's edge shader with a softness, or (nullopt) the game's. Game thread; throws if the shader can't be made.
+		// Game thread; nullopt restores the game's shader, and it throws if the shader can't be made.
 		void SetSoftness(std::optional<float> value);
 
 	private:
-		// With checkFontEdgePs, only if it is made from FontEdgePS; 0 if absent.
 		[[nodiscard]] uintptr_t GetEdgeShaderObjectOrNull(bool checkFontEdgePs) const;
 
-		// False while the game hasn't loaded its edge shader.
 		bool CreateFromGame();
 
 		void Install();

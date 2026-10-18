@@ -7,21 +7,19 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontReplacer;
 	struct GameFontSet;
 
-	// Nameplate text with replaced fonts, baked at S = on-screen scale at 100% rather than unscaled
-	// (region, font set node scale, and the cached draw's size/offset times S, its transform divided by S).
+	// The game bakes each plate's text once per change at the text node's unscaled size and resamples it at every distance, so this
+	// bakes it at its on-screen size at 100 percent instead.
 	class NamePlateText {
 		FontReplacer& m_replacer;
 
-		// The scale each object's current region was baked at.
+		// Keyed by the object's BakeData, which is its first member.
 		std::map<uintptr_t, float> m_bakeScales;
 
-		// AddonNamePlate: embedded BakePlateRenderer and the NamePlateObject array.
 		int m_addonBakePlate = 0;
 		int m_addonObjects = 0;
 		int m_objectSize = 0;
 		int m_objectCount = 0;
 
-		// NamePlateObject, then BakeData; BakeData is at offset 0, so a BakeData* is its object's.
 		int m_objectNameText = 0;
 		int m_objectTextW = 0;
 		int m_objectTextH = 0;
@@ -32,14 +30,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int m_rendererCurrentBakeData = 0;
 		int m_rendererFixedFontResolution = 0;
 
-		// AtkResNode; the transform is a row-major 2x2 float matrix.
+		// The transform is a 2x2 matrix of floats, row by row.
 		int m_nodeTransform = 0;
 		int m_nodeWidth = 0;
 		int m_nodeHeight = 0;
 		int m_nodeParent = 0;
 		int m_nodeScaleX = 0;
 
-		// The renderer last seen by a hook, and whether every plate must be baked again once one is seen.
 		uintptr_t m_lastRenderer = 0;
 		bool m_rebakePending = false;
 
@@ -58,26 +55,23 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		NamePlateText& operator=(const NamePlateText&) = delete;
 		~NamePlateText();
 
-		// Plates are reached via the last renderer the hooks saw (embedded in the NamePlate addon) if that addon is still loaded, else at the next draw.
+		// The plates are reachable only through the renderer a hook last saw, which is embedded in the NamePlate addon.
 		void ForceRebake();
 
-		// Game thread; plates are baked again when it changes.
+		// Game thread.
 		void SetMode(FontReplacementNamePlateMode mode);
 
 	private:
-		// The configured mode while the replacement is on, else the game's.
 		[[nodiscard]] FontReplacementNamePlateMode GetEffectiveMode() const;
 
-		// Also performs rebakes requested before any renderer was seen.
+		// Rebakes requested while no renderer was reachable wait for this, as the plates are reachable only through one.
 		void SeeRenderer(uintptr_t renderer);
 
 		[[nodiscard]] bool NeedsToBeBaked(uintptr_t obj) const;
 		void SetNeedsToBeBaked(uintptr_t obj) const;
 		[[nodiscard]] float& Transform(uintptr_t node, int index) const;
 
-		[[nodiscard]] std::optional<float> GetShownScale(uintptr_t obj) const;
-
-		// Shown scale divided by the distance factor, which OnRequestedUpdate stored this update as the bake alpha (factor^(1/4) * 255).
+		// OnRequestedUpdate scaled the plate by this update's distance factor, which it stored as the bake alpha, factor^(1/4) * 255.
 		[[nodiscard]] std::optional<float> GetFullSizeScale(uintptr_t obj) const;
 
 		uint8_t AllocateBakeDetour(uintptr_t renderer, uintptr_t obj);

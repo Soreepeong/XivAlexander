@@ -5,7 +5,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFont;
 	struct GameFontSet;
 
-	// AtkFontManager (embedded in AtkModule; AtkStage points to it). Opaque: only used through pointers.
+	// AtkFontManager, embedded in AtkModule and pointed to by AtkStage; opaque, so only used through pointers.
 	struct GameFontManager {
 		GameFontManager() = delete;
 
@@ -36,7 +36,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	void ResolveGameFontStructs();
 
-	// The fonts of one font type, and the per-draw state the text analyzers keep in it. Opaque: only used through pointers.
+	// The fonts of one font type and the per-draw state the text analyzers keep in it; opaque, so only used through pointers.
 	struct GameFontSet {
 		GameFontSet() = delete;
 
@@ -56,7 +56,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static void Resolve();
 	};
 
-	// Converted from the FDT's 16-byte entry. No left bearing: the quad starts at the pen, which advances by Width + OffsetX (+ kerning).
+	// Converted from the FDT's 16-byte entry, without a left bearing: the quad starts at the pen, which advances by Width + OffsetX (+ kerning).
 	struct GameGlyph {
 		// The codepoint's UTF-8 bytes, big-endian packed (U+3013 is 0xE38093).
 		uint32_t Utf8Value;
@@ -118,7 +118,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	static_assert(sizeof(GameGlyphMap) == 0x40);
 	static_assert(sizeof(GameGlyphMap::Node) == 0x20);
 
-	// Built from an FDT by BuildFont, which releases the FDT resource handle afterwards. Opaque: only used through pointers.
+	// Built from an FDT by BuildFont, which releases the FDT resource handle afterwards; opaque, so only used through pointers.
 	struct GameFont {
 		GameFont() = delete;
 
@@ -138,7 +138,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int& LineHeight();
 		int& Ascent();
 
-		// Keyed by GameGlyph::Utf8Value. The game looks up with operator[], which inserts a null entry on a miss.
+		// Keyed by GameGlyph::Utf8Value; the game looks up with operator[], which inserts a null entry on a miss.
 		[[nodiscard]] GameGlyphMap* GlyphMap() const;
 
 		// A font whose glyph is used instead when it is narrower (times SecondaryRatio).
@@ -161,7 +161,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		void CopyFrom(const GameFont* source);
 
-		// Doesn't add a map entry as the game's lookup does.
 		[[nodiscard]] GameGlyph* FindGlyph(char32_t codepoint) const;
 		[[nodiscard]] bool HasGlyph(char32_t codepoint) const { return FindGlyph(codepoint) != nullptr; }
 

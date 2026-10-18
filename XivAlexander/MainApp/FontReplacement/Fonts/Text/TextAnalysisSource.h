@@ -3,7 +3,7 @@
 #include <dwrite_3.h>
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// A text left to right in en-us, for the analyzer and the font fallback; lives where it is declared (no reference counting), the text with it.
+	// Left to right and en-us; not reference counted, as it lives on the stack, and the text must outlive it.
 	class TextAnalysisSource final : public IDWriteTextAnalysisSource {
 		const wchar_t* m_text;
 		UINT32 m_length;

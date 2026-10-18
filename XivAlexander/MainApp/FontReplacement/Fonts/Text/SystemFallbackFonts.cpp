@@ -11,7 +11,7 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFontFallbackBuilder, __uuidof(IDWriteFontFallbackBu
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// Before the system's fallback, which would pick Segoe Fluent Icons.
+	// For private-use characters, which the system's fallback would draw with Segoe Fluent Icons.
 	constexpr auto IconFamily = L"XIV AXIS Std ATK";
 
 	// Segoe UI, then fonts for scripts it lacks.
@@ -26,7 +26,6 @@ namespace {
 		return lookup;
 	}
 
-	// Its English name, else its first; empty if it has none.
 	std::wstring GetFamilyName(IDWriteFont* font) {
 		IDWriteFontFamilyPtr family;
 		IDWriteLocalizedStringsPtr names;

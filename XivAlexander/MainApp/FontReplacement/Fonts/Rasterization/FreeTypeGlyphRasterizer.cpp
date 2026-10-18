@@ -13,9 +13,6 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// FT_LOAD_TARGET_(mode): the hinting the render mode is for.
-	constexpr int LoadTargetShift = 16;
-
 	void Check(FT_Error error) {
 		if (error)
 			throw std::runtime_error(std::format("FreeType failed: {}", error));
@@ -43,13 +40,8 @@ FontReplacement::FreeTypeGlyphRasterizer::FreeTypeGlyphRasterizer() {
 	Check(FT_Init_FreeType(&library));
 	m_library.reset(library);
 
-	// A library built for ClearType-style rendering filters subpixel coverage across neighbors, against color fringes; one rendering the Harmony way
-	// samples each color at its stripe's place instead, and has no filter to set.
+	// Only a library built for ClearType-style rendering has a filter against color fringes; one built for Harmony rendering ignores this.
 	FT_Library_SetLcdFilter(library, FT_LCD_FILTER_DEFAULT);
-}
-
-FontReplacement::FreeTypeGlyphRasterizer::~FreeTypeGlyphRasterizer() {
-	m_faces.clear();
 }
 
 void FontReplacement::FreeTypeGlyphRasterizer::LibraryCloser::operator()(FT_LibraryRec_* library) const {
@@ -97,6 +89,18 @@ bool FontReplacement::FreeTypeGlyphRasterizer::IsScalable(FT_FaceRec_* face) {
 	return (face->face_flags & FT_FACE_FLAG_SCALABLE) != 0;
 }
 
+std::vector<uint8_t> FontReplacement::FreeTypeGlyphRasterizer::TakeSubpixelMean(std::span<uint8_t> lcd, bool blueFirst) {
+	std::vector<uint8_t> mean(lcd.size() / 3);
+	for (size_t i = 0; i < mean.size(); i++) {
+		auto& r = lcd[i * 3];
+		auto& b = lcd[i * 3 + 2];
+		mean[i] = static_cast<uint8_t>((r + lcd[i * 3 + 1] + b + 1) / 3);
+		if (blueFirst)
+			std::swap(r, b);
+	}
+	return mean;
+}
+
 FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::RasterizeRun(
 	FT_FaceRec_* face,
 	float px,
@@ -116,9 +120,9 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::Rasterize
 	const auto strength = static_cast<FT_Pos>(std::round(embolden * px * 64));
 
 	// Emboldening needs outlines.
-	const auto loadFlags = parameters.LoadFlags | ((parameters.RenderMode & 15) << LoadTargetShift) | (strength ? FT_LOAD_NO_BITMAP : 0);
+	const auto loadFlags = parameters.LoadFlags | FT_LOAD_TARGET_(parameters.RenderMode) | (strength ? FT_LOAD_NO_BITMAP : 0);
 
-	// For vertical stripes, antialiased modes give per-subpixel coverage; hinted as the parameters' mode is.
+	// Vertical stripes need per-subpixel coverage, hinted as the parameters' mode is.
 	auto renderMode = static_cast<FT_Render_Mode>(parameters.RenderMode);
 	if (IsVertical(m_subpixelOrder) && renderMode != FT_RENDER_MODE_MONO && renderMode != FT_RENDER_MODE_SDF)
 		renderMode = FT_RENDER_MODE_LCD_V;
@@ -135,7 +139,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::Rasterize
 	pieces.reserve(count);
 	auto x = 0.f;
 	for (uint32_t i = 0; i < count; i++) {
-		// The glyph's origin on screen (y down): its place in the run, transformed, after the pen's origin.
+		// The glyph's origin on screen (y down).
 		const auto lx = x + (offsets ? offsets[i].advanceOffset : 0.f);
 		const auto ly = offsets ? -offsets[i].ascenderOffset : 0.f;
 		const auto gx = originX + transform.M11 * lx + transform.M12 * ly;
@@ -147,7 +151,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::Rasterize
 		const auto slot = face->glyph;
 		const auto bitmapGlyph = slot->format == FT_GLYPH_FORMAT_BITMAP;
 		if (!bitmapGlyph) {
-			// Outlines are emboldened, transformed and moved by the fraction; bitmaps (of a bitmap face) are placed afterwards.
+			// Bitmaps of a bitmap face can't be transformed, so they are placed (and scaled) afterwards instead.
 			if (strength)
 				FT_Outline_EmboldenXY(&slot->outline, strength, strength);
 			FT_Outline_Transform(&slot->outline, &matrix);
@@ -160,7 +164,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::Rasterize
 		if (piece.Width == 0)
 			continue;
 
-		// Bitmaps ignore the transform: scaled with the fraction, or at their own size moved by whole pixels.
+		// Bitmaps ignore the transform, and unscaled ones can only move by whole pixels.
 		const auto fraction = gx - std::floor(gx);
 		if (scale != 1) {
 			piece = piece.Scaled(scale, fraction, -gy);
@@ -200,10 +204,11 @@ void FontReplacement::FreeTypeGlyphRasterizer::SetAxes(FT_FaceRec_* face, const 
 	std::vector<long> coordinates(axes.size());
 	for (size_t i = 0; i < axes.size(); i++) {
 		const auto& a = axes[i];
-		const auto v = values ? values->find(a.Tag) : decltype(values->find(a.Tag)){};
-		coordinates[i] = values && v != values->end()
-			? std::clamp(static_cast<long>(std::round(v->second * 65536)), a.Min, a.Max)
-			: a.Default;
+		coordinates[i] = a.Default;
+		if (values) {
+			if (const auto v = values->find(a.Tag); v != values->end())
+				coordinates[i] = std::clamp(static_cast<long>(std::round(v->second * 65536)), a.Min, a.Max);
+		}
 	}
 
 	if (const auto current = m_faceCoordinates.find(face); current != m_faceCoordinates.end() && current->second == coordinates)
@@ -237,8 +242,7 @@ float FontReplacement::FreeTypeGlyphRasterizer::SetSize(FT_FaceRec_* face, float
 	return px / bestPx;
 }
 
-FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::ReadBitmap(void* slotPtr) {
-	const auto slot = static_cast<FT_GlyphSlot>(slotPtr);
+FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::ReadBitmap(FT_GlyphSlotRec_* slot) {
 	const auto bitmap = &slot->bitmap;
 	auto w = static_cast<int>(bitmap->width), h = static_cast<int>(bitmap->rows);
 	if (bitmap->pixel_mode == FT_PIXEL_MODE_LCD)
@@ -248,27 +252,21 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::ReadBitma
 	if (w == 0 || h == 0)
 		return {};
 
-	std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
 	if (bitmap->pixel_mode == FT_PIXEL_MODE_LCD || bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V) {
-		// Subpixels follow each other in a row (LCD) or in three rows (LCD_V), in the stripes' order.
+		// Subpixels follow each other in a row (LCD) or in three rows (LCD_V).
 		const auto vertical = bitmap->pixel_mode == FT_PIXEL_MODE_LCD_V;
-		const auto blueFirst = IsBlueFirst(m_subpixelOrder);
-		std::vector<uint8_t> lcd(alpha.size() * 3);
+		std::vector<uint8_t> lcd(static_cast<size_t>(w) * h * 3);
 		for (auto y = 0; y < h; y++) {
 			for (auto x = 0; x < w; x++) {
-				const auto i = static_cast<size_t>(y) * w + x;
-				auto sum = 0;
-				for (auto c = 0; c < 3; c++) {
-					const auto v = vertical ? bitmap->buffer[(y * 3 + c) * bitmap->pitch + x] : bitmap->buffer[y * bitmap->pitch + x * 3 + c];
-					lcd[i * 3 + (blueFirst ? 2 - c : c)] = v;
-					sum += v;
-				}
-				alpha[i] = static_cast<uint8_t>((sum + 1) / 3);
+				for (auto c = 0; c < 3; c++)
+					lcd[(static_cast<size_t>(y) * w + x) * 3 + c] = vertical ? bitmap->buffer[(y * 3 + c) * bitmap->pitch + x] : bitmap->buffer[y * bitmap->pitch + x * 3 + c];
 			}
 		}
+		auto alpha = TakeSubpixelMean(lcd, IsBlueFirst(m_subpixelOrder));
 		return {0, slot->bitmap_left, -slot->bitmap_top, w, h, std::move(alpha), std::move(lcd)};
 	}
 
+	std::vector<uint8_t> alpha(static_cast<size_t>(w) * h);
 	if (bitmap->pixel_mode == FT_PIXEL_MODE_BGRA) {
 		for (auto y = 0; y < h; y++) {
 			for (auto x = 0; x < w; x++)
@@ -287,34 +285,4 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::ReadBitma
 	}
 
 	return {0, slot->bitmap_left, -slot->bitmap_top, w, h, std::move(alpha)};
-}
-
-std::vector<uint8_t> FontReplacement::FreeTypeGlyphRasterizer::FillOutline(std::span<const std::pair<float, float>> points, std::span<const uint8_t> tags, std::span<const short> contourEnds, int width, int height) {
-	std::vector<uint8_t> coverage(static_cast<size_t>((std::max)(0, width)) * (std::max)(0, height));
-	if (points.empty() || width <= 0 || height <= 0)
-		return coverage;
-
-	std::vector<FT_Vector> ftPoints(points.size());
-	for (size_t i = 0; i < points.size(); i++)
-		ftPoints[i] = {static_cast<FT_Pos>(std::round(points[i].first * 64)), static_cast<FT_Pos>(std::round((static_cast<float>(height) - points[i].second) * 64))};
-	std::vector<unsigned char> ftTags(tags.begin(), tags.end());
-	std::vector<short> ends(contourEnds.begin(), contourEnds.end());
-
-	FT_Outline outline{};
-	outline.n_points = static_cast<decltype(outline.n_points)>(ftPoints.size());
-	outline.n_contours = static_cast<decltype(outline.n_contours)>(ends.size());
-	outline.points = ftPoints.data();
-	outline.tags = reinterpret_cast<decltype(outline.tags)>(ftTags.data());
-	outline.contours = reinterpret_cast<decltype(outline.contours)>(ends.data());
-
-	FT_Bitmap bitmap;
-	FT_Bitmap_Init(&bitmap);
-	bitmap.rows = static_cast<unsigned>(height);
-	bitmap.width = static_cast<unsigned>(width);
-	bitmap.pitch = width;
-	bitmap.buffer = coverage.data();
-	bitmap.num_grays = 256;
-	bitmap.pixel_mode = FT_PIXEL_MODE_GRAY;
-	Check(FT_Outline_Get_Bitmap(m_library.get(), &outline, &bitmap));
-	return coverage;
 }

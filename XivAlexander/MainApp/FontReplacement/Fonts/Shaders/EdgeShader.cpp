@@ -12,6 +12,9 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 namespace {
 	// AtkServer's shader pairs are indexed by pass.
 	constexpr int EdgePass = 5;
+
+	// The bits of FontEdgePS.hlsl's Softness (0.123456789f), compiled as immediate operands.
+	constexpr uint32_t SoftnessSentinel = 0x3DFCD6EA;
 }
 
 FontReplacement::EdgeShader::~EdgeShader() {
@@ -45,10 +48,8 @@ void FontReplacement::EdgeShader::SetSoftness(std::optional<float> value) {
 	m_softness = *value;
 
 	// Before the game has loaded its shaders, LoadShadersDetour installs it once it does.
-	if (!CreateFromGame())
-		return;
-
-	Install();
+	if (CreateFromGame())
+		Install();
 }
 
 uintptr_t FontReplacement::EdgeShader::GetEdgeShaderObjectOrNull(bool checkFontEdgePs) const {
@@ -70,7 +71,7 @@ bool FontReplacement::EdgeShader::CreateFromGame() {
 		return false;
 
 	auto code = PixelShaderSwap::ReadShaderCode(IDR_FONTEDGEPS);
-	if (!PixelShaderSwap::PatchConstants(code, {{Sentinel, m_softness}}))
+	if (!PixelShaderSwap::PatchConstants(code, {{SoftnessSentinel, m_softness}}))
 		Host::Error("FontEdgePS.cso has no Softness to set; the edge is drawn with the value it was compiled with.");
 	m_swap.PluginShader() = PixelShaderSwap::CreateShader(PixelShaderSwap::ShaderOf(target), code);
 	return true;

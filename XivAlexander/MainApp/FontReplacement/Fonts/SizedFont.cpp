@@ -1,12 +1,12 @@
 #include "pch.h"
-#include "MainApp/FontReplacement/Fonts/FontReplacer.h"
+#include "MainApp/FontReplacement/Fonts/SizedFont.h"
 
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-FontReplacement::FontReplacer::GlyphSource FontReplacement::FontReplacer::SizedFont::Pick(std::span<const char32_t> grapheme) {
+FontReplacement::GlyphSource FontReplacement::SizedFont::Pick(std::span<const char32_t> grapheme) {
 	if (grapheme.size() == 1) {
 		if (const auto it = Picks.find(grapheme[0]); it != Picks.end())
 			return it->second;

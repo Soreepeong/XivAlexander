@@ -1,7 +1,6 @@
 #pragma once
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Left to right, or top to bottom for the vertical ones; None draws grayscale.
 	enum class SubpixelOrder : uint8_t {
 		None,
 		Rgb,

@@ -3,7 +3,7 @@
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Reads glyph coverage from the game's font textures via a staging texture per format; on the thread that calls Present.
+	// Must be used on the thread that calls Present, as it uses the immediate context.
 	class TextureReader {
 		std::map<DXGI_FORMAT, ID3D11Texture2DPtr> m_staging;
 		ID3D11DeviceContextPtr m_context;
@@ -13,7 +13,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		TextureReader(const TextureReader&) = delete;
 		TextureReader& operator=(const TextureReader&) = delete;
 
-		// Whether it has a format game font textures use.
 		[[nodiscard]] static bool CanRead(uintptr_t texture);
 
 		[[nodiscard]] std::vector<uint8_t> Read(uintptr_t texture, int x, int y, int width, int height, int plane);

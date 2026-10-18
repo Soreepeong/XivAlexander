@@ -24,7 +24,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGameGlyph(SizedFon
 
 	GameGlyph* glyph = nullptr;
 	if (char32_t codepoint; GameUtf8::TryUnpack(utf8Value, codepoint)) {
-		for (const auto font : sized.Sources) {
+		for (const auto font : sized.Fonts | std::views::values) {
 			if ((glyph = PlaceGameGlyph(sized, font, font->IsReady() ? font->FindGlyph(codepoint) : nullptr, utf8Value)))
 				break;
 		}
@@ -159,7 +159,8 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::PlaceCell(const Sized
 	glyph->OffsetX = static_cast<int8_t>(std::clamp(r.Advance - width, -128, 127));
 	glyph->OffsetY = static_cast<int8_t>(top);
 
-	// Text is measured far more than drawn (every change, at the unscaled size too): pixels wait here until drawn (WithPixels, which all glyphs pass).
+	// Text is measured far more than drawn (every text change, at the node's unscaled size too), so a glyph keeps its pixels here until it is
+	// drawn (WithPixels, which every glyph handed to the game goes through).
 	if (width != 0) {
 		CellOf(glyph) = {
 			.State = CellState::Pending,
@@ -245,7 +246,6 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 		oldest[plane] = (std::min)(oldest[plane], cell.Drawn);
 	}
 
-	// The most stale room; without any, the plane whose glyphs were drawn least recently.
 	auto victim = static_cast<int>(std::ranges::max_element(stale) - stale.begin());
 	if (stale[victim] == 0)
 		victim = static_cast<int>(std::ranges::min_element(oldest) - oldest.begin());
@@ -273,7 +273,7 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 	std::ranges::sort(moved, [](const Moved& a, const Moved& b) { return a.Drawn > b.Drawn; });
 	atlas->ClearPlane(victim / GlyphAtlas::PlanesPerPage, victim % GlyphAtlas::PlanesPerPage);
 
-	// What may stay: the glyphs drawn recently, but no more than half of the plane if none were stale.
+	// Without stale glyphs, the least recently drawn still leave until half of the plane is free, so that it makes room.
 	auto budget = stale[victim] == 0 ? static_cast<int64_t>(atlas->Width()) * atlas->Height() / 2 : INT64_MAX;
 	auto kept = 0;
 	for (auto& [slot, drawn, pixels, lcd] : moved) {
@@ -303,7 +303,7 @@ int FontReplacement::FontReplacer::PlaneOf(const GameGlyph* glyph) {
 void FontReplacement::FontReplacer::WriteCell(const GameGlyph* glyph, const Cell& cell) {
 	const auto& r = cell.Raster;
 
-	// The ink's rows in the box (cut off only past the game's byte-sized fields).
+	// Ink rows are cut off only past the game's byte-sized fields.
 	const auto firstRow = (std::max)(0, -cell.InkTop);
 	const auto lastRow = (std::min)(r.Height, glyph->Height - cell.InkTop);
 	if (lastRow > firstRow) {
@@ -335,14 +335,21 @@ void FontReplacement::FontReplacer::DropCell(GameGlyph* glyph, Cell& cell) {
 }
 
 void FontReplacement::FontReplacer::DropPixels(GameGlyph* glyph) {
+	// OffsetX takes the width, so that the advance stays as measured.
 	glyph->OffsetX = static_cast<int8_t>(std::clamp(glyph->OffsetX + glyph->Width, -128, 127));
 	glyph->Width = 0;
 }
 
-FontReplacement::GameGlyph* FontReplacement::FontReplacer::AllocateGlyph() {
-	return &m_slots.emplace_back().Glyph;
+void FontReplacement::FontReplacer::DropGameReads(const std::set<uintptr_t>& textures) {
+	std::erase_if(m_gameReads, [&](GameGlyph* glyph) {
+		auto& cell = CellOf(glyph);
+		if (!cell.Source || !textures.contains(cell.Source->Texture))
+			return false;
+		ReleasePixels(cell);
+		return true;
+	});
 }
 
-void FontReplacement::FontReplacer::FreeGlyphs() {
-	m_slots.clear();
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::AllocateGlyph() {
+	return &m_slots.emplace_back().Glyph;
 }

@@ -104,22 +104,6 @@ FontReplacement::RasterGlyph FontReplacement::RasterGlyph::SqueezedX(float scale
 	return res;
 }
 
-FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Trimmed() const {
-	int x1 = Width, y1 = Height, x2 = 0, y2 = 0;
-	for (auto y = 0; y < Height; y++) {
-		for (auto x = 0; x < Width; x++) {
-			if (Alpha[static_cast<size_t>(y) * Width + x]) {
-				x1 = (std::min)(x1, x), y1 = (std::min)(y1, y);
-				x2 = (std::max)(x2, x + 1), y2 = (std::max)(y2, y + 1);
-			}
-		}
-	}
-
-	if (x1 >= x2 || y1 >= y2)
-		return {Advance, 0, 0, 0, 0, {}};
-	return Reboxed(Left + x1, Top + y1, x2 - x1, y2 - y1);
-}
-
 FontReplacement::RasterGlyph FontReplacement::RasterGlyph::Reboxed(int left, int top, int width, int height) const {
 	RasterGlyph res{Advance, left, top, width, height, std::vector<uint8_t>(static_cast<size_t>(width) * height)};
 	if (HasLcd())
@@ -181,10 +165,6 @@ void FontReplacement::RasterGlyph::BlitMaxLcd(std::span<uint8_t> buffer, int wid
 				d[c] = (std::max)(d[c], g.HasLcd() ? g.Lcd[from * 3 + c] : g.Alpha[from]);
 		}
 	}
-}
-
-std::vector<uint8_t> FontReplacement::RasterGlyph::GammaTable(float gamma) {
-	return gamma != 1 && gamma > 0 ? CoverageTable(1 / gamma) : std::vector<uint8_t>{};
 }
 
 std::vector<uint8_t> FontReplacement::RasterGlyph::CoverageTable(float exponent) {

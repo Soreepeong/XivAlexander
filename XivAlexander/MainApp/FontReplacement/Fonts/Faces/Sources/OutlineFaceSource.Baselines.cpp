@@ -8,7 +8,7 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 using namespace FontChanger::FixedSizeFont;
 
 namespace {
-	// In font units above the glyphs' origin (xivres read_baselines).
+	// In font units above the glyphs' origin.
 	std::map<uint32_t, int> ReadBaselines(IDWriteFontFace* face) {
 		const void* data;
 		UINT32 size;

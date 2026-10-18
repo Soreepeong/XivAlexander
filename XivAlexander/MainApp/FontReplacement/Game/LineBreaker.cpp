@@ -15,11 +15,11 @@ namespace {
 		return {p, std::strlen(reinterpret_cast<const char*>(p))};
 	}
 
-	// Macros that the game counts as characters (icons).
+	// The game counts icon macros as characters.
 	constexpr uint8_t IconMacro = 0x12;
 	constexpr uint8_t Icon2Macro = 0x1E;
 
-	// Characters the game's word gathering puts for the non-breaking space and hyphen macros.
+	// The game turns the NonBreakingSpace and Hyphen macros into these bytes in the words it splits.
 	constexpr uint8_t NonBreakingSpaceChar = 0x1D;
 	constexpr uint8_t HyphenChar = 0x1E;
 }
@@ -73,7 +73,7 @@ uint32_t FontReplacement::LineBreaker::SplitWordDetour(uintptr_t wrapper, int wi
 	} catch (const std::exception& e) {
 		Host::Error("Splitting a word failed: {}", e.what());
 
-		// The game's split can take over only at a word's first split, as later ones index the table it built then; past that, force a split at the fit.
+		// The game's split can take over only at a word's first split, as later ones index the table it built then.
 		if (!first) {
 			const auto fit = m_fitUnits(wrapper, measuredWord, width, *reinterpret_cast<const int*>(wrapper + m_maxUnitsOffset) - *reinterpret_cast<const int*>(wrapper + m_usedUnitsOffset), nullptr);
 			return fit <= 0 ? (lineStart ? 1u : 0u) : static_cast<uint32_t>(fit);
@@ -99,25 +99,26 @@ uint32_t FontReplacement::LineBreaker::Split(uintptr_t wrapper, int width, const
 	m_wrapAfter.assign(m_text.size() + 1, 0);
 	GetBreaks(m_text, m_clusterEnd, m_wrapAfter);
 
-	// A macro has no break opportunity of its own.
-	auto best = 0;
-	for (auto k = 1; k <= fit; k++) {
+	// A macro has no text of its own, so a break after it is at the end of the text before it.
+	const auto endsAt = [this](const std::vector<uint8_t>& breaks, int k) {
 		const auto end = m_units[k - 1].TextEnd;
-		if (end > 0 && m_wrapAfter[end])
-			best = k;
-	}
+		return end > 0 && breaks[end];
+	};
+	const auto lastEndAtOrBefore = [&](const std::vector<uint8_t>& breaks, int last) {
+		for (auto k = last; k > 0; k--) {
+			if (endsAt(breaks, k))
+				return k;
+		}
+		return 0;
+	};
+
+	auto best = lastEndAtOrBefore(m_wrapAfter, fit);
 
 	// At the start of a line something has to go on it: the whole clusters that fit, or the first cluster.
 	if (best == 0 && lineStart) {
-		for (auto k = 1; k <= fit; k++) {
-			const auto end = m_units[k - 1].TextEnd;
-			if (end > 0 && m_clusterEnd[end])
-				best = k;
-		}
-
+		best = lastEndAtOrBefore(m_clusterEnd, fit);
 		for (auto k = fit + 1; best == 0 && k <= count; k++) {
-			const auto end = m_units[k - 1].TextEnd;
-			if (end > 0 && m_clusterEnd[end])
+			if (endsAt(m_clusterEnd, k))
 				best = k;
 		}
 
@@ -133,8 +134,6 @@ uint32_t FontReplacement::LineBreaker::Split(uintptr_t wrapper, int width, const
 }
 
 void FontReplacement::LineBreaker::GetBreaks(std::wstring_view text, std::span<uint8_t> clusterEnd, std::span<uint8_t> wrapAfter) {
-	std::ranges::fill(clusterEnd, 0);
-	std::ranges::fill(wrapAfter, 0);
 	if (text.empty())
 		return;
 
@@ -160,7 +159,7 @@ void FontReplacement::LineBreaker::GetBreaks(std::wstring_view text, std::span<u
 
 	forEach(s_clusters.get(), [&](int32_t at) { clusterEnd[at] = 1; });
 
-	// One inside a cluster isn't taken.
+	// UAX #14 can allow a break inside a UAX #29 cluster, which must never be split.
 	forEach(s_lines.get(), [&](int32_t at) {
 		if (clusterEnd[at])
 			wrapAfter[at] = 1;

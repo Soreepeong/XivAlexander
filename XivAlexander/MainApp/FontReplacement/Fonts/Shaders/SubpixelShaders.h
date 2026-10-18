@@ -10,18 +10,13 @@ namespace XivAlexander {
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// Dual-source blending (SRC1_COLOR / INV_SRC_COLOR) of subpixel pages drawn by the text, highlight and shadow passes, whose shaders become FontSubpixelPS.
+	// Per-channel coverage needs the SRC1_COLOR / INV_SRC_COLOR blend, so the text, highlight and shadow passes get shaders that output it.
 	class SubpixelShaders {
 	public:
-		// FontSubpixelPS.hlsl's ClearTypeLevel (0.234567891f), Contrast (0.345678912f) and Gamma (0.456789123f), as float bits.
-		static constexpr uint32_t ClearTypeLevelSentinel = 0x3E703291;
-		static constexpr uint32_t ContrastSentinel = 0x3EB0FCD4;
-		static constexpr uint32_t GammaSentinel = 0x3EE9E044;
-
 		struct SettingsRecord {
 			SubpixelOrder Order = SubpixelOrder::None;
 
-			// ClearType level, 0 to 1.
+			// 0 to 1.
 			float Level = 1;
 
 			// k of coverage * (k + 1) / (coverage * k + 1).
@@ -30,10 +25,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			// The display's gamma, which blending corrects for.
 			float Gamma = 1.8f;
 
-			// Level, contrast, gamma and stripe order from Windows for the window's monitor (the ClearType Text Tuner's).
 			[[nodiscard]] static SettingsRecord FromWindow(HWND window);
 
-			// System takes everything from Windows (grayscale unless ClearType is on); the stripe orders take level, contrast and gamma from clearType.
 			[[nodiscard]] static SettingsRecord From(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, HWND window);
 
 			bool operator==(const SettingsRecord&) const = default;
@@ -60,12 +53,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		struct PassShader {
 			ShaderPass Pass;
-			std::string File;
+			const char* File;
+			int Code;
+			const char* CodeFile;
 			PixelShaderSwap Swap;
-
-			PassShader(ShaderPass pass, std::string file)
-				: Pass(pass)
-				, File(std::move(file)) {}
 		};
 
 		int m_pixelShaderFiles = 0;
@@ -78,11 +69,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Apply runs on the game's thread, the hooks where draw commands are processed.
 		std::mutex m_mutex;
-		std::array<PassShader, 3> m_passes{
-			PassShader{ShaderPass::Font, "FontPS.shcd"},
-			PassShader{ShaderPass::FontHighlight, "FontHighlightPS.shcd"},
-			PassShader{ShaderPass::FontEmboss, "FontEmbossPS.shcd"},
-		};
+		std::array<PassShader, 3> m_passes;
 		std::atomic<bool> m_enabled = false;
 		SettingsRecord m_settings;
 
@@ -101,15 +88,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uint32_t m_stagedBlend = 0;
 
 	public:
-		SubpixelShaders() = default;
+		SubpixelShaders();
 		SubpixelShaders(const SubpixelShaders&) = delete;
 		SubpixelShaders& operator=(const SubpixelShaders&) = delete;
 		~SubpixelShaders();
 
-		// On, with the hooks in place. Game thread.
+		// Game thread.
 		[[nodiscard]] bool Active() const { return m_enabled; }
 
-		// Game thread; the hooks are made the first time it is on (throws if a signature isn't found). Order None puts the game's shaders back.
+		// Game thread; the hooks are made the first time it is on, which throws if a signature isn't found.
 		void Apply(const SettingsRecord& value);
 
 		// Between frames, after the UI's draw commands are processed.
@@ -125,20 +112,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] uint32_t Decide(uintptr_t server, const DrawState& state, bool subpixelTexture);
 
-		// Puts this one's shader in if the game's is there (again after a UI shader reload).
+		// The game's shader may be back after a UI shader reload.
 		bool EnsureShaderSwap(uintptr_t server, PassShader& p);
 
-		// With file, only if the pass's shader is made from it; 0 if absent.
 		[[nodiscard]] uintptr_t GetShaderObjectOrNull(uintptr_t server, ShaderPass pass, const char* file) const;
 
-		[[nodiscard]] ID3D11PixelShaderPtr CreateShader(ID3D11PixelShader* game, bool highlight) const;
+		[[nodiscard]] ID3D11PixelShaderPtr CreateShader(ID3D11PixelShader* game, const PassShader& p) const;
 
 		void RestoreAndReleaseAllInLock();
-
-		[[nodiscard]] static bool SameBlend(uint32_t a, uint32_t b) { return a == b; }
-
-		[[nodiscard]] static std::string Describe(uint32_t blend);
-		[[nodiscard]] static std::string DescribeBlendOp(uint32_t op);
-		[[nodiscard]] static std::string DescribeBlend(uint32_t blend);
 	};
 }

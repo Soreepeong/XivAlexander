@@ -40,7 +40,6 @@ int FontReplacement::NominalFaceSource::Shape(float px, std::wstring_view text, 
 		if (!id)
 			break;
 
-		// The kerning with this glyph goes to the last one's advance.
 		if (last)
 			clusters[*last].Advances[0] += GetKerning(px, clusters[*last].GlyphIds[0], id);
 

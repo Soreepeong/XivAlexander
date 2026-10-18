@@ -61,7 +61,6 @@ FontReplacement::RasterGlyph FontReplacement::MaterializedFontElement::Wrap(Rast
 }
 
 int FontReplacement::MaterializedFontElement::GetVerticalShift(float fontPx, const FontAlignment& font) const {
-	// The element's line box is placed in the font's: its top moved down by the adjustment.
 	const auto [ascent, lineHeight] = GetLineMetrics(fontPx);
 	int adjustment;
 	switch (font.Mode) {
@@ -118,7 +117,7 @@ FontReplacement::RasterGlyph FontReplacement::MaterializedFontElement::Monospace
 
 	int left;
 	if (mono.MaxAdvance && cell > 0 && glyph.Width > cell) {
-		// Hinting and rounding make the ink only roughly as narrow as the scale says: narrower scales are tried until it fits.
+		// Hinting and rounding make the ink only roughly as narrow as the scale says, so narrower scales are tried.
 		auto scale = static_cast<float>(cell) / static_cast<float>(glyph.Width);
 		const auto px = GetPx(fontPx);
 		auto fitted = glyph;
@@ -149,7 +148,7 @@ FontReplacement::RasterGlyph FontReplacement::MaterializedFontElement::Monospace
 		}
 	}
 
-	// The horizontal offset (added after) nudges the ink in its cell, but not left of the pen.
+	// Wrap adds the horizontal offset afterwards; it may nudge the ink in its cell, but not left of the pen.
 	const auto offset = ScalePixels(m_def.WrapModifiers.HorizontalOffset, fontPx);
 	glyph.Advance = cell;
 	glyph.Left = (std::max)(0, left + offset) - offset;

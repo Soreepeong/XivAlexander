@@ -17,7 +17,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Presets {
 
 	[[nodiscard]] std::filesystem::path Resolve(const std::filesystem::path& folder, const std::string& preset);
 
-	// As the preset names them: what importing the preset alone would leave behind. Throws if the preset can't be read.
+	// As the preset names them, since those are what importing the preset alone would leave behind.
 	[[nodiscard]] std::vector<std::filesystem::path> RelativeGlyphImageFolders(const std::filesystem::path& path);
 
 	// Strictly under the preset's folder (not the folder itself or above), so that it can be copied along with the preset.

@@ -60,7 +60,7 @@ FontReplacement::FontReplacer::FontReplacer() {
 	m_buildFontHook.emplace("BuildFont", buildFont, [this](uintptr_t manager, uint16_t index) { return BuildFontDetour(manager, index); });
 	m_unloadFontsHook.emplace("UnloadFonts", unloadFonts, [this](uintptr_t manager) { return UnloadFontsDetour(manager); });
 
-	// Caches built so far hold the game's glyphs. If anything above throws, the members undo the setup.
+	// Caches built so far hold the game's glyphs; if anything above throws, the members undo the setup.
 	UpdateFontCaches();
 }
 
@@ -73,7 +73,7 @@ FontReplacement::FontReplacer::~FontReplacer() {
 		}
 	};
 
-	// While the hooks still exist: the game's font caches come back, built with the game's fonts.
+	// First, so that the game's font caches are rebuilt while the hooks are still there to build them.
 	step("font caches", [this] { SetEnabled(false); });
 	step("edge shader", [this] { m_edgeShader.SetSoftness(std::nullopt); });
 	step("subpixel shaders", [this] { m_subpixelShaders.Apply({}); });
@@ -87,12 +87,8 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	// Font sets may still have a copy picked: forgotten once no hook can pick one again.
 	step("picked fonts", [] { ForgetPickedFonts(); });
 
-	for (const auto copy : m_copies | std::views::keys)
-		std::free(copy);
-	m_copies.clear();
-	m_copiesByKey.clear();
-	m_layout.reset();
-	FreeGlyphs();
+	FreeCopies();
+	m_slots.clear();
 	m_emptyGlyph.reset();
 	m_atlases.clear();
 	m_blankTexture.reset();
@@ -102,25 +98,20 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	m_services.reset();
 }
 
-void FontReplacement::FontReplacer::SetFonts(FontSettings value) {
-	m_fonts = std::move(value);
-	ApplyFonts(m_fonts.Preset, m_fonts.SystemFallback);
-}
-
-void FontReplacement::FontReplacer::ApplyFonts(const Presets::Fonts& preset, bool systemFallback) {
+void FontReplacement::FontReplacer::SetFonts(const FontSettings& value) {
 	m_layout->Clear();
 	DisposeFonts();
 	m_sizedFonts.clear();
-	m_gameFont = MaterializedFont::CreateGame(*m_services, systemFallback, *m_fallbackFonts);
-	for (const auto& [name, def] : preset) {
+	m_gameFont = MaterializedFont::CreateGame(*m_services, value.SystemFallback, *m_fallbackFonts);
+	for (const auto& [name, def] : value.Preset) {
 		try {
-			m_presetFonts.emplace(name, std::make_unique<MaterializedFont>(*m_services, def, systemFallback, *m_fallbackFonts));
+			m_presetFonts.emplace(name, std::make_unique<MaterializedFont>(*m_services, def, value.SystemFallback, *m_fallbackFonts));
 		} catch (const std::exception& e) {
 			Host::Error("Setting up the font {} failed; it is drawn with the game's glyphs: {}", name, e.what());
 		}
 	}
 
-	// Copies made so far take the glyphs and metrics of their new fonts.
+	// Copies made so far point at the sized fonts just freed.
 	ResyncCopies();
 	RebuildGlyphs();
 }
@@ -177,14 +168,14 @@ void FontReplacement::FontReplacer::SetEdge(const FontReplacementEdgeConfig& val
 	if (edge == m_edge)
 		return;
 
-	// Glyphs made since show only from the frame after (Upload), so remaking them blanks text for a frame: only when a size's margin changes.
+	// Glyphs made now show only from the next frame (Upload), so they are remade, blanking text for a frame, only if a margin changes.
 	const auto marginChanged = std::ranges::any_of(m_sizedFonts | std::views::values, [&](const auto& sized) {
 		return GetEdgeMargin(edge, sized->Px) != GetEdgeMargin(m_edge, sized->Px);
 	});
 	m_edge = edge;
 
-	// Round edge of any width, set per font by its claimed texture width, unless edges are the game's own (1 px). Fallback: the game's fixed
-	// pattern, widened only by claiming a narrower texture (blocky past ~1.5 px).
+	// The edge shader draws a round edge of any width unless edges are the game's own 1 px; the game's, widened only by claiming a narrower
+	// texture (blocky past about 1.5 px), is the fallback.
 	try {
 		m_edgeShader.SetSoftness(edge.Enabled && edge != FontReplacementEdgeConfig{.Enabled = true} ? std::optional(edge.Softness) : std::nullopt);
 	} catch (const std::exception& e) {
@@ -224,10 +215,6 @@ void FontReplacement::FontReplacer::SetSubpixel(const SubpixelShaders::SettingsR
 		RebuildGlyphs();
 }
 
-XivAlexander::FontReplacementVerticalSubpixelRenderer FontReplacement::FontReplacer::VerticalSubpixel() const {
-	return m_services->DirectWrite().VerticalWithFreeType() ? FontReplacementVerticalSubpixelRenderer::FreeType : FontReplacementVerticalSubpixelRenderer::DirectWrite;
-}
-
 void FontReplacement::FontReplacer::SetVerticalSubpixel(FontReplacementVerticalSubpixelRenderer value) {
 	const auto withFreeType = value == FontReplacementVerticalSubpixelRenderer::FreeType;
 	if (withFreeType == m_services->DirectWrite().VerticalWithFreeType())
@@ -246,7 +233,7 @@ void FontReplacement::FontReplacer::RebuildGlyphs() {
 		sized->GameGlyphs.clear();
 		sized->ConvertedGlyphs.clear();
 	}
-	FreeGlyphs();
+	m_slots.clear();
 	for (const auto& atlas : m_atlases | std::views::values)
 		atlas->Clear();
 	ForgetPickedFonts();

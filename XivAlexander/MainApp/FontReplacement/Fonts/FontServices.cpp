@@ -18,11 +18,7 @@ FontReplacement::FontServices::FontServices() {
 	m_directWrite = std::make_unique<DirectWriteGlyphRasterizer>(m_factory.GetInterfacePtr(), *m_freeType);
 }
 
-FontReplacement::FontServices::~FontServices() {
-	m_directWrite.reset();
-	m_freeType.reset();
-	m_textAnalyzer.reset();
-}
+FontReplacement::FontServices::~FontServices() = default;
 
 void FontReplacement::FontServices::SetSubpixelOrder(SubpixelOrder value) {
 	m_subpixelOrder = value;

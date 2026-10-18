@@ -1,6 +1,6 @@
 #pragma once
 
-// Conversions between codepoints and the packed UTF-8 values the game keys its glyphs by (GameGlyph::Utf8Value).
+// The game keys its glyphs (GameGlyph::Utf8Value) by a character's UTF-8 bytes packed big-endian.
 namespace XivAlexander::Apps::MainApp::FontReplacement::GameUtf8 {
 	constexpr uint8_t Stx = 0x02;
 	constexpr uint8_t Etx = 0x03;
@@ -8,7 +8,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::GameUtf8 {
 	// Invalid codepoints pack as U+FFFD.
 	[[nodiscard]] uint32_t Pack(char32_t codepoint);
 
-	// The character at p, stepped as the game does; U+FFFD for a broken sequence.
+	// Stepped as the game does; U+FFFD for a broken sequence.
 	[[nodiscard]] uint32_t Pack(const uint8_t* p);
 
 	// false if the length bytes at p aren't exactly one valid UTF-8 sequence.
@@ -19,7 +19,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::GameUtf8 {
 	// By the lead byte, as the game steps through text; 0 if the text ends inside it.
 	[[nodiscard]] int CharacterLength(const uint8_t* p);
 
-	// A macro's integer at p, within a null-terminated text.
+	// Reads no further than the text's null terminator.
 	[[nodiscard]] bool TryReadInteger(const uint8_t* p, int& value, int& length);
 
 	// Of the macro at p (at its STX), through its ETX; 0 if it is broken or runs into the text's end.

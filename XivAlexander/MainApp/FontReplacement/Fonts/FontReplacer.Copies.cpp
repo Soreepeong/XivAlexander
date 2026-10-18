@@ -19,7 +19,7 @@ bool FontReplacement::FontReplacer::ResyncCopies(GameFont* only) {
 	return any;
 }
 
-FontReplacement::FontReplacer::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx) {
+FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx) {
 	const auto px = static_cast<float>(halfPx) / 2.f;
 	struct Candidate {
 		std::string Name;
@@ -68,10 +68,8 @@ FontReplacement::FontReplacer::SizedFont* FontReplacement::FontReplacer::GetSize
 			.Ascent = ascent,
 			.LineHeight = lineHeight,
 		});
-		for (const auto& f : candidates) {
+		for (const auto& f : candidates)
 			sized->Fonts.emplace_back(f.Font, f.Game);
-			sized->Sources.push_back(f.Game);
-		}
 		it = m_sizedFonts.emplace(key, std::move(sized)).first;
 	}
 	return it->second.get();
@@ -91,7 +89,7 @@ FontReplacement::GlyphAtlas* FontReplacement::FontReplacer::GetAtlas(const std::
 	const auto axis = Utils::EqualsI(family, "AXIS");
 	auto width = axis ? m_atlas.AxisPageWidth : m_atlas.OtherPageWidth;
 	const auto height = axis ? m_atlas.AxisPageHeight : m_atlas.OtherPageHeight;
-	const auto maxPages = (std::min)(axis ? m_atlas.AxisMaxPages : m_atlas.OtherMaxPages, GameFont::MaxTextures);
+	const auto maxPages = axis ? m_atlas.AxisMaxPages : m_atlas.OtherMaxPages;
 	if (subpixel == (width % 2 == 0))
 		width--;
 	const auto format = m_atlas.Format == AtlasTextureFormat::Bgra4444 && Supports4444() ? AtlasTextureFormat::Bgra4444 : AtlasTextureFormat::Bgra8888;
@@ -114,16 +112,16 @@ void FontReplacement::FontReplacer::Sync(GameFont* copy, const CopyInfo& info) {
 	copy->SecondaryRatio() = 0;
 	copy->KerningCount() = 0;
 
-	// Real italics are spaced by shaping, so no gap for sheared glyphs leaning past their advance; measuring reads it from the copy too.
+	// Real italics are spaced by shaping, so no gap after them for sheared glyphs; measuring reads it from the copy too.
 	copy->SetItalicCorrection(0);
 
-	// Edge and glare shaders step by one texel of this width (in every vertex): the pages', not the game textures' (lobby fonts' are smaller), else
-	// outlines sample texels apart. Claiming narrower widens the step and edge that many times; the edge shader takes the step as its radius.
+	// The edge and glare shaders step by one texel of this width (it goes into every vertex), which must be the pages'; claiming a narrower width
+	// widens the edge as many times, and the edge shader takes the step as its radius.
 	const auto width = static_cast<uint16_t>(std::clamp(StdRound(static_cast<float>(sized.Atlas->Width()) / m_edge.GetWidth(sized.Px)), 256.f, 65535.f));
 	copy->TextureWidth() = width;
 	copy->TextureHeight() = width;
 
-	// None of the game font's textures: they belong to its resource handles, which the game releases on its own.
+	// None of the game font's textures are kept, as they belong to its resource handles, which the game releases on its own.
 	ApplyPages(copy, *sized.Atlas);
 }
 
@@ -145,6 +143,13 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::GetOrCreateCopy(GameFo
 		throw;
 	}
 	return copy;
+}
+
+void FontReplacement::FontReplacer::FreeCopies() {
+	for (const auto copy : m_copies | std::views::keys)
+		std::free(copy);
+	m_copies.clear();
+	m_copiesByKey.clear();
 }
 
 void FontReplacement::FontReplacer::ApplyPages(GameFont* copy, const GlyphAtlas& atlas) {

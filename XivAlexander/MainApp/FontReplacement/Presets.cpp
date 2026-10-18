@@ -75,7 +75,7 @@ std::filesystem::path Presets::Import(const std::filesystem::path& path, const s
 			throw std::runtime_error(XivAlexander::Config::Acquire()->Runtime.FormatStringResUtf8(IDS_FONTPRESET_ERROR_GLYPHFOLDEROUTSIDE, relative.wstring()));
 	}
 
-	// A folder of the preset's name, with the preset and its glyph images as they were around it.
+	// Glyph image folders keep their places relative to the preset, so that its relative paths still resolve.
 	const auto directoryName = UnusedName(folder, path.stem());
 	const auto directory = folder / directoryName;
 	create_directories(directory);
@@ -147,7 +147,7 @@ void Presets::Overlay(Fonts& into, const Fonts& from) {
 			}
 		};
 
-		// Leading AddNew elements would only fill the gaps below; as AddAll in reverse, they take what they have and the first still wins.
+		// The AddNew elements before the top's game font drew over the game's glyphs; as AddAll in reverse, they keep that precedence over the bottom font.
 		const auto& elements = top->Elements;
 		const auto firstGame = std::ranges::find_if(elements, [](const auto& e) { return e->Source == ElementSourceEnum::Game; });
 		const auto leading = static_cast<size_t>(firstGame - elements.begin());

@@ -13,9 +13,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The columns that the game drops from the left of a glyph when it loads a font (AtkFontManager.BuildFont): in fonts
-	// larger than 35 px, the first of the IME indicators (U+E020-E027) and of U+E0BB, which are then drawn a pixel left and
-	// advance a pixel less than their files say.
+	// AtkFontManager.BuildFont drops the first column of the IME indicators (U+E020-E027) and U+E0BB in fonts larger than 35 px.
 	int GetDroppedColumns(const xivres::fontdata::glyph_entry* g, float fontSize) {
 		const auto c = g->codepoint();
 		return fontSize > 35 && (c >= 0xE020 && c <= 0xE027 || c == 0xE0BB) && *g->BoundingWidth > 0 ? 1 : 0;
@@ -30,7 +28,6 @@ struct FontReplacement::GameFontDataFaceSource::Shared {
 	explicit Shared(const std::filesystem::path& gamePath)
 		: Installation(gamePath) {}
 
-	// nullptr if it can't be read.
 	std::shared_ptr<xivres::texture::memory_mipmap_stream> GetTexture(const std::string& path) {
 		const auto lock = std::scoped_lock(Mutex);
 		if (const auto it = Textures.find(path); it != Textures.end())
@@ -57,8 +54,6 @@ FontReplacement::GameFontDataFaceSource::GameFontDataFaceSource(std::shared_ptr<
 	for (const auto& g : m_fdt->get_glyphs())
 		m_codepoints.insert(g.codepoint());
 }
-
-FontReplacement::GameFontDataFaceSource::~GameFontDataFaceSource() = default;
 
 std::unique_ptr<FontReplacement::GameFontDataFaceSource> FontReplacement::GameFontDataFaceSource::Create(const FontChanger::Structs::FontElement& def, const std::string& fontName) {
 	using namespace FontChanger::FixedSizeFont;

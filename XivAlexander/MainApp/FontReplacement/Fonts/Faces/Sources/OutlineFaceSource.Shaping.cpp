@@ -51,7 +51,7 @@ int FontReplacement::OutlineFaceSource::Shape(float px, std::wstring_view text, 
 	std::vector<float> advances(count);
 	std::vector<DWRITE_GLYPH_OFFSET> offsets(count);
 
-	// A face measuring as GDI does (hinted, whole-pixel advances) is shaped so; its glyphs are drawn to match.
+	// GDI measuring modes give hinted, whole-pixel advances, which the glyphs are drawn to match.
 	if (m_measureMode == DWRITE_MEASURING_MODE_GDI_CLASSIC || m_measureMode == DWRITE_MEASURING_MODE_GDI_NATURAL) {
 		ThrowOnError(analyzer.GetGdiCompatibleGlyphPlacements(
 			text.data(), clusterMap.data(), textProps.data(), length, glyphs.data(), glyphProps.data(), count, face, px, 1, nullptr,
@@ -97,7 +97,7 @@ const std::vector<DWRITE_FONT_FEATURE>* FontReplacement::OutlineFaceSource::GetF
 	if (m_features)
 		return &*m_features;
 
-	// A set of features replaces the ones on by default instead of adding to them; those stay on unless the font's say otherwise.
+	// DirectWrite turns these on for horizontal text only when it is given no features.
 	auto& list = m_features.emplace();
 	for (const auto tag : {
 		     DWRITE_FONT_FEATURE_TAG_STANDARD_LIGATURES,

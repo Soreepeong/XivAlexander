@@ -204,26 +204,11 @@
     <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\ImageFaceSource.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Nominal</Filter>
     </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\ImageFaceSource.TextFont.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Nominal</Filter>
-    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\MergingFaceSource.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Nominal</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\MergingFaceSource.Drawing.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Nominal</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\MergingFaceSource.TextFont.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Nominal</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\NominalFaceSource.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\DirectWriteFaceSource.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\FreeTypeFaceSource.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\LookupFont.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
@@ -252,13 +237,13 @@
     <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.Hooks.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.SizedFont.cpp">
-      <Filter>MainApp\FontReplacement\Fonts</Filter>
-    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\FontServices.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\GlyphAtlas.cpp">
+      <Filter>MainApp\FontReplacement\Fonts</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\SizedFont.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Rasterization\DirectWriteGlyphRasterizer.cpp">
@@ -276,13 +261,7 @@
     <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\EdgeShader.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Shaders</Filter>
     </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\PixelShaderSwap.Code.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Shaders</Filter>
-    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\PixelShaderSwap.cpp">
-      <Filter>MainApp\FontReplacement\Fonts\Shaders</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\SubpixelShaders.Blend.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Shaders</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Shaders\SubpixelShaders.cpp">
@@ -337,12 +316,6 @@
       <Filter>MainApp\FontReplacement</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\PluginInterface\PresetController.cpp">
-      <Filter>MainApp\FontReplacement\PluginInterface</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\PluginInterface\PresetController.Loading.cpp">
-      <Filter>MainApp\FontReplacement\PluginInterface</Filter>
-    </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\PluginInterface\PresetController.Watching.cpp">
       <Filter>MainApp\FontReplacement\PluginInterface</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Presets.cpp">
@@ -643,12 +616,6 @@
     <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\NominalFaceSource.h">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources</Filter>
     </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\DirectWriteFaceSource.h">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
-    </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\FreeTypeFaceSource.h">
-      <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
-    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Outline\LookupFont.h">
       <Filter>MainApp\FontReplacement\Fonts\Faces\Sources\Outline</Filter>
     </ClInclude>
@@ -662,6 +629,9 @@
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\GlyphAtlas.h">
+      <Filter>MainApp\FontReplacement\Fonts</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\SizedFont.h">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\Rasterization\DirectWriteGlyphRasterizer.h">

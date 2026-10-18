@@ -3,7 +3,7 @@
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/NominalFaceSource.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// No glyphs (xivres empty_fixed_size_font), with the line metrics it is given at a size.
+	// Port of xivres empty_fixed_size_font; ascent and lineHeight are in pixels at size.
 	class EmptyFaceSource final : public NominalFaceSource {
 		float m_size;
 		float m_ascent;

@@ -9,7 +9,6 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// Set once BuildFont has built the font.
 	constexpr int ReadyFontFlag = 2;
 
 	struct {
@@ -41,7 +40,6 @@ namespace {
 		int SecondaryRatio;
 		int TextureCount;
 		int Flags;
-		int ReadyFlag;
 		int ItalicCorrection = -1;
 	} s_font{};
 }
@@ -193,7 +191,7 @@ uint16_t& FontReplacement::GameFont::TextureCount() {
 }
 
 bool FontReplacement::GameFont::IsReady() const {
-	return (At<uint8_t>(this, s_font.Flags) & s_font.ReadyFlag) != 0;
+	return (At<uint8_t>(this, s_font.Flags) & ReadyFontFlag) != 0;
 }
 
 void FontReplacement::GameFont::SetItalicCorrection(int8_t value) {
@@ -245,7 +243,6 @@ void FontReplacement::GameFont::Resolve() {
 	s_font.SecondaryRatio = font.SecondaryRatio;
 	s_font.TextureCount = font.TextureCount;
 	s_font.Flags = font.Flags;
-	s_font.ReadyFlag = ReadyFontFlag;
 
 	// Optional: only changed in copies.
 	s_font.ItalicCorrection = font.XShift.value_or(-1);

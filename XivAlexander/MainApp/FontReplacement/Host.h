@@ -1,16 +1,11 @@
 #pragma once
 
-#include <d3d11.h>
 #include <dxgi.h>
 
+#include "MainApp/FontReplacement/Utilities/Misc.h"
 #include "Misc/Hooks.h"
 #include "Misc/Logger.h"
 
-_COM_SMARTPTR_TYPEDEF(ID3D11Device, __uuidof(ID3D11Device));
-_COM_SMARTPTR_TYPEDEF(ID3D11DeviceContext, __uuidof(ID3D11DeviceContext));
-_COM_SMARTPTR_TYPEDEF(ID3D11PixelShader, __uuidof(ID3D11PixelShader));
-_COM_SMARTPTR_TYPEDEF(ID3D11Resource, __uuidof(ID3D11Resource));
-_COM_SMARTPTR_TYPEDEF(ID3D11Texture2D, __uuidof(ID3D11Texture2D));
 _COM_SMARTPTR_TYPEDEF(IDXGISwapChain, __uuidof(IDXGISwapChain));
 
 // The font replacement ports FontChanger.DalamudPlugin file for file and class for class, so the two can be compared; this is its IHost.
@@ -40,6 +35,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 	template<typename R, typename... Args>
 	class Hook {
 		std::optional<Misc::Hooks::PointerFunction<R, Args...>> m_hook;
+
+		// Declared after m_hook, so that unhooking comes before the hook goes.
 		xivres::util::on_dtor m_unhook;
 
 	public:
@@ -50,11 +47,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 
 		Hook(const Hook&) = delete;
 		Hook& operator=(const Hook&) = delete;
-
-		~Hook() {
-			m_unhook.clear();
-			m_hook.reset();
-		}
 
 		R Original(Args... args) {
 			return m_hook->bridge(args...);
@@ -71,24 +63,24 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::Host {
 		PresentHook(HWND window, std::function<void()> beforePresent);
 		PresentHook(const PresentHook&) = delete;
 		PresentHook& operator=(const PresentHook&) = delete;
-		~PresentHook();
 
 	private:
 		HRESULT PresentDetour(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags);
 	};
 
-	// Redirects only the game's Kernel::SwapChain::Present call in DeviceDX11::PostTick, so Present hooks (Dalamud, ReShade, overlays) aren't in the way and still run.
-	// That is after the render thread is done with the frame and before the next is kicked, the only time the immediate context is free.
+	// Redirects only the game's Kernel::SwapChain::Present call in DeviceDX11::PostTick, the only time the immediate context is free, so that other
+	// Present hooks (Dalamud, ReShade, overlays) aren't in the way and still run.
 	class PresentCallHook {
 		std::function<void()> m_beforePresent;
 		std::optional<Misc::Hooks::CallSiteFunction<void, void*>> m_hook;
+
+		// Declared after m_hook, so that the call is restored before the hook goes, which waits for a call still in Present (possibly waiting for the display).
 		xivres::util::on_dtor m_unhook;
 
 	public:
 		explicit PresentCallHook(std::function<void()> beforePresent);
 		PresentCallHook(const PresentCallHook&) = delete;
 		PresentCallHook& operator=(const PresentCallHook&) = delete;
-		~PresentCallHook();
 
 	private:
 		void PresentDetour(void* swapChain);

@@ -27,8 +27,10 @@ uint32_t GameUtf8::Pack(char32_t codepoint) {
 uint32_t GameUtf8::Pack(const uint8_t* p) {
 	if (*p < 0x80)
 		return *p;
+
+	// CharacterLength is 1 for a stray continuation or invalid lead byte and 0 for a truncated sequence.
 	const auto length = CharacterLength(p);
-	if (*p < 0xC0 || *p >= 0xF8 || length == 0)
+	if (length < 2)
 		return Pack(ReplacementChar);
 
 	uint32_t value = 0;

@@ -2,7 +2,6 @@
 #include "MainApp/FontReplacement/Host.h"
 
 #include "Game/SignatureDefinitions.h"
-#include "MainApp/FontReplacement/Utilities/Misc.h"
 #include "Utils/Win32/LoadedModule.h"
 #include "Utils/Win32/Process.h"
 #include "XivAlexander.h"
@@ -60,10 +59,6 @@ FontReplacement::Host::PresentHook::PresentHook(HWND window, std::function<void(
 	});
 }
 
-FontReplacement::Host::PresentHook::~PresentHook() {
-	m_hook.reset();
-}
-
 HRESULT FontReplacement::Host::PresentHook::PresentDetour(IDXGISwapChain* swapChain, UINT syncInterval, UINT flags) {
 	if (DXGI_SWAP_CHAIN_DESC desc; SUCCEEDED(swapChain->GetDesc(&desc)) && desc.OutputWindow == m_window) {
 		try {
@@ -84,17 +79,8 @@ FontReplacement::Host::PresentCallHook::PresentCallHook(std::function<void()> be
 	m_hook.emplace("Kernel::SwapChain::Present (DeviceDX11::PostTick)", functions.PresentCall);
 	m_unhook = m_hook->SetHook([this](void* swapChain) { PresentDetour(swapChain); });
 
-	if (!m_hook->IsEnabled()) {
-		m_unhook.clear();
-		m_hook.reset();
+	if (!m_hook->IsEnabled())
 		throw std::runtime_error("The call to Present was changed by something else.");
-	}
-}
-
-FontReplacement::Host::PresentCallHook::~PresentCallHook() {
-	// Restores the call, then waits for a call still in Present, which may be waiting for the display.
-	m_unhook.clear();
-	m_hook.reset();
 }
 
 void FontReplacement::Host::PresentCallHook::PresentDetour(void* swapChain) {

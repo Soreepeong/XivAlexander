@@ -13,22 +13,24 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFontResource, __uuidof(IDWriteFontResource));
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontServices;
 
-	// The font a lookup resolves to, as FontChanger makes it (ResolveFont, ResolveSynthesis): the face DirectWrite matches, its simulations, and a
-	// variable font's axis values. With explicit synthesis, the real face is taken instead and what the lookup asks for that it lacks is made.
+	// As FontChanger's ResolveFont and ResolveSynthesis: explicit synthesis starts from the real face and synthesizes what it lacks.
 	class LookupFont {
 		IDWriteFont3Ptr m_font;
 		IDWriteFontFace5Ptr m_face;
 		DWRITE_FONT_METRICS m_metrics{};
-		FontChanger::ElementFonts::SynthesizedFace m_synthesis;
+		Matrix2x2 m_transform;
+		float m_embolden = 0;
 		DWRITE_FONT_SIMULATIONS m_simulations = DWRITE_FONT_SIMULATIONS_NONE;
 		IDWriteFontResourcePtr m_resource;
 
-		// The axis values, without the optical size when it follows the text size; and the faces made with them.
+		// Without the optical size when it follows the text size, which GetFace adds per size.
 		std::vector<DWRITE_FONT_AXIS_VALUE> m_axes;
 		std::map<float, IDWriteFontFace5Ptr> m_sizedFaces;
 		DWRITE_FONT_AXIS_RANGE m_opticalSizeRange{};
-		std::map<uint32_t, float> m_axisValues;
 		bool m_autoOpticalSize = false;
+
+		// Keyed by DWRITE_FONT_AXIS_TAG, without the optical size when it follows the text size.
+		std::map<uint32_t, float> m_axisValues;
 
 		LookupFont(IDWriteFont3Ptr font, const FontChanger::Structs::LookupStruct& lookup, FontChanger::Structs::ElementSourceEnum renderer);
 
@@ -39,30 +41,27 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// nullptr if the family isn't installed.
 		static std::unique_ptr<LookupFont> Create(FontServices& services, const FontChanger::Structs::LookupStruct& lookup, FontChanger::Structs::ElementSourceEnum renderer);
 
-		// With the simulations, but for a variable font the matched instance (for its file and metrics); glyphs are drawn from GetFace's.
+		// For a variable font, the matched instance, used for its file and metrics; glyphs are drawn from GetFace's.
 		[[nodiscard]] IDWriteFontFace5* Face() const { return m_face; }
 
 		[[nodiscard]] const DWRITE_FONT_METRICS& Metrics() const { return m_metrics; }
 
-		// The screen transform synthesis makes, before the element's: a slant (FreeType), a width.
-		[[nodiscard]] Matrix2x2 Transform() const { return Matrix2x2::Of(m_synthesis.GetScreenMatrix()); }
+		// Synthesis's slant (FreeType) and width on screen, applied before the element's transformation.
+		[[nodiscard]] const Matrix2x2& Transform() const { return m_transform; }
 
-		// In ems (negative values thin); glyphs advance that much further.
-		[[nodiscard]] float Embolden() const { return m_synthesis.GetEmbolden(); }
+		// In ems (negative values thin glyphs); glyphs advance that much further.
+		[[nodiscard]] float Embolden() const { return m_embolden; }
 
-		[[nodiscard]] bool AutoOpticalSize() const { return m_autoOpticalSize; }
-
-		// The optical size is set to px if it follows the text size. Owned by this object.
+		// Owned by this object.
 		[[nodiscard]] IDWriteFontFace5* GetFace(float px);
 
-		// The values FreeType sets, keyed by DWRITE_FONT_AXIS_TAG.
+		// For FreeType, keyed by DWRITE_FONT_AXIS_TAG.
 		[[nodiscard]] std::map<uint32_t, float> GetAxisValues(float px) const;
 
 	private:
 		// DirectWrite has variable fonts from Windows 10 21H1.
 		[[nodiscard]] bool IsVariable() const { return !!m_resource; }
 
-		// Same font resource and axis values, other simulations.
 		static IDWriteFontFace5Ptr WithSimulations(IDWriteFontFace5* face, DWRITE_FONT_SIMULATIONS simulations);
 
 		// The font without simulations a simulated system font is made from.
