@@ -143,6 +143,8 @@ void XivAlexander::Apps::MainApp::Window::ApplyDarkModeToControl(HWND hControl, 
 			(void)SetWindowTheme(hControl, L"", L"");
 		else
 			(void)SetWindowTheme(hControl, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+	} else if (_wcsicmp(className, PROGRESS_CLASSW) == 0) {
+		(void)SetWindowTheme(hControl, nullptr, nullptr);
 	} else {
 		(void)SetWindowTheme(hControl, dark ? L"DarkMode_Explorer" : nullptr, nullptr);
 	}

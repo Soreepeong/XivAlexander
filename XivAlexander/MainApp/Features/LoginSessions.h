@@ -66,6 +66,9 @@ namespace XivAlexander::Apps::MainApp::Features {
 		/// Renames the session of the alias in Credential Manager, keeping the rest of what was stored; throws on a Win32 error.
 		RenameResult RenameStoredSession(const std::string& alias, const std::string& newAlias);
 
+		/// Stores the session of the launch arguments in Credential Manager under the alias; throws on a Win32 error.
+		RenameResult StoreLaunchSession(const std::string& newAlias);
+
 		[[nodiscard]] static std::optional<std::pair<std::string, XivAlexander::Game::CommandLine::ArgumentList>> GetMostRecentlyStoredArguments();
 
 		void ApplySelectedTo(XivAlexander::Game::CommandLine::ArgumentList& args);

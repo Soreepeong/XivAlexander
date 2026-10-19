@@ -178,6 +178,7 @@ public:
 	// Actions that open other processes; only those use or report SeDebugPrivilege.
 	[[nodiscard]] bool NeedsProcessAccess() const {
 		switch (m_args.m_action) {
+			case LoaderAction::Interactive:
 			case LoaderAction::Ask:
 			case LoaderAction::Load:
 			case LoaderAction::Unload:

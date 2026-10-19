@@ -32,6 +32,13 @@ namespace {
 			throw std::invalid_argument("Alias must not contain control characters");
 	}
 
+	void ValidateArgument(const std::string& key, const std::string& value) {
+		if (key.empty() || key.size() > 64 || std::ranges::any_of(key, [](char c) { return !std::isalnum(static_cast<uint8_t>(c)) && c != '.' && c != '_'; }))
+			throw std::invalid_argument("Argument has an invalid key");
+		if (value.empty() || value.size() > 1024 || std::ranges::any_of(value, [](char c) { return c <= 0x20 || c >= 0x7F || c == '"'; }))
+			throw std::invalid_argument(std::format("Argument {} has an invalid value", key));
+	}
+
 	ArgumentList ArgumentsFromJson(const nlohmann::json& json) {
 		const auto& items = json.at("Arguments");
 		if (!items.is_array() || items.size() > 64)
@@ -46,10 +53,7 @@ namespace {
 
 			auto key = argument.substr(0, eq);
 			auto value = argument.substr(eq + 1);
-			if (key.size() > 64 || std::ranges::any_of(key, [](char c) { return !std::isalnum(static_cast<uint8_t>(c)) && c != '.' && c != '_'; }))
-				throw std::invalid_argument("Argument has an invalid key");
-			if (value.empty() || value.size() > 1024 || std::ranges::any_of(value, [](char c) { return c <= 0x20 || c >= 0x7F || c == '"'; }))
-				throw std::invalid_argument(std::format("Argument {} has an invalid value", key));
+			ValidateArgument(key, value);
 			arguments.emplace_back(std::move(key), std::move(value));
 		}
 		if (std::ranges::none_of(arguments, [](const auto& p) { return p.first == SessionIdKey; }))
@@ -481,10 +485,13 @@ XivAlexander::Apps::MainApp::Features::LoginSessions::RenameResult XivAlexander:
 		return RenameResult::InvalidAlias;
 	}
 
+	if (alias.empty())
+		return StoreLaunchSession(newAlias);
+
 	const auto target = CredentialTarget(alias);
 	const auto newTarget = CredentialTarget(newAlias);
 	PCREDENTIALW cred = nullptr;
-	if (alias.empty() || !CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &cred))
+	if (!CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &cred))
 		return RenameResult::NotFound;
 	const auto freeCred = xivres::util::on_dtor([cred] { CredFree(cred); });
 
@@ -544,6 +551,59 @@ XivAlexander::Apps::MainApp::Features::LoginSessions::RenameResult XivAlexander:
 			m_pImpl->LaunchSession->Alias = newAlias;
 		for (auto& session : m_pImpl->Sessions) {
 			if (session.Alias == alias)
+				session.Alias = newAlias;
+		}
+	}
+	m_pImpl->Reload(false);
+	OnChange();
+	return RenameResult::Renamed;
+}
+
+XivAlexander::Apps::MainApp::Features::LoginSessions::RenameResult XivAlexander::Apps::MainApp::Features::LoginSessions::StoreLaunchSession(const std::string& newAlias) {
+	{
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (!m_pImpl->LaunchSession || !m_pImpl->LaunchSession->Alias.empty())
+			return RenameResult::NotFound;
+	}
+
+	const auto target = CredentialTarget(newAlias);
+	if (PCREDENTIALW existing = nullptr; CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &existing)) {
+		CredFree(existing);
+		return RenameResult::AlreadyExists;
+	}
+
+	nlohmann::ordered_json arguments = nlohmann::ordered_json::array();
+	for (const auto& [key, value] : Game::CommandLine::FromString(Dll::GetOriginalCommandLine())) {
+		try {
+			ValidateArgument(key, value);
+		} catch (const std::invalid_argument&) {
+			continue;
+		}
+		if (arguments.size() < 64)
+			arguments.emplace_back(std::format("{}={}", key, value));
+	}
+	auto blob = nlohmann::ordered_json{{"Alias", newAlias}, {"Arguments", std::move(arguments)}}.dump();
+	const auto wipeBlob = xivres::util::on_dtor([&blob] { SecureZeroMemory(blob.data(), blob.size()); });
+
+	const auto newAliasW = xivres::util::unicode::convert<std::wstring>(newAlias);
+	CREDENTIALW cred{
+		.Type = CRED_TYPE_GENERIC,
+		.TargetName = const_cast<LPWSTR>(target.c_str()),
+		.CredentialBlobSize = static_cast<DWORD>(blob.size()),
+		.CredentialBlob = reinterpret_cast<LPBYTE>(blob.data()),
+		.Persist = CRED_PERSIST_LOCAL_MACHINE,
+		.UserName = const_cast<LPWSTR>(newAliasW.c_str()),
+	};
+	if (!CredWriteW(&cred, 0))
+		throw Utils::Win32::Error("CredWriteW");
+	m_pImpl->Logger->Format(LogCategory::General, "Stored the login session of the launch arguments as \"{}\"", newAlias);
+
+	{
+		const auto lock = std::lock_guard(m_pImpl->Mtx);
+		if (m_pImpl->LaunchSession)
+			m_pImpl->LaunchSession->Alias = newAlias;
+		for (auto& session : m_pImpl->Sessions) {
+			if (session.Alias.empty())
 				session.Alias = newAlias;
 		}
 	}

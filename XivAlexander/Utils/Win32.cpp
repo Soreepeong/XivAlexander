@@ -233,16 +233,8 @@ void Utils::Win32::AddDebugPrivilege() {
 	Handle token;
 	{
 		HANDLE hToken;
-		if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hToken)) {
-			if (GetLastError() == ERROR_NO_TOKEN) {
-				if (!ImpersonateSelf(SecurityImpersonation))
-					throw Error("AddDebugPrivilege: ImpersonateSelf(SecurityImpersonation)");
-
-				if (!OpenThreadToken(GetCurrentThread(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hToken))
-					throw Error("AddDebugPrivilege: OpenThreadToken#2");
-			} else
-				throw Error("AddDebugPrivilege: OpenThreadToken#1");
-		}
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+			throw Error("AddDebugPrivilege: OpenProcessToken");
 		token = Handle(hToken, INVALID_HANDLE_VALUE, "AddDebugPrivilege: Invalid");
 	}
 

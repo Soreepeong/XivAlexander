@@ -1875,8 +1875,15 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSessionRows() {
 					loginSessions->Select(index);
 			},
 			false, 1);
-		if (alias.empty())
+		if (alias.empty()) {
+			m_rows.back()->ContextMenu = [this, &row = *m_rows.back()](POINT ptScreen) {
+				ShowPopupMenu(m_hWnd, ptScreen, {
+					{m_config->Runtime.GetStringRes(IDS_SETTINGS_SESSIONS_RENAME), [&] { BeginSessionRename(row, {}); }},
+				});
+			};
 			continue;
+		}
+
 		m_rows.back()->ContextMenu = [this, &row = *m_rows.back(), alias = xivres::util::unicode::convert<std::string>(alias), label](POINT ptScreen) {
 			ShowPopupMenu(m_hWnd, ptScreen, {
 				{m_config->Runtime.GetStringRes(IDS_SETTINGS_SESSIONS_RENAME), [&] { BeginSessionRename(row, alias); }},
