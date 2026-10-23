@@ -1939,7 +1939,8 @@ namespace XivAlexander::Game::Resolved::CrowdFix {
 			if (matchingSlots(slotsOf(vtable), GraphicsAllocatorCountingWrapper, [innerOffset](const ScanResult& w) { return w.Get<int32_t>(2) == innerOffset; }).empty())
 				continue;
 
-			ctx.Require(!classes, ResolveError::Ambiguous, "graphics allocator vtables at {} and {}", Signatures::Describe(std::get<0>(*classes)), Signatures::Describe(vtable));
+			if (classes)
+				ctx.Require(false, ResolveError::Ambiguous, "graphics allocator vtables at {} and {}", Signatures::Describe(std::get<0>(*classes)), Signatures::Describe(vtable));
 			classes.emplace(vtable, inner, innerOffset);
 		}
 		ctx.Require(classes.has_value(), ResolveError::NotFound, "graphics allocator vtable not found");

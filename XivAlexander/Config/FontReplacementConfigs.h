@@ -124,9 +124,10 @@ namespace XivAlexander {
 		float Level = 1;
 		float Contrast = 0.5f;
 		float Gamma = 1.8f;
+		float GrayscaleContrast = 1;
 
 		[[nodiscard]] FontReplacementClearTypeConfig Clamped() const {
-			return {std::clamp(Level, 0.f, 1.f), std::clamp(Contrast, 0.f, 4.f), std::clamp(Gamma, 1.f, 2.2f)};
+			return {std::clamp(Level, 0.f, 1.f), std::clamp(Contrast, 0.f, 4.f), std::clamp(Gamma, 1.f, 2.2f), std::clamp(GrayscaleContrast, 0.f, 4.f)};
 		}
 
 		bool operator==(const FontReplacementClearTypeConfig&) const = default;

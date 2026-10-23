@@ -39,6 +39,7 @@ FontReplacement::SubpixelShaders::SettingsRecord FontReplacement::SubpixelShader
 		res.Level = std::clamp(parameters->GetClearTypeLevel(), 0.f, 1.f);
 		res.Contrast = (std::max)(parameters->GetEnhancedContrast(), 0.f);
 		res.Gamma = (std::max)(parameters->GetGamma(), 1.f);
+		res.GrayscaleContrast = (std::max)(parameters->GetGrayscaleEnhancedContrast(), 0.f);
 	} catch (const std::exception& e) {
 		Host::Warning("Windows' ClearType settings couldn't be read; using the defaults: {}", e.what());
 	}
@@ -90,6 +91,7 @@ FontReplacement::SubpixelShaders::SettingsRecord FontReplacement::SubpixelShader
 				.Level = clamped.Level,
 				.Contrast = clamped.Contrast,
 				.Gamma = clamped.Gamma,
+				.GrayscaleContrast = clamped.GrayscaleContrast,
 			};
 		}
 

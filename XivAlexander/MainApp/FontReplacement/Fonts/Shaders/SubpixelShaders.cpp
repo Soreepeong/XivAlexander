@@ -9,10 +9,12 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
-	// The bits of FontSubpixelPS.hlsl's ClearTypeLevel (0.234567891f), Contrast (0.345678912f) and Gamma (0.456789123f), compiled as immediate operands.
+	// The bits of FontSubpixelPS.hlsl's ClearTypeLevel (0.234567891f), Contrast (0.345678912f), Gamma (0.456789123f) and GrayscaleContrast
+	// (0.567891234f), compiled as immediate operands.
 	constexpr uint32_t ClearTypeLevelSentinel = 0x3E703291;
 	constexpr uint32_t ContrastSentinel = 0x3EB0FCD4;
 	constexpr uint32_t GammaSentinel = 0x3EE9E044;
+	constexpr uint32_t GrayscaleContrastSentinel = 0x3F116152;
 
 	// PackedBlendStateDesc fields hold D3D11_BLEND minus one.
 	constexpr int SrcBlendShift = 4;
@@ -98,7 +100,9 @@ void FontReplacement::SubpixelShaders::Apply(const SettingsRecord& value) {
 		Resolve();
 
 	const auto lock = std::scoped_lock(m_mutex);
-	const auto shaderChanged = value.Level != m_settings.Level || value.Contrast != m_settings.Contrast || value.Gamma != m_settings.Gamma;
+	auto ordered = value;
+	ordered.Order = m_settings.Order;
+	const auto shaderChanged = ordered != m_settings;
 	m_settings = value;
 	m_enabled = value.Order != SubpixelOrder::None;
 
@@ -243,7 +247,12 @@ uintptr_t FontReplacement::SubpixelShaders::GetShaderObjectOrNull(uintptr_t serv
 
 ID3D11PixelShaderPtr FontReplacement::SubpixelShaders::CreateShader(ID3D11PixelShader* game, const PassShader& p) const {
 	auto code = PixelShaderSwap::ReadShaderCode(p.Code);
-	if (!PixelShaderSwap::PatchConstants(code, {{ClearTypeLevelSentinel, m_settings.Level}, {ContrastSentinel, m_settings.Contrast}, {GammaSentinel, m_settings.Gamma}}))
+	if (!PixelShaderSwap::PatchConstants(code, {
+		{ClearTypeLevelSentinel, m_settings.Level},
+		{ContrastSentinel, m_settings.Contrast},
+		{GammaSentinel, m_settings.Gamma},
+		{GrayscaleContrastSentinel, m_settings.GrayscaleContrast},
+	}))
 		Host::Warning("Placeholder variables missing or repeated: {}", p.CodeFile);
 	return PixelShaderSwap::CreateShader(game, code);
 }

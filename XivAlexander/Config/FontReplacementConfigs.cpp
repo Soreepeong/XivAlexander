@@ -194,6 +194,7 @@ void XivAlexander::to_json(nlohmann::json& j, const FontReplacementClearTypeConf
 		{"Level", v.Level},
 		{"Contrast", v.Contrast},
 		{"Gamma", v.Gamma},
+		{"GrayscaleContrast", v.GrayscaleContrast},
 	});
 }
 
@@ -202,6 +203,7 @@ void XivAlexander::from_json(const nlohmann::json& j, FontReplacementClearTypeCo
 	Read(j, "Level", v.Level);
 	Read(j, "Contrast", v.Contrast);
 	Read(j, "Gamma", v.Gamma);
+	Read(j, "GrayscaleContrast", v.GrayscaleContrast);
 }
 
 void XivAlexander::to_json(nlohmann::json& j, const FontReplacementSubpixelMode& v) {

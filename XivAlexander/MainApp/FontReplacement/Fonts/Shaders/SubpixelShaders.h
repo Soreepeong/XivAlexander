@@ -25,6 +25,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			// The display's gamma, which blending corrects for.
 			float Gamma = 1.8f;
 
+			// Contrast for glyphs drawn scaled, which are blended as grayscale.
+			float GrayscaleContrast = 1;
+
 			[[nodiscard]] static SettingsRecord FromWindow(HWND window);
 
 			[[nodiscard]] static SettingsRecord From(FontReplacementSubpixelMode mode, const FontReplacementClearTypeConfig& clearType, HWND window);

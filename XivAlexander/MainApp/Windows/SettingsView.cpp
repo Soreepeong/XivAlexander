@@ -3229,7 +3229,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	const auto isVertical = [&mode] { return mode.Value() == FontReplacementSubpixelMode::VerticalRgb || mode.Value() == FontReplacementSubpixelMode::VerticalBgr; };
 	const auto windows = [this] {
 		const auto settings = FontReplacement::SubpixelShaders::SettingsRecord::FromWindow(m_app.GetGameWindowHandle());
-		return FontReplacementClearTypeConfig{settings.Level, settings.Contrast, settings.Gamma};
+		return FontReplacementClearTypeConfig{settings.Level, settings.Contrast, settings.Gamma, settings.GrayscaleContrast};
 	};
 	const auto shown = [&clearType, windows, own] { return own() ? clearType.Value() : windows(); };
 
@@ -3291,6 +3291,8 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::AddSubpixelRows() {
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_CONTRAST_TIP);
 	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_GAMMA), 1, 2.2, 0.05, [shown] { return static_cast<double>(shown().Gamma); }, setter(&FontReplacementClearTypeConfig::Gamma));
 	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_GAMMA_TIP);
+	CreateSliderRow(rt.GetStringRes(IDS_SETTINGS_CLEARTYPE_GRAYSCALE_CONTRAST), 0, 4, 0.05, [shown] { return static_cast<double>(shown().GrayscaleContrast); }, setter(&FontReplacementClearTypeConfig::GrayscaleContrast));
+	AddHelp(m_rows.size() - 1, IDS_SETTINGS_CLEARTYPE_GRAYSCALE_CONTRAST_TIP);
 
 	// The layout can be chosen while subpixel rendering is on, what draws vertical stripes with one of them, and the values set with
 	// a stripe order; refreshed in place, as rebuilding the page would scroll it to the top.
