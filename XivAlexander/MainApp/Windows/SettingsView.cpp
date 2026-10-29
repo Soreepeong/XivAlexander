@@ -1027,6 +1027,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	label(rt.Ui.MainWindow.NotifyWhenHidden, IDS_SETTINGS_NOTIFYWHENHIDDEN);
 	label(rt.FramerateControl.BackgroundLimit, IDS_SETTINGS_BACKGROUNDLIMIT);
 	m_itemInfo[&rt.FramerateControl.BackgroundLimit].BesideCheck = true;
+	label(rt.FramerateControl.BackgroundLimitOnlyWithMultipleInstances, IDS_SETTINGS_BACKGROUNDLIMIT_MULTIPLEINSTANCES);
 	label(rt.FramerateControl.Lock.Interval, IDS_SETTINGS_LOCK_INTERVAL);
 	label(rt.FramerateControl.Lock.Automatic, IDS_SETTINGS_LOCK_AUTOMATIC);
 	label(rt.FramerateControl.Lock.TargetFramerateRangeFrom, IDS_SETTINGS_LOCK_RANGEFROM);

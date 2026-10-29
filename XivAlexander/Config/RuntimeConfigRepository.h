@@ -129,6 +129,7 @@ namespace XivAlexander {
 					return std::min(1000.0, std::max(0.1, val));
 				}
 			};
+			ConfigItem<bool> BackgroundLimitOnlyWithMultipleInstances{this, "BackgroundLimitOnlyWithMultipleInstances", false};
 
 			/// Whether any of the above needs the main thread timing handler; kept up to date by the repository.
 			ConfigItem<bool> UseMainThreadTimingHandler{this, "UseMainThreadTimingHandler", false};

@@ -24,6 +24,9 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 	int64_t LastLockedFramerateRenderDriftUs{};
 	Utils::Win32::Handle HighResTimer{};
 
+	int64_t LastOtherGameWindowCheckUs{};
+	bool OtherGameWindowExists{};
+
 	// After what the detours use, so that they go first: each waits for the calls still in its detour.
 	std::optional<Misc::Hooks::PointerFunctionOf<Game::Resolved::MessageLoopFn>> SingleMessageLoop;
 	Misc::Hooks::ImportedFunction<BOOL, LPMSG, HWND, UINT, UINT, UINT> PeekMessageW{ "user32!PeekMessageW", "user32.dll", "PeekMessageW" };
@@ -91,6 +94,30 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		return true;
 	}
 
+	bool DoesOtherGameWindowExist(int64_t nowUs) {
+		if (LastOtherGameWindowCheckUs && nowUs - LastOtherGameWindowCheckUs < Utils::SecondToMicrosecondMultiplier)
+			return OtherGameWindowExists;
+		LastOtherGameWindowCheckUs = nowUs;
+
+		OtherGameWindowExists = false;
+		for (HWND hwnd = nullptr; (hwnd = FindWindowExW(nullptr, hwnd, L"FFXIVGAME", nullptr));) {
+			DWORD pid;
+			GetWindowThreadProcessId(hwnd, &pid);
+			if (pid != GetCurrentProcessId()) {
+				OtherGameWindowExists = true;
+				break;
+			}
+		}
+		return OtherGameWindowExists;
+	}
+
+	bool ShouldLimitBackgroundFramerate(int64_t nowUs) {
+		const auto& fc = Config->Runtime.FramerateControl;
+		if (!fc.UseBackgroundLimit || fc.BackgroundLimit <= 0 || App.IsGameWindowFocused())
+			return false;
+		return !fc.BackgroundLimitOnlyWithMultipleInstances || DoesOtherGameWindowExist(nowUs);
+	}
+
 	void BeforePeekMessage() {
 		const auto& rt = Config->Runtime;
 
@@ -140,7 +167,7 @@ struct XivAlexander::Apps::MainApp::Features::MainThreadTimingHandler::Implement
 		}
 
 		const auto maxMsgWaitDuration = static_cast<DWORD>(
-			rt.FramerateControl.UseBackgroundLimit && rt.FramerateControl.BackgroundLimit > 0 && !App.IsGameWindowFocused()
+			ShouldLimitBackgroundFramerate(nowUs)
 				? 1000 / rt.FramerateControl.BackgroundLimit
 				: 0);
 		if (maxMsgWaitDuration)
