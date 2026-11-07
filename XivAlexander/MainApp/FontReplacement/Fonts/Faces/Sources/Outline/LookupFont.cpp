@@ -78,13 +78,14 @@ IDWriteFontFace5* FontReplacement::LookupFont::GetFace(float px) {
 	if (!IsVariable())
 		return m_face;
 
-	const auto key = m_autoOpticalSize ? std::round(px * 4) / 4 : 0.f;
+	// Keyed by the clamped size, so that sizes past the axis's range share one face; making a face is slow.
+	const auto key = m_autoOpticalSize ? std::clamp(std::round(px * 4) / 4, m_opticalSizeRange.minValue, m_opticalSizeRange.maxValue) : 0.f;
 	if (const auto it = m_sizedFaces.find(key); it != m_sizedFaces.end())
 		return it->second;
 
 	auto values = m_axes;
 	if (m_autoOpticalSize)
-		values.push_back({DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE, std::clamp(key, m_opticalSizeRange.minValue, m_opticalSizeRange.maxValue)});
+		values.push_back({DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE, key});
 
 	IDWriteFontFace5Ptr face;
 	ThrowOnError(m_resource->CreateFontFace(m_simulations, values.data(), static_cast<UINT32>(values.size()), &face), "CreateFontFace");

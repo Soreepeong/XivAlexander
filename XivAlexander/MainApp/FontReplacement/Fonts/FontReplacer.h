@@ -187,6 +187,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::map<GameFont*, CopyInfo> m_copies;
 		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::unique_ptr<SizedFont>> m_sizedFonts;
 
+		// GetSized's results by its arguments, as finding the family's fonts for a request is slow and wrapping asks per character.
+		std::map<std::tuple<GameFont*, int, bool>, SizedFont*> m_sizedByRequest;
+
 		// FontReplacer.cpp
 
 		static constexpr int BlankTextureSize = 4;

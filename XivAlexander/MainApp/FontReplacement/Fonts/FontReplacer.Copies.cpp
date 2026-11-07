@@ -8,6 +8,8 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 bool FontReplacement::FontReplacer::ResyncCopies(GameFont* only) {
+	// A family's fonts may have become ready since.
+	m_sizedByRequest.clear();
 	auto any = false;
 	for (auto& [copy, info] : m_copies) {
 		if (only && info.Original != only)
@@ -21,6 +23,10 @@ bool FontReplacement::FontReplacer::ResyncCopies(GameFont* only) {
 }
 
 FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx, bool bold) {
+	const auto request = std::make_tuple(original, halfPx, bold);
+	if (const auto it = m_sizedByRequest.find(request); it != m_sizedByRequest.end())
+		return it->second;
+
 	const auto px = static_cast<float>(halfPx) / 2.f;
 	struct Candidate {
 		std::string Name;
@@ -74,7 +80,7 @@ FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* or
 			sized->Fonts.emplace_back(f.Font, f.Game);
 		it = m_sizedFonts.emplace(key, std::move(sized)).first;
 	}
-	return it->second.get();
+	return m_sizedByRequest.emplace(request, it->second.get()).first->second;
 }
 
 FontReplacement::SizedFont* FontReplacement::FontReplacer::GetBoldSized(CopyInfo& info) {

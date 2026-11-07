@@ -106,6 +106,7 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	m_emptyGlyph.reset();
 	m_atlases.clear();
 	m_blankTexture.reset();
+	m_sizedByRequest.clear();
 	m_sizedFonts.clear();
 	DisposeFonts();
 	m_fallbackFonts.reset();
@@ -115,6 +116,7 @@ FontReplacement::FontReplacer::~FontReplacer() {
 void FontReplacement::FontReplacer::SetFonts(const FontSettings& value) {
 	m_layout->Clear();
 	DisposeFonts();
+	m_sizedByRequest.clear();
 	m_sizedFonts.clear();
 	m_gameFont = MaterializedFont::CreateGame(*m_services, value.SystemFallback, *m_fallbackFonts);
 	for (const auto& [name, def] : value.Preset) {
@@ -169,6 +171,7 @@ void FontReplacement::FontReplacer::RemakeAtlases() {
 		const auto lock = std::scoped_lock(m_pendingPagesMutex);
 		m_pendingPageAtlases.clear();
 	}
+	m_sizedByRequest.clear();
 	m_sizedFonts.clear();
 	m_atlases.clear();
 	ResyncCopies();

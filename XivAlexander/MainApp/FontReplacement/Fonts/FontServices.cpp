@@ -6,7 +6,8 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 FontReplacement::FontServices::FontServices() {
-	ThrowOnError(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory7), reinterpret_cast<IUnknown**>(&m_factory)), "DWriteCreateFactory");
+	// Isolated, as a shared factory keeps remapping the font cache service's cache as new sizes are shaped, which stalls for tens of milliseconds.
+	ThrowOnError(DWriteCreateFactory(DWRITE_FACTORY_TYPE_ISOLATED, __uuidof(IDWriteFactory7), reinterpret_cast<IUnknown**>(&m_factory)), "DWriteCreateFactory");
 	ThrowOnError(m_factory->CreateTextAnalyzer(&m_analyzer), "CreateTextAnalyzer");
 
 	IDWriteFontCollectionPtr systemFonts;
