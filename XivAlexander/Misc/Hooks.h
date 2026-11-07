@@ -36,12 +36,20 @@ namespace XivAlexander::Misc::Hooks {
 #endif
 
 	private:
-		static std::vector<char, Utils::Win32::HeapAllocator<char>> CreateThunkBody(void* this_, void* templateMethod);
+		static std::vector<char, Utils::Win32::HeapAllocator<char>> CreateThunkBody(void* this_, void* templateMethod, std::optional<size_t>& functionTable);
 
+		// Where in the thunk its function table entry is, if it has one.
+		std::optional<size_t> m_functionTable;
 		const std::vector<char, Utils::Win32::HeapAllocator<char>> m_impl;
+
+#if INTPTR_MAX == INT64_MAX
+		[[nodiscard]] PRUNTIME_FUNCTION GetFunctionTable() const;
+#endif
 
 	public:
 		Binder(void* this_, void* templateMethod);
+		Binder(const Binder&) = delete;
+		Binder& operator=(const Binder&) = delete;
 		~Binder();
 
 		template<typename F = void*>

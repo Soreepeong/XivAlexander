@@ -3,7 +3,7 @@
 
 #include <tlhelp32.h>
 
-std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::Binder::CreateThunkBody(void* this_, void* templateMethod) {
+std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::Binder::CreateThunkBody(void* this_, void* templateMethod, std::optional<size_t>& functionTable) {
 	static Utils::Win32::HeapAllocator<char> allocator(HEAP_CREATE_ENABLE_EXECUTE);
 
 	auto source = static_cast<const char*>(templateMethod);
@@ -118,11 +118,37 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 	), &this_, sizeof this_);
 
 #if INTPTR_MAX == INT64_MAX
+	const auto codeSize = body.size();
 	for (const auto& [pos, ptr] : replacementJumps) {
 		const auto displacement = static_cast<uint32_t>(body.size() - 4 - pos);
 		static_assert(sizeof displacement == 4);
 		std::memcpy(&body[pos], &displacement, sizeof displacement);
 		body.insert(body.end(), reinterpret_cast<const char*>(&ptr), reinterpret_cast<const char*>(&ptr + 1));
+	}
+
+	// The thunk starts as a copy of the template method, so the method's unwind info describes it, letting stack walks pass through hooks.
+	// Only plain unwind info whose prologue was copied unchanged is used; otherwise the thunk goes without, as a wrong entry is worse.
+	DWORD64 imageBase;
+	if (const auto entry = RtlLookupFunctionEntry(reinterpret_cast<DWORD64>(source), &imageBase, nullptr);
+		entry && imageBase + entry->BeginAddress == reinterpret_cast<DWORD64>(source) && !(entry->UnwindData & 1)) {
+		const auto unwind = reinterpret_cast<const uint8_t*>(imageBase + entry->UnwindData);
+		const auto flags = unwind[0] >> 3;
+		const auto prologSize = static_cast<size_t>(unwind[1]);
+		const auto codeCount = static_cast<size_t>(unwind[2]);
+		const auto changedAt = replacementJumps.empty() ? codeSize : replacementJumps.begin()->first - 2;
+		if (flags == 0 && prologSize <= changedAt) {
+			body.resize((body.size() + 3) & ~size_t{3});
+			const auto unwindOffset = body.size();
+			body.insert(body.end(), reinterpret_cast<const char*>(unwind), reinterpret_cast<const char*>(unwind) + 4 + 2 * ((codeCount + 1) & ~size_t{1}));
+
+			const RUNTIME_FUNCTION thunkEntry{
+				.BeginAddress = 0,
+				.EndAddress = static_cast<DWORD>(codeSize),
+				.UnwindData = static_cast<DWORD>(unwindOffset),
+			};
+			functionTable = body.size();
+			body.insert(body.end(), reinterpret_cast<const char*>(&thunkEntry), reinterpret_cast<const char*>(&thunkEntry + 1));
+		}
 	}
 
 #elif INTPTR_MAX == INT32_MAX
@@ -137,10 +163,25 @@ std::vector<char, Utils::Win32::HeapAllocator<char>> XivAlexander::Misc::Hooks::
 }
 
 XivAlexander::Misc::Hooks::Binder::Binder(void* this_, void* templateMethod)
-	: m_impl(CreateThunkBody(this_, templateMethod)) {
+	: m_impl(CreateThunkBody(this_, templateMethod, m_functionTable)) {
+#if INTPTR_MAX == INT64_MAX
+	if (m_functionTable && !RtlAddFunctionTable(GetFunctionTable(), 1, reinterpret_cast<DWORD64>(m_impl.data())))
+		m_functionTable.reset();
+#endif
 }
 
-XivAlexander::Misc::Hooks::Binder::~Binder() = default;
+XivAlexander::Misc::Hooks::Binder::~Binder() {
+#if INTPTR_MAX == INT64_MAX
+	if (m_functionTable)
+		RtlDeleteFunctionTable(GetFunctionTable());
+#endif
+}
+
+#if INTPTR_MAX == INT64_MAX
+PRUNTIME_FUNCTION XivAlexander::Misc::Hooks::Binder::GetFunctionTable() const {
+	return reinterpret_cast<PRUNTIME_FUNCTION>(const_cast<char*>(m_impl.data() + *m_functionTable));
+}
+#endif
 
 XivAlexander::Misc::Hooks::WndProcFunction::WndProcFunction(const char* szName, HWND hWnd)
 	: Super(szName, reinterpret_cast<WNDPROC>(GetWindowLongPtrW(hWnd, GWLP_WNDPROC)))
