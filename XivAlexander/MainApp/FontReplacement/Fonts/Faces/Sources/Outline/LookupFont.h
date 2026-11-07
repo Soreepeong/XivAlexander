@@ -25,6 +25,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Without the optical size when it follows the text size, which GetFace adds per size.
 		std::vector<DWRITE_FONT_AXIS_VALUE> m_axes;
+
+		// Locked, as clusters are rasterized on several threads at once.
+		std::mutex m_sizedFacesMutex;
 		std::map<float, IDWriteFontFace5Ptr> m_sizedFaces;
 		DWRITE_FONT_AXIS_RANGE m_opticalSizeRange{};
 		bool m_autoOpticalSize = false;

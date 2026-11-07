@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Text/GameTextLayout.h"
 
+#include <execution>
+
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
@@ -15,6 +17,7 @@ namespace {
 }
 
 void FontReplacement::GameTextLayout::PlaceClusters(const uint8_t* bytes, std::vector<GameGlyph*>& glyphs) {
+	RasterizeConcurrently();
 	const auto count = m_clusters.size();
 	std::vector<int> starts(count);
 	for (size_t i = 0; i < count; i++) {
@@ -65,21 +68,53 @@ void FontReplacement::GameTextLayout::PlaceClusters(const uint8_t* bytes, std::v
 
 FontReplacement::GameGlyph* FontReplacement::GameTextLayout::GetSpacer(const SizedFont& sized, int advance) {
 	const auto key = std::make_pair(&sized, advance);
-	if (const auto it = m_spacers.find(key); it != m_spacers.end())
-		return it->second;
-	const auto cell = m_replacer.PlaceCell(sized, RasterGlyph{advance}, 0);
-	m_spacers.emplace(key, cell);
-	return cell;
+	const auto frame = m_replacer.Frame();
+	if (const auto found = m_spacers.Find(key, frame))
+		return *found;
+	return m_spacers.Add(key, m_replacer.Keep(m_replacer.PlaceCell(sized, RasterGlyph{advance}, 0)), frame);
 }
 
-const FontReplacement::RasterGlyph& FontReplacement::GameTextLayout::GetRaster(Cluster& c) {
-	const auto& sized = *m_shapingSized;
-	const auto& glyphSource = *c.GlyphSource;
+void FontReplacement::GameTextLayout::RasterizeConcurrently() {
+	const auto frame = m_replacer.Frame();
+	std::vector<const Cluster*> pending;
+	std::set<RasterKey> seen;
+	for (auto& c : m_clusters) {
+		if (c.Missing() || !c.Source->RasterizesConcurrently())
+			continue;
+		const auto& key = KeyOf(c);
+		if (!m_rasters.Find(key, frame) && seen.insert(key).second)
+			pending.push_back(&c);
+	}
+	if (pending.size() < 2)
+		return;
+
+	// A cluster that fails is rasterized again by GetRaster, which reports it.
+	std::vector<std::optional<RasterGlyph>> raws(pending.size());
+	std::vector<uint8_t> failed(pending.size());
+	std::vector<size_t> indices(pending.size());
+	std::iota(indices.begin(), indices.end(), size_t{});
+	std::for_each(std::execution::par, indices.begin(), indices.end(), [&](size_t i) {
+		const auto& c = *pending[i];
+		try {
+			raws[i] = c.Source->Rasterize(c.Px, {c.GlyphIds, c.Advances, c.Offsets}, {.OriginX = c.Origin, .Advance = c.RawAdvance});
+		} catch (...) {
+			failed[i] = 1;
+		}
+	});
+
+	for (size_t i = 0; i < pending.size(); i++) {
+		if (!failed[i])
+			AddRaster(*pending[i], std::move(raws[i]));
+	}
+}
+
+const FontReplacement::GameTextLayout::RasterKey& FontReplacement::GameTextLayout::KeyOf(Cluster& c) {
 	if (!c.Key) {
+		const auto& sized = *m_shapingSized;
 		RasterKey key{
 			.Font = sized.Font,
 			.Px = sized.Px,
-			.Element = glyphSource.Element,
+			.Element = c.GlyphSource->Element,
 			.Source = c.Source,
 			.EmSize = c.Px,
 			.Origin = c.Origin,
@@ -91,27 +126,34 @@ const FontReplacement::RasterGlyph& FontReplacement::GameTextLayout::GetRaster(C
 			key.Offsets.emplace_back(o.Advance, o.Ascender);
 		c.Key = std::move(key);
 	}
+	return *c.Key;
+}
 
-	if (const auto it = m_rasters.find(*c.Key); it != m_rasters.end())
-		return it->second;
+const FontReplacement::RasterGlyph& FontReplacement::GameTextLayout::GetRaster(Cluster& c) {
+	if (const auto found = m_rasters.Find(KeyOf(c), m_replacer.Frame()))
+		return *found;
+	return AddRaster(c, c.Source->Rasterize(c.Px, {c.GlyphIds, c.Advances, c.Offsets}, {.OriginX = c.Origin, .Advance = c.RawAdvance}));
+}
 
+const FontReplacement::RasterGlyph& FontReplacement::GameTextLayout::AddRaster(const Cluster& c, std::optional<RasterGlyph> raw) {
+	const auto& sized = *m_shapingSized;
+	const auto& glyphSource = *c.GlyphSource;
 	const GlyphRun run{c.GlyphIds, c.Advances, c.Offsets};
-	auto raster = c.Source->Rasterize(c.Px, run, {.OriginX = c.Origin, .Advance = c.RawAdvance}).value_or(RasterGlyph{c.RawAdvance});
-	raster = glyphSource.Element->Wrap(std::move(raster), sized.Px, glyphSource.Font->GetAlignment(sized.Px, glyphSource.Game), *c.Source, run, c.Origin);
+	auto raster = glyphSource.Element->Wrap(
+		std::move(raw).value_or(RasterGlyph{c.RawAdvance}), sized.Px, glyphSource.Font->GetAlignment(sized.Px, glyphSource.Game), *c.Source, run, c.Origin);
 
 	// The edge margin puts ink left of the pen, so the cell starts earlier (PlaceClusters), keeping the spacing.
 	raster = m_replacer.FinishGlyph(sized, std::move(raster));
-	if (m_rasters.size() >= MaxCachedRasters)
-		m_rasters.clear();
-	return m_rasters.emplace(*c.Key, std::move(raster)).first->second;
+	return m_rasters.Add(*c.Key, std::move(raster), m_replacer.Frame());
 }
 
 FontReplacement::GameGlyph* FontReplacement::GameTextLayout::GetCell(Cluster& c, const uint8_t* bytes, int pad, int advance) {
 	const auto& sized = *m_shapingSized;
 	const auto& raster = GetRaster(c);
 	const auto key = std::make_tuple(*c.Key, &sized, pad, advance);
-	if (const auto it = m_cells.find(key); it != m_cells.end())
-		return it->second;
+	const auto frame = m_replacer.Frame();
+	if (const auto found = m_cells.Find(key, frame))
+		return *found;
 
 	auto placed = raster;
 	placed.Advance = advance;
@@ -125,6 +167,5 @@ FontReplacement::GameGlyph* FontReplacement::GameTextLayout::GetCell(Cluster& c,
 	const auto cell = m_replacer.PlaceCell(sized, std::move(placed), utf8);
 	if (c.RealItalic)
 		m_replacer.MarkRealItalic(cell);
-	m_cells.emplace(key, cell);
-	return cell;
+	return m_cells.Add(key, m_replacer.Keep(cell), frame);
 }

@@ -16,19 +16,21 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class MergingFaceSource final : public NominalFaceSource {
 		class BaseFont;
 
-		std::unique_ptr<IFaceSource> m_inner;
+		// May be shared with other elements, so it is made with the measuring mode already set.
+		std::shared_ptr<IFaceSource> m_inner;
+
 		FontChanger::Structs::FontElement m_def;
 		std::unique_ptr<OutlineFaceSource> m_ownTextOutline;
 		OutlineFaceSource* m_textOutline;
 		std::set<char32_t> m_codepoints;
 		std::map<float, std::shared_ptr<FontChanger::FixedSizeFont::glyph_merging_fixed_size_font>> m_fonts;
 
-		MergingFaceSource(std::unique_ptr<IFaceSource> inner, FontChanger::Structs::FontElement def, std::unique_ptr<OutlineFaceSource> ownTextOutline);
+		MergingFaceSource(std::shared_ptr<IFaceSource> inner, FontChanger::Structs::FontElement def, std::unique_ptr<OutlineFaceSource> ownTextOutline);
 
 	public:
 		~MergingFaceSource() override;
 
-		static std::unique_ptr<MergingFaceSource> Create(std::unique_ptr<IFaceSource> inner, const FontChanger::Structs::FontElement& def, FontServices& services, const std::string& fontName);
+		static std::unique_ptr<MergingFaceSource> Create(std::shared_ptr<IFaceSource> inner, const FontChanger::Structs::FontElement& def, FontServices& services, const std::string& fontName);
 
 		const std::set<char32_t>& Codepoints() override { return m_codepoints; }
 		uint32_t GetGlyphId(char32_t codepoint) override { return m_codepoints.contains(codepoint) ? static_cast<uint32_t>(codepoint) : 0u; }

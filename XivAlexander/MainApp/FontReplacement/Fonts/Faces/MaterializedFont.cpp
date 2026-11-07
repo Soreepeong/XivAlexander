@@ -7,6 +7,8 @@
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Presets.h"
 #include "MainApp/FontReplacement/Game/FontNames.h"
+#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/Faces/FaceSourceCache.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/Nominal/EmptyFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/Nominal/GameFontDataFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/Nominal/ImageFaceSource.h"
@@ -19,45 +21,65 @@ using FontChanger::Structs::FontElement;
 using FontChanger::Structs::ElementSourceEnum;
 using namespace FontChanger::FixedSizeFont;
 
-FontReplacement::MaterializedFont::MaterializedFont(FontServices& services, std::shared_ptr<const FontChanger::Structs::Font> def, bool systemFallback, SystemFallbackFonts& fallbackFonts)
+FontReplacement::MaterializedFont::MaterializedFont(
+	FontServices& services, std::shared_ptr<const FontChanger::Structs::Font> def, bool systemFallback, SystemFallbackFonts& fallbackFonts, std::shared_ptr<FaceSourceCache> sources)
 	: m_services(services)
 	, m_def(std::move(def))
 	, m_fallbackFonts(fallbackFonts)
 	, m_systemFallback(systemFallback)
+	, m_sources(std::move(sources))
 	, m_referenceSize(!m_def->Elements.empty() && m_def->Elements[0]->Size > 0 ? m_def->Elements[0]->Size : 1.f) {
 	FontElement gameDef;
 	gameDef.Size = m_referenceSize;
 	gameDef.Source = ElementSourceEnum::Game;
 	m_gameElement = std::make_unique<MaterializedFontElement>(std::move(gameDef), nullptr, m_referenceSize);
 
-	for (const auto& e : m_def->Elements)
-		m_elements.push_back(std::make_unique<MaterializedFontElement>(*e, CreateSource(*e, services, m_def->Name), m_referenceSize));
+	// The first installed font's measuring mode is known before the sources are made with it, as shared sources can't change it afterwards.
+	std::vector<bool> installed(m_def->Elements.size());
+	for (size_t i = 0; i < installed.size(); i++) {
+		const auto& e = *m_def->Elements[i];
+		IDWriteFont3Ptr font;
+		installed[i] = (e.Source == ElementSourceEnum::DirectWrite || e.Source == ElementSourceEnum::FreeType) && services.TryFindFont(e.Lookup, font);
+	}
+	if (const auto first = std::ranges::find(installed, true); first != installed.end())
+		m_measureMode = m_def->Elements[first - installed.begin()]->RendererSpecific.DirectWrite.MeasureMode;
 
-	// A font that isn't installed gets an EmptyFaceSource.
-	for (const auto& e : m_elements) {
-		const auto renderer = e->Def().Source;
-		if ((renderer == ElementSourceEnum::DirectWrite || renderer == ElementSourceEnum::FreeType) && !dynamic_cast<EmptyFaceSource*>(e->Source())) {
-			m_primary = e.get();
-			break;
+	for (size_t i = 0; i < installed.size(); i++) {
+		const auto& e = *m_def->Elements[i];
+		try {
+			const auto& element = m_elements.emplace_back(std::make_unique<MaterializedFontElement>(e, CreateSource(e), m_referenceSize));
+			if (!m_primary && installed[i])
+				m_primary = element.get();
+		} catch (const std::exception& ex) {
+			Host::Warning("{}: element {} ({}) can't be set up and is left out: {}", m_def->Name, i + 1, e.Lookup.FamilyName, ex.what());
 		}
 	}
-	m_measureMode = m_primary ? m_primary->Def().RendererSpecific.DirectWrite.MeasureMode : DWRITE_MEASURING_MODE_NATURAL;
-	for (const auto& e : m_elements) {
-		if (const auto source = e->Source())
-			source->SetMeasureMode(m_measureMode);
-	}
+	if (m_elements.empty() && !m_def->Elements.empty())
+		throw std::runtime_error("None of its elements can be set up.");
 }
 
 FontReplacement::MaterializedFont::~MaterializedFont() = default;
 
-std::unique_ptr<FontReplacement::MaterializedFont> FontReplacement::MaterializedFont::CreateGame(FontServices& services, bool systemFallback, SystemFallbackFonts& fallbackFonts) {
+std::unique_ptr<FontReplacement::MaterializedFont> FontReplacement::MaterializedFont::CreateGame(
+	FontServices& services, bool systemFallback, SystemFallbackFonts& fallbackFonts, std::shared_ptr<FaceSourceCache> sources) {
 	auto font = std::make_shared<FontChanger::Structs::Font>();
 	font->Name = "(game)";
 	auto& e = *font->Elements.emplace_back(std::make_unique<FontElement>());
 	e.Size = 1;
 	e.Source = ElementSourceEnum::Game;
 	e.WrapModifiers.Codepoints = {{0, 0x10FFFF}};
-	return std::make_unique<MaterializedFont>(services, std::move(font), systemFallback, fallbackFonts);
+	return std::make_unique<MaterializedFont>(services, std::move(font), systemFallback, fallbackFonts, std::move(sources));
+}
+
+void FontReplacement::MaterializedFont::Prepare() {
+	void(OwnCodepointCount());
+	if (!m_systemFallback || GetGameSize() <= 0)
+		return;
+	try {
+		OpenFittingProbes();
+	} catch (const std::exception&) {
+		// GetFittedFallback tries again, and logs why.
+	}
 }
 
 FontReplacement::MaterializedFontElement* FontReplacement::MaterializedFont::TryGetElement(std::span<const char32_t> grapheme, GameFont* game) {
@@ -123,38 +145,45 @@ std::optional<FontReplacement::RasterGlyph> FontReplacement::MaterializedFont::T
 	return element->Wrap(std::move(*raw), px, GetAlignment(px, game), *source, run);
 }
 
-std::unique_ptr<FontReplacement::IFaceSource> FontReplacement::MaterializedFont::CreateSource(const FontElement& def, FontServices& services, const std::string& fontName) {
-	std::unique_ptr<IFaceSource> source;
-	switch (def.Source) {
-		// FontChanger's game font elements name a family read from the game's files; those made here name none and mean the replaced font.
-		case ElementSourceEnum::Game:
-			if (def.Lookup.FamilyName.empty())
-				return nullptr;
-			source = GameFontDataFaceSource::Create(def, fontName);
-			if (!source)
-				source = std::make_unique<EmptyFaceSource>(def.Size, def.RendererSpecific.Empty.Ascent, def.RendererSpecific.Empty.LineHeight);
-			break;
+std::shared_ptr<FontReplacement::IFaceSource> FontReplacement::MaterializedFont::CreateSource(const FontElement& def) {
+	// FontChanger's game font elements name a family read from the game's files; those made here name none and mean the replaced font.
+	if (def.Source == ElementSourceEnum::Game && def.Lookup.FamilyName.empty())
+		return nullptr;
 
-		case ElementSourceEnum::DirectWrite:
-		case ElementSourceEnum::FreeType:
-			source = OutlineFaceSource::Create(services, def, fontName);
-			if (!source)
-				source = std::make_unique<EmptyFaceSource>(0.f, 0.f, 0.f);
-			break;
+	auto source = m_sources->GetOrCreate(FaceSourceCache::KeyOf(def, m_measureMode), [&]() -> std::unique_ptr<IFaceSource> {
+		std::unique_ptr<IFaceSource> made;
+		switch (def.Source) {
+			case ElementSourceEnum::Game:
+				made = GameFontDataFaceSource::Create(def, m_def->Name);
+				if (!made)
+					made = std::make_unique<EmptyFaceSource>(def.Size, def.RendererSpecific.Empty.Ascent, def.RendererSpecific.Empty.LineHeight);
+				break;
 
-		case ElementSourceEnum::GlyphImages:
-			source = ImageFaceSource::Create(def);
-			break;
+			case ElementSourceEnum::DirectWrite:
+			case ElementSourceEnum::FreeType:
+				made = OutlineFaceSource::Create(m_services, def, m_def->Name);
+				if (!made)
+					made = std::make_unique<EmptyFaceSource>(0.f, 0.f, 0.f);
+				break;
 
-		default:
-			source = std::make_unique<EmptyFaceSource>(def.Size, def.RendererSpecific.Empty.Ascent, def.RendererSpecific.Empty.LineHeight);
-			break;
-	}
+			case ElementSourceEnum::GlyphImages:
+				made = ImageFaceSource::Create(def);
+				break;
+
+			default:
+				made = std::make_unique<EmptyFaceSource>(def.Size, def.RendererSpecific.Empty.Ascent, def.RendererSpecific.Empty.LineHeight);
+				break;
+		}
+		made->SetMeasureMode(m_measureMode);
+		return made;
+	});
 
 	// As in FontChanger, glyphs are merged only around fonts that draw outlines or images.
 	if (!def.GlyphMerging.IsEnabled() || (def.Source != ElementSourceEnum::DirectWrite && def.Source != ElementSourceEnum::FreeType && def.Source != ElementSourceEnum::GlyphImages))
 		return source;
-	return MergingFaceSource::Create(std::move(source), def, services, fontName);
+	auto merging = MergingFaceSource::Create(std::move(source), def, m_services, m_def->Name);
+	merging->SetMeasureMode(m_measureMode);
+	return merging;
 }
 
 FontReplacement::LineMetrics FontReplacement::MaterializedFont::GetElementMetrics(const MaterializedFontElement& element, float px, GameFont* game) {
@@ -253,9 +282,7 @@ FontReplacement::MaterializedFontElement* FontReplacement::MaterializedFont::Get
 		// Rendered as the fallback font's own bitmaps and gasp table want at its size, not as the primary element's.
 		if (const auto info = FontChanger::FontsFromSystemFont::FontInfo::Open(lookup.FamilyName, lookup.Weight, lookup.Stretch, lookup.Style))
 			def.RendererSpecific.DirectWrite.RenderMode = FontChanger::FontsFromSystemFont::GetRenderMode(*info, def.Size);
-		auto source = OutlineFaceSource::Create(m_services, def, m_def->Name);
-		if (source)
-			source->SetMeasureMode(m_measureMode);
+		auto source = CreateSource(def);
 		it = m_fallbackElements.emplace(key, std::make_unique<MaterializedFontElement>(std::move(def), std::move(source), m_referenceSize)).first;
 	}
 
@@ -272,20 +299,14 @@ const std::vector<std::unique_ptr<FontReplacement::MaterializedFontElement>>& Fo
 
 	auto& fitted = m_fittedFallback[key];
 	try {
-		const auto names = FontNames::FontNamesOf(Presets::FamilyOf(m_def->Name));
-		const auto game = std::ranges::find_if(names, [this](const auto& f) { return _stricmp(f.first.c_str(), m_def->Name.c_str()) == 0; });
-		if (game == names.end() || game->second <= 0)
+		const auto gameSize = GetGameSize();
+		if (gameSize <= 0)
 			return fitted;
 
+		OpenFittingProbes();
 		const FontChanger::FontsFromSystemFont::FontOpener open = [this](const FontChanger::Structs::LookupStruct& l) { return OpenProbe(l); };
-		if (!m_gameProbe)
-			m_gameProbe = GameFontDataFaceSource::OpenMetrics(m_def->Name);
-		if (!m_drawnProbe)
-			m_drawnProbe = FontChanger::FontsFromSystemFont::ProbeFont(*m_def, open);
-		for (auto& e : FontChanger::FontsFromSystemFont::MakeFallbackElements(*m_def, game->second, lookup, open, *m_drawnProbe, m_gameProbe->get())) {
-			auto source = CreateSource(*e, m_services, m_def->Name);
-			if (source)
-				source->SetMeasureMode(m_measureMode);
+		for (auto& e : FontChanger::FontsFromSystemFont::MakeFallbackElements(*m_def, gameSize, lookup, open, *m_drawnProbe, m_gameProbe->get())) {
+			auto source = CreateSource(*e);
 			fitted.emplace_back(std::make_unique<MaterializedFontElement>(std::move(*e), std::move(source), m_referenceSize));
 		}
 	} catch (const std::exception& e) {
@@ -293,6 +314,20 @@ const std::vector<std::unique_ptr<FontReplacement::MaterializedFontElement>>& Fo
 		fitted.clear();
 	}
 	return fitted;
+}
+
+float FontReplacement::MaterializedFont::GetGameSize() const {
+	const auto names = FontNames::FontNamesOf(Presets::FamilyOf(m_def->Name));
+	const auto game = std::ranges::find_if(names, [this](const auto& f) { return _stricmp(f.first.c_str(), m_def->Name.c_str()) == 0; });
+	return game == names.end() ? 0.f : (std::max)(0.f, game->second);
+}
+
+void FontReplacement::MaterializedFont::OpenFittingProbes() {
+	const FontChanger::FontsFromSystemFont::FontOpener open = [this](const FontChanger::Structs::LookupStruct& l) { return OpenProbe(l); };
+	if (!m_gameProbe)
+		m_gameProbe = GameFontDataFaceSource::OpenMetrics(m_def->Name);
+	if (!m_drawnProbe)
+		m_drawnProbe = FontChanger::FontsFromSystemFont::ProbeFont(*m_def, open);
 }
 
 const FontChanger::FontsFromSystemFont::FontInfo* FontReplacement::MaterializedFont::OpenProbe(const FontChanger::Structs::LookupStruct& lookup) {

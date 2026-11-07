@@ -6,7 +6,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 using namespace FontChanger::FixedSizeFont;
 
-FontReplacement::MaterializedFontElement::MaterializedFontElement(FontChanger::Structs::FontElement def, std::unique_ptr<IFaceSource> source, float referenceSize)
+FontReplacement::MaterializedFontElement::MaterializedFontElement(FontChanger::Structs::FontElement def, std::shared_ptr<IFaceSource> source, float referenceSize)
 	: m_def(std::move(def))
 	, m_source(std::move(source))
 	, m_referenceSize(referenceSize) {

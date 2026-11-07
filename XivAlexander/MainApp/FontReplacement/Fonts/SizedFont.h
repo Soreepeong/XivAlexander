@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MainApp/FontReplacement/FontStructs.h"
+#include "MainApp/FontReplacement/Utilities/AgedMap.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class GlyphAtlas;
@@ -30,16 +31,18 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Largest first; only Font at the size of one of the family's fonts.
 		std::vector<std::pair<MaterializedFont*, GameFont*>> Fonts;
 
+		// The glyphs below are held with FontReplacer::Keep, and let go of with FontReplacer::Release.
+
 		// By packed UTF-8 value; nullptr for a glyph left to the game.
-		std::unordered_map<uint32_t, GameGlyph*> Glyphs;
+		AgedMap<uint32_t, GameGlyph*> Glyphs;
 
 		// Copied from the game fonts of Fonts, by packed UTF-8 value; nullptr if none could be.
-		std::unordered_map<uint32_t, GameGlyph*> GameGlyphs;
+		AgedMap<uint32_t, GameGlyph*> GameGlyphs;
 
-		std::map<std::pair<GameFont*, const GameGlyph*>, GameGlyph*> ConvertedGlyphs;
+		AgedMap<std::pair<GameFont*, const GameGlyph*>, GameGlyph*> ConvertedGlyphs;
 
 		// Glyphs of no pixels that advance as far as wrapping measures (FontReplacer::GetWrapGlyph), by advance.
-		std::unordered_map<int, GameGlyph*> WrapCells;
+		AgedMap<int, GameGlyph*> WrapCells;
 		std::unordered_map<char32_t, GlyphSource> Picks;
 
 		// Of several fonts, the largest whose element other than the game's has the grapheme, else the game's, else one without any for it.

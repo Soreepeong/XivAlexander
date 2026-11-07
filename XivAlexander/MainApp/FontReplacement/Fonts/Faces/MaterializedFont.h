@@ -5,6 +5,7 @@
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
+	class FaceSourceCache;
 	class FontServices;
 	class SystemFallbackFonts;
 	struct GameFont;
@@ -17,9 +18,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		SystemFallbackFonts& m_fallbackFonts;
 		bool m_systemFallback;
 
+		// Shared by the fonts made together.
+		std::shared_ptr<FaceSourceCache> m_sources;
+
 		// The font's sizes are relative to its first element's.
 		float m_referenceSize;
 
+		// Without the elements that couldn't be set up.
 		std::vector<std::unique_ptr<MaterializedFontElement>> m_elements;
 		std::unique_ptr<MaterializedFontElement> m_gameElement;
 
@@ -40,12 +45,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<size_t> m_ownCodepointCount;
 
 	public:
-		MaterializedFont(FontServices& services, std::shared_ptr<const FontChanger::Structs::Font> def, bool systemFallback, SystemFallbackFonts& fallbackFonts);
+		// An element that can't be set up is left out with a warning. Throws if none of them can.
+		MaterializedFont(FontServices& services, std::shared_ptr<const FontChanger::Structs::Font> def, bool systemFallback, SystemFallbackFonts& fallbackFonts, std::shared_ptr<FaceSourceCache> sources);
 		MaterializedFont(const MaterializedFont&) = delete;
 		MaterializedFont& operator=(const MaterializedFont&) = delete;
 		~MaterializedFont();
 
-		static std::unique_ptr<MaterializedFont> CreateGame(FontServices& services, bool systemFallback, SystemFallbackFonts& fallbackFonts);
+		static std::unique_ptr<MaterializedFont> CreateGame(FontServices& services, bool systemFallback, SystemFallbackFonts& fallbackFonts, std::shared_ptr<FaceSourceCache> sources);
+
+		// Does the slow parts of the first lookups ahead, on the thread the font is made on.
+		void Prepare();
 
 		// Excludes codepoints drawn with the game's glyphs.
 		[[nodiscard]] size_t OwnCodepointCount() {
@@ -64,7 +73,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] std::optional<RasterGlyph> TryRasterize(char32_t codepoint, float px, GameFont* game, bool bold);
 	private:
 		// As FontChanger's FontElement::GetBaseFont; nullptr for the replaced game font.
-		static std::unique_ptr<IFaceSource> CreateSource(const FontChanger::Structs::FontElement& def, FontServices& services, const std::string& fontName);
+		std::shared_ptr<IFaceSource> CreateSource(const FontChanger::Structs::FontElement& def);
+
+		// The size of the game font of the font's name; 0 if there is none.
+		[[nodiscard]] float GetGameSize() const;
+
+		void OpenFittingProbes();
 
 		[[nodiscard]] static LineMetrics GetElementMetrics(const MaterializedFontElement& element, float px, GameFont* game);
 

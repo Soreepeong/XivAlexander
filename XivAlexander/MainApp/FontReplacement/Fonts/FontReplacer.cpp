@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/FontReplacer.h"
 
+#include "MainApp/FontReplacement/Fonts/Faces/FaceSourceCache.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
 #include "MainApp/FontReplacement/Fonts/Text/GameTextLayout.h"
 #include "MainApp/FontReplacement/Fonts/Text/SystemFallbackFonts.h"
@@ -49,7 +50,7 @@ FontReplacement::FontReplacer::FontReplacer() {
 
 	m_services = std::make_unique<FontServices>();
 	m_fallbackFonts = std::make_unique<SystemFallbackFonts>(*m_services);
-	m_gameFont = MaterializedFont::CreateGame(*m_services, true, *m_fallbackFonts);
+	m_gameFont = MaterializedFont::CreateGame(*m_services, true, *m_fallbackFonts, std::make_shared<FaceSourceCache>());
 	try {
 		FontNames::Initialize();
 	} catch (const std::exception& e) {
@@ -85,6 +86,9 @@ FontReplacement::FontReplacer::~FontReplacer() {
 		}
 	};
 
+	// The loader uses the services.
+	step("font loader", [this] { StopLoader(); });
+
 	// First, so that the game's font caches are rebuilt while the hooks are still there to build them.
 	step("font caches", [this] { SetEnabled(false); });
 	step("edge shader", [this] { m_edgeShader.SetSoftness(std::nullopt); });
@@ -102,6 +106,11 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	step("picked fonts", [] { ForgetPickedFonts(); });
 
 	FreeCopies();
+
+	// Its runs let go of their glyphs as they go.
+	m_layout.reset();
+	m_unreferenced.clear();
+	m_free.clear();
 	m_slots.clear();
 	m_emptyGlyph.reset();
 	m_atlases.clear();
@@ -114,18 +123,97 @@ FontReplacement::FontReplacer::~FontReplacer() {
 }
 
 void FontReplacement::FontReplacer::SetFonts(const FontSettings& value) {
-	m_layout->Clear();
-	DisposeFonts();
-	m_sizedByRequest.clear();
-	m_sizedFonts.clear();
-	m_gameFont = MaterializedFont::CreateGame(*m_services, value.SystemFallback, *m_fallbackFonts);
-	for (const auto& [name, def] : value.Preset) {
+	// Freed after the lock.
+	std::unique_ptr<LoadedFonts> superseded;
+	{
+		const auto lock = std::scoped_lock(m_loadMutex);
+		m_loadRequest = value;
+		++m_loadSerial;
+		superseded = std::move(m_loaded);
+	}
+	m_loadWake.notify_all();
+	if (!m_loadThread.joinable())
+		m_loadThread = std::thread([this] { LoaderThreadBody(); });
+}
+
+void FontReplacement::FontReplacer::LoaderThreadBody() {
+	while (true) {
+		FontSettings request;
+		uint64_t serial;
+		{
+			auto lock = std::unique_lock(m_loadMutex);
+			m_loadWake.wait(lock, [this] { return m_loadStop || m_loadRequest; });
+			if (m_loadStop)
+				return;
+			request = std::move(*m_loadRequest);
+			m_loadRequest.reset();
+			serial = m_loadSerial;
+		}
+
+		std::unique_ptr<LoadedFonts> loaded;
 		try {
-			m_presetFonts.emplace(name, std::make_unique<MaterializedFont>(*m_services, def, value.SystemFallback, *m_fallbackFonts));
+			loaded = LoadFonts(*m_services, *m_fallbackFonts, request, [this, serial] { return m_loadStop || m_loadSerial != serial; });
 		} catch (const std::exception& e) {
-			Host::Error("Setting up the font {} failed; it is drawn with the game's glyphs: {}", name, e.what());
+			Host::Error("Setting up the fonts failed; the earlier ones stay: {}", e.what());
+		}
+
+		// Swapped, so that stale fonts are freed after the lock.
+		const auto lock = std::scoped_lock(m_loadMutex);
+		if (loaded && !m_loadStop && m_loadSerial == serial)
+			std::swap(m_loaded, loaded);
+	}
+}
+
+void FontReplacement::FontReplacer::StopLoader() {
+	{
+		const auto lock = std::scoped_lock(m_loadMutex);
+		m_loadStop = true;
+	}
+	m_loadWake.notify_all();
+	if (m_loadThread.joinable())
+		m_loadThread.join();
+	m_loaded.reset();
+}
+
+std::unique_ptr<FontReplacement::FontReplacer::LoadedFonts> FontReplacement::FontReplacer::LoadFonts(
+	FontServices& services, SystemFallbackFonts& fallbackFonts, const FontSettings& value, const std::function<bool()>& stale) {
+	const auto sources = std::make_shared<FaceSourceCache>();
+	auto loaded = std::make_unique<LoadedFonts>();
+	loaded->Game = MaterializedFont::CreateGame(services, value.SystemFallback, fallbackFonts, sources);
+	loaded->Game->Prepare();
+	for (const auto& [name, def] : value.Preset) {
+		if (stale())
+			return nullptr;
+		try {
+			auto font = std::make_unique<MaterializedFont>(services, def, value.SystemFallback, fallbackFonts, sources);
+			font->Prepare();
+			loaded->Preset.emplace(name, std::move(font));
+		} catch (const std::exception& e) {
+			Host::Warning("The font {} can't be set up and is drawn with the game's glyphs: {}", name, e.what());
 		}
 	}
+	return stale() ? nullptr : std::move(loaded);
+}
+
+void FontReplacement::FontReplacer::EndFrame() {
+	ApplyLoadedFonts();
+	ApplyPendingPages();
+}
+
+void FontReplacement::FontReplacer::ApplyLoadedFonts() {
+	std::unique_ptr<LoadedFonts> loaded;
+	{
+		const auto lock = std::scoped_lock(m_loadMutex);
+		loaded = std::move(m_loaded);
+	}
+	if (!loaded)
+		return;
+
+	// The sized fonts and laid out runs refer to the fonts replaced.
+	m_layout->Clear();
+	ClearSizedFonts();
+	m_gameFont = std::move(loaded->Game);
+	m_presetFonts = std::move(loaded->Preset);
 
 	// Copies made so far point at the sized fonts just freed.
 	ResyncCopies();
@@ -135,6 +223,21 @@ void FontReplacement::FontReplacer::SetFonts(const FontSettings& value) {
 void FontReplacement::FontReplacer::DisposeFonts() {
 	m_presetFonts.clear();
 	m_gameFont.reset();
+}
+
+void FontReplacement::FontReplacer::ReleaseGlyphs(SizedFont& sized) {
+	const auto release = [this](GameGlyph* glyph) { Release(glyph); };
+	sized.Glyphs.Clear(release);
+	sized.GameGlyphs.Clear(release);
+	sized.ConvertedGlyphs.Clear(release);
+	sized.WrapCells.Clear(release);
+}
+
+void FontReplacement::FontReplacer::ClearSizedFonts() {
+	for (const auto& sized : m_sizedFonts | std::views::values)
+		ReleaseGlyphs(*sized);
+	m_sizedByRequest.clear();
+	m_sizedFonts.clear();
 }
 
 bool FontReplacement::FontReplacer::Supports4444() {
@@ -171,8 +274,7 @@ void FontReplacement::FontReplacer::RemakeAtlases() {
 		const auto lock = std::scoped_lock(m_pendingPagesMutex);
 		m_pendingPageAtlases.clear();
 	}
-	m_sizedByRequest.clear();
-	m_sizedFonts.clear();
+	ClearSizedFonts();
 	m_atlases.clear();
 	ResyncCopies();
 	ForgetPickedFonts();
@@ -245,13 +347,10 @@ void FontReplacement::FontReplacer::RebuildGlyphs() {
 	m_layout->Clear();
 	m_fullAtlases.clear();
 	m_gameReads.clear();
-	for (const auto& sized : m_sizedFonts | std::views::values) {
-		sized->Glyphs.clear();
-		sized->GameGlyphs.clear();
-		sized->ConvertedGlyphs.clear();
-		sized->WrapCells.clear();
-	}
-	m_slots.clear();
+
+	// Nothing of ours refers to the glyphs anymore, and they are freed once the game is done with them.
+	for (const auto& sized : m_sizedFonts | std::views::values)
+		ReleaseGlyphs(*sized);
 	for (const auto& atlas : m_atlases | std::views::values)
 		atlas->Clear();
 	ForgetPickedFonts();

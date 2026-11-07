@@ -39,6 +39,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			void operator()(FT_FaceRec_* face) const;
 		};
 
+		// FreeType's library and faces aren't thread safe, and fonts are loaded off the game thread.
+		std::mutex m_mutex;
+
 		// Declared before m_faces so that the faces are closed before the library.
 		std::unique_ptr<FT_LibraryRec_, LibraryCloser> m_library;
 		std::map<std::pair<std::wstring, uint32_t>, std::unique_ptr<FT_FaceRec_, FaceCloser>> m_faces;

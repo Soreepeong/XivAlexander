@@ -80,6 +80,7 @@ IDWriteFontFace5* FontReplacement::LookupFont::GetFace(float px) {
 
 	// Keyed by the clamped size, so that sizes past the axis's range share one face; making a face is slow.
 	const auto key = m_autoOpticalSize ? std::clamp(std::round(px * 4) / 4, m_opticalSizeRange.minValue, m_opticalSizeRange.maxValue) : 0.f;
+	const auto lock = std::scoped_lock(m_sizedFacesMutex);
 	if (const auto it = m_sizedFaces.find(key); it != m_sizedFaces.end())
 		return it->second;
 

@@ -56,6 +56,7 @@ FT_FaceRec_* FontReplacement::FreeTypeGlyphRasterizer::Open(IDWriteFontFace* fon
 	const auto file = GetFile(fontFace);
 	if (!file)
 		return nullptr;
+	const auto lock = std::scoped_lock(m_mutex);
 	if (const auto it = m_faces.find(*file); it != m_faces.end())
 		return it->second.get();
 
@@ -115,6 +116,7 @@ FontReplacement::RasterGlyph FontReplacement::FreeTypeGlyphRasterizer::Rasterize
 	const std::map<uint32_t, float>* axes,
 	float embolden,
 	float originY) {
+	const auto lock = std::scoped_lock(m_mutex);
 	SetAxes(face, axes);
 	const auto scale = SetSize(face, px);
 	const auto strength = static_cast<FT_Pos>(std::round(embolden * px * 64));

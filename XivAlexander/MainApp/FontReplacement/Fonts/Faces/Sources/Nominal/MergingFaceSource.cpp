@@ -86,7 +86,7 @@ private:
 	}
 };
 
-FontReplacement::MergingFaceSource::MergingFaceSource(std::unique_ptr<IFaceSource> inner, FontElement def, std::unique_ptr<OutlineFaceSource> ownTextOutline)
+FontReplacement::MergingFaceSource::MergingFaceSource(std::shared_ptr<IFaceSource> inner, FontElement def, std::unique_ptr<OutlineFaceSource> ownTextOutline)
 	: m_inner(std::move(inner))
 	, m_def(std::move(def))
 	, m_ownTextOutline(std::move(ownTextOutline))
@@ -101,7 +101,7 @@ FontReplacement::MergingFaceSource::MergingFaceSource(std::unique_ptr<IFaceSourc
 
 FontReplacement::MergingFaceSource::~MergingFaceSource() = default;
 
-std::unique_ptr<FontReplacement::MergingFaceSource> FontReplacement::MergingFaceSource::Create(std::unique_ptr<IFaceSource> inner, const FontElement& def, FontServices& services, const std::string& fontName) {
+std::unique_ptr<FontReplacement::MergingFaceSource> FontReplacement::MergingFaceSource::Create(std::shared_ptr<IFaceSource> inner, const FontElement& def, FontServices& services, const std::string& fontName) {
 	// On a glyph images element, a lookup family names the font for the texts instead of the images.
 	std::unique_ptr<OutlineFaceSource> ownTextOutline;
 	if (dynamic_cast<ImageFaceSource*>(inner.get()) && !def.Lookup.FamilyName.empty()) {
@@ -113,7 +113,6 @@ std::unique_ptr<FontReplacement::MergingFaceSource> FontReplacement::MergingFace
 }
 
 void FontReplacement::MergingFaceSource::SetMeasureMode(DWRITE_MEASURING_MODE value) {
-	m_inner->SetMeasureMode(value);
 	if (m_ownTextOutline)
 		m_ownTextOutline->SetMeasureMode(value);
 }

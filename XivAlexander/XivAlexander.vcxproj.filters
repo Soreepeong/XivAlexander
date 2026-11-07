@@ -192,6 +192,9 @@
     <ClCompile Include="MainApp\Features\CrowdFix.cpp">
       <Filter>MainApp\Features</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\FaceSourceCache.cpp">
+      <Filter>MainApp\FontReplacement\Fonts\Faces</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFont.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Faces</Filter>
     </ClCompile>
@@ -592,6 +595,9 @@
     <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\SubpixelOrder.h">
       <Filter>MainApp\FontReplacement\Fonts\Enums</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\FaceSourceCache.h">
+      <Filter>MainApp\FontReplacement\Fonts\Faces</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\IFaceSource.h">
       <Filter>MainApp\FontReplacement\Fonts\Faces</Filter>
     </ClInclude>
@@ -720,6 +726,9 @@
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Presets.h">
       <Filter>MainApp\FontReplacement</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Utilities\AgedMap.h">
+      <Filter>MainApp\FontReplacement\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Utilities\GameUtf8.h">
       <Filter>MainApp\FontReplacement\Utilities</Filter>

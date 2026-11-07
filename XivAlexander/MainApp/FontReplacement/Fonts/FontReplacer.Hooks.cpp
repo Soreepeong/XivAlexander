@@ -82,10 +82,11 @@ bool FontReplacement::FontReplacer::ForgetGameGlyphsOf(GameFont* font) {
 	auto any = false;
 	for (const auto& sized : m_sizedFonts | std::views::values) {
 		if (std::ranges::none_of(sized->Fonts, [font](const auto& f) { return f.second == font; })
-			&& std::ranges::none_of(sized->ConvertedGlyphs | std::views::keys, [font](const auto& k) { return k.first == font; }))
+			&& std::ranges::none_of(sized->ConvertedGlyphs.Entries() | std::views::keys, [font](const auto& k) { return k.first == font; }))
 			continue;
-		sized->GameGlyphs.clear();
-		sized->ConvertedGlyphs.clear();
+		const auto release = [this](GameGlyph* glyph) { Release(glyph); };
+		sized->GameGlyphs.Clear(release);
+		sized->ConvertedGlyphs.Clear(release);
 		sized->Picks.clear();
 		any = true;
 	}
@@ -144,12 +145,20 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFon
 			else if (s_wrapping)
 				size *= WrapScales[std::size(WrapScales) - 1];
 		}
-		const auto halfPx = std::clamp(static_cast<int>(StdRound(size * 2)), MinHalfPx, MaxHalfPx);
+		auto halfPx = std::clamp(static_cast<int>(StdRound(size * 2)), MinHalfPx, MaxHalfPx);
+		auto drawn = size;
+		if (const auto lineHeight = GetSized(font, halfPx, false)->LineHeight; lineHeight > MaxDrawnLineHeight) {
+			// The largest size whose lines fit; line metrics are rounded, so it is checked.
+			halfPx = (std::max)(MinHalfPx, halfPx * MaxDrawnLineHeight / lineHeight);
+			while (halfPx > MinHalfPx && GetSized(font, halfPx, false)->LineHeight > MaxDrawnLineHeight)
+				halfPx--;
+			drawn = static_cast<float>(halfPx) / 2;
+		}
 		const auto copy = GetOrCreateCopy(font, halfPx);
 
 		// Any renderer scale but exactly 1 resamples bilinearly (soft text), while a quarter pixel of size error doesn't show.
 		if (halfPx < MaxHalfPx && halfPx > MinHalfPx)
-			copy->Size() = size;
+			copy->Size() = drawn;
 		set->CurrentFont() = copy;
 		return copy;
 	} catch (const std::exception& e) {
@@ -228,15 +237,19 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 		return m_getGlyphHook->Original(set, utf8Value, font);
 	auto& info = it->second;
 	const auto wrapping = s_wrapping && set->NodeScaleX() == 1 && set->NodeScaleY() == 1 && PickScaleOf(set) <= 0;
-	if (wrapping) {
-		if (const auto glyph = GetWrapRunGlyph(set, utf8Value, info))
-			return glyph;
+	GameGlyph* glyph = nullptr;
+	if (wrapping)
+		glyph = GetWrapRunGlyph(set, utf8Value, info);
+	if (!glyph) {
+		glyph = GetCopyGlyph(set, utf8Value, info, GetDrawnSized(info));
+		if (!glyph)
+			glyph = GetMissingGlyph(set, utf8Value, info);
+		if (wrapping)
+			glyph = GetWrapGlyph(set, utf8Value, info, glyph);
 	}
 
-	auto glyph = GetCopyGlyph(set, utf8Value, info, GetDrawnSized(info));
-	if (!glyph)
-		glyph = GetMissingGlyph(set, utf8Value, info);
-	return wrapping ? GetWrapGlyph(set, utf8Value, info, glyph) : glyph;
+	Hand(glyph);
+	return glyph;
 }
 
 std::array<FontReplacement::SizedFont*, std::size(FontReplacement::FontReplacer::WrapScales)> FontReplacement::FontReplacer::GetWrapSizes(GameFontSet* set, CopyInfo& info) {
@@ -300,10 +313,9 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetWrapGlyph(GameFont
 		return glyph;
 
 	auto& sized = GetDrawnSized(info);
-	auto& cell = sized.WrapCells[widest];
-	if (!cell)
-		cell = PlaceCell(sized, RasterGlyph{widest}, 0);
-	return cell;
+	if (const auto found = sized.WrapCells.Find(widest, m_frame))
+		return *found;
+	return sized.WrapCells.Add(widest, Keep(PlaceCell(sized, RasterGlyph{widest}, 0)), m_frame);
 }
 
 FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, SizedFont& sized) {
@@ -325,8 +337,8 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFont
 		}
 	}
 
-	auto it = sized.Glyphs.find(utf8Value);
-	if (it == sized.Glyphs.end()) {
+	auto found = sized.Glyphs.Find(utf8Value, m_frame);
+	if (!found) {
 		GameGlyph* glyph;
 		try {
 			glyph = CreateGlyph(sized, utf8Value);
@@ -334,11 +346,11 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFont
 			Host::Error("Rasterizing 0x{:X} at {} px failed: {}", utf8Value, sized.Px, e.what());
 			glyph = nullptr;
 		}
-		it = sized.Glyphs.emplace(utf8Value, glyph).first;
+		found = &sized.Glyphs.Add(utf8Value, Keep(glyph), m_frame);
 	}
 
-	if (it->second)
-		return WithPixels(it->second);
+	if (*found)
+		return WithPixels(*found);
 
 	try {
 		if (const auto own = GetGameGlyph(sized, utf8Value))

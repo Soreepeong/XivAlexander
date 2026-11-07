@@ -7,6 +7,19 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
+FontReplacement::GameTextLayout::ShapedRun::ShapedRun(FontReplacer& replacer, std::vector<GameGlyph*> glyphs, std::optional<std::vector<uint8_t>> italicBytes)
+	: Replacer(replacer)
+	, Glyphs(std::move(glyphs))
+	, ItalicBytes(std::move(italicBytes)) {
+	for (const auto glyph : Glyphs)
+		Replacer.Keep(glyph);
+}
+
+FontReplacement::GameTextLayout::ShapedRun::~ShapedRun() {
+	for (const auto glyph : Glyphs)
+		Replacer.Release(glyph);
+}
+
 void FontReplacement::GameTextLayout::ActiveRun::Set(const uint8_t* start, int length, const SizedFont* sized, ItalicMode italic, bool wrap, std::shared_ptr<const ShapedRun> shaped) {
 	Start = start;
 	End = start + length;
@@ -76,12 +89,27 @@ FontReplacement::GameGlyph* FontReplacement::GameTextLayout::LookUp(const SizedF
 }
 
 void FontReplacement::GameTextLayout::Clear() {
+	const auto nothing = [](const auto&) {};
+	const auto release = [this](GameGlyph* glyph) { m_replacer.Release(glyph); };
 	m_active.clear();
-	m_runs.clear();
-	m_wrapRuns.clear();
-	m_cells.clear();
-	m_spacers.clear();
-	m_rasters.clear();
+	m_runs.Clear(nothing);
+	m_wrapRuns.Clear(nothing);
+	m_cells.Clear(release);
+	m_spacers.Clear(release);
+	m_rasters.Clear(nothing);
+}
+
+void FontReplacement::GameTextLayout::Sweep(uint64_t frame) {
+	// Runs an active run still has, and cells a run still has, stay so that they aren't made again alongside.
+	const auto inactive = [](const std::shared_ptr<const ShapedRun>& run) { return run.use_count() == 1; };
+	const auto unused = [this](GameGlyph* glyph) { return m_replacer.RefCount(glyph) == 1; };
+	const auto nothing = [](const auto&) {};
+	const auto release = [this](GameGlyph* glyph) { m_replacer.Release(glyph); };
+	m_runs.Sweep(frame, inactive, nothing);
+	m_wrapRuns.Sweep(frame, inactive, nothing);
+	m_cells.Sweep(frame, unused, release);
+	m_spacers.Sweep(frame, unused, release);
+	m_rasters.Sweep(frame, nothing);
 }
 
 int FontReplacement::GameTextLayout::NextGrapheme(int t, int end) const {
@@ -120,20 +148,17 @@ std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacemen
 		return nullptr;
 
 	const auto key = std::make_tuple(HashBytes(p, length), length, static_cast<const SizedFont*>(&sized), italic);
-	auto it = m_runs.find(key);
-	if (it == m_runs.end()) {
-		auto shaped = std::make_shared<ShapedRun>();
-		shaped->Glyphs.resize(length);
-		if (italic != ItalicMode::Images)
-			shaped->ItalicBytes.emplace(m_byteItalic, m_byteItalic + length);
-		if (count != 0)
-			Shape(sized, p, count, shaped->Glyphs, italic);
-		if (m_runs.size() >= MaxCachedRuns)
-			m_runs.clear();
-		it = m_runs.emplace(key, std::move(shaped)).first;
-	}
+	const auto frame = m_replacer.Frame();
+	if (const auto found = m_runs.Find(key, frame))
+		return *found;
 
-	return it->second;
+	std::vector<GameGlyph*> glyphs(length);
+	std::optional<std::vector<uint8_t>> italicBytes;
+	if (italic != ItalicMode::Images)
+		italicBytes.emplace(m_byteItalic, m_byteItalic + length);
+	if (count != 0)
+		Shape(sized, p, count, glyphs, italic);
+	return m_runs.Add(key, std::make_shared<ShapedRun>(m_replacer, std::move(glyphs), std::move(italicBytes)), frame);
 }
 
 std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacement::GameTextLayout::GetWrapRun(
@@ -144,8 +169,9 @@ std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacemen
 		return nullptr;
 
 	const auto key = std::make_tuple(HashBytes(p, length), length, static_cast<const SizedFont*>(&largest), italic);
-	if (const auto it = m_wrapRuns.find(key); it != m_wrapRuns.end())
-		return it->second;
+	const auto frame = m_replacer.Frame();
+	if (const auto found = m_wrapRuns.Find(key, frame))
+		return *found;
 
 	// Every size reads the same bytes, so their glyphs line up by byte.
 	std::vector<std::shared_ptr<const ShapedRun>> runs;
@@ -158,7 +184,7 @@ std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacemen
 	}
 	runs.push_back(top);
 
-	auto wrap = std::make_shared<ShapedRun>(*top);
+	auto wrap = top->Glyphs;
 	std::vector<float> pens(runs.size());
 	auto furthest = 0.f;
 	auto placed = 0;
@@ -177,13 +203,11 @@ std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacemen
 		if (glyph == m_emptyGlyph)
 			continue;
 		const auto end = static_cast<int>(std::ceil(furthest));
-		wrap->Glyphs[b] = GetSpacer(largest, end - placed);
+		wrap[b] = GetSpacer(largest, end - placed);
 		placed = end;
 	}
 
-	if (m_wrapRuns.size() >= MaxCachedRuns)
-		m_wrapRuns.clear();
-	return m_wrapRuns.emplace(key, std::move(wrap)).first->second;
+	return m_wrapRuns.Add(key, std::make_shared<ShapedRun>(m_replacer, std::move(wrap), top->ItalicBytes), frame);
 }
 
 uint64_t FontReplacement::GameTextLayout::HashBytes(const uint8_t* p, int length) {

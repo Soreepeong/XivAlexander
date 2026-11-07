@@ -45,9 +45,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// FontReplacer.Hooks.cpp
 
-		// Sizes in half pixels: below 4 px nothing is legible; a request over 255 px uses the 255 px copy, scaled up by the renderer.
+		// Sizes in half pixels; below 4 px nothing is legible.
 		static constexpr int MinHalfPx = 8;
 		static constexpr int MaxHalfPx = 2 * 255;
+
+		// A glyph's box is a line high and at most 255 pixels; text whose lines are taller is drawn from a smaller copy, scaled up by the
+		// renderer.
+		static constexpr int MaxDrawnLineHeight = 255;
 
 		// What LayOutCharacter lays out a character a font has no glyph of as, in order of preference (packed UTF-8): U+3013, '-', U+3400.
 		static constexpr uint32_t MissingGlyphSubstitutes[]{0xE38093, 0x2D, 0xE39080};
@@ -110,8 +114,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// FontReplacer.Cells.cpp
 
-		// When an atlas is full, a plane is emptied of glyphs not drawn this recently, at most this often.
-		static constexpr uint64_t KeepDrawnMs = 2000;
+		// When an atlas is full, its least recently drawn plane is reused, at most this often.
 		static constexpr uint64_t EvictIntervalMs = 1000;
 
 		enum class CellState : uint8_t {
@@ -125,7 +128,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			CellState State = CellState::None;
 			GlyphAtlas* Atlas = nullptr;
 
-			// Kept while pending, and for a game glyph until its pixels are read.
+			// Kept once placed, so that it can be placed again after its plane is reused. A game glyph's is blank until its pixels are read.
 			RasterGlyph Raster;
 
 			// The box's left relative to the pen, as Raster's Left is.
@@ -134,12 +137,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			// The ink's top row in the box.
 			int InkTop = 0;
 
+			// Until its pixels are read.
 			std::optional<GameTextureSource> Source;
 
-			// GetTickCount64 of the frame it was last drawn in, once placed.
-			uint64_t Drawn = 0;
+			// Of its plane when placed.
+			uint32_t Generation = 0;
 
-			// Drawn instead while its pixels find no room.
+			// Drawn instead while its pixels find no room. Held with Keep.
 			GameGlyph* Blank = nullptr;
 
 			// A real italic glyph, which the game must not shear.
@@ -150,13 +154,31 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		struct GlyphSlot {
 			GameGlyph Glyph;
 			FontReplacer::Cell Cell;
+
+			// Caches, shaped runs and the glyph whose blank it is holding it.
+			uint32_t Refs = 0;
+
+			// The frame it was last handed to the game in.
+			uint64_t Handed = 0;
+
+			// In m_unreferenced.
+			bool Unreferenced = false;
 		};
+
+		// The game may keep a glyph pointer (font caches, vertex data) for a few frames after it was last handed out.
+		static constexpr uint64_t GraceFrames = 8;
 
 		// A glyph of no width, for the characters of a shaped cluster after its first.
 		std::unique_ptr<GlyphSlot> m_emptyGlyph;
 
-		// A deque, as glyphs must not move.
+		// A deque, as glyphs must not move. Freed slots are reused.
 		std::deque<GlyphSlot> m_slots;
+		std::vector<GlyphSlot*> m_free;
+
+		// Glyphs nothing of ours holds anymore, freed once GraceFrames have passed since they were last handed out.
+		std::vector<GameGlyph*> m_unreferenced;
+
+		uint64_t m_frame = 0;
 		uint64_t m_frameTick = 0;
 
 		std::set<GlyphAtlas*> m_fullAtlases;
@@ -205,6 +227,21 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::map<std::string, std::unique_ptr<MaterializedFont>, LessIgnoringCase> m_presetFonts;
 		bool m_enabled = true;
 
+		// Made together, sharing their face sources.
+		struct LoadedFonts {
+			std::unique_ptr<MaterializedFont> Game;
+			std::map<std::string, std::unique_ptr<MaterializedFont>, LessIgnoringCase> Preset;
+		};
+
+		// Fonts are made on the loader thread and swapped in at EndFrame. A request supersedes those before it, and their fonts are dropped.
+		std::mutex m_loadMutex;
+		std::condition_variable m_loadWake;
+		std::optional<FontSettings> m_loadRequest;
+		std::unique_ptr<LoadedFonts> m_loaded;
+		std::atomic<uint64_t> m_loadSerial = 0;
+		std::atomic<bool> m_loadStop = false;
+		std::thread m_loadThread;
+
 		FontReplacementEdgeConfig m_edge;
 		EdgeShader m_edgeShader;
 
@@ -226,7 +263,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread; such text nodes are measured at their unscaled size, as they are baked at a scale of their own.
 		std::function<bool(uintptr_t node)> IsNamePlateText;
 
-		// Game thread, between frames; every glyph is made again, even for the same value.
+		// Game thread; the fonts are made on another thread, and the earlier ones stay until EndFrame swaps them in. Every glyph is made again then,
+		// even for the same value.
 		void SetFonts(const FontSettings& value);
 
 		// DXGI 1.2 devices can sample and update B4G4R4A4, but the game also runs on Direct3D 11 devices without it.
@@ -238,8 +276,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread.
 		void SetEdge(const FontReplacementEdgeConfig& value);
 
-		// Between frames, as copy texture slots change only on the game thread.
-		void EndFrame() { ApplyPendingPages(); }
+		// Game thread, between frames, as copy texture slots change only on the game thread.
+		void EndFrame();
 
 		// Game thread, between frames.
 		void SetSubpixel(const SubpixelShaders::SettingsRecord& value);
@@ -267,11 +305,34 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		void MarkRealItalic(GameGlyph* cell) { CellOf(cell).RealItalic = true; }
 
+		// Counted by Upload.
+		[[nodiscard]] uint64_t Frame() const { return m_frame; }
+
+		// Holds a glyph made by PlaceCell, so that it isn't freed, and returns it. nullptr and the empty glyph are ignored, here and by the others.
+		GameGlyph* Keep(GameGlyph* glyph);
+
+		void Release(GameGlyph* glyph);
+
+		[[nodiscard]] uint32_t RefCount(GameGlyph* glyph) const;
+
 	private:
 		[[nodiscard]] static int GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px);
 
 		void DisposeFonts();
 		void RemakeAtlases();
+
+		void ReleaseGlyphs(SizedFont& sized);
+
+		// Lets go of their glyphs first.
+		void ClearSizedFonts();
+
+		void LoaderThreadBody();
+		void StopLoader();
+
+		// Loader thread, using nothing of the replacer but the services. A font that can't be made is left out with a warning. nullptr once stale.
+		static std::unique_ptr<LoadedFonts> LoadFonts(FontServices& services, SystemFallbackFonts& fallbackFonts, const FontSettings& value, const std::function<bool()>& stale);
+
+		void ApplyLoadedFonts();
 
 		// FontReplacer.Copies.cpp
 
@@ -381,23 +442,37 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] static RasterGlyph WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha);
 
-		// A glyph that finds no room draws nothing this time, at the same advance, and room is made at the next upload.
+		// A glyph that finds no room draws nothing this time, at the same advance, and room is made at the next upload. A glyph whose plane was
+		// reused is placed again here.
 		GameGlyph* WithPixels(GameGlyph* glyph);
 
-		bool WritePixels(GameGlyph* glyph, Cell& cell, uint64_t drawn);
+		bool WritePixels(GameGlyph* glyph, Cell& cell);
 		GameGlyph* GetBlank(GameGlyph* glyph);
 
-		// Present thread, after this frame's layout, so that the next frame lays out with the new places and the upload after it writes them.
+		// Present thread, before the uploads.
+		void ReadGameGlyphs();
+
+		// Present thread, after this frame's layout. The plane's glyphs are placed again as they are drawn.
 		void EvictPlane(GlyphAtlas* atlas);
 
-		[[nodiscard]] static int PlaneOf(const GameGlyph* glyph);
 		static void WriteCell(const GameGlyph* glyph, const Cell& cell);
 		static void ReleasePixels(Cell& cell);
 		static void DropCell(GameGlyph* glyph, Cell& cell);
 		static void DropPixels(GameGlyph* glyph);
 		void DropGameReads(const std::set<uintptr_t>& textures);
+
+		// Reuses a freed slot if there is one.
 		GameGlyph* AllocateGlyph();
 
-		[[nodiscard]] static Cell& CellOf(GameGlyph* glyph) { return CONTAINING_RECORD(glyph, GlyphSlot, Glyph)->Cell; }
+		// Present thread, once a frame, after the uploads.
+		void SweepCaches();
+		void FreeUnreferenced();
+
+		// Marks it handed to the game in this frame.
+		void Hand(GameGlyph* glyph);
+
+		[[nodiscard]] bool IsOwn(const GameGlyph* glyph) const { return glyph && glyph != &m_emptyGlyph->Glyph; }
+		[[nodiscard]] static GlyphSlot& SlotOf(GameGlyph* glyph) { return *CONTAINING_RECORD(glyph, GlyphSlot, Glyph); }
+		[[nodiscard]] static Cell& CellOf(GameGlyph* glyph) { return SlotOf(glyph).Cell; }
 	};
 }

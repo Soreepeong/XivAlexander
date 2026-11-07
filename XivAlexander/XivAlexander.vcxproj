@@ -180,6 +180,7 @@
         <ClCompile Include="MainApp\App.cpp"/>
         <ClCompile Include="MainApp\AudioResamplers\SoxrResampler.cpp"/>
         <ClCompile Include="MainApp\Features\CrowdFix.cpp"/>
+        <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\FaceSourceCache.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFont.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFontElement.cpp"/>
         <ClCompile Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\GameFontDataFaceSource.cpp"/>
@@ -333,6 +334,7 @@
         <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\ItalicMode.h"/>
         <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\SubpixelOrder.h"/>
         <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\IFaceSource.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\FaceSourceCache.h"/>
         <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFont.h"/>
         <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\MaterializedFontElement.h"/>
         <ClInclude Include="MainApp\FontReplacement\Fonts\Faces\Sources\Nominal\EmptyFaceSource.h"/>
@@ -375,6 +377,7 @@
         <ClInclude Include="MainApp\FontReplacement\Host.h"/>
         <ClInclude Include="MainApp\FontReplacement\PluginInterface\PresetController.h"/>
         <ClInclude Include="MainApp\FontReplacement\Presets.h"/>
+        <ClInclude Include="MainApp\FontReplacement\Utilities\AgedMap.h"/>
         <ClInclude Include="MainApp\FontReplacement\Utilities\GameUtf8.h"/>
         <ClInclude Include="MainApp\FontReplacement\Utilities\Matrix2x2.h"/>
         <ClInclude Include="MainApp\FontReplacement\Utilities\Misc.h"/>

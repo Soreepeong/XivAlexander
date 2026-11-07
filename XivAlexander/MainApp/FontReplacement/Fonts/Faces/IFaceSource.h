@@ -22,7 +22,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] virtual const std::set<char32_t>& Codepoints() = 0;
 
-		// Shared by the whole font, so that its elements' text lines up; ignored without DirectWrite.
+		// Shared by the whole font, so that its elements' text lines up; ignored without DirectWrite. Set before the source is shared.
 		virtual void SetMeasureMode(DWRITE_MEASURING_MODE mode) {}
 
 		// Glyph IDs are glyph indices for outline fonts and codepoints otherwise; 0 is no glyph.
@@ -54,5 +54,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		virtual int Shape(float px, std::wstring_view text, const ScriptToken& script, std::vector<ShapedCluster>& clusters) = 0;
 
 		[[nodiscard]] virtual std::optional<RasterGlyph> Rasterize(float px, const GlyphRun& run, const RasterizeOptions& options = {}) = 0;
+
+		// Whether Rasterize may run on several threads at once, while nothing else uses the source.
+		[[nodiscard]] virtual bool RasterizesConcurrently() const { return false; }
 	};
 }

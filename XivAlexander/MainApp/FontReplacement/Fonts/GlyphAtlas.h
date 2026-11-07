@@ -13,9 +13,22 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr int PlanesPerPage = 4;
 		static constexpr int SubpixelPlane = 3;
 
-		[[nodiscard]] static int PaddedArea(int width, int height);
 		[[nodiscard]] static uint8_t Get4444(uint16_t texel, int plane);
 		[[nodiscard]] static int BgraOffset(int plane);
+
+		struct Allocation {
+			int Page = 0;
+
+			// A channel index.
+			int Plane = 0;
+
+			// The top left inside the padding.
+			int X = 0;
+			int Y = 0;
+
+			// Of the plane, which a glyph placed there keeps for Touch.
+			uint32_t Generation = 0;
+		};
 
 	private:
 		struct RowCursor {
@@ -31,6 +44,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			std::vector<uint8_t> Shadow;
 
 			RowCursor CursorsPerPlane[PlanesPerPage]{};
+
+			// Bumped each time the plane is emptied or reused.
+			uint32_t Generations[PlanesPerPage]{};
+
+			// Reused since the last Clear, keeping its earlier pixels where nothing was placed since.
+			bool Recycled[PlanesPerPage]{};
+
+			// The tick a glyph in the plane was last drawn or placed at.
+			uint64_t Drawn[PlanesPerPage]{};
 
 			int DirtyLeft;
 			int DirtyTop;
@@ -55,7 +77,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		const std::unique_ptr<std::unique_ptr<Page>[]> m_pages;
 		std::atomic<int> m_pageCount = 0;
 
-		// Guards the pages' contents, cursors and dirty rects, m_current, m_frontier and m_context.
+		// Guards the pages' contents, cursors, plane states and dirty rects, m_current, m_frontier and m_context.
 		std::mutex m_mutex;
 		ID3D11DeviceContextPtr m_context;
 
@@ -88,20 +110,19 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread, between frames, as no glyph of the old contents may be drawn afterwards; keeps the textures, which fonts refer to.
 		void Clear();
 
-		// Between frames, as for Clear; glyphs are allocated in the plane from now on.
-		void ClearPlane(int page, int plane);
+		// Between frames. The least recently drawn plane is allocated in from its start, and its glyphs are of an older generation from now
+		// on. Returns the plane, numbered page * PlanesPerPage + plane.
+		int RecycleLeastRecentlyDrawn();
 
-		// The plane is a channel index, and (x, y) the top left inside the padding.
-		bool TryAllocate(int width, int height, int& page, int& plane, int& x, int& y);
+		// The area is emptied first in a reused plane. tick marks the plane drawn.
+		bool TryAllocate(int width, int height, uint64_t tick, Allocation& res);
+
+		// Marks the plane drawn at tick. False if generation is no longer the plane's, as it was reused since.
+		bool Touch(int page, int plane, uint32_t generation, uint64_t tick);
 
 		// Coverage goes at alphaX in the box, cut off past its right edge; in a subpixel atlas, lcd (3 bytes a pixel) fills R, G and B, else they
 		// get alpha.
 		void Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX, std::span<const uint8_t> lcd = {});
-
-		[[nodiscard]] std::vector<uint8_t> Read(int page, int plane, int x, int y, int width, int height);
-
-		// 3 bytes a pixel.
-		[[nodiscard]] std::vector<uint8_t> ReadLcd(int page, int x, int y, int width, int height);
 
 		// Present thread.
 		void Upload();
@@ -114,6 +135,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] int PlaneStep() const { return m_subpixel ? PlanesPerPage : 1; }
 
 		void SetChannel(uint8_t* texel, int plane, uint8_t value) const;
-		[[nodiscard]] uint8_t GetChannel(const uint8_t* texel, int plane) const;
+
+		// With the lock. Every channel in a subpixel atlas.
+		void ZeroRect(Page& p, int plane, int x, int y, int width, int height);
 	};
 }

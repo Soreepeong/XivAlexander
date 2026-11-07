@@ -61,6 +61,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int Shape(float px, std::wstring_view text, const ScriptToken& script, std::vector<ShapedCluster>& clusters) override;
 		std::optional<RasterGlyph> Rasterize(float px, const GlyphRun& run, const RasterizeOptions& options = {}) override;
 
+		// FreeType is behind its rasterizer's lock, DirectWrite's factory is thread safe, and the lookup's faces are made behind its lock.
+		bool RasterizesConcurrently() const override { return true; }
+
 		// transform takes the element's transformation's place; synthesis's still applies.
 		[[nodiscard]] std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> CreateMergeTextFont(float size, const Matrix2x2& transform);
 

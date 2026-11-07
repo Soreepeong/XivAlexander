@@ -5,6 +5,7 @@
 #include "MainApp/FontReplacement/Fonts/Records/RasterGlyph.h"
 #include "MainApp/FontReplacement/Fonts/Records/ShapedCluster.h"
 #include "MainApp/FontReplacement/Fonts/Records/TextRun.h"
+#include "MainApp/FontReplacement/Utilities/AgedMap.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class DirectWriteTextAnalyzer;
@@ -16,8 +17,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class GameTextLayout {
 		static constexpr int MaxRunBytes = 4096;
 		static constexpr size_t MaxActiveRuns = 8;
-		static constexpr size_t MaxCachedRuns = 8192;
-		static constexpr size_t MaxCachedRasters = 8192;
 
 		// Graphemes longer than this are picked an element by their first runes.
 		static constexpr int MaxGraphemeRunes = 16;
@@ -80,10 +79,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			[[nodiscard]] Cluster MovedBy(float start, float end) const;
 		};
 
-		// ItalicBytes is nullopt for a run in a node's italics, which is all in them.
+		// ItalicBytes is nullopt for a run in a node's italics, which is all in them. Holds its glyphs with FontReplacer::Keep while it lives.
 		struct ShapedRun {
+			FontReplacer& Replacer;
 			std::vector<GameGlyph*> Glyphs;
 			std::optional<std::vector<uint8_t>> ItalicBytes;
+
+			ShapedRun(FontReplacer& replacer, std::vector<GameGlyph*> glyphs, std::optional<std::vector<uint8_t>> italicBytes);
+			ShapedRun(const ShapedRun&) = delete;
+			ShapedRun& operator=(const ShapedRun&) = delete;
+			~ShapedRun();
 		};
 
 		// A run shaped at an address, used only while the text there is unchanged since shaping, as the game reuses its text buffers.
@@ -109,15 +114,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FontReplacer& m_replacer;
 		DirectWriteTextAnalyzer& m_analyzer;
 		GameGlyph* m_emptyGlyph;
-		std::map<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_runs;
+		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_runs;
 
 		// Keyed by the largest size's sized font.
-		std::map<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_wrapRuns;
+		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_wrapRuns;
 
-		// Keyed by sized font too, as families may share a font but each places cells in its own atlas with its own metrics.
-		std::map<std::tuple<RasterKey, const SizedFont*, int, int>, GameGlyph*> m_cells;
-		std::map<std::pair<const SizedFont*, int>, GameGlyph*> m_spacers;
-		std::map<RasterKey, RasterGlyph> m_rasters;
+		// Keyed by sized font too, as families may share a font but each places cells in its own atlas with its own metrics. Held with
+		// FontReplacer::Keep.
+		AgedMap<std::tuple<RasterKey, const SizedFont*, int, int>, GameGlyph*> m_cells;
+		AgedMap<std::pair<const SizedFont*, int>, GameGlyph*> m_spacers;
+		AgedMap<RasterKey, RasterGlyph> m_rasters;
 
 		std::vector<std::unique_ptr<ActiveRun>> m_active;
 		std::vector<std::pair<int, int>> m_absorbed;
@@ -148,6 +154,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameGlyph* TryGetWrapGlyph(std::span<SizedFont* const> sizes, std::span<const float> scales, const uint8_t* p, ItalicMode italic);
 
 		void Clear();
+
+		// Drops what wasn't used lately, a bounded amount at a time. Once a frame, between frames.
+		void Sweep(uint64_t frame);
 
 	private:
 		[[nodiscard]] int NextGrapheme(int t, int end) const;
@@ -196,8 +205,17 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		GameGlyph* GetSpacer(const SizedFont& sized, int advance);
 
+		// The clusters not rasterized yet whose sources allow it are rasterized on the thread pool together, which this thread waits for, so
+		// that new text costs about as long as its slowest cluster.
+		void RasterizeConcurrently();
+
+		const RasterKey& KeyOf(Cluster& c);
+
 		// Relative to the pen; the advance is final only for a monospaced cluster, as GetCell sets the others'.
 		const RasterGlyph& GetRaster(Cluster& c);
+
+		// Places what the source rasterized as the element does, and caches it.
+		const RasterGlyph& AddRaster(const Cluster& c, std::optional<RasterGlyph> raw);
 
 		// The cell's box starts pad pixels left of the cluster's pen.
 		GameGlyph* GetCell(Cluster& c, const uint8_t* bytes, int pad, int advance);

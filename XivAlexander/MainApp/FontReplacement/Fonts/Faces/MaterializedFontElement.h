@@ -10,12 +10,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// first element's size.
 	class MaterializedFontElement {
 		FontChanger::Structs::FontElement m_def;
-		std::unique_ptr<IFaceSource> m_source;
+
+		// May be shared with other elements (FaceSourceCache).
+		std::shared_ptr<IFaceSource> m_source;
+
 		float m_referenceSize;
 		std::map<float, float> m_referenceAdvances;
 
 	public:
-		MaterializedFontElement(FontChanger::Structs::FontElement def, std::unique_ptr<IFaceSource> source, float referenceSize);
+		MaterializedFontElement(FontChanger::Structs::FontElement def, std::shared_ptr<IFaceSource> source, float referenceSize);
 		MaterializedFontElement(const MaterializedFontElement&) = delete;
 		MaterializedFontElement& operator=(const MaterializedFontElement&) = delete;
 		~MaterializedFontElement();
