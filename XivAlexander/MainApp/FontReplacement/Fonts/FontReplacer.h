@@ -75,10 +75,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<Host::Hook<uintptr_t, uintptr_t>> m_unloadFontsHook;
 		std::optional<Host::Hook<GameFontSet*, uintptr_t, uint8_t>> m_measureSetUpHook;
 		std::optional<Host::Hook<int, uintptr_t, uintptr_t>> m_textWrapLayoutHook;
-		const float* m_globalUiScale = nullptr;
 
-		// The global UI scale while the text wrapper lays text out, which it does unscaled; 0 outside.
-		static thread_local float s_wrapScale;
+		// The UI scales (High Resolution UI) text wrapped unscaled may be drawn at, the largest last.
+		static constexpr float WrapScales[]{1.f, 1.5f, 2.f, 3.f};
+
+		// While the text wrapper lays text out.
+		static thread_local bool s_wrapping;
 
 		uintptr_t m_rendererVtbl = 0;
 		uintptr_t m_renderCountVtbl = 0;
@@ -324,8 +326,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Its callers lay the text out with the font set it returns, and restore the set afterwards.
 		GameFontSet* MeasureSetUpDetour(uintptr_t node, uint8_t considerScale);
 
-		// Wraps with the glyphs of the global UI scale, which the text is drawn at, as glyphs of different sizes don't scale evenly. The text
-		// may come from a script or an addon, so there is no node to take its own scale from.
+		// The text may come from a script or an addon, so there is no node to tell the scale it is drawn at; as glyphs of different sizes don't
+		// scale evenly, it is wrapped to fit at every UI scale (GetWrapGlyph).
 		int TextWrapLayoutDetour(uintptr_t wrapper, uintptr_t text);
 
 		[[nodiscard]] float& PickScaleOf(GameFontSet* set) const { return *reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(set) + m_setPickScaleOffset); }
@@ -339,9 +341,21 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameGlyph* GetGlyphDetour(GameFontSet* set, uint32_t utf8Value, GameFont* font);
 
 		// nullptr if neither the copy nor its game font has a glyph of the character.
-		GameGlyph* GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
+		GameGlyph* GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, SizedFont& sized);
 
+		[[nodiscard]] bool DrawsBold() const;
 		SizedFont& GetDrawnSized(CopyInfo& info);
+
+		// The sized fonts of the UI scales (WrapScales) for the text being wrapped, the copy's own (the largest) last.
+		std::array<SizedFont*, std::size(WrapScales)> GetWrapSizes(GameFontSet* set, CopyInfo& info);
+
+		// While wrapping, the character LayOutCharacter is at gets its cell of its run laid out at every UI scale (GameTextLayout::TryGetWrapGlyph);
+		// nullptr if it is looked up by itself.
+		GameGlyph* GetWrapRunGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
+
+		// While wrapping, for a character looked up by itself, in the copy of the largest UI scale: a glyph of no pixels as wide as glyph is at the
+		// widest of the UI scales.
+		GameGlyph* GetWrapGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, GameGlyph* glyph);
 
 		// LayOutCharacter would take its substitutes from the font's glyph map directly, getting game glyphs of texture indices the copy has no
 		// textures of, so the copy's own glyphs of them (else one of no width) are given instead.

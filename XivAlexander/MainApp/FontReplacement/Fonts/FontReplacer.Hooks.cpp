@@ -141,8 +141,8 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFon
 		if (set->NodeScaleX() == 1 && set->NodeScaleY() == 1) {
 			if (const auto pickScale = PickScaleOf(set); pickScale > 0 && std::isfinite(pickScale))
 				size = *reinterpret_cast<const float*>(reinterpret_cast<uintptr_t>(set) + m_setUnscaledSizeYOffset) * pickScale;
-			else if (s_wrapScale > 0)
-				size *= s_wrapScale;
+			else if (s_wrapping)
+				size *= WrapScales[std::size(WrapScales) - 1];
 		}
 		const auto halfPx = std::clamp(static_cast<int>(StdRound(size * 2)), MinHalfPx, MaxHalfPx);
 		const auto copy = GetOrCreateCopy(font, halfPx);
@@ -180,10 +180,9 @@ FontReplacement::GameFontSet* FontReplacement::FontReplacer::MeasureSetUpDetour(
 }
 
 int FontReplacement::FontReplacer::TextWrapLayoutDetour(uintptr_t wrapper, uintptr_t text) {
-	const auto scale = *m_globalUiScale;
-	const auto outer = s_wrapScale;
-	s_wrapScale = m_enabled && std::isfinite(scale) && scale > 0 && scale != 1 ? scale : 0;
-	const auto restore = xivres::util::on_dtor([outer] { s_wrapScale = outer; });
+	const auto outer = s_wrapping;
+	s_wrapping = m_enabled;
+	const auto restore = xivres::util::on_dtor([outer] { s_wrapping = outer; });
 	return m_textWrapLayoutHook->Original(wrapper, text);
 }
 
@@ -227,12 +226,47 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 	const auto it = m_copies.find(font);
 	if (it == m_copies.end())
 		return m_getGlyphHook->Original(set, utf8Value, font);
-	const auto glyph = GetCopyGlyph(set, utf8Value, it->second);
-	return glyph ? glyph : GetMissingGlyph(set, utf8Value, it->second);
+	auto& info = it->second;
+	const auto wrapping = s_wrapping && set->NodeScaleX() == 1 && set->NodeScaleY() == 1 && PickScaleOf(set) <= 0;
+	if (wrapping) {
+		if (const auto glyph = GetWrapRunGlyph(set, utf8Value, info))
+			return glyph;
+	}
+
+	auto glyph = GetCopyGlyph(set, utf8Value, info, GetDrawnSized(info));
+	if (!glyph)
+		glyph = GetMissingGlyph(set, utf8Value, info);
+	return wrapping ? GetWrapGlyph(set, utf8Value, info, glyph) : glyph;
+}
+
+std::array<FontReplacement::SizedFont*, std::size(FontReplacement::FontReplacer::WrapScales)> FontReplacement::FontReplacer::GetWrapSizes(GameFontSet* set, CopyInfo& info) {
+	std::array<SizedFont*, std::size(WrapScales)> sizes{};
+	const auto unscaled = set->ScaledSizeY();
+	for (size_t i = 0; i + 1 < sizes.size(); i++)
+		sizes[i] = GetSized(info.Original, std::clamp(static_cast<int>(StdRound(unscaled * WrapScales[i] * 2)), MinHalfPx, MaxHalfPx), DrawsBold());
+	sizes.back() = &GetDrawnSized(info);
+	return sizes;
+}
+
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetWrapRunGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info) {
+	const auto p = s_current.Character;
+	if (!p || GameUtf8::Pack(p) != utf8Value)
+		return nullptr;
+	try {
+		const auto sizes = GetWrapSizes(set, info);
+		return m_layout->TryGetWrapGlyph(sizes, WrapScales, p, GetItalicMode(set));
+	} catch (const std::exception& e) {
+		Host::Error("Laying out a run at the UI scales failed; it is measured a character at a time: {}", e.what());
+		return nullptr;
+	}
+}
+
+bool FontReplacement::FontReplacer::DrawsBold() const {
+	return m_stateFlagsOffset >= 0 && s_current.State && *reinterpret_cast<const uint32_t*>(s_current.State + m_stateFlagsOffset) & m_boldFlag;
 }
 
 FontReplacement::SizedFont& FontReplacement::FontReplacer::GetDrawnSized(CopyInfo& info) {
-	if (m_stateFlagsOffset < 0 || !s_current.State || !(*reinterpret_cast<const uint32_t*>(s_current.State + m_stateFlagsOffset) & m_boldFlag))
+	if (!DrawsBold())
 		return *info.Sized;
 	try {
 		return *GetBoldSized(info);
@@ -243,9 +277,36 @@ FontReplacement::SizedFont& FontReplacement::FontReplacer::GetDrawnSized(CopyInf
 	}
 }
 
-FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info) {
-	auto& sized = GetDrawnSized(info);
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetWrapGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, GameGlyph* glyph) {
+	if (!glyph || glyph == &m_emptyGlyph->Glyph)
+		return glyph;
 
+	// In the copy's pixels, which are those of the largest scale; Width + OffsetX is how far the game advances.
+	constexpr auto LargestScale = WrapScales[std::size(WrapScales) - 1];
+	const auto own = glyph->Width + glyph->OffsetX;
+	auto widest = own;
+	try {
+		const auto sizes = GetWrapSizes(set, info);
+		for (size_t i = 0; i + 1 < sizes.size(); i++) {
+			const auto other = GetCopyGlyph(set, utf8Value, info, *sizes[i]);
+			if (other && other != &m_emptyGlyph->Glyph)
+				widest = (std::max)(widest, static_cast<int>(std::ceil(static_cast<float>(other->Width + other->OffsetX) * LargestScale / WrapScales[i])));
+		}
+	} catch (const std::exception& e) {
+		Host::Error("Measuring 0x{:X} at the other UI scales failed: {}", utf8Value, e.what());
+		return glyph;
+	}
+	if (widest == own)
+		return glyph;
+
+	auto& sized = GetDrawnSized(info);
+	auto& cell = sized.WrapCells[widest];
+	if (!cell)
+		cell = PlaceCell(sized, RasterGlyph{widest}, 0);
+	return cell;
+}
+
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, SizedFont& sized) {
 	// The character LayOutCharacter is at gets its shaped cluster's glyph, unless the lookup is of the game's fallback characters.
 	if (const auto p = s_current.Character; p && GameUtf8::Pack(p) == utf8Value) {
 		try {
@@ -302,7 +363,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetMissingGlyph(GameF
 	for (const auto substitute : MissingGlyphSubstitutes) {
 		if (utf8Value == substitute)
 			continue;
-		if (const auto glyph = GetCopyGlyph(set, substitute, info))
+		if (const auto glyph = GetCopyGlyph(set, substitute, info, GetDrawnSized(info)))
 			return glyph;
 	}
 	return &m_emptyGlyph->Glyph;

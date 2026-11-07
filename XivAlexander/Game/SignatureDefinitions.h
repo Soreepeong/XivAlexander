@@ -654,7 +654,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		int32_t SetUnscaledSizeY{};  // float
 		int32_t SetPickScale{};  // float; where positive, PickFont picks for this times the unscaled size
 		void* TextWrapLayout{};  // int(wrapper, text): the text wrapper's layout, which every wrap goes through, unscaled unless its style says otherwise
-		float* GlobalUiScale{};  // g_GlobalUIScale: the High Resolution UI setting (1, 1.5, 2 or 3)
 	};
 
 	[[nodiscard]] std::string to_string(const ModuleInitFunctions& value);

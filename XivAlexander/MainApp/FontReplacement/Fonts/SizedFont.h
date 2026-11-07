@@ -37,6 +37,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unordered_map<uint32_t, GameGlyph*> GameGlyphs;
 
 		std::map<std::pair<GameFont*, const GameGlyph*>, GameGlyph*> ConvertedGlyphs;
+
+		// Glyphs of no pixels that advance as far as wrapping measures (FontReplacer::GetWrapGlyph), by advance.
+		std::unordered_map<int, GameGlyph*> WrapCells;
 		std::unordered_map<char32_t, GlyphSource> Picks;
 
 		// Of several fonts, the largest whose element other than the game's has the grapheme, else the game's, else one without any for it.

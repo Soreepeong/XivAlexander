@@ -57,14 +57,13 @@ void FontReplacement::GameTextLayout::PlaceClusters(const uint8_t* bytes, std::v
 				continue;
 			glyphs[b] = !cell ? nullptr
 				: t == c.TextStart ? cell
-				: startsElement ? GetSpacer(Share(advance, elements, element))
+				: startsElement ? GetSpacer(*m_shapingSized, Share(advance, elements, element))
 				: m_emptyGlyph;
 		}
 	}
 }
 
-FontReplacement::GameGlyph* FontReplacement::GameTextLayout::GetSpacer(int advance) {
-	const auto& sized = *m_shapingSized;
+FontReplacement::GameGlyph* FontReplacement::GameTextLayout::GetSpacer(const SizedFont& sized, int advance) {
 	const auto key = std::make_pair(&sized, advance);
 	if (const auto it = m_spacers.find(key); it != m_spacers.end())
 		return it->second;

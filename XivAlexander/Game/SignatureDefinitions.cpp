@@ -2490,8 +2490,6 @@ namespace XivAlexander::Game::FontCode {
 	const Signatures::RegexSignature FontSetIndex(R"([\x48-\x4F]\x69[\xC0-\xFF](....))");
 	// The text wrapper's call, after its fifth argument (paging) is stored.
 	const Signatures::RegexSignature TextWrapCall(R"(\xC6\x44\x24\x20[\x00\x01].{0,24}?\xE8(....))");
-	// AtkUnitBase::GetGlobalUIScale, then its setter: movss xmm0, [g]; ret; padding; movss [g], xmm0; mov al, 1; ret.
-	const Signatures::RegexSignature GlobalUiScaleAccessors(R"(\xF3\x0F\x10\x05(....)\xC3[\xCC\x90]{0,15}\xF3\x0F\x11\x05(....)\xB0\x01\xC3)");
 	// AtkTextNodeRenderer's per-node setup copying a text flag into bit 26 of the set's draw flags: a bit-field merge (shl; xor; and; xor), or masked then shifted.
 	const Signatures::RegexSignature TextNodeBold(R"([\x40-\x4F]?\x0F\xB6[\x80-\xBF](....)(?:.{0,12}?[\x40-\x4F]?\xC1[\xE0-\xE7](.).{0,12}?(?:\x25|\x81[\xE0-\xE7])\x00\x00\x00\x04|[\x40-\x4F]?\x83[\xE0-\xE7](.)[\x40-\x4F]?\xC1[\xE0-\xE7](.)))");
 }
@@ -2718,9 +2716,9 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	}
 
 	std::string to_string(const MeasureFunctions& value) {
-		return std::format("set up {}, node text flags +0x{:X} bold 0x{:X} transform +0x{:X} pick scale +0x{:X}, set unscaled size Y +0x{:X} pick scale +0x{:X}, wrap layout {}, global UI scale {}",
+		return std::format("set up {}, node text flags +0x{:X} bold 0x{:X} transform +0x{:X} pick scale +0x{:X}, set unscaled size Y +0x{:X} pick scale +0x{:X}, wrap layout {}",
 			Signatures::Describe(value.SetUp), value.NodeTextFlags, value.NodeBoldFlag, value.NodeTransform, value.NodePickScale, value.SetUnscaledSizeY, value.SetPickScale,
-			Signatures::Describe(value.TextWrapLayout), Signatures::Describe(value.GlobalUiScale));
+			Signatures::Describe(value.TextWrapLayout));
 	}
 
 	const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit("Fonts.ModuleInit", [](ResolveContext& ctx) {
@@ -3138,12 +3136,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			res.TextWrapLayout = const_cast<void*>(callee);
 		}
 		ctx.Require(res.TextWrapLayout != nullptr, ResolveError::NotFound, "the text wrapper's layout not found");
-
-		const auto accessors = ctx.Unique(FontCode::GlobalUiScaleAccessors, text, "global UI scale accessors");
-		const auto scale = accessors.ResolveAddress<float*>(1);
-		ctx.Require(scale == accessors.ResolveAddress<float*>(2) && ctx.InSection(scale, ".data"), ResolveError::Mismatch,
-			"the global UI scale's getter and setter disagree");
-		res.GlobalUiScale = scale;
 		return res;
 	});
 }

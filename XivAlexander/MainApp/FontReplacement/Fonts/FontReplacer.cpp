@@ -11,7 +11,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 thread_local FontReplacement::FontReplacer::LayoutContext FontReplacement::FontReplacer::s_current;
-thread_local float FontReplacement::FontReplacer::s_wrapScale = 0;
+thread_local bool FontReplacement::FontReplacer::s_wrapping = false;
 
 FontReplacement::FontReplacer::FontReplacer() {
 	ResolveGameFontStructs();
@@ -68,7 +68,6 @@ FontReplacement::FontReplacer::FontReplacer() {
 	m_buildFontHook.emplace("BuildFont", buildFont, [this](uintptr_t manager, uint16_t index) { return BuildFontDetour(manager, index); });
 	m_unloadFontsHook.emplace("UnloadFonts", unloadFonts, [this](uintptr_t manager) { return UnloadFontsDetour(manager); });
 	m_measureSetUpHook.emplace("MeasureSetUp", reinterpret_cast<uintptr_t>(measure.SetUp), [this](uintptr_t node, uint8_t considerScale) { return MeasureSetUpDetour(node, considerScale); });
-	m_globalUiScale = measure.GlobalUiScale;
 	m_textWrapLayoutHook.emplace("TextWrapLayout", reinterpret_cast<uintptr_t>(measure.TextWrapLayout), [this](uintptr_t wrapper, uintptr_t text) {
 		return TextWrapLayoutDetour(wrapper, text);
 	});
@@ -247,6 +246,7 @@ void FontReplacement::FontReplacer::RebuildGlyphs() {
 		sized->Glyphs.clear();
 		sized->GameGlyphs.clear();
 		sized->ConvertedGlyphs.clear();
+		sized->WrapCells.clear();
 	}
 	m_slots.clear();
 	for (const auto& atlas : m_atlases | std::views::values)

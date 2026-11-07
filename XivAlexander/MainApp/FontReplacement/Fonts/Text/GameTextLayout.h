@@ -94,9 +94,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			const uint8_t* End = nullptr;
 			const SizedFont* Sized = nullptr;
 			ItalicMode Italic = ItalicMode::Upright;
+
+			// Laid out for wrapping (TryGetWrapGlyph).
+			bool Wrap = false;
 			std::shared_ptr<const ShapedRun> Shaped;
 
-			void Set(const uint8_t* start, int length, const SizedFont* sized, ItalicMode italic, std::shared_ptr<const ShapedRun> shaped);
+			void Set(const uint8_t* start, int length, const SizedFont* sized, ItalicMode italic, bool wrap, std::shared_ptr<const ShapedRun> shaped);
 
 			[[nodiscard]] ItalicMode ItalicAt(const uint8_t* p) const;
 
@@ -107,6 +110,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		DirectWriteTextAnalyzer& m_analyzer;
 		GameGlyph* m_emptyGlyph;
 		std::map<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_runs;
+
+		// Keyed by the largest size's sized font.
+		std::map<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_wrapRuns;
 
 		// Keyed by sized font too, as families may share a font but each places cells in its own atlas with its own metrics.
 		std::map<std::tuple<RasterKey, const SizedFont*, int, int>, GameGlyph*> m_cells;
@@ -136,6 +142,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// nullptr to have the game look the character up on its own.
 		GameGlyph* TryGetGlyph(SizedFont& sized, const uint8_t* p, ItalicMode italic);
 
+		// For wrapping text that may be drawn at any of several sizes: cells of no pixels in the largest size's pixels, each advancing by how
+		// much further the furthest of the sizes' pens has got, so that a line measures as wide as at its widest size. sizes and scales go
+		// largest last; nullptr as for TryGetGlyph.
+		GameGlyph* TryGetWrapGlyph(std::span<SizedFont* const> sizes, std::span<const float> scales, const uint8_t* p, ItalicMode italic);
+
 		void Clear();
 
 	private:
@@ -145,6 +156,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] std::optional<std::pair<char32_t, int>> DecodeAt(int u, int end) const;
 
 		std::shared_ptr<const ShapedRun> GetShapedRun(SizedFont& sized, const uint8_t* p, ItalicMode italic, int& length);
+		std::shared_ptr<const ShapedRun> GetWrapRun(std::span<SizedFont* const> sizes, std::span<const float> scales, const uint8_t* p, ItalicMode italic, int& length);
+
+		// The run's glyph at p, from an active run, else from shape, which returns nullptr if the character is left to the game.
+		GameGlyph* LookUp(const SizedFont& sized, bool wrap, const uint8_t* p, ItalicMode italic, const std::function<std::shared_ptr<const ShapedRun>(int& length)>& shape);
+
+		[[nodiscard]] static uint64_t HashBytes(const uint8_t* p, int length);
 
 		void EnsureCapacity(int n);
 
@@ -177,7 +194,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// previous cell advances that much less, keeping the line's width and the ink where shaping put it.
 		void PlaceClusters(const uint8_t* bytes, std::vector<GameGlyph*>& glyphs);
 
-		GameGlyph* GetSpacer(int advance);
+		GameGlyph* GetSpacer(const SizedFont& sized, int advance);
 
 		// Relative to the pen; the advance is final only for a monospaced cluster, as GetCell sets the others'.
 		const RasterGlyph& GetRaster(Cluster& c);
