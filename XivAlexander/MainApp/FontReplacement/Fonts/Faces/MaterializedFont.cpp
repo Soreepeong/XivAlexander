@@ -100,11 +100,13 @@ FontReplacement::FontAlignment FontReplacement::MaterializedFont::GetAlignment(f
 	};
 }
 
-std::optional<FontReplacement::RasterGlyph> FontReplacement::MaterializedFont::TryRasterize(char32_t codepoint, float px, GameFont* game) {
+std::optional<FontReplacement::RasterGlyph> FontReplacement::MaterializedFont::TryRasterize(char32_t codepoint, float px, GameFont* game, bool bold) {
 	const auto element = TryGetElement(std::span(&codepoint, 1), game);
-	const auto source = element ? element->Source() : nullptr;
+	auto source = element ? element->Source() : nullptr;
 	if (!source)
 		return std::nullopt;
+	if (bold)
+		source = source->GetBold();
 
 	const auto id = source->GetGlyphId(element->GetDrawnCodepoint(codepoint));
 	if (!id)

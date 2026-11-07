@@ -30,6 +30,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<std::set<char32_t>> m_codepoints;
 		std::unique_ptr<OutlineFaceSource> m_italic;
 		bool m_italicMade = false;
+		std::unique_ptr<OutlineFaceSource> m_bold;
+		bool m_boldMade = false;
 		std::optional<std::map<uint32_t, int>> m_baselines;
 		std::optional<std::vector<DWRITE_FONT_FEATURE>> m_features;
 
@@ -52,6 +54,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		LineMetrics GetLineMetrics(float px) override { return GetLineMetrics(px, m_transform); }
 		std::optional<float> TryGetBaseline(float px, Baseline baseline) override;
 		std::pair<IFaceSource*, bool> GetItalic() override;
+
+		// The next weight up as CSS's bolder picks it.
+		IFaceSource* GetBold() override;
+
 		int Shape(float px, std::wstring_view text, const ScriptToken& script, std::vector<ShapedCluster>& clusters) override;
 		std::optional<RasterGlyph> Rasterize(float px, const GlyphRun& run, const RasterizeOptions& options = {}) override;
 
@@ -65,6 +71,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Excludes oblique simulations, which aren't the family's own italic.
 		[[nodiscard]] static bool IsRealItalic(IDWriteFontFace5* face);
+
+		// Not to be sheared again by the game for an italic macro.
+		[[nodiscard]] bool IsSlanted() const;
+
+		[[nodiscard]] bool IsBolder(const LookupFont& font) const;
+
+		// nullptr unless the lookup finds a font that differs.
+		std::unique_ptr<OutlineFaceSource> MakeVariant(FontChanger::Structs::FontElement def, const std::function<bool(const LookupFont&)>& differs, std::string_view what);
 
 		// Compares the files, since a family's styles often have the same glyph count; simulations and axis values are ignored.
 		[[nodiscard]] static bool SameFont(IDWriteFontFace5* a, IDWriteFontFace5* b);

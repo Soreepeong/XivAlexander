@@ -61,7 +61,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		namespace Fonts = Game::Resolved::Fonts;
 		const std::initializer_list<const Game::Signatures::ComplexSignatureBase*> signatures{
 			&Fonts::Stage, &Fonts::FontManager, &Fonts::FontSet, &Fonts::Font, &Fonts::Ui, &Fonts::ResourceHandles, &Fonts::Textures,
-			&Fonts::Replacer, &Fonts::FontTables, &Fonts::NamePlates, &Fonts::ShaderTables, &Fonts::EdgeShader, &Fonts::LineBreaker,
+			&Fonts::Replacer, &Fonts::FontTables, &Fonts::NamePlates, &Fonts::ShaderTables, &Fonts::EdgeShader, &Fonts::LineBreaker, &Fonts::Measure,
 			&Game::Resolved::SubpixelText,
 		};
 		std::for_each(std::execution::par, signatures.begin(), signatures.end(), [](const auto* signature) { void(signature->Check()); });
@@ -82,6 +82,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 					if (NamePlates)
 						NamePlates->ForceRebake();
 				};
+				Replacer->IsNamePlateText = [this](uintptr_t node) { return NamePlates && NamePlates->IsPlateText(node); };
 			} catch (const std::exception& e) {
 				error = e.what();
 				TearDown();

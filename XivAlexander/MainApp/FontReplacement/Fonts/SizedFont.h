@@ -17,6 +17,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 
 	// Shared by the copies of a family's fonts of one size, such as a font and its lobby version.
+	// A bold one keeps the upright one's line metrics, so that lines partly in bold line up.
 	struct SizedFont {
 		MaterializedFont* Font;
 		GlyphAtlas* Atlas;
@@ -24,6 +25,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		float Px;
 		int Ascent;
 		int LineHeight;
+		bool Bold;
 
 		// Largest first; only Font at the size of one of the family's fonts.
 		std::vector<std::pair<MaterializedFont*, GameFont*>> Fonts;

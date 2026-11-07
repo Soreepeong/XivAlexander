@@ -2476,6 +2476,24 @@ namespace XivAlexander::Game::FontCode {
 	const Signatures::RegexSignature ItalicQuad(R"(\xF7[\x40-\x47](.)\x00\x00\x00\x08.{0,40}?\x74.\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....))");
 	// The <italic> macro setting the analyzer state's italic flag.
 	const Signatures::RegexSignature ItalicMacro(R"(\x0F\xBA[\xF0-\xF7]\x1B.{0,32}?\x0F\xBA[\xE0-\xE7]\x1B(?:\x72.|\x0F\x82....)\x0F\xBA[\xE8-\xEF]\x1E[\x40-\x4F]?\x89[\x40-\x7F](.))");
+	// A caller of the text node's measure setup testing bit 28 of the font set's draw flags it returns (dword, or its top byte).
+	const Signatures::RegexSignature MeasureSetUpCall(R"(\xE8(....)(?:[\x48\x4C]\x8B[\xC0\xC8\xD0\xD8\xE0\xE8\xF0\xF8]|[\x48\x49]\x89[\xC0-\xC7])[\x40-\x4F]?(?:\xF7[\x80-\x83\x85-\x87](....)\x00\x00\x00\x10|\xF6[\x80-\x83\x85-\x87](....)\x10))");
+	// The measure setup storing the node's font size as the set's unscaled size, once per axis or both from one conversion.
+	const Signatures::RegexSignature MeasureFontSize(R"([\x40-\x4F]?\x0F\xB6[\x80-\xBF](....)(?:\x66[\x40-\x4F]?\x0F\x6E[\xC0-\xFF][\x40-\x4F]?\x0F\x5B[\xC0-\xFF]|\xF3[\x40-\x4F]?\x0F\x2A[\xC0-\xFF])\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....)(?:\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....))?)");
+	// The measure setup squaring and adding a row of the node's transform.
+	const Signatures::RegexSignature MeasureTransformRow(R"(\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F](.)\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F](.)\xF3[\x40-\x4F]?\x0F\x59[\xC0-\xFF]\xF3[\x40-\x4F]?\x0F\x59[\xC0-\xFF]\xF3[\x40-\x4F]?\x0F\x58[\xC0-\xFF])");
+	// The measure setup copying the node's pick scale to the set, before the transform rows.
+	const Signatures::RegexSignature MeasurePickScale(R"((?:[\x40-\x4F]?\x8B[\x80-\xBF](....)[\x40-\x4F]?\x89[\x80-\xBF](....)|\xF3[\x40-\x4F]?\x0F\x10[\x80-\xBF](....)\xF3[\x40-\x4F]?\x0F\x11[\x80-\xBF](....)).{0,16}?\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F].\xF3[\x40-\x4F]?\x0F\x10[\x40-\x7F].\xF3[\x40-\x4F]?\x0F\x59)");
+	// A test of a byte's bit 6 (a text node's word wrap flag, with the text flags' offset).
+	const Signatures::RegexSignature TextFlagWordWrapTest(R"([\x40-\x4F]?\xF6[\x80-\x83\x85-\x87](....)\x40)");
+	// An index times the size of a font set (imul r64, r64, imm32).
+	const Signatures::RegexSignature FontSetIndex(R"([\x48-\x4F]\x69[\xC0-\xFF](....))");
+	// The text wrapper's call, after its fifth argument (paging) is stored.
+	const Signatures::RegexSignature TextWrapCall(R"(\xC6\x44\x24\x20[\x00\x01].{0,24}?\xE8(....))");
+	// AtkUnitBase::GetGlobalUIScale, then its setter: movss xmm0, [g]; ret; padding; movss [g], xmm0; mov al, 1; ret.
+	const Signatures::RegexSignature GlobalUiScaleAccessors(R"(\xF3\x0F\x10\x05(....)\xC3[\xCC\x90]{0,15}\xF3\x0F\x11\x05(....)\xB0\x01\xC3)");
+	// AtkTextNodeRenderer's per-node setup copying a text flag into bit 26 of the set's draw flags: a bit-field merge (shl; xor; and; xor), or masked then shifted.
+	const Signatures::RegexSignature TextNodeBold(R"([\x40-\x4F]?\x0F\xB6[\x80-\xBF](....)(?:.{0,12}?[\x40-\x4F]?\xC1[\xE0-\xE7](.).{0,12}?(?:\x25|\x81[\xE0-\xE7])\x00\x00\x00\x04|[\x40-\x4F]?\x83[\xE0-\xE7](.)[\x40-\x4F]?\xC1[\xE0-\xE7](.)))");
 }
 
 namespace XivAlexander::Game::Resolved::Fonts {
@@ -2697,6 +2715,12 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	std::string to_string(const LineBreakerFunctions& value) {
 		return std::format("SplitWord {}, FitUnits {}, units consumed +0x{:X} max +0x{:X} used +0x{:X}",
 			Signatures::Describe(value.SplitWord), Signatures::Describe(value.FitUnits), value.ConsumedUnits, value.MaxUnits, value.UsedUnits);
+	}
+
+	std::string to_string(const MeasureFunctions& value) {
+		return std::format("set up {}, node text flags +0x{:X} bold 0x{:X} transform +0x{:X} pick scale +0x{:X}, set unscaled size Y +0x{:X} pick scale +0x{:X}, wrap layout {}, global UI scale {}",
+			Signatures::Describe(value.SetUp), value.NodeTextFlags, value.NodeBoldFlag, value.NodeTransform, value.NodePickScale, value.SetUnscaledSizeY, value.SetPickScale,
+			Signatures::Describe(value.TextWrapLayout), Signatures::Describe(value.GlobalUiScale));
 	}
 
 	const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit("Fonts.ModuleInit", [](ResolveContext& ctx) {
@@ -2981,5 +3005,145 @@ namespace XivAlexander::Game::Resolved::Fonts {
 			.MaxUnits = Captured(m, {1}, "max units"),
 			.UsedUnits = Captured(m, {2}, "used units"),
 		};
+	});
+
+	const Signatures::ComplexSignature<MeasureFunctions> Measure("Fonts.Measure", [](ResolveContext& ctx) {
+		const auto drawFlags = ctx.Get(FontSet).DrawFlags;
+		ctx.Require(drawFlags.has_value(), ResolveError::NotFound, "font set draw flags not found");
+
+		const void* setUp{};
+		for (const auto& m : ctx.All(FontCode::MeasureSetUpCall, ctx.Text())) {
+			if ((m.Match()[2].matched ? m.Get<int32_t>(2) : m.Get<int32_t>(3) - 3) != *drawFlags)
+				continue;
+			const auto target = m.ResolveAddress<const void*>(1);
+			ctx.Require(!setUp || setUp == target, ResolveError::Ambiguous, "measure setup callers call different functions");
+			setUp = target;
+		}
+		ctx.Require(setUp != nullptr, ResolveError::NotFound, "measure setup caller not found");
+
+		const auto allIn = [&ctx](const RegexSignature& signature, const void* function, std::string_view what) {
+			std::vector<ScanResult> all;
+			for (const auto run : FunctionRuns(ctx, function, what)) {
+				for (auto& m : ctx.All(signature, run))
+					all.push_back(std::move(m));
+			}
+			return all;
+		};
+
+		MeasureFunctions res{.SetUp = Address(ctx.FunctionStartingAt(setUp, "measure setup").data())};
+
+		std::optional<int32_t> fontSize;
+		std::set<int32_t> sizes;
+		for (const auto& m : allIn(FontCode::MeasureFontSize, setUp, "measure setup")) {
+			ctx.Require(!fontSize || *fontSize == m.Get<int32_t>(1), ResolveError::Ambiguous, "measure setup reads more than one font size");
+			fontSize = m.Get<int32_t>(1);
+			sizes.insert(m.Get<int32_t>(2));
+			if (m.Match()[3].matched)
+				sizes.insert(m.Get<int32_t>(3));
+		}
+		ctx.Require(sizes.size() == 2 && *sizes.rbegin() == *sizes.begin() + 4, ResolveError::Mismatch, "unscaled size not stored once per axis");
+		res.SetUnscaledSizeY = *sizes.rbegin();
+
+		// The rows may be read in either order, and the first one only in older versions.
+		std::set<int32_t> rows;
+		for (const auto& m : allIn(FontCode::MeasureTransformRow, setUp, "measure setup")) {
+			const auto [lo, hi] = std::minmax<int32_t>(m.Get<int8_t>(1), m.Get<int8_t>(2));
+			ctx.Require(hi == lo + 4, ResolveError::Mismatch, "transform row not of two adjacent floats");
+			rows.insert(lo);
+		}
+		ctx.Require(!rows.empty() && *rows.rbegin() - *rows.begin() <= 8 && (*rows.rbegin() - *rows.begin()) % 8 == 0, ResolveError::Mismatch, "transform rows not found");
+		res.NodeTransform = *rows.begin();
+
+		const auto pick = UniqueIn(ctx, FontCode::MeasurePickScale, setUp, "pick scale");
+		res.NodePickScale = Captured(pick, {1, 3}, "node pick scale");
+		res.SetPickScale = Captured(pick, {2, 4}, "set pick scale");
+
+		const auto renderer = FunctionOf(ctx, UniqueInSlots(ctx, ctx.Get(TextNodeRenderer), FontCode::TextNodeSetUp, "TextNodeSetUp"), "TextNodeSetUp");
+		std::optional<std::pair<int32_t, uint32_t>> bold;
+		for (const auto& m : allIn(FontCode::TextNodeBold, renderer, "TextNodeSetUp")) {
+			uint32_t bit;
+			if (m.Match()[2].matched) {
+				const auto shift = m.Get<uint8_t>(2);
+				bit = shift < 32 ? 0x04000000u >> shift : 0;
+				if (bit << shift != 0x04000000u)
+					continue;
+			} else {
+				const auto shift = m.Get<uint8_t>(4);
+				bit = m.Get<uint8_t>(3);
+				if (shift >= 32 || bit << shift != 0x04000000u)
+					continue;
+			}
+			if (bit == 0 || bit > 0x80)
+				continue;
+			ctx.Require(!bold, ResolveError::Ambiguous, "bold text flag found more than once");
+			bold.emplace(m.Get<int32_t>(1), bit);
+		}
+		ctx.Require(bold.has_value(), ResolveError::NotFound, "bold text flag not found");
+		res.NodeTextFlags = bold->first;
+		res.NodeBoldFlag = static_cast<uint8_t>(bold->second);
+
+		// The word wrap of a node's text is called by every function that tests the node's word wrap flag and calls the measure setup
+		// (AtkTextNode::ApplyTextFlow and its inlined copies); of what they all call, it is the one indexing the font sets by font type.
+		std::set<const void*> wrappers;
+		std::optional<std::vector<const void*>> common;
+		for (const auto& m : ctx.All(FontCode::TextFlagWordWrapTest, ctx.Text())) {
+			if (m.Get<int32_t>(1) != res.NodeTextFlags)
+				continue;
+			const auto function = FunctionOf(ctx, m, "word wrap test");
+			if (!wrappers.insert(function).second)
+				continue;
+			auto callees = CalleesOf(ctx, function, "word wrap test");
+			if (!std::ranges::binary_search(callees, static_cast<const void*>(res.SetUp)))
+				continue;
+			if (common) {
+				std::vector<const void*> both;
+				std::ranges::set_intersection(*common, callees, std::back_inserter(both));
+				common = std::move(both);
+			} else {
+				common = std::move(callees);
+			}
+		}
+		ctx.Require(common.has_value(), ResolveError::NotFound, "no word wrapping caller of the measure setup");
+
+		const auto setSize = ctx.Get(FontManager).FontSetSize;
+		const void* nodeWrap{};
+		for (const auto callee : *common) {
+			if (callee == res.SetUp)
+				continue;
+			const auto indexes = std::ranges::any_of(FunctionRuns(ctx, callee, "word wrap"), [&](const auto run) {
+				return std::ranges::any_of(ctx.All(FontCode::FontSetIndex, run), [&](const auto& m) { return m.Get<int32_t>(1) == setSize; });
+			});
+			if (!indexes)
+				continue;
+			ctx.Require(!nodeWrap, ResolveError::Ambiguous, "more than one function the word wrapping callers call indexes the font sets");
+			nodeWrap = callee;
+		}
+		ctx.Require(nodeWrap != nullptr, ResolveError::NotFound, "word wrap not found");
+
+		// The node word wrap hands its text to the text wrapper, which scripts and addons call too; its layout is the one function only it calls.
+		const auto wrapper = CalledFunction(ctx, UniqueIn(ctx, FontCode::TextWrapCall, nodeWrap, "text wrapper call"), {1}, "text wrapper");
+		const auto text = ctx.Text();
+		const auto callSites = [&](const void* target) {
+			size_t n = 0;
+			for (size_t i = 0; i + 5 <= text.size(); i++) {
+				if (text[i] == 0xE8 && text.data() + i + 5 + *reinterpret_cast<const int32_t*>(text.data() + i + 1) == target)
+					n++;
+			}
+			return n;
+		};
+		for (const auto callee : CalleesOf(ctx, wrapper, "text wrapper")) {
+			if (callSites(callee) != 1)
+				continue;
+			ctx.Require(!res.TextWrapLayout, ResolveError::Ambiguous, "the text wrapper calls more than one function nothing else calls");
+			res.TextWrapLayout = const_cast<void*>(callee);
+		}
+		ctx.Require(res.TextWrapLayout != nullptr, ResolveError::NotFound, "the text wrapper's layout not found");
+
+		const auto accessors = ctx.Unique(FontCode::GlobalUiScaleAccessors, text, "global UI scale accessors");
+		const auto scale = accessors.ResolveAddress<float*>(1);
+		ctx.Require(scale == accessors.ResolveAddress<float*>(2) && ctx.InSection(scale, ".data"), ResolveError::Mismatch,
+			"the global UI scale's getter and setter disagree");
+		res.GlobalUiScale = scale;
+		return res;
 	});
 }

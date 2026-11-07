@@ -8,6 +8,7 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
 	constexpr uint8_t NewLineMacro = 0x10;
+	constexpr uint8_t BoldMacro = 0x19;
 	constexpr uint8_t ItalicMacro = 0x1A;
 }
 
@@ -21,8 +22,9 @@ int FontReplacement::GameTextLayout::ReadRun(const uint8_t* p, ItalicMode italic
 			break;
 
 		if (b == GameUtf8::Stx) {
+			// Bold is laid out with another sized font.
 			const auto macro = p[i + 1];
-			if (macro == NewLineMacro || (macro == ItalicMacro && italic == ItalicMode::Images))
+			if (macro == NewLineMacro || macro == BoldMacro || (macro == ItalicMacro && italic == ItalicMode::Images))
 				break;
 			const auto total = GameUtf8::MacroLength(p + i);
 			if (total == 0 || i + total > MaxRunBytes)

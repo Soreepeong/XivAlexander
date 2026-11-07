@@ -136,8 +136,14 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFon
 		ApplyPendingPages();
 
 		// Picked for the on-screen size, even where the game picked for another (a node's fixed font resolution, or a pick scale of its own), so
-		// that the renderer doesn't scale the glyphs.
-		const auto size = set->ScaledSizeY();
+		// that the renderer doesn't scale the glyphs. Text laid out unscaled takes its pick scale's.
+		auto size = set->ScaledSizeY();
+		if (set->NodeScaleX() == 1 && set->NodeScaleY() == 1) {
+			if (const auto pickScale = PickScaleOf(set); pickScale > 0 && std::isfinite(pickScale))
+				size = *reinterpret_cast<const float*>(reinterpret_cast<uintptr_t>(set) + m_setUnscaledSizeYOffset) * pickScale;
+			else if (s_wrapScale > 0)
+				size *= s_wrapScale;
+		}
 		const auto halfPx = std::clamp(static_cast<int>(StdRound(size * 2)), MinHalfPx, MaxHalfPx);
 		const auto copy = GetOrCreateCopy(font, halfPx);
 
@@ -151,6 +157,34 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::PickFontDetour(GameFon
 		DisableAfterError();
 		return font;
 	}
+}
+
+FontReplacement::GameFontSet* FontReplacement::FontReplacer::MeasureSetUpDetour(uintptr_t node, uint8_t considerScale) {
+	const auto set = m_measureSetUpHook->Original(node, considerScale);
+	if (!set || !node)
+		return set;
+
+	// The game measures a node's bold upright, as it draws it.
+	auto& flags = *reinterpret_cast<uint32_t*>(reinterpret_cast<uintptr_t>(set) + m_setFlagsOffset);
+	flags = *reinterpret_cast<const uint8_t*>(node + m_nodeTextFlagsOffset) & m_nodeBoldFlag ? flags | m_boldFlag : flags & ~m_boldFlag;
+
+	// Hinting rounds glyphs of different sizes differently, so text measured in the node's units (a speech balloon's) is laid out with the
+	// glyphs it is drawn with, of its size on screen.
+	if (m_enabled && considerScale == 0 && PickScaleOf(set) <= 0 && !(IsNamePlateText && IsNamePlateText(node))) {
+		const auto m = reinterpret_cast<const float*>(node + m_nodeTransformOffset);
+		const auto scale = std::sqrt(m[2] * m[2] + m[3] * m[3]);
+		if (std::isfinite(scale) && scale > 0 && std::abs(scale - 1) > 0.001f)
+			PickScaleOf(set) = scale;
+	}
+	return set;
+}
+
+int FontReplacement::FontReplacer::TextWrapLayoutDetour(uintptr_t wrapper, uintptr_t text) {
+	const auto scale = *m_globalUiScale;
+	const auto outer = s_wrapScale;
+	s_wrapScale = m_enabled && std::isfinite(scale) && scale > 0 && scale != 1 ? scale : 0;
+	const auto restore = xivres::util::on_dtor([outer] { s_wrapScale = outer; });
+	return m_textWrapLayoutHook->Original(wrapper, text);
 }
 
 uintptr_t FontReplacement::FontReplacer::LayOutCharacterDetour(uintptr_t analyzer, const uint8_t** text, uintptr_t state) {
@@ -197,8 +231,20 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetGlyphDetour(GameFo
 	return glyph ? glyph : GetMissingGlyph(set, utf8Value, it->second);
 }
 
-FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, const CopyInfo& info) {
-	auto& sized = *info.Sized;
+FontReplacement::SizedFont& FontReplacement::FontReplacer::GetDrawnSized(CopyInfo& info) {
+	if (m_stateFlagsOffset < 0 || !s_current.State || !(*reinterpret_cast<const uint32_t*>(s_current.State + m_stateFlagsOffset) & m_boldFlag))
+		return *info.Sized;
+	try {
+		return *GetBoldSized(info);
+	} catch (const std::exception& e) {
+		Host::Error("Setting up the fonts of bold failed: {}", e.what());
+		info.BoldSized = info.Sized;
+		return *info.Sized;
+	}
+}
+
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info) {
+	auto& sized = GetDrawnSized(info);
 
 	// The character LayOutCharacter is at gets its shaped cluster's glyph, unless the lookup is of the game's fallback characters.
 	if (const auto p = s_current.Character; p && GameUtf8::Pack(p) == utf8Value) {
@@ -252,7 +298,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetCopyGlyph(GameFont
 	}
 }
 
-FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, const CopyInfo& info) {
+FontReplacement::GameGlyph* FontReplacement::FontReplacer::GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info) {
 	for (const auto substitute : MissingGlyphSubstitutes) {
 		if (utf8Value == substitute)
 			continue;

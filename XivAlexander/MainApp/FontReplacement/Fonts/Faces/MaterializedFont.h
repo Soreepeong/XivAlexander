@@ -61,8 +61,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] FontAlignment GetAlignment(float px, GameFont* game);
 
 		// nullopt means the game's glyph is used.
-		[[nodiscard]] std::optional<RasterGlyph> TryRasterize(char32_t codepoint, float px, GameFont* game);
-
+		[[nodiscard]] std::optional<RasterGlyph> TryRasterize(char32_t codepoint, float px, GameFont* game, bool bold);
 	private:
 		// As FontChanger's FontElement::GetBaseFont; nullptr for the replaced game font.
 		static std::unique_ptr<IFaceSource> CreateSource(const FontChanger::Structs::FontElement& def, FontServices& services, const std::string& fontName);

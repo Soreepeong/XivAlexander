@@ -73,6 +73,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<Host::Hook<uintptr_t, uintptr_t, const uint8_t**, uintptr_t>> m_layOutCharacterHook;
 		std::optional<Host::Hook<int, uintptr_t, uint16_t>> m_buildFontHook;
 		std::optional<Host::Hook<uintptr_t, uintptr_t>> m_unloadFontsHook;
+		std::optional<Host::Hook<GameFontSet*, uintptr_t, uint8_t>> m_measureSetUpHook;
+		std::optional<Host::Hook<int, uintptr_t, uintptr_t>> m_textWrapLayoutHook;
+		const float* m_globalUiScale = nullptr;
+
+		// The global UI scale while the text wrapper lays text out, which it does unscaled; 0 outside.
+		static thread_local float s_wrapScale;
+
 		uintptr_t m_rendererVtbl = 0;
 		uintptr_t m_renderCountVtbl = 0;
 		void(*m_freeFontCache)(uintptr_t) = nullptr;
@@ -87,6 +94,15 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uint32_t m_setItalicFlag = 0;
 		int m_stateFlagsOffset = -1;
 		int m_setFlagsOffset = -1;
+
+		// Set by a text node's bold (when drawing) and the bold macro; the game reads it nowhere.
+		uint32_t m_boldFlag = 0;
+
+		int m_nodeTextFlagsOffset = 0;
+		uint8_t m_nodeBoldFlag = 0;
+		int m_nodeTransformOffset = 0;
+		int m_setUnscaledSizeYOffset = 0;
+		int m_setPickScaleOffset = 0;
 
 		std::unique_ptr<GameTextLayout> m_layout;
 
@@ -154,6 +170,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			GameFont* Original;
 			int HalfPx;
 			SizedFont* Sized;
+			SizedFont* BoldSized = nullptr;
 		};
 
 		// One atlas per game font family so one family's text can't push another's out; AXIS (most UI text) has its own page size and count.
@@ -166,7 +183,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		std::map<std::pair<GameFont*, int>, GameFont*> m_copiesByKey;
 		std::map<GameFont*, CopyInfo> m_copies;
-		std::map<std::tuple<MaterializedFont*, int, std::string>, std::unique_ptr<SizedFont>> m_sizedFonts;
+		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::unique_ptr<SizedFont>> m_sizedFonts;
 
 		// FontReplacer.cpp
 
@@ -200,6 +217,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Game thread, when earlier drawn text no longer matches, for what keeps drawn text around (nameplate bakes).
 		std::function<void()> TextInvalidated;
+
+		// Game thread; such text nodes are measured at their unscaled size, as they are baked at a scale of their own.
+		std::function<bool(uintptr_t node)> IsNamePlateText;
 
 		// Game thread, between frames; every glyph is made again, even for the same value.
 		void SetFonts(const FontSettings& value);
@@ -255,7 +275,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// At the size of one of the family's fonts, that font's glyphs with its game font's metrics; at another, each glyph from the largest font
 		// that draws it itself, with the metrics of the font that draws the most glyphs itself.
-		SizedFont* GetSized(GameFont* original, int halfPx);
+		SizedFont* GetSized(GameFont* original, int halfPx, bool bold);
+		SizedFont* GetBoldSized(CopyInfo& info);
 
 		MaterializedFont* FontOf(const std::string& fontName);
 		GlyphAtlas* GetAtlas(const std::string& family);
@@ -299,6 +320,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		uintptr_t UnloadFontsDetour(uintptr_t manager);
 
 		GameFont* PickFontDetour(GameFontSet* set, uint8_t useCache);
+
+		// Its callers lay the text out with the font set it returns, and restore the set afterwards.
+		GameFontSet* MeasureSetUpDetour(uintptr_t node, uint8_t considerScale);
+
+		// Wraps with the glyphs of the global UI scale, which the text is drawn at, as glyphs of different sizes don't scale evenly. The text
+		// may come from a script or an addon, so there is no node to take its own scale from.
+		int TextWrapLayoutDetour(uintptr_t wrapper, uintptr_t text);
+
+		[[nodiscard]] float& PickScaleOf(GameFontSet* set) const { return *reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(set) + m_setPickScaleOffset); }
+
 		uintptr_t LayOutCharacterDetour(uintptr_t analyzer, const uint8_t** text, uintptr_t state);
 
 		// An italic macro sets the state's bit, which measuring sees too; a text node's italics are only in the font set's own flags, which only
@@ -308,11 +339,13 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameGlyph* GetGlyphDetour(GameFontSet* set, uint32_t utf8Value, GameFont* font);
 
 		// nullptr if neither the copy nor its game font has a glyph of the character.
-		GameGlyph* GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, const CopyInfo& info);
+		GameGlyph* GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
+
+		SizedFont& GetDrawnSized(CopyInfo& info);
 
 		// LayOutCharacter would take its substitutes from the font's glyph map directly, getting game glyphs of texture indices the copy has no
 		// textures of, so the copy's own glyphs of them (else one of no width) are given instead.
-		GameGlyph* GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, const CopyInfo& info);
+		GameGlyph* GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
 
 		// FontReplacer.Cells.cpp
 

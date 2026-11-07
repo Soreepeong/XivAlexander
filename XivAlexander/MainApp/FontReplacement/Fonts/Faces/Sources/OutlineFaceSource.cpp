@@ -46,6 +46,8 @@ void FontReplacement::OutlineFaceSource::SetMeasureMode(DWRITE_MEASURING_MODE va
 	m_measureMode = value;
 	if (m_italic)
 		m_italic->SetMeasureMode(value);
+	if (m_bold)
+		m_bold->SetMeasureMode(value);
 }
 
 const std::set<char32_t>& FontReplacement::OutlineFaceSource::Codepoints() {
@@ -99,26 +101,48 @@ FontReplacement::LineMetrics FontReplacement::OutlineFaceSource::GetLineMetrics(
 }
 
 std::pair<FontReplacement::IFaceSource*, bool> FontReplacement::OutlineFaceSource::GetItalic() {
-	if (IsRealItalic(m_font->Face()))
+	if (IsSlanted())
 		return {this, true};
 
 	if (!m_italicMade) {
 		m_italicMade = true;
-		try {
-			auto def = m_def;
-			def.Lookup.Style = DWRITE_FONT_STYLE_ITALIC;
-			if (auto font = LookupFont::Create(m_services, def.Lookup, def.Source); font && IsRealItalic(font->Face()) && !SameFont(font->Face(), m_font->Face())) {
-				m_italic = FromFont(m_services, std::move(def), std::move(font), m_fontName);
-				m_italic->SetMeasureMode(m_measureMode);
-			}
-		} catch (const std::exception& e) {
-			Host::Warning("{}: the italic of {} can't be made: {}", m_fontName, m_def.Lookup.FamilyName, e.what());
-		}
+		auto def = m_def;
+		def.Lookup.Style = DWRITE_FONT_STYLE_ITALIC;
+		m_italic = MakeVariant(std::move(def), [this](const LookupFont& f) { return IsRealItalic(f.Face()) && !SameFont(f.Face(), m_font->Face()); }, "italic");
 	}
 
 	if (m_italic)
 		return {m_italic.get(), true};
 	return {this, false};
+}
+
+FontReplacement::IFaceSource* FontReplacement::OutlineFaceSource::GetBold() {
+	if (!m_boldMade) {
+		m_boldMade = true;
+		auto def = m_def;
+		const auto weight = def.Lookup.Weight;
+		def.Lookup.Weight = weight < 350 ? DWRITE_FONT_WEIGHT_NORMAL : weight < 550 ? DWRITE_FONT_WEIGHT_BOLD : DWRITE_FONT_WEIGHT_BLACK;
+
+		// FreeType draws none of DirectWrite's simulations, so it emboldens by synthesis.
+		if (!def.Lookup.Synthesis && def.Source == ElementSourceEnum::FreeType)
+			def.Lookup.Synthesis = FontChanger::Structs::SynthesisStruct{.Allow = true};
+		m_bold = MakeVariant(std::move(def), [this](const LookupFont& f) { return IsBolder(f); }, "bold");
+	}
+
+	return m_bold ? m_bold.get() : this;
+}
+
+std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::MakeVariant(FontElement def, const std::function<bool(const LookupFont&)>& differs, std::string_view what) {
+	try {
+		if (auto font = LookupFont::Create(m_services, def.Lookup, def.Source); font && differs(*font)) {
+			auto made = FromFont(m_services, std::move(def), std::move(font), m_fontName);
+			made->SetMeasureMode(m_measureMode);
+			return made;
+		}
+	} catch (const std::exception& e) {
+		Host::Warning("{}: the {} of {} can't be made: {}", m_fontName, what, m_def.Lookup.FamilyName, e.what());
+	}
+	return nullptr;
 }
 
 std::optional<FontReplacement::RasterGlyph> FontReplacement::OutlineFaceSource::Rasterize(float px, const GlyphRun& run, const RasterizeOptions& options) {
@@ -183,6 +207,19 @@ float FontReplacement::OutlineFaceSource::GetExtraAdvance(float px) const {
 
 bool FontReplacement::OutlineFaceSource::IsRealItalic(IDWriteFontFace5* face) {
 	return (face->GetSimulations() & DWRITE_FONT_SIMULATIONS_OBLIQUE) == 0 && face->GetStyle() != DWRITE_FONT_STYLE_NORMAL;
+}
+
+bool FontReplacement::OutlineFaceSource::IsSlanted() const {
+	const auto face = m_font->Face();
+	return IsRealItalic(face) || (face->GetSimulations() & DWRITE_FONT_SIMULATIONS_OBLIQUE);
+}
+
+bool FontReplacement::OutlineFaceSource::IsBolder(const LookupFont& font) const {
+	const auto face = font.Face();
+	const auto own = m_font->Face();
+	return face->GetWeight() > own->GetWeight()
+		|| ((face->GetSimulations() & DWRITE_FONT_SIMULATIONS_BOLD) && !(own->GetSimulations() & DWRITE_FONT_SIMULATIONS_BOLD))
+		|| font.Embolden() > m_font->Embolden();
 }
 
 bool FontReplacement::OutlineFaceSource::SameFont(IDWriteFontFace5* a, IDWriteFontFace5* b) {

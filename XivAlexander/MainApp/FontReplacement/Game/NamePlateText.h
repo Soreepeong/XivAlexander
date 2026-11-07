@@ -61,6 +61,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread.
 		void SetMode(FontReplacementNamePlateMode mode);
 
+		// Game thread; false for any node until a hook has seen the renderer.
+		[[nodiscard]] bool IsPlateText(uintptr_t node) const;
+
 	private:
 		[[nodiscard]] FontReplacementNamePlateMode GetEffectiveMode() const;
 

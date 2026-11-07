@@ -11,6 +11,7 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 thread_local FontReplacement::FontReplacer::LayoutContext FontReplacement::FontReplacer::s_current;
+thread_local float FontReplacement::FontReplacer::s_wrapScale = 0;
 
 FontReplacement::FontReplacer::FontReplacer() {
 	ResolveGameFontStructs();
@@ -19,6 +20,7 @@ FontReplacement::FontReplacer::FontReplacer() {
 	const auto set = ResolveGameCode(Game::Resolved::Fonts::FontSet);
 	const auto font = ResolveGameCode(Game::Resolved::Fonts::Font);
 	const auto functions = ResolveGameCode(Game::Resolved::Fonts::Replacer);
+	const auto measure = ResolveGameCode(Game::Resolved::Fonts::Measure);
 	const auto pickFont = reinterpret_cast<uintptr_t>(set.PickFont);
 	const auto getGlyph = reinterpret_cast<uintptr_t>(font.GetGlyph);
 	const auto layOutCharacter = reinterpret_cast<uintptr_t>(font.LayOutCharacter);
@@ -38,6 +40,12 @@ FontReplacement::FontReplacer::FontReplacer() {
 	m_setFlagsOffset = set.DrawFlags.value_or(-1);
 	m_stateItalicFlag = 0x08000000;
 	m_setItalicFlag = 0x08000000;
+	m_boldFlag = 0x04000000;
+	m_nodeTextFlagsOffset = measure.NodeTextFlags;
+	m_nodeBoldFlag = measure.NodeBoldFlag;
+	m_nodeTransformOffset = measure.NodeTransform;
+	m_setUnscaledSizeYOffset = measure.SetUnscaledSizeY;
+	m_setPickScaleOffset = measure.SetPickScale;
 
 	m_services = std::make_unique<FontServices>();
 	m_fallbackFonts = std::make_unique<SystemFallbackFonts>(*m_services);
@@ -59,6 +67,11 @@ FontReplacement::FontReplacer::FontReplacer() {
 	m_layOutCharacterHook.emplace("LayOutCharacter", layOutCharacter, [this](uintptr_t analyzer, const uint8_t** text, uintptr_t state) { return LayOutCharacterDetour(analyzer, text, state); });
 	m_buildFontHook.emplace("BuildFont", buildFont, [this](uintptr_t manager, uint16_t index) { return BuildFontDetour(manager, index); });
 	m_unloadFontsHook.emplace("UnloadFonts", unloadFonts, [this](uintptr_t manager) { return UnloadFontsDetour(manager); });
+	m_measureSetUpHook.emplace("MeasureSetUp", reinterpret_cast<uintptr_t>(measure.SetUp), [this](uintptr_t node, uint8_t considerScale) { return MeasureSetUpDetour(node, considerScale); });
+	m_globalUiScale = measure.GlobalUiScale;
+	m_textWrapLayoutHook.emplace("TextWrapLayout", reinterpret_cast<uintptr_t>(measure.TextWrapLayout), [this](uintptr_t wrapper, uintptr_t text) {
+		return TextWrapLayoutDetour(wrapper, text);
+	});
 
 	// Caches built so far hold the game's glyphs; if anything above throws, the members undo the setup.
 	UpdateFontCaches();
@@ -77,6 +90,8 @@ FontReplacement::FontReplacer::~FontReplacer() {
 	step("font caches", [this] { SetEnabled(false); });
 	step("edge shader", [this] { m_edgeShader.SetSoftness(std::nullopt); });
 	step("subpixel shaders", [this] { m_subpixelShaders.Apply({}); });
+	m_textWrapLayoutHook.reset();
+	m_measureSetUpHook.reset();
 	m_unloadFontsHook.reset();
 	m_buildFontHook.reset();
 	m_layOutCharacterHook.reset();

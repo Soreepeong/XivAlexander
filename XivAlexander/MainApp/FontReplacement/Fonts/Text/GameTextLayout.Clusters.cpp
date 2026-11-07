@@ -12,26 +12,27 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 void FontReplacement::GameTextLayout::Collect(int count, bool italicImages) {
 	m_clusters.clear();
-	m_analyzer.Itemize(std::span<const wchar_t>(m_text.data(), count), m_textRuns);
 
 	auto pen = 0.f;
-	for (const auto& run : m_textRuns) {
-		for (auto start = run.Start; start < run.End;) {
-			const auto& source = m_textSource[start];
-			const auto inItalic = m_textItalic[start] != 0;
-			auto end = start + 1;
-			while (end < run.End && m_textSource[end] == source && (m_textItalic[end] != 0) == inItalic)
-				end++;
+	for (auto start = 0; start < count;) {
+		const auto& source = m_textSource[start];
+		const auto inItalic = m_textItalic[start] != 0;
+		auto end = start + 1;
+		while (end < count && m_textSource[end] == source && (m_textItalic[end] != 0) == inItalic)
+			end++;
 
-			CollectPiece(source, start, end, run, inItalic, italicImages, pen);
-			start = end;
-		}
+		m_analyzer.Itemize(std::span<const wchar_t>(m_text.data() + start, end - start), m_textRuns);
+		for (const auto& run : m_textRuns)
+			CollectPiece(source, start + run.Start, start + run.End, run, inItalic, italicImages, pen);
+		start = end;
 	}
 }
 
 void FontReplacement::GameTextLayout::CollectPiece(const std::optional<GlyphSource>& glyphSource, int start, int end, const TextRun& run, bool inItalic, bool italicImages, float& pen) {
 	const auto element = glyphSource ? glyphSource->Element : nullptr;
 	auto source = element ? element->Source() : nullptr;
+	if (source && m_shapingSized->Bold)
+		source = source->GetBold();
 	auto realItalic = false;
 	if (source && inItalic)
 		std::tie(source, realItalic) = source->GetItalic();

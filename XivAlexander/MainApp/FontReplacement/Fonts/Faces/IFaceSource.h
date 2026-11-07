@@ -47,6 +47,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// The bool is false if the source has no italic and returns itself.
 		[[nodiscard]] virtual std::pair<IFaceSource*, bool> GetItalic() { return {this, false}; }
 
+		// Itself if it has no bolder face.
+		[[nodiscard]] virtual IFaceSource* GetBold() { return this; }
+
 		// Clusters are in logical order and stop before the first one lacking a glyph; returns the code units shaped, at a cluster boundary.
 		virtual int Shape(float px, std::wstring_view text, const ScriptToken& script, std::vector<ShapedCluster>& clusters) = 0;
 

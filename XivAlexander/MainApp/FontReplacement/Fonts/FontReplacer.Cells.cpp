@@ -14,7 +14,7 @@ FontReplacement::GameGlyph* FontReplacement::FontReplacer::CreateGlyph(SizedFont
 	const auto pick = sized.Pick(std::span(&codepoint, 1));
 	if (pick.Element && pick.Element->DrawsGame())
 		return nullptr;
-	auto r = pick.Font->TryRasterize(codepoint, sized.Px, pick.Game);
+	auto r = pick.Font->TryRasterize(codepoint, sized.Px, pick.Game, sized.Bold);
 	return r ? PlaceCell(sized, FinishGlyph(sized, std::move(*r)), utf8Value) : nullptr;
 }
 

@@ -644,6 +644,19 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		int32_t UsedUnits{};
 	};
 
+	// The text node's measure setup: measure(node, considerScale) -> font set, which its callers restore afterwards.
+	struct MeasureFunctions {
+		void* SetUp{};
+		int32_t NodeTextFlags{};  // uint8_t, in AtkTextNode
+		uint8_t NodeBoldFlag{};  // in NodeTextFlags; the game sets 1 << 26 of the font set's draw flags for it
+		int32_t NodeTransform{};  // float[4], row by row, in AtkResNode
+		int32_t NodePickScale{};  // float, in AtkTextNode
+		int32_t SetUnscaledSizeY{};  // float
+		int32_t SetPickScale{};  // float; where positive, PickFont picks for this times the unscaled size
+		void* TextWrapLayout{};  // int(wrapper, text): the text wrapper's layout, which every wrap goes through, unscaled unless its style says otherwise
+		float* GlobalUiScale{};  // g_GlobalUIScale: the High Resolution UI setting (1, 1.5, 2 or 3)
+	};
+
 	[[nodiscard]] std::string to_string(const ModuleInitFunctions& value);
 	[[nodiscard]] std::string to_string(const StageLayout& value);
 	[[nodiscard]] std::string to_string(const FontManagerLayout& value);
@@ -658,6 +671,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	[[nodiscard]] std::string to_string(const ShaderTablesLayout& value);
 	[[nodiscard]] std::string to_string(const EdgeShaderFunctions& value);
 	[[nodiscard]] std::string to_string(const LineBreakerFunctions& value);
+	[[nodiscard]] std::string to_string(const MeasureFunctions& value);
 
 	extern const Signatures::ComplexSignature<ModuleInitFunctions> ModuleInit;
 	extern const Signatures::ComplexSignature<void* const*> TextNodeRenderer;  // AtkTextNodeRenderer's vtable
@@ -675,4 +689,5 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	extern const Signatures::ComplexSignature<ShaderTablesLayout> ShaderTables;
 	extern const Signatures::ComplexSignature<EdgeShaderFunctions> EdgeShader;
 	extern const Signatures::ComplexSignature<LineBreakerFunctions> LineBreaker;
+	extern const Signatures::ComplexSignature<MeasureFunctions> Measure;
 }

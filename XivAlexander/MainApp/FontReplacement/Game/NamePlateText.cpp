@@ -97,6 +97,21 @@ void FontReplacement::NamePlateText::ForceRebake() {
 		SetNeedsToBeBaked(objects + static_cast<size_t>(i) * m_objectSize);
 }
 
+bool FontReplacement::NamePlateText::IsPlateText(uintptr_t node) const {
+	const auto addon = m_lastRenderer - m_addonBakePlate;
+	if (const auto units = m_lastRenderer ? GameUi::GetLoadedUnits() : std::vector<uintptr_t>(); std::ranges::find(units, addon) == units.end())
+		return false;
+
+	const auto objects = At<uintptr_t>(addon + m_addonObjects);
+	if (!objects)
+		return false;
+	for (auto i = 0; i < m_objectCount; i++) {
+		if (At<uintptr_t>(objects + static_cast<size_t>(i) * m_objectSize + m_objectNameText) == node)
+			return true;
+	}
+	return false;
+}
+
 void FontReplacement::NamePlateText::SeeRenderer(uintptr_t renderer) {
 	m_lastRenderer = renderer;
 	if (m_rebakePending)

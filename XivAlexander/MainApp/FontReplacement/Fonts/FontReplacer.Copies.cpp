@@ -12,14 +12,15 @@ bool FontReplacement::FontReplacer::ResyncCopies(GameFont* only) {
 	for (auto& [copy, info] : m_copies) {
 		if (only && info.Original != only)
 			continue;
-		info.Sized = GetSized(info.Original, info.HalfPx);
+		info.Sized = GetSized(info.Original, info.HalfPx, false);
+		info.BoldSized = nullptr;
 		Sync(copy, info);
 		any = true;
 	}
 	return any;
 }
 
-FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx) {
+FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* original, int halfPx, bool bold) {
 	const auto px = static_cast<float>(halfPx) / 2.f;
 	struct Candidate {
 		std::string Name;
@@ -56,7 +57,7 @@ FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* or
 	}
 
 	const auto& [fontName, size, materialized, game] = candidates[best];
-	const auto key = std::make_tuple(materialized, halfPx, fontName);
+	const auto key = std::make_tuple(materialized, halfPx, fontName, bold);
 	auto it = m_sizedFonts.find(key);
 	if (it == m_sizedFonts.end()) {
 		const auto [ascent, lineHeight] = materialized->GetLineMetrics(px, game);
@@ -67,12 +68,19 @@ FontReplacement::SizedFont* FontReplacement::FontReplacer::GetSized(GameFont* or
 			.Px = px,
 			.Ascent = ascent,
 			.LineHeight = lineHeight,
+			.Bold = bold,
 		});
 		for (const auto& f : candidates)
 			sized->Fonts.emplace_back(f.Font, f.Game);
 		it = m_sizedFonts.emplace(key, std::move(sized)).first;
 	}
 	return it->second.get();
+}
+
+FontReplacement::SizedFont* FontReplacement::FontReplacer::GetBoldSized(CopyInfo& info) {
+	if (!info.BoldSized)
+		info.BoldSized = GetSized(info.Original, info.HalfPx, true);
+	return info.BoldSized;
 }
 
 FontReplacement::MaterializedFont* FontReplacement::FontReplacer::FontOf(const std::string& fontName) {
@@ -133,7 +141,7 @@ FontReplacement::GameFont* FontReplacement::FontReplacer::GetOrCreateCopy(GameFo
 	if (!copy)
 		throw std::bad_alloc();
 	try {
-		const CopyInfo info{original, halfPx, GetSized(original, halfPx)};
+		const CopyInfo info{original, halfPx, GetSized(original, halfPx, false)};
 		Sync(copy, info);
 		m_copies.emplace(copy, info);
 		m_copiesByKey.emplace(std::make_pair(original, halfPx), copy);
