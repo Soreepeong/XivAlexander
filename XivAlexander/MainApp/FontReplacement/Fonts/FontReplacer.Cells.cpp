@@ -303,6 +303,7 @@ void FontReplacement::FontReplacer::EvictPlane(GlyphAtlas* atlas) {
 	const auto plane = atlas->RecycleLeastRecentlyDrawn();
 	m_fullAtlases.erase(atlas);
 	m_lastEviction[atlas] = GetTickCount64();
+	m_planeReused = true;
 	Host::Information("The {} glyph atlas was full: reusing plane {}, whose glyphs are placed again as they are drawn", atlas->Name(), plane);
 }
 

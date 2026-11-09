@@ -184,6 +184,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::set<GlyphAtlas*> m_fullAtlases;
 		std::map<GlyphAtlas*, uint64_t> m_lastEviction;
 
+		// A full atlas hands out blanks, which baked text keeps until it is baked again once a plane is reused.
+		std::atomic<bool> m_planeReused = false;
+
 		// Placed glyphs made from game glyphs, whose pixels are read from the game's textures at the next upload.
 		std::vector<GameGlyph*> m_gameReads;
 		TextureReader m_gameTextures;

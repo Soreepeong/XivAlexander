@@ -198,6 +198,8 @@ std::unique_ptr<FontReplacement::FontReplacer::LoadedFonts> FontReplacement::Fon
 void FontReplacement::FontReplacer::EndFrame() {
 	ApplyLoadedFonts();
 	ApplyPendingPages();
+	if (m_planeReused.exchange(false) && TextInvalidated)
+		TextInvalidated();
 }
 
 void FontReplacement::FontReplacer::ApplyLoadedFonts() {
