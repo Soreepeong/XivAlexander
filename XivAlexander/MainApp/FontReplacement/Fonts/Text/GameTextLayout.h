@@ -18,6 +18,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr int MaxRunBytes = 4096;
 		static constexpr size_t MaxActiveRuns = 8;
 
+		// A resized chat log lays out every line again at each wrapping size, which the runs of a long log must all be kept for.
+		static constexpr size_t CachedRuns = 65536;
+
 		// Graphemes longer than this are picked an element by their first runes.
 		static constexpr int MaxGraphemeRunes = 16;
 
@@ -114,10 +117,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FontReplacer& m_replacer;
 		DirectWriteTextAnalyzer& m_analyzer;
 		GameGlyph* m_emptyGlyph;
-		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_runs;
+		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_runs{CachedRuns};
 
 		// Keyed by the largest size's sized font.
-		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_wrapRuns;
+		AgedMap<std::tuple<uint64_t, int, const SizedFont*, ItalicMode>, std::shared_ptr<const ShapedRun>> m_wrapRuns{CachedRuns};
 
 		// Keyed by sized font too, as families may share a font but each places cells in its own atlas with its own metrics. Held with
 		// FontReplacer::Keep.

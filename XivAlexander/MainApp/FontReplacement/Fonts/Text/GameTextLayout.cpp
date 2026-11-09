@@ -163,15 +163,20 @@ std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacemen
 
 std::shared_ptr<const FontReplacement::GameTextLayout::ShapedRun> FontReplacement::GameTextLayout::GetWrapRun(
 	std::span<SizedFont* const> sizes, std::span<const float> scales, const uint8_t* p, ItalicMode italic, int& length) {
+	// Looked up before shaping, as the sizes' runs, made far more often by texts other than wrapped ones, are let go of much sooner.
 	auto& largest = *sizes.back();
-	const auto top = GetShapedRun(largest, p, italic, length);
-	if (!top)
+	ReadRun(p, italic, length);
+	if (length == 0)
 		return nullptr;
 
 	const auto key = std::make_tuple(HashBytes(p, length), length, static_cast<const SizedFont*>(&largest), italic);
 	const auto frame = m_replacer.Frame();
 	if (const auto found = m_wrapRuns.Find(key, frame))
 		return *found;
+
+	const auto top = GetShapedRun(largest, p, italic, length);
+	if (!top)
+		return nullptr;
 
 	// Every size reads the same bytes, so their glyphs line up by byte.
 	std::vector<std::shared_ptr<const ShapedRun>> runs;

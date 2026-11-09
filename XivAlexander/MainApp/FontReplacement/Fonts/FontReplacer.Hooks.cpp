@@ -82,7 +82,7 @@ bool FontReplacement::FontReplacer::ForgetGameGlyphsOf(GameFont* font) {
 	auto any = false;
 	for (const auto& sized : m_sizedFonts | std::views::values) {
 		if (std::ranges::none_of(sized->Fonts, [font](const auto& f) { return f.second == font; })
-			&& std::ranges::none_of(sized->ConvertedGlyphs.Entries() | std::views::keys, [font](const auto& k) { return k.first == font; }))
+			&& std::ranges::none_of(sized->ConvertedGlyphs.Keys(), [font](const auto& k) { return k.first == font; }))
 			continue;
 		const auto release = [this](GameGlyph* glyph) { Release(glyph); };
 		sized->GameGlyphs.Clear(release);

@@ -1,78 +1,92 @@
 #pragma once
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// A cache whose entries go once unused for a number of frames. Each Sweep looks at a bounded number of them.
+	// A cache that, while it holds more than its capacity, lets go of the entries used least recently. Those are what the game is least likely
+	// to lay out again, such as a chat log's oldest lines or damage numbers gone from the screen. Each Sweep lets go of a bounded number.
 	template<typename TKey, typename TValue>
 	class AgedMap {
 	public:
-		// Frames an entry is kept after its last use, once used in a frame after the one it was added in. One used only in that frame is kept
-		// NewFrames, so that text that changes every frame doesn't fill the cache.
-		static constexpr uint64_t KeepFrames = 600;
-		static constexpr uint64_t NewFrames = 8;
+		static constexpr size_t DefaultCapacity = 8192;
 
-		// Looked at per Sweep, besides twice the entries added since the one before.
+		// Let go of per Sweep at most, besides twice the entries added since the one before.
 		static constexpr size_t SweepEntries = 32;
 
+	private:
 		struct Entry {
+			TKey Key;
 			TValue Value;
-			uint64_t Added;
+
+			// The frame it was last used in.
 			uint64_t Used;
 		};
 
-	private:
-		std::map<TKey, Entry> m_entries;
-		std::optional<TKey> m_next;
+		// Entries kept however long ago they were used.
+		size_t m_capacity = DefaultCapacity;
+
+		// Most recently used first.
+		std::list<Entry> m_order;
+		std::map<TKey, typename std::list<Entry>::iterator> m_entries;
 		size_t m_added = 0;
 
 	public:
-		[[nodiscard]] const std::map<TKey, Entry>& Entries() const { return m_entries; }
+		AgedMap() = default;
+
+		explicit AgedMap(size_t capacity)
+			: m_capacity(capacity) {}
+
+		AgedMap(AgedMap&&) = default;
+		AgedMap& operator=(AgedMap&&) = default;
+		AgedMap(const AgedMap&) = delete;
+		AgedMap& operator=(const AgedMap&) = delete;
+
+		[[nodiscard]] size_t Size() const { return m_entries.size(); }
+
+		[[nodiscard]] auto Keys() const { return m_order | std::views::transform([](const Entry& e) -> const TKey& { return e.Key; }); }
 
 		// Marks the entry used in frame. nullptr if there is none.
 		TValue* Find(const TKey& key, uint64_t frame) {
 			const auto it = m_entries.find(key);
 			if (it == m_entries.end())
 				return nullptr;
-			it->second.Used = frame;
-			return &it->second.Value;
+			m_order.splice(m_order.begin(), m_order, it->second);
+			it->second->Used = frame;
+			return &it->second->Value;
 		}
 
 		// The key must not be in the map yet.
 		TValue& Add(const TKey& key, TValue value, uint64_t frame) {
+			m_order.push_front(Entry{key, std::move(value), frame});
+			m_entries.emplace(key, m_order.begin());
 			m_added++;
-			return m_entries.emplace(key, Entry{std::move(value), frame, frame}).first->second.Value;
+			return m_order.front().Value;
 		}
 
 		// drop is called for each value before it goes, and must not change the map.
 		template<typename TDrop>
 		void Clear(TDrop&& drop) {
-			for (auto& entry : m_entries | std::views::values)
+			for (auto& entry : m_order)
 				drop(entry.Value);
 			m_entries.clear();
-			m_next.reset();
+			m_order.clear();
 			m_added = 0;
 		}
 
-		// Entries unused long enough go if canDrop holds for them. drop is as for Clear.
+		// Entries used least recently, before frame, go if canDrop holds for them. One that can't is treated as used. drop is as for Clear.
 		template<typename TCanDrop, typename TDrop>
 		void Sweep(uint64_t frame, TCanDrop&& canDrop, TDrop&& drop) {
-			auto budget = (std::min)(SweepEntries + 2 * std::exchange(m_added, 0), m_entries.size());
-			auto it = m_next ? m_entries.lower_bound(*m_next) : m_entries.begin();
-			for (; budget > 0 && !m_entries.empty(); budget--) {
-				if (it == m_entries.end())
-					it = m_entries.begin();
-				auto& e = it->second;
-				if (frame - e.Used > (e.Used > e.Added ? KeepFrames : NewFrames) && canDrop(e.Value)) {
+			auto budget = SweepEntries + 2 * std::exchange(m_added, 0);
+			for (; budget > 0 && m_entries.size() > m_capacity; budget--) {
+				auto& e = m_order.back();
+				if (e.Used == frame)
+					break;
+				if (canDrop(e.Value)) {
 					drop(e.Value);
-					it = m_entries.erase(it);
+					m_entries.erase(e.Key);
+					m_order.pop_back();
 				} else {
-					++it;
+					m_order.splice(m_order.begin(), m_order, std::prev(m_order.end()));
 				}
 			}
-
-			if (it == m_entries.end())
-				m_next.reset();
-			else
-				m_next = it->first;
 		}
 
 		template<typename TDrop>
