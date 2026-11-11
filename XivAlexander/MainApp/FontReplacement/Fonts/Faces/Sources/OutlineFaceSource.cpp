@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/OutlineFaceSource.h"
 
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Fonts/Rasterization/FontFileKey.h"
 #include "MainApp/FontReplacement/Fonts/Rasterization/FreeTypeGlyphRasterizer.h"
 #include "MainApp/FontReplacement/Host.h"
@@ -10,7 +10,7 @@ namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 using FontChanger::Structs::FontElement;
 using FontChanger::Structs::ElementSourceEnum;
 
-FontReplacement::OutlineFaceSource::OutlineFaceSource(FontServices& services, FontElement def, std::unique_ptr<LookupFont> font, FT_FaceRec_* freeTypeFace, std::string fontName)
+FontReplacement::OutlineFaceSource::OutlineFaceSource(DirectWriteServices& services, FontElement def, std::unique_ptr<ResolvedSystemFont> font, FT_FaceRec_* freeTypeFace, std::string fontName)
 	: m_services(services)
 	, m_def(std::move(def))
 	, m_font(std::move(font))
@@ -23,8 +23,8 @@ FontReplacement::OutlineFaceSource::OutlineFaceSource(FontServices& services, Fo
 
 FontReplacement::OutlineFaceSource::~OutlineFaceSource() = default;
 
-std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::Create(FontServices& services, const FontElement& def, const std::string& fontName) {
-	auto font = LookupFont::Create(services, def.Lookup, def.Source);
+std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::Create(DirectWriteServices& services, const FontElement& def, const std::string& fontName) {
+	auto font = ResolvedSystemFont::Create(services, def.Lookup, def.Source);
 	if (!font) {
 		Host::Warning("{}: font {} not found", fontName, def.Lookup.FamilyName);
 		return nullptr;
@@ -33,7 +33,7 @@ std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFace
 	return FromFont(services, def, std::move(font), fontName);
 }
 
-std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::FromFont(FontServices& services, FontElement def, std::unique_ptr<LookupFont> font, const std::string& fontName) {
+std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::FromFont(DirectWriteServices& services, FontElement def, std::unique_ptr<ResolvedSystemFont> font, const std::string& fontName) {
 	// DirectWrite doesn't draw fonts with only bitmaps.
 	const auto ftFace = services.FreeType().Open(font->Face());
 	const auto useFreeType = ftFace && (def.Source == ElementSourceEnum::FreeType || !FreeTypeGlyphRasterizer::IsScalable(ftFace));
@@ -108,7 +108,7 @@ std::pair<FontReplacement::IFaceSource*, bool> FontReplacement::OutlineFaceSourc
 		m_italicMade = true;
 		auto def = m_def;
 		def.Lookup.Style = DWRITE_FONT_STYLE_ITALIC;
-		m_italic = MakeVariant(std::move(def), [this](const LookupFont& f) { return IsRealItalic(f.Face()) && !SameFont(f.Face(), m_font->Face()); }, "italic");
+		m_italic = MakeVariant(std::move(def), [this](const ResolvedSystemFont& f) { return IsRealItalic(f.Face()) && !SameFont(f.Face(), m_font->Face()); }, "italic");
 	}
 
 	if (m_italic)
@@ -126,15 +126,15 @@ FontReplacement::IFaceSource* FontReplacement::OutlineFaceSource::GetBold() {
 		// FreeType draws none of DirectWrite's simulations, so it emboldens by synthesis.
 		if (!def.Lookup.Synthesis && def.Source == ElementSourceEnum::FreeType)
 			def.Lookup.Synthesis = FontChanger::Structs::SynthesisStruct{.Allow = true};
-		m_bold = MakeVariant(std::move(def), [this](const LookupFont& f) { return IsBolder(f); }, "bold");
+		m_bold = MakeVariant(std::move(def), [this](const ResolvedSystemFont& f) { return IsBolder(f); }, "bold");
 	}
 
 	return m_bold ? m_bold.get() : this;
 }
 
-std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::MakeVariant(FontElement def, const std::function<bool(const LookupFont&)>& differs, std::string_view what) {
+std::unique_ptr<FontReplacement::OutlineFaceSource> FontReplacement::OutlineFaceSource::MakeVariant(FontElement def, const std::function<bool(const ResolvedSystemFont&)>& differs, std::string_view what) {
 	try {
-		if (auto font = LookupFont::Create(m_services, def.Lookup, def.Source); font && differs(*font)) {
+		if (auto font = ResolvedSystemFont::Create(m_services, def.Lookup, def.Source); font && differs(*font)) {
 			auto made = FromFont(m_services, std::move(def), std::move(font), m_fontName);
 			made->SetMeasureMode(m_measureMode);
 			return made;
@@ -217,7 +217,7 @@ bool FontReplacement::OutlineFaceSource::IsSlanted() {
 	return *m_isSlanted;
 }
 
-bool FontReplacement::OutlineFaceSource::IsBolder(const LookupFont& font) const {
+bool FontReplacement::OutlineFaceSource::IsBolder(const ResolvedSystemFont& font) const {
 	const auto face = font.Face();
 	const auto own = m_font->Face();
 	return face->GetWeight() > own->GetWeight()

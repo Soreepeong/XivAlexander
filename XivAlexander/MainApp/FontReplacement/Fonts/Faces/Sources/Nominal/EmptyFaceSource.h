@@ -1,10 +1,10 @@
 #pragma once
 
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/NominalFaceSource.h"
+#include "MainApp/FontReplacement/Fonts/Faces/Sources/BitmapFaceSource.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Port of xivres empty_fixed_size_font; ascent and lineHeight are in pixels at size.
-	class EmptyFaceSource final : public NominalFaceSource {
+	class EmptyFaceSource final : public BitmapFaceSource {
 		float m_size;
 		float m_ascent;
 		float m_lineHeight;

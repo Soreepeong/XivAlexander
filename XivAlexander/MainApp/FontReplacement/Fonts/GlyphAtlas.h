@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Config/FontReplacementConfigs.h"
-#include "MainApp/FontReplacement/Game/KernelTextureWrapper.h"
+#include "MainApp/FontReplacement/Game/OwnedKernelTexture.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	using AtlasTextureFormat = FontReplacementAtlasTextureFormat;
@@ -52,7 +52,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		struct Page {
 			int Width;
 			int Height;
-			KernelTextureWrapper Texture;
+			OwnedKernelTexture Texture;
 			std::vector<uint8_t> Shadow;
 
 			RowCursor CursorsPerPlane[PlanesPerPage]{};

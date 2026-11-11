@@ -1,10 +1,10 @@
 #pragma once
 
-#include "MainApp/FontReplacement/Fonts/FontSet.h"
+#include "MainApp/FontReplacement/Fonts/LoadedFontSet.h"
 #include "MainApp/FontReplacement/Fonts/SizedFont.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class AtlasSet;
+	class FamilyAtlases;
 	class GlyphStore;
 
 	// The sized fonts made so far, and the glyphs they cache.
@@ -12,11 +12,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Glyphs cached by every sized font together.
 		static constexpr size_t GlyphCapacity = 16384;
 
-		std::unique_ptr<FontSet> m_fonts;
-		AtlasSet& m_atlases;
+		std::unique_ptr<LoadedFontSet> m_fonts;
+		FamilyAtlases& m_atlases;
 		GlyphStore& m_store;
 		const FrameState& m_state;
-		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::shared_ptr<SizedFont>> m_sizedFonts;
+		std::map<std::tuple<LoadedFont*, int, std::string, bool>, std::shared_ptr<SizedFont>> m_sizedFonts;
 		size_t m_sweepAt = GlyphCapacity;
 
 		// Get's results by its arguments, as finding the family's fonts for a request is slow and wrapping asks per character. Which of the
@@ -24,11 +24,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::map<std::tuple<GameFont*, int, bool>, std::shared_ptr<SizedFont>> m_byRequest;
 
 	public:
-		SizedFontRegistry(std::unique_ptr<FontSet> fonts, AtlasSet& atlases, GlyphStore& store, const FrameState& state);
+		SizedFontRegistry(std::unique_ptr<LoadedFontSet> fonts, FamilyAtlases& atlases, GlyphStore& store, const FrameState& state);
 		SizedFontRegistry(const SizedFontRegistry&) = delete;
 		SizedFontRegistry& operator=(const SizedFontRegistry&) = delete;
 
-		[[nodiscard]] FontSet& Fonts() const { return *m_fonts; }
+		[[nodiscard]] LoadedFontSet& Fonts() const { return *m_fonts; }
 
 		[[nodiscard]] auto All() const { return m_sizedFonts | std::views::values | std::views::transform([](const auto& s) { return s.get(); }); }
 
@@ -45,7 +45,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		void Clear();
 
 		// After Clear. The old fonts are freed.
-		void SwapFonts(std::unique_ptr<FontSet> fonts);
+		void SwapFonts(std::unique_ptr<LoadedFontSet> fonts);
 
 	private:
 		[[nodiscard]] size_t CountGlyphs() const;

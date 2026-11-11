@@ -3,8 +3,8 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-void FontReplacement::Cell::Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source) {
-	Stage = CellStage::Pending;
+void FontReplacement::GlyphSlotState::Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source) {
+	Stage = GlyphPixelStage::Pending;
 	Atlas = atlas;
 	Raster = std::move(raster);
 	BoxLeft = boxLeft;
@@ -13,48 +13,48 @@ void FontReplacement::Cell::Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyp
 	PointAtBlank(glyph);
 }
 
-void FontReplacement::Cell::Place(GameGlyph* glyph, const GlyphAtlas::Allocation& a) {
+void FontReplacement::GlyphSlotState::Place(GameGlyph* glyph, const GlyphAtlas::Allocation& a) {
 	glyph->Packed = GameGlyph::Pack(a.X, a.Y, a.Plane, a.Page);
 	Generation = a.Generation;
 	if (Source) {
-		Stage = CellStage::AwaitingRead;
+		Stage = GlyphPixelStage::AwaitingRead;
 		return;
 	}
 
-	Stage = CellStage::Placed;
+	Stage = GlyphPixelStage::Placed;
 	Write(glyph);
 }
 
-void FontReplacement::Cell::PixelsRead(GameGlyph* glyph, RasterGlyph raster) {
+void FontReplacement::GlyphSlotState::PixelsRead(GameGlyph* glyph, RasterGlyph raster) {
 	Raster = std::move(raster);
 	Source.reset();
-	Stage = CellStage::Placed;
+	Stage = GlyphPixelStage::Placed;
 	Write(glyph);
 }
 
-void FontReplacement::Cell::MarkStale(GameGlyph* glyph) {
-	if (Stage != CellStage::Placed)
+void FontReplacement::GlyphSlotState::MarkStale(GameGlyph* glyph) {
+	if (Stage != GlyphPixelStage::Placed)
 		return;
-	Stage = CellStage::Pending;
+	Stage = GlyphPixelStage::Pending;
 	PointAtBlank(glyph);
 }
 
-void FontReplacement::Cell::Drop(GameGlyph* glyph) {
-	Stage = CellStage::Dropped;
+void FontReplacement::GlyphSlotState::Drop(GameGlyph* glyph) {
+	Stage = GlyphPixelStage::Dropped;
 	Raster = {};
 	Source.reset();
 	PointAtBlank(glyph);
 }
 
-bool FontReplacement::Cell::Touch(const GameGlyph* glyph, uint64_t frame) const {
+bool FontReplacement::GlyphSlotState::Touch(const GameGlyph* glyph, uint64_t frame) const {
 	return Atlas->Touch(glyph->TextureIndex(), glyph->Channel(), Generation, frame);
 }
 
-void FontReplacement::Cell::PointAtBlank(GameGlyph* glyph) const {
+void FontReplacement::GlyphSlotState::PointAtBlank(GameGlyph* glyph) const {
 	glyph->Packed = GameGlyph::Pack(0, 0, 0, Atlas->BlankSlot());
 }
 
-void FontReplacement::Cell::Write(const GameGlyph* glyph) const {
+void FontReplacement::GlyphSlotState::Write(const GameGlyph* glyph) const {
 	const auto& r = Raster;
 
 	// Ink rows are cut off only past the game's byte-sized fields.

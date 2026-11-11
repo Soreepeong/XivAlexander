@@ -65,7 +65,7 @@ uint16_t FontReplacement::GameFontManager::FontCount() const {
 	return At<uint16_t>(this, s_manager.FontCount);
 }
 
-FontReplacement::GameFontSet* FontReplacement::GameFontManager::FontSet(int index) const {
+FontReplacement::GameFontSet* FontReplacement::GameFontManager::LoadedFontSet(int index) const {
 	const auto sets = FontSets();
 	return sets ? reinterpret_cast<GameFontSet*>(reinterpret_cast<uint8_t*>(sets) + static_cast<ptrdiff_t>(index) * GameFontSet::StructSize) : nullptr;
 }

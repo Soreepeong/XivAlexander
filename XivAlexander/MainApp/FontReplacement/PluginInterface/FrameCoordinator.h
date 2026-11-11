@@ -4,18 +4,18 @@
 #include "MainApp/FontReplacement/Fonts/FrameState.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/EdgeShader.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
-#include "MainApp/FontReplacement/PluginInterface/SubpixelSource.h"
+#include "MainApp/FontReplacement/PluginInterface/SubpixelSettingsSource.h"
 
 namespace XivAlexander {
 	class Config;
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class FontLoader;
+	class FontSetLoader;
 	class FontReplacer;
 	class LineBreaker;
 	class NamePlateText;
-	class PresetController;
+	class FontSourceEditor;
 
 	// Calls the parts in order at the point of a frame the replacement owns, and passes on what each reports.
 	// OnUpdate and then OnPresent run before the game presents a frame. OnUpdate does settings, fonts and resets, then what keeps laid out text.
@@ -36,7 +36,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		FrameState m_state;
 		SubpixelShaders m_subpixel{m_state};
-		SubpixelSource m_subpixelSource;
+		SubpixelSettingsSource m_subpixelSource;
 
 		// What subpixel rendering was last applied with, such as the system's ClearType settings.
 		SubpixelShaders::SettingsRecord m_appliedSubpixel;
@@ -48,8 +48,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unique_ptr<NamePlateText> m_namePlates;
 		std::unique_ptr<LineBreaker> m_lineBreaker;
 
-		std::unique_ptr<FontLoader> m_loader;
-		std::unique_ptr<PresetController> m_presets;
+		std::unique_ptr<FontSetLoader> m_loader;
+		std::unique_ptr<FontSourceEditor> m_presets;
 
 	public:
 		// Game thread. Throws if fonts can't be replaced in this game version.
@@ -60,7 +60,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread, between frames.
 		~FrameCoordinator();
 
-		[[nodiscard]] PresetController& Presets() const { return *m_presets; }
+		[[nodiscard]] FontSourceEditor& Presets() const { return *m_presets; }
 
 		// Applies the settings, each part skipping what didn't change.
 		void OnUpdate(const Settings& settings, HWND window);

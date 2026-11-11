@@ -8,7 +8,7 @@
 #include "MainApp/App.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/PluginInterface/FrameCoordinator.h"
-#include "MainApp/FontReplacement/PluginInterface/PresetController.h"
+#include "MainApp/FontReplacement/PluginInterface/FontSourceEditor.h"
 
 namespace XivAlexander::Apps::MainApp::Features {
 	using namespace MainApp::FontReplacement;

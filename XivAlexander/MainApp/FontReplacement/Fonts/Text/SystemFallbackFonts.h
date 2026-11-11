@@ -6,7 +6,7 @@
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFallback, __uuidof(IDWriteFontFallback));
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class FontServices;
+	class DirectWriteServices;
 
 	class SystemFallbackFonts {
 	public:
@@ -14,11 +14,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr auto DefaultBaseFamily = "Segoe UI";
 
 	private:
-		FontServices& m_services;
+		DirectWriteServices& m_services;
 		IDWriteFontFallbackPtr m_fallback;
 
 	public:
-		explicit SystemFallbackFonts(FontServices& services);
+		explicit SystemFallbackFonts(DirectWriteServices& services);
 		SystemFallbackFonts(const SystemFallbackFonts&) = delete;
 		SystemFallbackFonts& operator=(const SystemFallbackFonts&) = delete;
 

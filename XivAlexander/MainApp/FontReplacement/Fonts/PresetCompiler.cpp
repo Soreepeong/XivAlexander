@@ -4,7 +4,7 @@
 #include <FontChanger.Presets/FontsFromSystemFont.h>
 
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/Nominal/GameFontDataFaceSource.h"
-#include "MainApp/FontReplacement/Game/FontNames.h"
+#include "MainApp/FontReplacement/Game/GameFontTable.h"
 #include "MainApp/FontReplacement/Host.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
@@ -89,7 +89,7 @@ namespace {
 			};
 
 			Presets::Fonts res;
-			for (const auto& [name, size] : FontReplacement::FontNames::FontNamesOf(family)) {
+			for (const auto& [name, size] : FontReplacement::GameFontTable::FontNamesOf(family)) {
 				const auto gameFont = FontReplacement::GameFontDataFaceSource::OpenMetrics(name);
 
 				// MakeFont fits this font to what the same-named fonts above draw, so it is given their probes.

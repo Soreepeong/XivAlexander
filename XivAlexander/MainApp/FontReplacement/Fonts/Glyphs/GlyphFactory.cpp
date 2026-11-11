@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphFactory.h"
 
-#include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
-#include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
+#include "MainApp/FontReplacement/Fonts/Faces/LoadedFont.h"
+#include "MainApp/FontReplacement/Fonts/Faces/LoadedFontElement.h"
 #include "MainApp/FontReplacement/Fonts/FrameState.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphBox.h"
 #include "MainApp/FontReplacement/Fonts/SizedFont.h"
-#include "MainApp/FontReplacement/Game/TextureReader.h"
+#include "MainApp/FontReplacement/Game/GameTextureReader.h"
 #include "MainApp/FontReplacement/Utilities/GameUtf8.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
@@ -80,7 +80,7 @@ FontReplacement::GameGlyph* FontReplacement::GlyphFactory::FromGameGlyph(const S
 		return nullptr;
 	const auto textureIndex = game->TextureIndex();
 	const auto texture = textureIndex < (std::min)(static_cast<int>(font->TextureCount()), GameFont::MaxTextures) ? font->GetTexture(textureIndex) : 0;
-	if (!texture || !TextureReader::CanRead(texture))
+	if (!texture || !GameTextureReader::CanRead(texture))
 		return nullptr;
 
 	const auto scale = GetGameScale(sized, font);

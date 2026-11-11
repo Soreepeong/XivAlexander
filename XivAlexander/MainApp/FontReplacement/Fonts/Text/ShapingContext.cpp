@@ -4,20 +4,20 @@
 #include <icu.h>
 
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
-#include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
+#include "MainApp/FontReplacement/Fonts/Faces/LoadedFont.h"
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-FontReplacement::RasterKey FontReplacement::RasterKey::Of(const SizedFont& sized, const Cluster& c) {
+FontReplacement::RasterKey FontReplacement::RasterKey::Of(const SizedFont& sized, const PlacedCluster& c) {
 	RasterKey key{
 		.Px = sized.Px,
-		.Element = c.GlyphSource ? c.GlyphSource->Element : nullptr,
+		.Element = c.Pick ? c.Pick->Element : nullptr,
 		.Source = c.Source,
 		.EmSize = c.Px,
 		.Origin = c.Origin,
 		.RawAdvance = c.RawAdvance,
-		.Alignment = c.GlyphSource ? c.GlyphSource->Font->GetAlignment(sized.Px, c.GlyphSource->Game) : FontAlignment{},
+		.Alignment = c.Pick ? c.Pick->Font->GetAlignment(sized.Px, c.Pick->Game) : FontAlignment{},
 		.Glyphs = c.GlyphIds,
 		.Advances = c.Advances,
 	};
@@ -26,11 +26,11 @@ FontReplacement::RasterKey FontReplacement::RasterKey::Of(const SizedFont& sized
 	return key;
 }
 
-std::optional<FontReplacement::RasterGlyph> FontReplacement::Cluster::Rasterize() const {
+std::optional<FontReplacement::RasterGlyph> FontReplacement::PlacedCluster::Rasterize() const {
 	return Source->Rasterize(Px, {GlyphIds, Advances, Offsets}, {.OriginX = Origin, .Advance = RawAdvance});
 }
 
-FontReplacement::Cluster FontReplacement::Cluster::MovedBy(float start, float end) const {
+FontReplacement::PlacedCluster FontReplacement::PlacedCluster::MovedBy(float start, float end) const {
 	const auto pen = static_cast<float>(X0) + Origin + start;
 	const auto x0 = StdRound(pen);
 	auto res = *this;

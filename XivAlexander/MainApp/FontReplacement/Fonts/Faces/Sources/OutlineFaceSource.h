@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/Outline/LookupFont.h"
+#include "MainApp/FontReplacement/Fonts/Faces/Sources/Outline/ResolvedSystemFont.h"
 
 struct FT_FaceRec_;
 
@@ -10,15 +10,15 @@ namespace FontChanger::FixedSizeFont {
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class FontServices;
+	class DirectWriteServices;
 
 	// A font's glyphs, shaped by DirectWrite and drawn by DirectWrite or FreeType (xivres directwrite_ and freetype_fixed_size_font).
 	class OutlineFaceSource final : public IFaceSource {
 		class TextFont;
 
-		FontServices& m_services;
+		DirectWriteServices& m_services;
 		FontChanger::Structs::FontElement m_def;
-		std::unique_ptr<LookupFont> m_font;
+		std::unique_ptr<ResolvedSystemFont> m_font;
 
 		// nullptr when DirectWrite draws; owned by FreeTypeGlyphRasterizer.
 		FT_FaceRec_* m_freeTypeFace;
@@ -36,7 +36,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<std::map<uint32_t, int>> m_baselines;
 		std::optional<std::vector<DWRITE_FONT_FEATURE>> m_features;
 
-		OutlineFaceSource(FontServices& services, FontChanger::Structs::FontElement def, std::unique_ptr<LookupFont> font, FT_FaceRec_* freeTypeFace, std::string fontName);
+		OutlineFaceSource(DirectWriteServices& services, FontChanger::Structs::FontElement def, std::unique_ptr<ResolvedSystemFont> font, FT_FaceRec_* freeTypeFace, std::string fontName);
 
 	public:
 		OutlineFaceSource(const OutlineFaceSource&) = delete;
@@ -44,7 +44,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		~OutlineFaceSource() override;
 
 		// nullptr if the family isn't installed.
-		static std::unique_ptr<OutlineFaceSource> Create(FontServices& services, const FontChanger::Structs::FontElement& def, const std::string& fontName);
+		static std::unique_ptr<OutlineFaceSource> Create(DirectWriteServices& services, const FontChanger::Structs::FontElement& def, const std::string& fontName);
 
 		void SetMeasureMode(DWRITE_MEASURING_MODE value) override;
 
@@ -71,7 +71,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] static uint32_t GetBaselineTag(Baseline baseline);
 
 	private:
-		static std::unique_ptr<OutlineFaceSource> FromFont(FontServices& services, FontChanger::Structs::FontElement def, std::unique_ptr<LookupFont> font, const std::string& fontName);
+		static std::unique_ptr<OutlineFaceSource> FromFont(DirectWriteServices& services, FontChanger::Structs::FontElement def, std::unique_ptr<ResolvedSystemFont> font, const std::string& fontName);
 
 		// Excludes oblique simulations, which aren't the family's own italic.
 		[[nodiscard]] static bool IsRealItalic(IDWriteFontFace5* face);
@@ -79,10 +79,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Not to be sheared again by the game for an italic macro.
 		[[nodiscard]] bool IsSlanted();
 
-		[[nodiscard]] bool IsBolder(const LookupFont& font) const;
+		[[nodiscard]] bool IsBolder(const ResolvedSystemFont& font) const;
 
 		// nullptr unless the lookup finds a font that differs.
-		std::unique_ptr<OutlineFaceSource> MakeVariant(FontChanger::Structs::FontElement def, const std::function<bool(const LookupFont&)>& differs, std::string_view what);
+		std::unique_ptr<OutlineFaceSource> MakeVariant(FontChanger::Structs::FontElement def, const std::function<bool(const ResolvedSystemFont&)>& differs, std::string_view what);
 
 		// Compares the files, since a family's styles often have the same glyph count; simulations and axis values are ignored.
 		[[nodiscard]] static bool SameFont(IDWriteFontFace5* a, IDWriteFontFace5* b);

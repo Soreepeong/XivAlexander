@@ -1,16 +1,16 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/SizedFontRegistry.h"
 
-#include "MainApp/FontReplacement/Fonts/AtlasSet.h"
-#include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
+#include "MainApp/FontReplacement/Fonts/FamilyAtlases.h"
+#include "MainApp/FontReplacement/Fonts/Faces/LoadedFont.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphStore.h"
-#include "MainApp/FontReplacement/Game/FontNames.h"
+#include "MainApp/FontReplacement/Game/GameFontTable.h"
 #include "MainApp/FontReplacement/Presets.h"
 #include "Utils/StringUtils.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-FontReplacement::SizedFontRegistry::SizedFontRegistry(std::unique_ptr<FontSet> fonts, AtlasSet& atlases, GlyphStore& store, const FrameState& state)
+FontReplacement::SizedFontRegistry::SizedFontRegistry(std::unique_ptr<LoadedFontSet> fonts, FamilyAtlases& atlases, GlyphStore& store, const FrameState& state)
 	: m_fonts(std::move(fonts))
 	, m_atlases(atlases)
 	, m_store(store)
@@ -26,17 +26,17 @@ const std::shared_ptr<FontReplacement::SizedFont>& FontReplacement::SizedFontReg
 	struct Candidate {
 		std::string Name;
 		float Size;
-		MaterializedFont* Font;
+		LoadedFont* Font;
 		GameFont* Game;
 	};
 
 	std::vector<Candidate> fonts;
-	const auto originalName = FontNames::TryGetFontName(original);
+	const auto originalName = GameFontTable::TryGetFontName(original);
 	if (originalName) {
-		auto family = FontNames::FontNamesOf(Presets::FamilyOf(*originalName));
+		auto family = GameFontTable::FontNamesOf(Presets::FamilyOf(*originalName));
 		std::ranges::stable_sort(family, std::ranges::greater{}, [](const auto& f) { return f.second; });
 		for (auto& [name, size] : family) {
-			const auto loaded = Utils::EqualsI(name, *originalName) ? original : FontNames::TryFindFont(name);
+			const auto loaded = Utils::EqualsI(name, *originalName) ? original : GameFontTable::TryFindFont(name);
 			if (!loaded || !loaded->IsReady() || loaded->Size() <= 0)
 				continue;
 			const auto font = &m_fonts->FontOf(name);
@@ -62,7 +62,7 @@ const std::shared_ptr<FontReplacement::SizedFont>& FontReplacement::SizedFontReg
 	auto it = m_sizedFonts.find(key);
 	if (it == m_sizedFonts.end()) {
 		const auto [ascent, lineHeight] = font->GetLineMetrics(px, game);
-		std::vector<std::pair<MaterializedFont*, GameFont*>> pairs;
+		std::vector<std::pair<LoadedFont*, GameFont*>> pairs;
 		for (const auto& f : fonts)
 			pairs.emplace_back(f.Font, f.Game);
 		it = m_sizedFonts.emplace(key, std::make_shared<SizedFont>(font, px, ascent, lineHeight, game, m_atlases.Get(Presets::FamilyOf(fontName)), std::move(pairs), bold, m_state)).first;
@@ -99,7 +99,7 @@ void FontReplacement::SizedFontRegistry::Clear() {
 	m_sweepAt = GlyphCapacity;
 }
 
-void FontReplacement::SizedFontRegistry::SwapFonts(std::unique_ptr<FontSet> fonts) {
+void FontReplacement::SizedFontRegistry::SwapFonts(std::unique_ptr<LoadedFontSet> fonts) {
 	std::swap(m_fonts, fonts);
 }
 

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Text/SystemFallbackFonts.h"
 
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Fonts/Text/TextAnalysisSource.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities/Misc.h"
@@ -45,7 +45,7 @@ namespace {
 	}
 }
 
-FontReplacement::SystemFallbackFonts::SystemFallbackFonts(FontServices& services)
+FontReplacement::SystemFallbackFonts::SystemFallbackFonts(DirectWriteServices& services)
 	: m_services(services) {
 	IDWriteFontFallbackBuilderPtr builder;
 	ThrowOnError(services.Factory().CreateFontFallbackBuilder(&builder), "CreateFontFallbackBuilder");

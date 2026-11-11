@@ -18,7 +18,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 
 	// Where a glyph's pixels are.
-	enum class CellStage : uint8_t {
+	enum class GlyphPixelStage : uint8_t {
 		// No pixels, as of an empty glyph or a spacer.
 		Empty,
 
@@ -36,8 +36,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	// A glyph's pixels and lifetime. The methods are the only way between its stages.
 	// A glyph with a box samples its atlas's BlankSlot while not IsPlaced.
-	struct Cell {
-		CellStage Stage = CellStage::Empty;
+	struct GlyphSlotState {
+		GlyphPixelStage Stage = GlyphPixelStage::Empty;
 		GlyphAtlas* Atlas = nullptr;
 
 		// Kept once placed, so that it can be placed again after its plane is reused. A game glyph's is blank until its pixels are read.
@@ -67,7 +67,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// In GlyphStore's list of unreferenced glyphs.
 		bool Queued = false;
 
-		[[nodiscard]] bool IsPlaced() const { return Stage == CellStage::Placed || Stage == CellStage::AwaitingRead; }
+		[[nodiscard]] bool IsPlaced() const { return Stage == GlyphPixelStage::Placed || Stage == GlyphPixelStage::AwaitingRead; }
 
 		// For a glyph with a box, whose pixels are placed when it is drawn.
 		void Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source);
@@ -110,7 +110,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// The game reads glyphs from these blocks, so they must not move. Freed slots are reused.
 		std::vector<std::unique_ptr<GlyphSlot[]>> m_slotBlocks;
-		std::vector<Cell> m_cells;
+		std::vector<GlyphSlotState> m_cells;
 		std::vector<int> m_freeIds;
 
 		// Glyphs nothing of ours holds anymore.
@@ -144,8 +144,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		void Hand(GameGlyph* glyph, uint64_t frame);
 
 		// The reference is good until the next Allocate.
-		[[nodiscard]] Cell& CellOf(const GameGlyph* glyph) { return m_cells[static_cast<size_t>(SlotOf(glyph).Id)]; }
-		[[nodiscard]] const Cell& CellOf(const GameGlyph* glyph) const { return m_cells[static_cast<size_t>(SlotOf(glyph).Id)]; }
+		[[nodiscard]] GlyphSlotState& CellOf(const GameGlyph* glyph) { return m_cells[static_cast<size_t>(SlotOf(glyph).Id)]; }
+		[[nodiscard]] const GlyphSlotState& CellOf(const GameGlyph* glyph) const { return m_cells[static_cast<size_t>(SlotOf(glyph).Id)]; }
 
 		// After the game's reads, which hold glyphs without a reference.
 		void FreeUnreferenced(uint64_t frame);

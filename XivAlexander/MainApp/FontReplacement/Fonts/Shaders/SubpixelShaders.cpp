@@ -191,7 +191,7 @@ void FontReplacement::SubpixelShaders::BindShadersDetour(uintptr_t server, int p
 void FontReplacement::SubpixelShaders::Fail(const std::exception& e) {
 	m_settings = {};
 	RestoreAndReleaseAll();
-	m_state.Fail(Part::Subpixel, "Subpixel text failed", e);
+	m_state.Fail(PluginFeature::Subpixel, "Subpixel text failed", e);
 }
 
 void FontReplacement::SubpixelShaders::SetDrawStateDetour(uintptr_t server, DrawState* state, uint8_t divisor) {

@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/PluginInterface/FrameCoordinator.h"
 
-#include "MainApp/FontReplacement/Fonts/FontLoader.h"
+#include "MainApp/FontReplacement/Fonts/FontSetLoader.h"
 #include "MainApp/FontReplacement/Fonts/FontReplacer.h"
 #include "MainApp/FontReplacement/Game/LineBreaker.h"
 #include "MainApp/FontReplacement/Game/NamePlateText.h"
 #include "MainApp/FontReplacement/Host.h"
-#include "MainApp/FontReplacement/PluginInterface/PresetController.h"
+#include "MainApp/FontReplacement/PluginInterface/FontSourceEditor.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -37,8 +37,8 @@ FontReplacement::FrameCoordinator::FrameCoordinator(std::shared_ptr<Config> conf
 		m_namePlates = Optional<NamePlateText>("Nameplate text", *m_replacer);
 		m_lineBreaker = Optional<LineBreaker>("Line breaking", *m_replacer);
 		m_replacer->SetNamePlateTest([this](uintptr_t node) { return m_namePlates && m_namePlates->IsPlateText(node); });
-		m_loader = std::make_unique<FontLoader>(m_replacer->Services(), m_replacer->FallbackFonts());
-		m_presets = std::make_unique<PresetController>(std::move(config), *m_loader);
+		m_loader = std::make_unique<FontSetLoader>(m_replacer->Services(), m_replacer->FallbackFonts());
+		m_presets = std::make_unique<FontSourceEditor>(std::move(config), *m_loader);
 		OnUpdate(settings, window);
 	} catch (...) {
 		Unhook();
@@ -56,7 +56,7 @@ void FontReplacement::FrameCoordinator::OnUpdate(const Settings& settings, HWND 
 	auto fonts = m_presets->Update();
 
 	// Every cause is known before anything is made again, so that it is made once.
-	auto scope = m_replacer->SetEnabled(!m_state.Failed(Part::Replacer));
+	auto scope = m_replacer->SetEnabled(!m_state.Failed(PluginFeature::Replacer));
 
 	// The shaders get a value once, so that one that can't be applied isn't tried again until it changes.
 	if (settings.Edge.Drawn() != m_state.Edge())
@@ -64,7 +64,7 @@ void FontReplacement::FrameCoordinator::OnUpdate(const Settings& settings, HWND 
 	m_edge.Ensure();
 	scope |= m_replacer->SetEdge(settings.Edge);
 
-	const auto subpixel = m_state.Failed(Part::Subpixel) ? SubpixelShaders::SettingsRecord{} : m_subpixelSource.Get(settings.Subpixel, settings.ClearType, window);
+	const auto subpixel = m_state.Failed(PluginFeature::Subpixel) ? SubpixelShaders::SettingsRecord{} : m_subpixelSource.Get(settings.Subpixel, settings.ClearType, window);
 	if (subpixel != m_appliedSubpixel)
 		m_subpixel.TryApply(subpixel);
 	m_appliedSubpixel = subpixel;

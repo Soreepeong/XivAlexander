@@ -2,12 +2,12 @@
 
 #include <FontChanger.Presets/Structs.h>
 
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/NominalFaceSource.h"
+#include "MainApp/FontReplacement/Fonts/Faces/Sources/BitmapFaceSource.h"
 #include "MainApp/FontReplacement/Utilities/Matrix2x2.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Port of xivres image_fixed_size_font, drawn by FontChanger GlyphFiles; glyph IDs are codepoints.
-	class ImageFaceSource final : public NominalFaceSource {
+	class ImageFaceSource final : public BitmapFaceSource {
 		FontChanger::Structs::GlyphImagesStruct m_settings;
 		float m_gamma;
 		Matrix2x2 m_transform;

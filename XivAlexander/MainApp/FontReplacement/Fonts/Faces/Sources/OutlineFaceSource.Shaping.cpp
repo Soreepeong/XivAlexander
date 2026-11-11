@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Faces/Sources/OutlineFaceSource.h"
 
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;

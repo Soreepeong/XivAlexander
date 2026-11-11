@@ -15,7 +15,7 @@
 #include "MainApp/Features/NetworkTimingHandler.h"
 #include <FontChanger.FixedSizeFont/image_glyph_files.h>
 
-#include "MainApp/FontReplacement/Game/FontNames.h"
+#include "MainApp/FontReplacement/Game/GameFontTable.h"
 #include "MainApp/FontReplacement/Presets.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
 #include "MainApp/Modding/NestedTtmp.h"
@@ -1242,7 +1242,7 @@ void XivAlexander::Apps::MainApp::Window::SettingsView::InitializeItemInfo() {
 	})
 		m_itemInfo[item].VersionSensitive = true;
 
-	m_fontFamilies = Apps::MainApp::FontReplacement::FontNames::Families();
+	m_fontFamilies = Apps::MainApp::FontReplacement::GameFontTable::Families();
 	if (m_fontFamilies.empty())
 		m_fontFamilies = {"AXIS", "Jupiter", "JupiterN", "Meidinger", "MiedingerMid", "TrumpGothic"};
 	for (const auto& family : rt.FontReplacement.Fonts.Families.Value() | std::views::keys) {

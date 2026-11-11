@@ -3,18 +3,18 @@
 #include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/Fonts/Enums/SubpixelOrder.h"
 #include "MainApp/FontReplacement/Fonts/Enums/ResetScope.h"
-#include "MainApp/FontReplacement/Game/KernelTextureWrapper.h"
+#include "MainApp/FontReplacement/Game/OwnedKernelTexture.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class AtlasSet;
-	class CellPlacer;
-	class CopyFonts;
-	class FontHooks;
-	class FontLifecycleHooks;
-	class FontServices;
-	class FontSet;
+	class FamilyAtlases;
+	class GlyphAtlasPlacer;
+	class ReplacementFontTable;
+	class TextLayoutHooks;
+	class GameFontBuildHooks;
+	class DirectWriteServices;
+	class LoadedFontSet;
 	class FrameState;
-	class GameTextLayout;
+	class ShapedRunCache;
 	class GlyphFactory;
 	class GlyphStore;
 	class LayoutContext;
@@ -29,26 +29,26 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr int BlankTextureSize = 4;
 
 		FrameState& m_state;
-		std::unique_ptr<FontServices> m_services;
+		std::unique_ptr<DirectWriteServices> m_services;
 		std::unique_ptr<SystemFallbackFonts> m_fallbackFonts;
 		std::unique_ptr<LayoutContext> m_context;
 		std::unique_ptr<GlyphStore> m_store;
 
 		// What copy texture slots without a page hold, so that a game glyph slipping through draws nothing. Cleared at the first Present, as the
 		// immediate context is free only then.
-		std::optional<KernelTextureWrapper> m_blankTexture;
+		std::optional<OwnedKernelTexture> m_blankTexture;
 		bool m_blankCleared = false;
 
-		std::unique_ptr<AtlasSet> m_atlases;
+		std::unique_ptr<FamilyAtlases> m_atlases;
 		std::unique_ptr<SizedFontRegistry> m_sized;
-		std::unique_ptr<CopyFonts> m_copies;
-		std::unique_ptr<CellPlacer> m_placer;
+		std::unique_ptr<ReplacementFontTable> m_copies;
+		std::unique_ptr<GlyphAtlasPlacer> m_placer;
 		std::unique_ptr<GlyphFactory> m_factory;
-		std::unique_ptr<GameTextLayout> m_layout;
+		std::unique_ptr<ShapedRunCache> m_layout;
 
 		// Removed first, by Unhook.
-		std::unique_ptr<FontHooks> m_fontHooks;
-		std::unique_ptr<FontLifecycleHooks> m_lifecycleHooks;
+		std::unique_ptr<TextLayoutHooks> m_fontHooks;
+		std::unique_ptr<GameFontBuildHooks> m_lifecycleHooks;
 
 		std::optional<bool> m_supports4444;
 
@@ -64,7 +64,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Game thread, once the game holds none of the glyphs and copies.
 		~FontReplacer();
 
-		[[nodiscard]] FontServices& Services() const { return *m_services; }
+		[[nodiscard]] DirectWriteServices& Services() const { return *m_services; }
 
 		[[nodiscard]] SystemFallbackFonts& FallbackFonts() const { return *m_fallbackFonts; }
 
@@ -91,7 +91,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		ResetScope SetVerticalSubpixel(FontReplacementVerticalSubpixelRenderer value);
 
 		// Makes what scope names again, each step once and in order. fonts, if given, replaces the fonts, and the old ones are freed.
-		void Reset(ResetScope scope, std::unique_ptr<FontSet> fonts = nullptr);
+		void Reset(ResetScope scope, std::unique_ptr<LoadedFontSet> fonts = nullptr);
 
 		// At Present, after this frame's text was laid out: reads game glyphs' pixels, makes room in full atlases (every glyph is made again if it
 		// can't be), uploads the atlases, and sweeps the caches. Caches are swept after the game's reads, which hold glyphs without a reference.

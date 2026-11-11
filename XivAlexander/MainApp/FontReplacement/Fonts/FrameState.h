@@ -1,13 +1,13 @@
 #pragma once
 
 #include "Config/FontReplacementConfigs.h"
-#include "MainApp/FontReplacement/Fonts/Enums/Part.h"
+#include "MainApp/FontReplacement/Fonts/Enums/PluginFeature.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// What the parts share: the frame that caches and atlas planes are aged by, whether fonts are replaced, the edge, and what hooks and
 	// Present saw that other parts must react to at the next update.
 	class FrameState {
-		std::set<Part> m_failed;
+		std::set<PluginFeature> m_failed;
 		bool m_gameFontsChanged = false;
 		bool m_planeReused = false;
 		uint64_t m_frame = 0;
@@ -42,10 +42,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Stops replacing at once, and has the rest turned off at the next update.
 		void Fail(std::string_view message, const std::exception& e);
 
-		void Fail(Part part, std::string_view message, const std::exception& e);
+		void Fail(PluginFeature part, std::string_view message, const std::exception& e);
 
 		// Until font replacement is set up again.
-		[[nodiscard]] bool Failed(Part part) const { return m_failed.contains(part); }
+		[[nodiscard]] bool Failed(PluginFeature part) const { return m_failed.contains(part); }
 
 		Snapshot Drain();
 	};

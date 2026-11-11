@@ -14,7 +14,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		int LineHeight = 0;
 	};
 
-	// As xivres fixed_size_font, before MaterializedFontElement::Wrap places the glyphs: sizes are the element's, and glyphs are relative to the
+	// As xivres fixed_size_font, before LoadedFontElement::Wrap places the glyphs: sizes are the element's, and glyphs are relative to the
 	// pen on the baseline.
 	class IFaceSource {
 	public:

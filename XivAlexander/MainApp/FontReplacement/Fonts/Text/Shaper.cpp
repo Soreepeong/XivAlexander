@@ -4,8 +4,8 @@
 #include <execution>
 
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
-#include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
-#include "MainApp/FontReplacement/Fonts/Text/CellCache.h"
+#include "MainApp/FontReplacement/Fonts/Faces/LoadedFontElement.h"
+#include "MainApp/FontReplacement/Fonts/Text/ClusterGlyphCache.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphBox.h"
 #include "MainApp/FontReplacement/Fonts/Text/DirectWriteTextAnalyzer.h"
 #include "MainApp/FontReplacement/Fonts/Text/HangulComposer.h"
@@ -205,7 +205,7 @@ void FontReplacement::Shaper::Collect(int count, bool italicImages) {
 	}
 }
 
-void FontReplacement::Shaper::CollectPiece(const std::optional<GlyphSource>& glyphSource, int start, int end, const TextRun& run, bool inItalic, bool italicImages, float& pen) {
+void FontReplacement::Shaper::CollectPiece(const std::optional<GlyphPick>& glyphSource, int start, int end, const TextRun& run, bool inItalic, bool italicImages, float& pen) {
 	auto& ctx = m_ctx;
 	const auto element = glyphSource ? glyphSource->Element : nullptr;
 	auto source = element ? element->Source() : nullptr;
@@ -244,7 +244,7 @@ void FontReplacement::Shaper::CollectPiece(const std::optional<GlyphSource>& gly
 	}
 }
 
-void FontReplacement::Shaper::AddCluster(const GlyphSource& glyphSource, IFaceSource* source, float px, const ShapedCluster& shaped, int textOffset, bool realItalic, bool italicImages, float& pen) {
+void FontReplacement::Shaper::AddCluster(const GlyphPick& glyphSource, IFaceSource* source, float px, const ShapedCluster& shaped, int textOffset, bool realItalic, bool italicImages, float& pen) {
 	auto& ctx = m_ctx;
 	const auto element = glyphSource.Element;
 	std::vector glyphs(shaped.GlyphIds);
@@ -279,7 +279,7 @@ void FontReplacement::Shaper::AddCluster(const GlyphSource& glyphSource, IFaceSo
 		kerning = 0;
 		if (!ctx.Clusters.empty()) {
 			auto& previous = ctx.Clusters.back();
-			if (previous.TextEnd == textStart && previous.GlyphSource == glyphSource && previous.Kerning != 0) {
+			if (previous.TextEnd == textStart && previous.Pick == glyphSource && previous.Kerning != 0) {
 				pen -= previous.Kerning;
 				previous.X1 = static_cast<int>(StdRound(pen));
 				previous.Kerning = 0;
@@ -288,7 +288,7 @@ void FontReplacement::Shaper::AddCluster(const GlyphSource& glyphSource, IFaceSo
 	}
 
 	const auto x0 = StdRound(pen);
-	FontReplacement::Cluster cluster{
+	FontReplacement::PlacedCluster cluster{
 		.Source = source,
 		.Px = px,
 		.GlyphIds = std::move(glyphs),
@@ -300,7 +300,7 @@ void FontReplacement::Shaper::AddCluster(const GlyphSource& glyphSource, IFaceSo
 		.X0 = static_cast<int>(x0),
 		.TextStart = textStart,
 		.TextEnd = textEnd,
-		.GlyphSource = glyphSource,
+		.Pick = glyphSource,
 		.RealItalic = realItalic,
 	};
 
@@ -408,7 +408,7 @@ void FontReplacement::Shaper::MeasureClusters(std::span<int> advances) {
 		const auto end = i + 1 < count && !clusters[i + 1].Missing() ? clusters[i + 1].X0 : c.X1;
 		auto advance = (std::max)(end - c.X0, 0);
 
-		// A cell that can't start earlier advances by its edge margin more (CellCache::GetCell), assumed of every such cluster.
+		// A cell that can't start earlier advances by its edge margin more (ClusterGlyphCache::GetCell), assumed of every such cluster.
 		if (i == 0 || clusters[i - 1].Missing())
 			advance += margin;
 

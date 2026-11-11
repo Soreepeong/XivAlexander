@@ -3,7 +3,7 @@
 
 #include <FontChanger.FixedSizeFont/fixed_size_font.h>
 
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Fonts/Records/TextRun.h"
 #include "MainApp/FontReplacement/Fonts/Text/DirectWriteTextAnalyzer.h"
 #include "MainApp/FontReplacement/Host.h"

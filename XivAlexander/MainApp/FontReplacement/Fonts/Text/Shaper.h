@@ -4,7 +4,7 @@
 #include "MainApp/FontReplacement/Fonts/Text/ShapingContext.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class CellCache;
+	class ClusterGlyphCache;
 	class DirectWriteTextAnalyzer;
 
 	// Shapes a run of the game's text into a glyph per byte.
@@ -18,16 +18,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr int MaxGraphemeRunes = 16;
 
 		DirectWriteTextAnalyzer& m_analyzer;
-		CellCache& m_cells;
+		ClusterGlyphCache& m_cells;
 		GameGlyph* m_emptyGlyph;
 		ShapingContext m_ctx;
 
 		// RasterizeConcurrently's, reused.
-		std::vector<Cluster*> m_pending;
+		std::vector<PlacedCluster*> m_pending;
 		std::set<RasterKey> m_seen;
 
 	public:
-		Shaper(DirectWriteTextAnalyzer& analyzer, CellCache& cells, GameGlyph* emptyGlyph)
+		Shaper(DirectWriteTextAnalyzer& analyzer, ClusterGlyphCache& cells, GameGlyph* emptyGlyph)
 			: m_analyzer(analyzer)
 			, m_cells(cells)
 			, m_emptyGlyph(emptyGlyph) {}
@@ -60,9 +60,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		void Collect(int count, bool italicImages);
 
-		void CollectPiece(const std::optional<GlyphSource>& glyphSource, int start, int end, const TextRun& run, bool inItalic, bool italicImages, float& pen);
+		void CollectPiece(const std::optional<GlyphPick>& glyphSource, int start, int end, const TextRun& run, bool inItalic, bool italicImages, float& pen);
 
-		void AddCluster(const GlyphSource& glyphSource, IFaceSource* source, float px, const ShapedCluster& shaped, int textOffset, bool realItalic, bool italicImages, float& pen);
+		void AddCluster(const GlyphPick& glyphSource, IFaceSource* source, float px, const ShapedCluster& shaped, int textOffset, bool realItalic, bool italicImages, float& pen);
 
 		// Collects a run in a node's italics shaped in italics but spread out to end where it does upright, as the game measures it upright.
 		// False, with nothing collected, if the two shapings' clusters differ or any is left to the game.

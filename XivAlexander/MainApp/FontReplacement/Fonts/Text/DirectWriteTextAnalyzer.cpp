@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Text/DirectWriteTextAnalyzer.h"
 
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Fonts/Text/TextAnalysisSource.h"
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 

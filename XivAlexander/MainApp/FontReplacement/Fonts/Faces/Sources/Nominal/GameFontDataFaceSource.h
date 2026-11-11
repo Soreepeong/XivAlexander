@@ -2,14 +2,14 @@
 
 #include <FontChanger.Presets/Structs.h>
 
-#include "MainApp/FontReplacement/Fonts/Faces/Sources/NominalFaceSource.h"
+#include "MainApp/FontReplacement/Fonts/Faces/Sources/BitmapFaceSource.h"
 
 namespace xivres::fontdata {
 	class stream;
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
-	class GameFontDataFaceSource final : public NominalFaceSource {
+	class GameFontDataFaceSource final : public BitmapFaceSource {
 		// Shared by every source and released with the last one.
 		struct Shared;
 

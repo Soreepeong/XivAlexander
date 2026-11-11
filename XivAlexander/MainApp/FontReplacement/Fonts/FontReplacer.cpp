@@ -1,20 +1,20 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/FontReplacer.h"
 
-#include "MainApp/FontReplacement/Fonts/AtlasSet.h"
-#include "MainApp/FontReplacement/Fonts/CopyFonts.h"
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
+#include "MainApp/FontReplacement/Fonts/FamilyAtlases.h"
+#include "MainApp/FontReplacement/Fonts/ReplacementFontTable.h"
+#include "MainApp/FontReplacement/Fonts/DirectWriteServices.h"
 #include "MainApp/FontReplacement/Fonts/FrameState.h"
-#include "MainApp/FontReplacement/Fonts/Glyphs/CellPlacer.h"
+#include "MainApp/FontReplacement/Fonts/Glyphs/GlyphAtlasPlacer.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphFactory.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphStore.h"
-#include "MainApp/FontReplacement/Fonts/Hooks/FontHooks.h"
-#include "MainApp/FontReplacement/Fonts/Hooks/FontLifecycleHooks.h"
+#include "MainApp/FontReplacement/Fonts/Hooks/TextLayoutHooks.h"
+#include "MainApp/FontReplacement/Fonts/Hooks/GameFontBuildHooks.h"
 #include "MainApp/FontReplacement/Fonts/Hooks/LayoutContext.h"
 #include "MainApp/FontReplacement/Fonts/SizedFontRegistry.h"
-#include "MainApp/FontReplacement/Fonts/Text/GameTextLayout.h"
+#include "MainApp/FontReplacement/Fonts/Text/ShapedRunCache.h"
 #include "MainApp/FontReplacement/Fonts/Text/SystemFallbackFonts.h"
-#include "MainApp/FontReplacement/Game/FontNames.h"
+#include "MainApp/FontReplacement/Game/GameFontTable.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "MainApp/FontReplacement/Host.h"
 
@@ -27,24 +27,24 @@ FontReplacement::FontReplacer::FontReplacer(FrameState& state)
 	GameUi::ResolveTextures();
 	m_context = std::make_unique<LayoutContext>();
 
-	m_services = std::make_unique<FontServices>();
+	m_services = std::make_unique<DirectWriteServices>();
 	m_fallbackFonts = std::make_unique<SystemFallbackFonts>(*m_services);
 	try {
-		FontNames::Initialize();
+		GameFontTable::Initialize();
 	} catch (const std::exception& e) {
 		Host::Warning("The game's font names weren't found; presets can't be applied: {}", e.what());
 	}
 
 	m_store = std::make_unique<GlyphStore>();
 	m_blankTexture.emplace(BlankTextureSize, BlankTextureSize);
-	m_atlases = std::make_unique<AtlasSet>([this] { return Supports4444(); });
-	m_sized = std::make_unique<SizedFontRegistry>(FontSet::CreateGame(*m_services, true, *m_fallbackFonts), *m_atlases, *m_store, state);
-	m_copies = std::make_unique<CopyFonts>(*m_sized, *m_blankTexture, state);
-	m_placer = std::make_unique<CellPlacer>(*m_store, *m_copies);
+	m_atlases = std::make_unique<FamilyAtlases>([this] { return Supports4444(); });
+	m_sized = std::make_unique<SizedFontRegistry>(LoadedFontSet::CreateGame(*m_services, true, *m_fallbackFonts), *m_atlases, *m_store, state);
+	m_copies = std::make_unique<ReplacementFontTable>(*m_sized, *m_blankTexture, state);
+	m_placer = std::make_unique<GlyphAtlasPlacer>(*m_store, *m_copies);
 	m_factory = std::make_unique<GlyphFactory>(*m_store, state);
-	m_layout = std::make_unique<GameTextLayout>(*m_services, *m_store, *m_factory, state);
-	m_fontHooks = std::make_unique<FontHooks>(*m_copies, *m_sized, *m_layout, *m_factory, *m_placer, *m_store, state, *m_context);
-	m_lifecycleHooks = std::make_unique<FontLifecycleHooks>([this](ResetScope scope) { Reset(scope); }, state);
+	m_layout = std::make_unique<ShapedRunCache>(*m_services, *m_store, *m_factory, state);
+	m_fontHooks = std::make_unique<TextLayoutHooks>(*m_copies, *m_sized, *m_layout, *m_factory, *m_placer, *m_store, state, *m_context);
+	m_lifecycleHooks = std::make_unique<GameFontBuildHooks>([this](ResetScope scope) { Reset(scope); }, state);
 
 	// Caches built so far hold the game's glyphs. If this throws, the members undo the setup, the hooks first.
 	m_fontHooks->UpdateFontCaches();
@@ -92,7 +92,7 @@ FontReplacement::ResetScope FontReplacement::FontReplacer::SetEnabled(bool value
 		return ResetScope::None;
 	m_enabled = value;
 	m_state.SetOn(value);
-	CopyFonts::ForgetPicked();
+	ReplacementFontTable::ForgetPicked();
 	if (m_fontHooks)
 		m_fontHooks->UpdateFontCaches();
 	return ResetScope::Text;
@@ -138,7 +138,7 @@ FontReplacement::ResetScope FontReplacement::FontReplacer::SetVerticalSubpixel(F
 	return IsVertical(m_services->GetSubpixelOrder()) ? ResetScope::Glyphs : ResetScope::None;
 }
 
-void FontReplacement::FontReplacer::Reset(ResetScope scope, std::unique_ptr<FontSet> fonts) {
+void FontReplacement::FontReplacer::Reset(ResetScope scope, std::unique_ptr<LoadedFontSet> fonts) {
 	if (fonts)
 		scope |= ResetScope::Fonts;
 	if (!Includes(scope, ResetScope::Glyphs))
@@ -166,7 +166,7 @@ void FontReplacement::FontReplacer::Reset(ResetScope scope, std::unique_ptr<Font
 		m_sized->SwapFonts(std::move(fonts));
 	if (Includes(scope, ResetScope::SizedFonts))
 		m_copies->MarkStale();
-	CopyFonts::ForgetPicked();
+	ReplacementFontTable::ForgetPicked();
 }
 
 void FontReplacement::FontReplacer::Present() {
@@ -193,7 +193,7 @@ void FontReplacement::FontReplacer::Present() {
 }
 
 void FontReplacement::FontReplacer::Unhook() {
-	const auto forget = xivres::util::on_dtor([] { CopyFonts::ForgetPicked(); });
+	const auto forget = xivres::util::on_dtor([] { ReplacementFontTable::ForgetPicked(); });
 	m_lifecycleHooks.reset();
 	m_fontHooks.reset();
 }

@@ -75,7 +75,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		void LeaveWrap(bool outer) { m_wrapping = outer; }
 
-		// Whether the text wrapper is laying out text it has no scale of, which is wrapped to fit at every UI scale (WrapMeasure).
+		// Whether the text wrapper is laying out text it has no scale of, which is wrapped to fit at every UI scale (UiScaleWrapMeasurer).
 		[[nodiscard]] bool IsWrapMeasure(GameFontSet* set) const;
 
 		// The size a copy is picked for: the on-screen size, even where the game picked for another (a node's fixed font resolution, or a pick

@@ -24,7 +24,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] uint16_t FontCount() const;
 
 		// nullptr if there are none yet.
-		[[nodiscard]] GameFontSet* FontSet(int index) const;
+		[[nodiscard]] GameFontSet* LoadedFontSet(int index) const;
 
 		[[nodiscard]] GameFont* Font(int index) const;
 

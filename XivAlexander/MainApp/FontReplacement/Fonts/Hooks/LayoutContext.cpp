@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Hooks/LayoutContext.h"
 
-#include "MainApp/FontReplacement/Fonts/Hooks/WrapMeasure.h"
+#include "MainApp/FontReplacement/Fonts/Hooks/UiScaleWrapMeasurer.h"
 #include "MainApp/FontReplacement/GameCode.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
@@ -47,7 +47,7 @@ bool FontReplacement::LayoutContext::IsWrapMeasure(GameFontSet* set) const {
 
 float FontReplacement::LayoutContext::PickSizeOf(GameFontSet* set) const {
 	if (IsWrapMeasure(set))
-		return set->ScaledSizeY() * WrapMeasure::LargestScale;
+		return set->ScaledSizeY() * UiScaleWrapMeasurer::LargestScale;
 	return set->NodeScaleX() == 1 && set->NodeScaleY() == 1 && HasPickScale(set) ? At<float>(set, m_setUnscaledSizeY) * PickScaleOf(set) : set->ScaledSizeY();
 }
 
