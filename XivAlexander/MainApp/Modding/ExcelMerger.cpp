@@ -1834,10 +1834,7 @@ namespace XivAlexander::Apps::MainApp::Features::Modding {
 	}
 
 	std::shared_ptr<xivres::packed_stream> ExcelMerger::MakePassThroughStream(const xivres::sqpack::reader& reader, const std::string& path) {
-		const auto& info = reader.Entries[reader.get_entry_index(xivres::path_spec(path))];
-		return std::make_shared<xivres::stream_as_packed_stream>(
-			xivres::path_spec(path),
-			std::make_shared<xivres::partial_view_stream>(reader.Data.at(info.Locator.DatFileIndex).Stream, info.Locator.offset(), info.Allocation));
+		return reader.packed_at(xivres::path_spec(path));
 	}
 
 	std::shared_ptr<const MergedText> ExcelMerger::CollectMergedText(const xivres::sqpack::reader& target, game_language baseLanguage, const std::vector<std::shared_ptr<xivres::packed_stream>>& files) {

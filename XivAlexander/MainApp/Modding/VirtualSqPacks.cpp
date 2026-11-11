@@ -334,7 +334,7 @@ struct XivAlexander::Apps::MainApp::Features::Modding::VirtualSqPacks::Implement
 					Logger->Format(LogCategory::VirtualSqPacks, "Reset: {}", pathSpec);
 			}
 
-			if (newEntry && newEntry->size() > place->entry_size()) {
+			if (newEntry && !place->can_take(newEntry->size())) {
 				tempData.Unplaced.insert_or_assign(pathSpec, newEntry);
 				place->swap_stream(nullptr);
 				continue;
