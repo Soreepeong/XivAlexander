@@ -3,13 +3,14 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-void FontReplacement::Cell::Pend(GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source) {
+void FontReplacement::Cell::Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source) {
 	Stage = CellStage::Pending;
 	Atlas = atlas;
 	Raster = std::move(raster);
 	BoxLeft = boxLeft;
 	InkTop = inkTop;
 	Source = source;
+	PointAtBlank(glyph);
 }
 
 void FontReplacement::Cell::Place(GameGlyph* glyph, const GlyphAtlas::Allocation& a) {
@@ -31,23 +32,26 @@ void FontReplacement::Cell::PixelsRead(GameGlyph* glyph, RasterGlyph raster) {
 	Write(glyph);
 }
 
-void FontReplacement::Cell::MarkStale() {
-	if (Stage == CellStage::Placed)
-		Stage = CellStage::Pending;
+void FontReplacement::Cell::MarkStale(GameGlyph* glyph) {
+	if (Stage != CellStage::Placed)
+		return;
+	Stage = CellStage::Pending;
+	PointAtBlank(glyph);
 }
 
 void FontReplacement::Cell::Drop(GameGlyph* glyph) {
 	Stage = CellStage::Dropped;
 	Raster = {};
 	Source.reset();
-
-	// OffsetX takes the width, so that the advance stays as measured.
-	glyph->OffsetX = static_cast<int8_t>(std::clamp(glyph->OffsetX + glyph->Width, -128, 127));
-	glyph->Width = 0;
+	PointAtBlank(glyph);
 }
 
 bool FontReplacement::Cell::Touch(const GameGlyph* glyph, uint64_t frame) const {
 	return Atlas->Touch(glyph->TextureIndex(), glyph->Channel(), Generation, frame);
+}
+
+void FontReplacement::Cell::PointAtBlank(GameGlyph* glyph) const {
+	glyph->Packed = GameGlyph::Pack(0, 0, 0, Atlas->BlankSlot());
 }
 
 void FontReplacement::Cell::Write(const GameGlyph* glyph) const {
@@ -90,10 +94,9 @@ FontReplacement::GameGlyph* FontReplacement::GlyphStore::Allocate() {
 	return &SlotAt(id).Glyph;
 }
 
-FontReplacement::GameGlyph* FontReplacement::GlyphStore::Keep(GameGlyph* glyph) {
+void FontReplacement::GlyphStore::Keep(GameGlyph* glyph) {
 	if (IsOwn(glyph))
 		CellOf(glyph).Refs++;
-	return glyph;
 }
 
 void FontReplacement::GlyphStore::Release(GameGlyph* glyph) {
@@ -130,12 +133,9 @@ void FontReplacement::GlyphStore::FreeUnreferenced(uint64_t frame) {
 			continue;
 		}
 
-		// Its blank then waits for its own grace period.
-		const auto blank = cell.Blank;
 		cell = {};
 		SlotAt(id) = {{}, id};
 		m_freeIds.push_back(id);
-		Release(blank);
 	}
 
 	m_unreferenced.erase(m_unreferenced.begin(), m_unreferenced.begin() + static_cast<ptrdiff_t>(count));

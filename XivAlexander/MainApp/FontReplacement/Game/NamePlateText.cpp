@@ -218,13 +218,13 @@ void FontReplacement::NamePlateText::DrawBakedDetour(uintptr_t renderer, uintptr
 	widthField = static_cast<uint16_t>((std::min)(65535.f, std::round(static_cast<float>(width) * scale)));
 	heightField = static_cast<uint16_t>((std::min)(65535.f, std::round(static_cast<float>(height) * scale)));
 	textYOffsetField = static_cast<int16_t>(std::round(static_cast<float>(textYOffset) * scale));
-	const auto restore = xivres::util::on_dtor([&] {
+	const ScopeExit restore{[&] {
 		for (auto i = 0; i < 4; i++)
 			Transform(node, i) = transform[i];
 		widthField = width;
 		heightField = height;
 		textYOffsetField = textYOffset;
-	});
+	}};
 	m_drawBakedHook->Original(renderer, node, bake);
 }
 
@@ -239,6 +239,6 @@ void FontReplacement::NamePlateText::BakePlateDrawDetour(uintptr_t renderer, uin
 	auto& liveMode = At<uint8_t>(renderer + m_rendererFixedFontResolution);
 	const auto saved = liveMode;
 	liveMode = 1;
-	const auto restore = xivres::util::on_dtor([&] { liveMode = saved; });
+	const ScopeExit restore{[&] { liveMode = saved; }};
 	m_bakePlateDrawHook->Original(renderer, node);
 }

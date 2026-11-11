@@ -198,6 +198,18 @@
     <ClCompile Include="MainApp\Features\CrowdFix.cpp">
       <Filter>MainApp\Features</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Records\WatchList.cpp">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Hooks\WrapMeasure.cpp">
+      <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Glyphs\GlyphBox.cpp">
+      <Filter>MainApp\FontReplacement\Fonts\Glyphs</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Text\HangulComposer.cpp">
+      <Filter>MainApp\FontReplacement\Fonts\Text</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\AtlasSet.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
@@ -243,6 +255,9 @@
     <ClCompile Include="MainApp\FontReplacement\Fonts\FontLoader.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
+    <ClCompile Include="MainApp\FontReplacement\Fonts\PresetCompiler.cpp">
+      <Filter>MainApp\FontReplacement\Fonts</Filter>
+    </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\FontReplacer.cpp">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClCompile>
@@ -273,7 +288,7 @@
     <ClCompile Include="MainApp\FontReplacement\Fonts\Hooks\FontLifecycleHooks.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
     </ClCompile>
-    <ClCompile Include="MainApp\FontReplacement\Fonts\Hooks\FontSetFlags.cpp">
+    <ClCompile Include="MainApp\FontReplacement\Fonts\Hooks\LayoutContext.cpp">
       <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
     </ClCompile>
     <ClCompile Include="MainApp\FontReplacement\Fonts\Hooks\GlyphLookup.cpp">
@@ -628,6 +643,36 @@
     <ClInclude Include="MainApp\Features\CrowdFix.h">
       <Filter>MainApp\Features</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Records\GlyphSource.h">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Records\WatchList.h">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Records\LoadReport.h">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Records\FontRequest.h">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Records\FontSettings.h">
+      <Filter>MainApp\FontReplacement\Fonts\Records</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\Part.h">
+      <Filter>MainApp\FontReplacement\Fonts\Enums</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Enums\ResetScope.h">
+      <Filter>MainApp\FontReplacement\Fonts\Enums</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\WrapMeasure.h">
+      <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Glyphs\GlyphBox.h">
+      <Filter>MainApp\FontReplacement\Fonts\Glyphs</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Text\HangulComposer.h">
+      <Filter>MainApp\FontReplacement\Fonts\Text</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\AtlasSet.h">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
@@ -679,6 +724,9 @@
     <ClInclude Include="MainApp\FontReplacement\Fonts\FontLoader.h">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
+    <ClInclude Include="MainApp\FontReplacement\Fonts\PresetCompiler.h">
+      <Filter>MainApp\FontReplacement\Fonts</Filter>
+    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\FontReplacer.h">
       <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
@@ -709,17 +757,11 @@
     <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\FontLifecycleHooks.h">
       <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
     </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\FontSetFlags.h">
-      <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
-    </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\GlyphLookup.h">
       <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
     </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\LayoutCall.h">
+    <ClInclude Include="MainApp\FontReplacement\Fonts\Hooks\LayoutContext.h">
       <Filter>MainApp\FontReplacement\Fonts\Hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="MainApp\FontReplacement\Fonts\ResetScope.h">
-      <Filter>MainApp\FontReplacement\Fonts</Filter>
     </ClInclude>
     <ClInclude Include="MainApp\FontReplacement\Fonts\SizedFont.h">
       <Filter>MainApp\FontReplacement\Fonts</Filter>

@@ -3,6 +3,8 @@
 
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFont.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
+#include "MainApp/FontReplacement/Fonts/FrameState.h"
+#include "MainApp/FontReplacement/Fonts/Glyphs/GlyphBox.h"
 #include "MainApp/FontReplacement/Fonts/SizedFont.h"
 #include "MainApp/FontReplacement/Game/TextureReader.h"
 #include "MainApp/FontReplacement/Utilities/GameUtf8.h"
@@ -14,7 +16,7 @@ int FontReplacement::GlyphFactory::GetEdgeMargin(const FontReplacementEdgeConfig
 }
 
 int FontReplacement::GlyphFactory::GetEdgeMargin(const SizedFont& sized) const {
-	return GetEdgeMargin(m_edge, sized.Px);
+	return GetEdgeMargin(m_state.Edge(), sized.Px);
 }
 
 FontReplacement::RasterGlyph FontReplacement::GlyphFactory::Finish(const SizedFont& sized, RasterGlyph r) const {
@@ -23,30 +25,17 @@ FontReplacement::RasterGlyph FontReplacement::GlyphFactory::Finish(const SizedFo
 }
 
 FontReplacement::GameGlyph* FontReplacement::GlyphFactory::FromRaster(const SizedFont& sized, RasterGlyph r, uint32_t utf8Value, std::optional<GameTextureSource> source) {
-	// The game has no left bearing, so overhanging ink moves right into the box. Past 255 wide, it is cut on the right.
-	const auto boxLeft = (std::min)(r.Left, 0);
-	const auto width = r.Width == 0 ? 0 : (std::min)(r.Left + r.Width - boxLeft, 255);
-
-	// A box is a full line high, as the game's are, so that italics slant alike. Ink beyond the line grows the box.
-	const auto inkTop = sized.Ascent + r.Top;
-	auto top = 0;
-	auto height = sized.LineHeight;
-	if (width != 0) {
-		top = std::clamp(inkTop, -128, 0);
-		height = (std::min)((std::max)(sized.LineHeight, inkTop + r.Height) - top, 255);
-	}
-
+	const auto box = GlyphBox::Fit(r, sized.Ascent, sized.LineHeight);
 	const auto glyph = m_store.Allocate();
 	glyph->Utf8Value = utf8Value;
+
+	// One without a box stays here, so that it adds no draw from the blank slot.
 	glyph->Packed = GameGlyph::Pack(0, 0, 0, 0);
-	glyph->Width = static_cast<uint8_t>(width);
-	glyph->Height = static_cast<uint8_t>(height);
-	glyph->OffsetX = static_cast<int8_t>(std::clamp(r.Advance - width, -128, 127));
-	glyph->OffsetY = static_cast<int8_t>(top);
+	box.WriteTo(glyph);
 
 	// Text is measured far more than drawn (every text change, at the node's unscaled size too), so a glyph is placed only once it is drawn.
-	if (width != 0)
-		m_store.CellOf(glyph).Pend(sized.Atlas, std::move(r), boxLeft, inkTop - top, source);
+	if (box.HasBox())
+		m_store.CellOf(glyph).Pend(glyph, sized.Atlas, std::move(r), box.Left, box.InkTop, source);
 	return glyph;
 }
 

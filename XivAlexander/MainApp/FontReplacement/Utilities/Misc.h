@@ -4,7 +4,6 @@
 #include <dwrite_3.h>
 
 _COM_SMARTPTR_TYPEDEF(ID3D11Device, __uuidof(ID3D11Device));
-_COM_SMARTPTR_TYPEDEF(ID3D11DeviceChild, __uuidof(ID3D11DeviceChild));
 _COM_SMARTPTR_TYPEDEF(ID3D11DeviceContext, __uuidof(ID3D11DeviceContext));
 _COM_SMARTPTR_TYPEDEF(ID3D11PixelShader, __uuidof(ID3D11PixelShader));
 _COM_SMARTPTR_TYPEDEF(ID3D11Resource, __uuidof(ID3D11Resource));
@@ -14,7 +13,6 @@ _COM_SMARTPTR_TYPEDEF(IDWriteFont, __uuidof(IDWriteFont));
 _COM_SMARTPTR_TYPEDEF(IDWriteFont3, __uuidof(IDWriteFont3));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection, __uuidof(IDWriteFontCollection));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontCollection3, __uuidof(IDWriteFontCollection3));
-_COM_SMARTPTR_TYPEDEF(IDWriteFontFace, __uuidof(IDWriteFontFace));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFace3, __uuidof(IDWriteFontFace3));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFace5, __uuidof(IDWriteFontFace5));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontFile, __uuidof(IDWriteFontFile));
@@ -59,6 +57,17 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	T& At(const void* p, int offset) {
 		return At<T>(reinterpret_cast<uintptr_t>(p) + offset);
 	}
+
+	// Runs at the end of the scope. For the hooks, where a std::function per call would cost.
+	template<typename T>
+	struct ScopeExit {
+		T Run;
+
+		~ScopeExit() { Run(); }
+	};
+
+	template<typename T>
+	ScopeExit(T) -> ScopeExit<T>;
 
 	[[nodiscard]] inline HRESULT CreateFontFace(IDWriteFont3* font, IDWriteFontFace5** face) {
 		IDWriteFontFace3Ptr face3;

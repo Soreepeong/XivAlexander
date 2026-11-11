@@ -3,9 +3,7 @@
 
 #include "MainApp/FontReplacement/Fonts/FrameState.h"
 #include "MainApp/FontReplacement/GameCode.h"
-#include "MainApp/FontReplacement/GameUi.h"
 #include "resource.h"
-#include "Utils/StringUtils.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -93,17 +91,38 @@ FontReplacement::SubpixelShaders::~SubpixelShaders() {
 	RestoreAndReleaseAll();
 }
 
-bool FontReplacement::SubpixelShaders::TryApply(const SettingsRecord& value) {
-	if (m_asked == value)
-		return Enabled();
-	m_asked = value;
+void FontReplacement::SubpixelShaders::TryApply(const SettingsRecord& value) {
 	try {
 		Apply(value);
 	} catch (const std::exception& e) {
 		Host::Error("Subpixel text is off: {}", e.what());
 		Apply({});
 	}
-	return Enabled();
+}
+
+void FontReplacement::SubpixelShaders::Ensure() {
+	const auto server = Enabled() ? PixelShaderSwap::GetServer() : 0;
+	if (!server)
+		return;
+	try {
+		const auto& s = m_settings;
+		for (auto& p : m_passes) {
+			p.Swap.Ensure(
+				PixelShaderSwap::GetShaderObject(server, static_cast<int>(p.Pass)),
+				PixelShaderSwap::GetShaderResource(server, static_cast<int>(p.Pass)),
+				p.File,
+				p.Code,
+				p.CodeFile,
+				{
+					{ClearTypeLevelSentinel, s.Level},
+					{ContrastSentinel, s.Contrast},
+					{GammaSentinel, s.Gamma},
+					{GrayscaleContrastSentinel, s.GrayscaleContrast},
+				});
+		}
+	} catch (const std::exception& e) {
+		Fail(e);
+	}
 }
 
 void FontReplacement::SubpixelShaders::Apply(const SettingsRecord& value) {
@@ -118,7 +137,7 @@ void FontReplacement::SubpixelShaders::Apply(const SettingsRecord& value) {
 	const auto shaderChanged = ordered != m_settings;
 	m_settings = value;
 
-	// The next BindShaders makes the shaders with the new settings.
+	// Ensure makes the shaders again with the new settings.
 	if (!Enabled() || shaderChanged)
 		RestoreAndReleaseAll();
 }
@@ -130,10 +149,8 @@ void FontReplacement::SubpixelShaders::Resolve() {
 	m_textureWidth = static_cast<int>(functions.TextureWidth);
 	m_renderingToTexture = static_cast<int>(functions.RenderingToTexture);
 
-	GameUi::ResolveResourceHandles();
+	PixelShaderSwap::Resolve();
 	const auto tables = ResolveGameCode(Game::Resolved::Fonts::ShaderTables);
-	m_pixelShaderFiles = tables.PixelShaderFiles;
-	m_pixelShaders = tables.PixelShaders;
 
 	m_setDrawStateHook.emplace("AtkServer::SetDrawState", reinterpret_cast<uintptr_t>(functions.SetDrawState), [this](uintptr_t server, DrawState* state, uint8_t divisor) { SetDrawStateDetour(server, state, divisor); });
 	m_bindShadersHook.emplace("AtkServer::BindShaders", reinterpret_cast<uintptr_t>(tables.BindFontShaders), [this](uintptr_t server, int pass, uint8_t alternate) { BindShadersDetour(server, pass, alternate); });
@@ -152,13 +169,10 @@ void FontReplacement::SubpixelShaders::BindShadersDetour(uintptr_t server, int p
 	if (!Enabled())
 		return;
 	try {
-		m_server = server;
+		// The blend is only changed for a pass whose shader is ours, which Ensure gets in.
 		m_alternate = alternate != 0;
-		m_passActive = false;
-		if (!m_alternate) {
-			if (const auto p = FindPass(pass))
-				m_passActive = EnsureShaderSwap(server, *p);
-		}
+		const auto p = m_alternate ? nullptr : FindPass(pass);
+		m_passActive = p && p->Swap.IsIn(PixelShaderSwap::GetShaderObject(server, pass));
 
 		// SetDrawState isn't called when only the pass changes.
 		if (auto& last = m_last; last.Has && last.Server == server) {
@@ -170,12 +184,14 @@ void FontReplacement::SubpixelShaders::BindShadersDetour(uintptr_t server, int p
 			}
 		}
 	} catch (const std::exception& e) {
-		// The settings go too, so that applying them again turns it back on.
-		m_settings = {};
-		m_asked.reset();
-		RestoreAndReleaseAll();
-		m_state.Fail(Part::Subpixel, "Subpixel text failed", e);
+		Fail(e);
 	}
+}
+
+void FontReplacement::SubpixelShaders::Fail(const std::exception& e) {
+	m_settings = {};
+	RestoreAndReleaseAll();
+	m_state.Fail(Part::Subpixel, "Subpixel text failed", e);
 }
 
 void FontReplacement::SubpixelShaders::SetDrawStateDetour(uintptr_t server, DrawState* state, uint8_t divisor) {
@@ -225,53 +241,9 @@ uint32_t FontReplacement::SubpixelShaders::Decide(uintptr_t server, const DrawSt
 	return blend;
 }
 
-bool FontReplacement::SubpixelShaders::EnsureShaderSwap(uintptr_t server, PassShader& p) {
-	const auto current = GetShaderObjectOrNull(server, p.Pass, nullptr);
-	p.Swap.ForgetIfReplacedElsewhere(current);
-	if (!current)
-		return false;
-	if (p.Swap.IsIn(current))
-		return true;
-
-	const auto game = PixelShaderSwap::ShaderOf(current);
-	if (!game || !GetShaderObjectOrNull(server, p.Pass, p.File))
-		return false;
-
-	if (!p.Swap.PluginShader())
-		p.Swap.PluginShader() = CreateShader(game, p);
-	p.Swap.Install(current);
-	return true;
-}
-
-uintptr_t FontReplacement::SubpixelShaders::GetShaderObjectOrNull(uintptr_t server, ShaderPass pass, const char* file) const {
-	if (!server)
-		return 0;
-	const auto index = static_cast<size_t>(pass);
-	if (file) {
-		const auto handle = *reinterpret_cast<const uintptr_t*>(server + m_pixelShaderFiles + index * 8);
-		if (!handle || !Utils::EndsWithI(GameUi::GetFileName(handle), file))
-			return 0;
-	}
-	return *reinterpret_cast<const uintptr_t*>(server + m_pixelShaders + index * 8);
-}
-
-ID3D11PixelShaderPtr FontReplacement::SubpixelShaders::CreateShader(ID3D11PixelShader* game, const PassShader& p) const {
-	auto code = PixelShaderSwap::ReadShaderCode(p.Code);
-	if (!PixelShaderSwap::PatchConstants(code, {
-		{ClearTypeLevelSentinel, m_settings.Level},
-		{ContrastSentinel, m_settings.Contrast},
-		{GammaSentinel, m_settings.Gamma},
-		{GrayscaleContrastSentinel, m_settings.GrayscaleContrast},
-	}))
-		Host::Warning("Placeholder variables missing or repeated: {}", p.CodeFile);
-	return PixelShaderSwap::CreateShader(game, code);
-}
-
 void FontReplacement::SubpixelShaders::RestoreAndReleaseAll() {
-	for (auto& p : m_passes) {
-		if (p.Swap.Target())
-			p.Swap.Restore(GetShaderObjectOrNull(m_server, p.Pass, nullptr));
-		p.Swap.PluginShader() = nullptr;
-	}
+	const auto server = PixelShaderSwap::GetServer();
+	for (auto& p : m_passes)
+		p.Swap.Release(PixelShaderSwap::GetShaderObject(server, static_cast<int>(p.Pass)));
 	m_passActive = false;
 }

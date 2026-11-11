@@ -2,7 +2,6 @@
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	struct GameFont;
-	struct GameFontManager;
 
 	// Lobby fonts load from one of two tables, picked by a module setting that isn't kept, so the table is found by matching font sizes.
 	namespace FontNames {

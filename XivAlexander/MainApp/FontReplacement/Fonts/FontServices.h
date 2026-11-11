@@ -17,7 +17,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unique_ptr<DirectWriteTextAnalyzer> m_textAnalyzer;
 		std::unique_ptr<FreeTypeGlyphRasterizer> m_freeType;
 		std::unique_ptr<DirectWriteGlyphRasterizer> m_directWrite;
-		SubpixelOrder m_subpixelOrder = SubpixelOrder::None;
 
 	public:
 		FontServices();
@@ -39,7 +38,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] FreeTypeGlyphRasterizer& FreeType() const { return *m_freeType; }
 
 		// Game thread.
-		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_subpixelOrder; }
+		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_directWrite->GetSubpixelOrder(); }
 		void SetSubpixelOrder(SubpixelOrder value);
 
 		// The closest match, simulated if the family lacks it.

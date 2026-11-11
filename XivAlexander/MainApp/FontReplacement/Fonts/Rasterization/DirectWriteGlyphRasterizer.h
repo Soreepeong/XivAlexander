@@ -35,6 +35,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		DirectWriteGlyphRasterizer& operator=(const DirectWriteGlyphRasterizer&) = delete;
 
 		// Game thread, before glyphs are made again.
+		[[nodiscard]] SubpixelOrder GetSubpixelOrder() const { return m_subpixelOrder; }
 		void SetSubpixelOrder(SubpixelOrder order) { m_subpixelOrder = order; }
 
 		// DirectWrite has no ClearType for vertical stripes, so without FreeType it draws them turned a quarter; set on the game thread, before glyphs are

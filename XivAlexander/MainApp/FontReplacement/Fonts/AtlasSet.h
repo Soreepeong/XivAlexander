@@ -24,8 +24,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] const FontReplacementAtlasConfig& Settings() const { return m_settings; }
 		void SetSettings(const FontReplacementAtlasConfig& value) { m_settings = value; }
 
-		// Whether atlases made from now on take subpixel coverage.
-		[[nodiscard]] bool Subpixel() const { return m_subpixel; }
+		// Atlases made from now on take subpixel coverage if set.
 		void SetSubpixel(bool value) { m_subpixel = value; }
 
 		[[nodiscard]] auto All() const { return m_atlases | std::views::values | std::views::transform([](const auto& a) { return a.get(); }); }

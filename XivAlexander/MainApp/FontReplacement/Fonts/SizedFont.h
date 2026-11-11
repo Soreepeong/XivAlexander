@@ -1,21 +1,12 @@
 #pragma once
 
 #include "MainApp/FontReplacement/FontStructs.h"
+#include "MainApp/FontReplacement/Fonts/Records/GlyphSource.h"
 #include "MainApp/FontReplacement/Utilities/AgedMap.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class GlyphAtlas;
 	class MaterializedFont;
-	class MaterializedFontElement;
-
-	// Element is nullptr if none of Font's elements has the glyph.
-	struct GlyphSource {
-		MaterializedFont* Font = nullptr;
-		GameFont* Game = nullptr;
-		MaterializedFontElement* Element = nullptr;
-
-		bool operator==(const GlyphSource&) const = default;
-	};
 
 	// Shared by the copies of a family's fonts of one size, such as a font and its lobby version.
 	// A bold one keeps the upright one's line metrics, so that lines partly in bold line up.

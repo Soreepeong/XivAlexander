@@ -98,13 +98,9 @@ namespace XivAlexander::Game::Resolved {
 		void* const* InputContext{};
 	};
 
-	// Kernel::SwapChain::Present, which times the frame and calls IDXGISwapChain::Present.
-	using SwapChainPresentFn = void(*)(void* swapChain);
-
 	struct FontReplacementFunctions {
-		// The rel32 of DeviceDX11::PostTick's call of Present on the render thread path.
+		// The rel32 of DeviceDX11::PostTick's call of Kernel::SwapChain::Present on the render thread path.
 		uint8_t* PresentCall{};
-		SwapChainPresentFn Present{};
 	};
 
 	// AtkServer::SetDrawState: stages the blend state, texture and texture size constant of a batch of UI draw commands.
@@ -631,7 +627,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	};
 
 	struct EdgeShaderFunctions {
-		void* LoadShaders{};  // AtkServer::LoadShaders(server)
 		int32_t ModuleServer{};  // AtkServer, in AtkModule
 		int32_t ModuleFontManager{};  // AtkFontManager, in AtkModule
 	};
@@ -650,7 +645,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		int32_t NodeTextFlags{};  // uint8_t, in AtkTextNode
 		uint8_t NodeBoldFlag{};  // in NodeTextFlags; the game sets 1 << 26 of the font set's draw flags for it
 		int32_t NodeTransform{};  // float[4], row by row, in AtkResNode
-		int32_t NodePickScale{};  // float, in AtkTextNode
 		int32_t SetUnscaledSizeY{};  // float
 		int32_t SetPickScale{};  // float; where positive, PickFont picks for this times the unscaled size
 		void* TextWrapLayout{};  // int(wrapper, text): the text wrapper's layout, which every wrap goes through, unscaled unless its style says otherwise

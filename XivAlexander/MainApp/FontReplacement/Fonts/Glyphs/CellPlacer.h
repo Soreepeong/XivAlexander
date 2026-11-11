@@ -46,7 +46,5 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	private:
 		[[nodiscard]] static RasterGlyph WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha);
-
-		GameGlyph* GetBlank(GameGlyph* glyph);
 	};
 }

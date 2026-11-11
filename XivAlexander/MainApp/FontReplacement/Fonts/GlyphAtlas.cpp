@@ -54,6 +54,10 @@ void FontReplacement::GlyphAtlas::Page::ClearDirty() {
 	DirtyRight = DirtyBottom = 0;
 }
 
+int FontReplacement::GlyphAtlas::MaxTextureSlots() {
+	return GameFont::MaxTextures - 1;
+}
+
 FontReplacement::GlyphAtlas::GlyphAtlas(int width, int height, int maxPages, std::string name, bool subpixel, AtlasTextureFormat format)
 	: m_width(width)
 	, m_height(height)
@@ -61,7 +65,7 @@ FontReplacement::GlyphAtlas::GlyphAtlas(int width, int height, int maxPages, std
 	, m_subpixel(subpixel)
 	, m_format4444(format == AtlasTextureFormat::Bgra4444)
 	, m_bytesPerPixel(m_format4444 ? 2 : 4)
-	, m_maxPages(std::clamp(maxPages, 1, (std::max)(1, GameFont::MaxTextures)))
+	, m_maxPages(std::clamp(maxPages, 1, (std::max)(1, MaxTextureSlots())))
 	, m_current(FirstPlane())
 	, m_frontier(FirstPlane() + PlaneStep()) {
 }

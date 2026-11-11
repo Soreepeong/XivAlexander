@@ -209,9 +209,12 @@ bool FontReplacement::OutlineFaceSource::IsRealItalic(IDWriteFontFace5* face) {
 	return (face->GetSimulations() & DWRITE_FONT_SIMULATIONS_OBLIQUE) == 0 && face->GetStyle() != DWRITE_FONT_STYLE_NORMAL;
 }
 
-bool FontReplacement::OutlineFaceSource::IsSlanted() const {
-	const auto face = m_font->Face();
-	return IsRealItalic(face) || (face->GetSimulations() & DWRITE_FONT_SIMULATIONS_OBLIQUE);
+bool FontReplacement::OutlineFaceSource::IsSlanted() {
+	if (!m_isSlanted) {
+		const auto face = m_font->Face();
+		m_isSlanted = IsRealItalic(face) || (face->GetSimulations() & DWRITE_FONT_SIMULATIONS_OBLIQUE);
+	}
+	return *m_isSlanted;
 }
 
 bool FontReplacement::OutlineFaceSource::IsBolder(const LookupFont& font) const {

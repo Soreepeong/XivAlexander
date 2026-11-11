@@ -3,7 +3,6 @@
 
 #include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
-#include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities/Misc.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;

@@ -52,10 +52,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		void ClusterRun(SizedFont& sized, int count, ItalicMode italic);
 
-		// Composes conjoining jamo into precomposed syllables as NFC does, since DirectWrite has no Hangul shaping and would draw each jamo as a
-		// separate full-width letter. Old Hangul, having no precomposed syllables, is left as it is.
-		int ComposeHangul(int count);
-
 		void AssignSources(int count);
 
 		[[nodiscard]] static float GetOwnWidth(IFaceSource& source, float px, std::span<const uint32_t> glyphs, std::span<const GlyphOffset> offsets);

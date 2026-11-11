@@ -1,12 +1,26 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/PixelShaderSwap.h"
 
+#include "MainApp/FontReplacement/FontStructs.h"
 #include "MainApp/FontReplacement/GameCode.h"
+#include "MainApp/FontReplacement/GameUi.h"
+#include "MainApp/FontReplacement/Host.h"
+#include "Utils/StringUtils.h"
 #include "XivAlexander.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 namespace {
+	// AtkModule embeds the font manager AtkStage points to, and AtkServer keeps a shader pair per pass.
+	struct ServerOffsets {
+		int ModuleFontManager;
+		int ModuleServer;
+		int PixelShaderFiles;
+		int PixelShaders;
+	};
+
+	std::optional<ServerOffsets> s_offsets;
+
 	uint32_t ReadU32(const uint8_t* p) {
 		uint32_t v;
 		std::memcpy(&v, p, sizeof v);
@@ -132,8 +146,29 @@ ID3D11PixelShader** FontReplacement::PixelShaderSwap::Slot(uintptr_t target) {
 	return reinterpret_cast<ID3D11PixelShader**>(target + s_offset);
 }
 
-ID3D11PixelShader* FontReplacement::PixelShaderSwap::ShaderOf(uintptr_t target) {
-	return *Slot(target);
+void FontReplacement::PixelShaderSwap::Resolve() {
+	if (s_offsets)
+		return;
+	GameFontManager::Resolve();
+	GameUi::ResolveResourceHandles();
+	const auto functions = ResolveGameCode(Game::Resolved::Fonts::EdgeShader);
+	const auto tables = ResolveGameCode(Game::Resolved::Fonts::ShaderTables);
+	s_offsets = ServerOffsets{functions.ModuleFontManager, functions.ModuleServer, tables.PixelShaderFiles, tables.PixelShaders};
+}
+
+uintptr_t FontReplacement::PixelShaderSwap::GetServer() {
+	if (!s_offsets)
+		return 0;
+	const auto fontManager = GameFontManager::Instance();
+	return fontManager ? *reinterpret_cast<const uintptr_t*>(reinterpret_cast<uintptr_t>(fontManager) - s_offsets->ModuleFontManager + s_offsets->ModuleServer) : 0;
+}
+
+uintptr_t FontReplacement::PixelShaderSwap::GetShaderObject(uintptr_t server, int pass) {
+	return server ? *reinterpret_cast<const uintptr_t*>(server + s_offsets->PixelShaders + static_cast<size_t>(pass) * 8) : 0;
+}
+
+uintptr_t FontReplacement::PixelShaderSwap::GetShaderResource(uintptr_t server, int pass) {
+	return server ? *reinterpret_cast<const uintptr_t*>(server + s_offsets->PixelShaderFiles + static_cast<size_t>(pass) * 8) : 0;
 }
 
 ID3D11PixelShaderPtr FontReplacement::PixelShaderSwap::CreateShader(ID3D11PixelShader* game, std::span<const uint8_t> code) {
@@ -146,27 +181,40 @@ bool FontReplacement::PixelShaderSwap::IsIn(uintptr_t target) const {
 	return target && target == m_target && *Slot(target) == m_pluginShader.GetInterfacePtr();
 }
 
-void FontReplacement::PixelShaderSwap::ForgetIfReplacedElsewhere(uintptr_t current) {
+void FontReplacement::PixelShaderSwap::Ensure(
+	uintptr_t current, uintptr_t resource, const char* file, int code, const char* codeFile, std::initializer_list<std::pair<uint32_t, float>> constants) {
+	// A UI shader reload drops the object (a new one may take its address) or makes it bind another shader.
 	if (m_target && !IsIn(current))
 		Forget();
-}
+	if (!current || IsIn(current))
+		return;
 
-void FontReplacement::PixelShaderSwap::Install(uintptr_t target) {
-	const auto slot = Slot(target);
-	m_target = target;
-	m_originalShader = *slot;
+	const auto slot = Slot(current);
+	const auto game = *slot;
+	if (!game || !resource || !Utils::EndsWithI(GameUi::GetFileName(resource), file))
+		return;
+
+	if (!m_pluginShader) {
+		auto bytes = ReadShaderCode(code);
+		if (!PatchConstants(bytes, constants))
+			Host::Warning("Placeholder variables missing or repeated: {}", codeFile);
+		m_pluginShader = CreateShader(game, bytes);
+	}
+
+	// The object owns a reference to what it binds, so it gets one of ours.
+	m_target = current;
+	m_originalShader = game;
 	m_pluginShader->AddRef();
 	*slot = m_pluginShader.GetInterfacePtr();
 }
 
-void FontReplacement::PixelShaderSwap::Restore(uintptr_t current) {
-	if (!m_target)
-		return;
+void FontReplacement::PixelShaderSwap::Release(uintptr_t current) {
 	if (IsIn(current)) {
 		*Slot(current) = std::exchange(m_originalShader, nullptr);
 		m_pluginShader->Release();
 	}
 	Forget();
+	m_pluginShader = nullptr;
 }
 
 void FontReplacement::PixelShaderSwap::Forget() {

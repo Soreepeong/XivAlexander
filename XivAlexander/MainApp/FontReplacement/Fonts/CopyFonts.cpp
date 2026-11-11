@@ -193,7 +193,7 @@ void FontReplacement::CopyFonts::Sync(GameFont* copy, const CopyInfo& info) {
 
 	// The edge and glare shaders step by one texel of this width (it goes into every vertex), which must be the pages'. Claiming a narrower
 	// width widens the edge as many times, and the edge shader takes the step as its radius.
-	const auto width = static_cast<uint16_t>(std::clamp(StdRound(static_cast<float>(s.Atlas->Width()) / m_edge.GetWidth(s.Px)), 256.f, 65535.f));
+	const auto width = static_cast<uint16_t>(std::clamp(StdRound(static_cast<float>(s.Atlas->Width()) / m_state.Edge().GetWidth(s.Px)), 256.f, 65535.f));
 	copy->TextureWidth() = width;
 	copy->TextureHeight() = width;
 
@@ -203,7 +203,7 @@ void FontReplacement::CopyFonts::Sync(GameFont* copy, const CopyInfo& info) {
 
 void FontReplacement::CopyFonts::ApplyPages(GameFont* copy, const GlyphAtlas& atlas) const {
 	const auto blank = m_blankTexture.Kernel();
-	const auto pages = (std::min)(atlas.PageCount(), GameFont::MaxTextures);
+	const auto pages = (std::min)(atlas.PageCount(), GlyphAtlas::MaxTextureSlots());
 	for (auto i = 0; i < GameFont::MaxTextures; i++)
 		copy->SetTexture(i, i < pages ? atlas.GetKernelTexture(i) : blank);
 	copy->TextureCount() = static_cast<uint16_t>(GameFont::MaxTextures);

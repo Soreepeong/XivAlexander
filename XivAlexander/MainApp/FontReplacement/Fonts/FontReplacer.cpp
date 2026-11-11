@@ -10,7 +10,7 @@
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphStore.h"
 #include "MainApp/FontReplacement/Fonts/Hooks/FontHooks.h"
 #include "MainApp/FontReplacement/Fonts/Hooks/FontLifecycleHooks.h"
-#include "MainApp/FontReplacement/Fonts/Hooks/FontSetFlags.h"
+#include "MainApp/FontReplacement/Fonts/Hooks/LayoutContext.h"
 #include "MainApp/FontReplacement/Fonts/SizedFontRegistry.h"
 #include "MainApp/FontReplacement/Fonts/Text/GameTextLayout.h"
 #include "MainApp/FontReplacement/Fonts/Text/SystemFallbackFonts.h"
@@ -25,7 +25,7 @@ FontReplacement::FontReplacer::FontReplacer(FrameState& state)
 	ResolveGameFontStructs();
 	GameUi::ResolveUnits();
 	GameUi::ResolveTextures();
-	m_flags = std::make_unique<FontSetFlags>();
+	m_context = std::make_unique<LayoutContext>();
 
 	m_services = std::make_unique<FontServices>();
 	m_fallbackFonts = std::make_unique<SystemFallbackFonts>(*m_services);
@@ -41,9 +41,9 @@ FontReplacement::FontReplacer::FontReplacer(FrameState& state)
 	m_sized = std::make_unique<SizedFontRegistry>(FontSet::CreateGame(*m_services, true, *m_fallbackFonts), *m_atlases, *m_store, state);
 	m_copies = std::make_unique<CopyFonts>(*m_sized, *m_blankTexture, state);
 	m_placer = std::make_unique<CellPlacer>(*m_store, *m_copies);
-	m_factory = std::make_unique<GlyphFactory>(*m_store);
+	m_factory = std::make_unique<GlyphFactory>(*m_store, state);
 	m_layout = std::make_unique<GameTextLayout>(*m_services, *m_store, *m_factory, state);
-	m_fontHooks = std::make_unique<FontHooks>(*m_copies, *m_sized, *m_layout, *m_factory, *m_placer, *m_store, state, *m_flags);
+	m_fontHooks = std::make_unique<FontHooks>(*m_copies, *m_sized, *m_layout, *m_factory, *m_placer, *m_store, state, *m_context);
 	m_lifecycleHooks = std::make_unique<FontLifecycleHooks>([this](ResetScope scope) { Reset(scope); }, state);
 
 	// Caches built so far hold the game's glyphs. If this throws, the members undo the setup, the hooks first.
@@ -100,15 +100,14 @@ FontReplacement::ResetScope FontReplacement::FontReplacer::SetEnabled(bool value
 
 FontReplacement::ResetScope FontReplacement::FontReplacer::SetEdge(const FontReplacementEdgeConfig& value) {
 	const auto edge = value.Drawn();
-	const auto old = m_factory->Edge();
+	const auto old = m_state.Edge();
 	if (edge == old)
 		return ResetScope::None;
 
 	const auto marginChanged = std::ranges::any_of(m_sized->All(), [&](const SizedFont* s) {
 		return GlyphFactory::GetEdgeMargin(edge, s->Px) != GlyphFactory::GetEdgeMargin(old, s->Px);
 	});
-	m_factory->SetEdge(edge);
-	m_copies->SetEdge(edge);
+	m_state.SetEdge(edge);
 	m_copies->SyncAll();
 	return marginChanged ? ResetScope::Glyphs : ResetScope::Text;
 }
@@ -121,9 +120,10 @@ FontReplacement::ResetScope FontReplacement::FontReplacer::SetAtlas(const FontRe
 	return ResetScope::Atlases;
 }
 
-FontReplacement::ResetScope FontReplacement::FontReplacer::SetSubpixel(SubpixelOrder order, bool active) {
-	if (order == m_services->GetSubpixelOrder() && active == m_atlases->Subpixel())
+FontReplacement::ResetScope FontReplacement::FontReplacer::SetSubpixel(SubpixelOrder order) {
+	if (order == m_services->GetSubpixelOrder())
 		return ResetScope::None;
+	const auto active = order != SubpixelOrder::None;
 	m_atlases->SetSubpixel(active);
 	const auto atlasesChange = std::ranges::any_of(m_atlases->All(), [active](const GlyphAtlas* a) { return a->Subpixel() != active; });
 	m_services->SetSubpixelOrder(order);

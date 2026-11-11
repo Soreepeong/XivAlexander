@@ -1,20 +1,18 @@
 #pragma once
 
-namespace XivAlexander::Apps::MainApp::FontReplacement {
-	// A part that turns itself off when it fails, until font replacement is set up again.
-	enum class Part {
-		Replacer,
-		Subpixel,
-	};
+#include "Config/FontReplacementConfigs.h"
+#include "MainApp/FontReplacement/Fonts/Enums/Part.h"
 
-	// What the parts share: the frame that caches and atlas planes are aged by, whether fonts are replaced, and what hooks and Present saw
-	// that other parts must react to at the next update.
+namespace XivAlexander::Apps::MainApp::FontReplacement {
+	// What the parts share: the frame that caches and atlas planes are aged by, whether fonts are replaced, the edge, and what hooks and
+	// Present saw that other parts must react to at the next update.
 	class FrameState {
 		std::set<Part> m_failed;
 		bool m_gameFontsChanged = false;
 		bool m_planeReused = false;
 		uint64_t m_frame = 0;
 		bool m_isOn = true;
+		FontReplacementEdgeConfig m_edge;
 
 	public:
 		struct Snapshot {
@@ -29,12 +27,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] bool IsOn() const { return m_isOn; }
 		void SetOn(bool value) { m_isOn = value; }
 
+		// The edge as drawn, which glyphs get margins for and copies claim their texture width by.
+		[[nodiscard]] const FontReplacementEdgeConfig& Edge() const { return m_edge; }
+		void SetEdge(const FontReplacementEdgeConfig& value) { m_edge = value; }
+
 		void EndFrame() { m_frame++; }
 
 		// The game built or unloaded fonts.
 		void GameFontChanged() { m_gameFontsChanged = true; }
 
-		// A full atlas made room, so baked text may hold blanks it handed out.
+		// A full atlas made room, so baked text may lack the glyphs that found none.
 		void PlaneReused() { m_planeReused = true; }
 
 		// Stops replacing at once, and has the rest turned off at the next update.

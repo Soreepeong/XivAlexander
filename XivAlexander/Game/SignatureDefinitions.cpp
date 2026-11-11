@@ -950,9 +950,8 @@ namespace XivAlexander::Game::Resolved {
 	}
 
 	std::string to_string(const FontReplacementFunctions& value) {
-		return std::format("Present call {}, Present {}",
-			Signatures::Describe(value.PresentCall),
-			Signatures::Describe(value.Present));
+		return std::format("Present call {}",
+			Signatures::Describe(value.PresentCall));
 	}
 
 	std::string to_string(const SubpixelTextFunctions& value) {
@@ -1267,7 +1266,6 @@ namespace XivAlexander::Game::Resolved {
 			"Present {} is not where a function starts", Signatures::Describe(present));
 		return FontReplacementFunctions{
 			.PresentCall = Address(callInstruction),
-			.Present = Address(present),
 		};
 	});
 
@@ -2707,7 +2705,7 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	}
 
 	std::string to_string(const EdgeShaderFunctions& value) {
-		return std::format("LoadShaders {}, AtkServer +0x{:X}, font manager +0x{:X}", Signatures::Describe(value.LoadShaders), value.ModuleServer, value.ModuleFontManager);
+		return std::format("AtkServer +0x{:X}, font manager +0x{:X}", value.ModuleServer, value.ModuleFontManager);
 	}
 
 	std::string to_string(const LineBreakerFunctions& value) {
@@ -2716,8 +2714,8 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	}
 
 	std::string to_string(const MeasureFunctions& value) {
-		return std::format("set up {}, node text flags +0x{:X} bold 0x{:X} transform +0x{:X} pick scale +0x{:X}, set unscaled size Y +0x{:X} pick scale +0x{:X}, wrap layout {}",
-			Signatures::Describe(value.SetUp), value.NodeTextFlags, value.NodeBoldFlag, value.NodeTransform, value.NodePickScale, value.SetUnscaledSizeY, value.SetPickScale,
+		return std::format("set up {}, node text flags +0x{:X} bold 0x{:X} transform +0x{:X}, set unscaled size Y +0x{:X} pick scale +0x{:X}, wrap layout {}",
+			Signatures::Describe(value.SetUp), value.NodeTextFlags, value.NodeBoldFlag, value.NodeTransform, value.SetUnscaledSizeY, value.SetPickScale,
 			Signatures::Describe(value.TextWrapLayout));
 	}
 
@@ -2988,7 +2986,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 	const Signatures::ComplexSignature<EdgeShaderFunctions> EdgeShader("Fonts.EdgeShader", [](ResolveContext& ctx) {
 		const auto& init = ctx.Get(ModuleInit);
 		return EdgeShaderFunctions{
-			.LoadShaders = init.LoadShaders,
 			.ModuleServer = init.Server,
 			.ModuleFontManager = init.FontManager,
 		};
@@ -3053,7 +3050,6 @@ namespace XivAlexander::Game::Resolved::Fonts {
 		res.NodeTransform = *rows.begin();
 
 		const auto pick = UniqueIn(ctx, FontCode::MeasurePickScale, setUp, "pick scale");
-		res.NodePickScale = Captured(pick, {1, 3}, "node pick scale");
 		res.SetPickScale = Captured(pick, {2, 4}, "set pick scale");
 
 		const auto renderer = FunctionOf(ctx, UniqueInSlots(ctx, ctx.Get(TextNodeRenderer), FontCode::TextNodeSetUp, "TextNodeSetUp"), "TextNodeSetUp");

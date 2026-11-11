@@ -2,9 +2,6 @@
 #include "MainApp/FontReplacement/Host.h"
 
 #include "Game/SignatureDefinitions.h"
-#include "Utils/Win32/LoadedModule.h"
-#include "Utils/Win32/Process.h"
-#include "XivAlexander.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 

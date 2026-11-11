@@ -6,6 +6,7 @@
 #include "MainApp/FontReplacement/Game/LineBreaker.h"
 #include "MainApp/FontReplacement/Game/NamePlateText.h"
 #include "MainApp/FontReplacement/Host.h"
+#include "MainApp/FontReplacement/PluginInterface/PresetController.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
@@ -30,13 +31,14 @@ namespace {
 	}
 }
 
-FontReplacement::FrameCoordinator::FrameCoordinator(const Settings& settings, HWND window)
+FontReplacement::FrameCoordinator::FrameCoordinator(std::shared_ptr<Config> config, const Settings& settings, HWND window)
 	: m_replacer(std::make_unique<FontReplacer>(m_state)) {
 	try {
 		m_namePlates = Optional<NamePlateText>("Nameplate text", *m_replacer);
 		m_lineBreaker = Optional<LineBreaker>("Line breaking", *m_replacer);
 		m_replacer->SetNamePlateTest([this](uintptr_t node) { return m_namePlates && m_namePlates->IsPlateText(node); });
 		m_loader = std::make_unique<FontLoader>(m_replacer->Services(), m_replacer->FallbackFonts());
+		m_presets = std::make_unique<PresetController>(std::move(config), *m_loader);
 		OnUpdate(settings, window);
 	} catch (...) {
 		Unhook();
@@ -51,16 +53,23 @@ FontReplacement::FrameCoordinator::~FrameCoordinator() {
 
 void FontReplacement::FrameCoordinator::OnUpdate(const Settings& settings, HWND window) {
 	const auto log = m_state.Drain();
-	auto [fonts, error] = m_loader->TryTake();
+	auto fonts = m_presets->Update();
 
 	// Every cause is known before anything is made again, so that it is made once.
 	auto scope = m_replacer->SetEnabled(!m_state.Failed(Part::Replacer));
-	m_edge.Apply(settings.Edge);
+
+	// The shaders get a value once, so that one that can't be applied isn't tried again until it changes.
+	if (settings.Edge.Drawn() != m_state.Edge())
+		m_edge.Apply(settings.Edge);
+	m_edge.Ensure();
 	scope |= m_replacer->SetEdge(settings.Edge);
 
 	const auto subpixel = m_state.Failed(Part::Subpixel) ? SubpixelShaders::SettingsRecord{} : m_subpixelSource.Get(settings.Subpixel, settings.ClearType, window);
-	const auto active = m_subpixel.TryApply(subpixel);
-	scope |= m_replacer->SetSubpixel(active ? subpixel.Order : SubpixelOrder::None, active);
+	if (subpixel != m_appliedSubpixel)
+		m_subpixel.TryApply(subpixel);
+	m_appliedSubpixel = subpixel;
+	m_subpixel.Ensure();
+	scope |= m_replacer->SetSubpixel(m_subpixel.Active() ? subpixel.Order : SubpixelOrder::None);
 	scope |= m_replacer->SetVerticalSubpixel(settings.VerticalSubpixel);
 	scope |= m_replacer->SetAtlas(settings.Atlas);
 	if (log.GameFontsChanged)
@@ -91,6 +100,8 @@ void FontReplacement::FrameCoordinator::RedoText() {
 }
 
 void FontReplacement::FrameCoordinator::Unhook() {
+	Step("presets", [this] { m_presets.reset(); });
+
 	// Laid out with the game's fonts while the hooks that know the plates' bake scales are still there.
 	Step("text", [this] {
 		if (m_replacer)

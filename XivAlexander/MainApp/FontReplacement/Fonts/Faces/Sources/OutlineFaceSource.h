@@ -32,6 +32,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		bool m_italicMade = false;
 		std::unique_ptr<OutlineFaceSource> m_bold;
 		bool m_boldMade = false;
+		std::optional<bool> m_isSlanted;
 		std::optional<std::map<uint32_t, int>> m_baselines;
 		std::optional<std::vector<DWRITE_FONT_FEATURE>> m_features;
 
@@ -76,7 +77,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] static bool IsRealItalic(IDWriteFontFace5* face);
 
 		// Not to be sheared again by the game for an italic macro.
-		[[nodiscard]] bool IsSlanted() const;
+		[[nodiscard]] bool IsSlanted();
 
 		[[nodiscard]] bool IsBolder(const LookupFont& font) const;
 

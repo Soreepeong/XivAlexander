@@ -19,7 +19,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 	// Where a glyph's pixels are.
 	enum class CellStage : uint8_t {
-		// No pixels, as of an empty glyph, a spacer or a blank.
+		// No pixels, as of an empty glyph or a spacer.
 		Empty,
 
 		// Its pixels wait for room in the atlas, which they get when it is drawn.
@@ -35,6 +35,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	};
 
 	// A glyph's pixels and lifetime. The methods are the only way between its stages.
+	// A glyph with a box samples its atlas's BlankSlot while not IsPlaced.
 	struct Cell {
 		CellStage Stage = CellStage::Empty;
 		GlyphAtlas* Atlas = nullptr;
@@ -54,13 +55,10 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Of its plane when placed.
 		uint32_t Generation = 0;
 
-		// Drawn instead while its pixels find no room. Held with Keep.
-		GameGlyph* Blank = nullptr;
-
 		// A real italic glyph, which the game must not shear.
 		bool RealItalic = false;
 
-		// Caches, shaped runs and the glyph whose blank it is holding it.
+		// Caches and shaped runs holding it.
 		int Refs = 0;
 
 		// The frame it was last handed to the game in.
@@ -71,15 +69,16 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] bool IsPlaced() const { return Stage == CellStage::Placed || Stage == CellStage::AwaitingRead; }
 
-		void Pend(GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source);
+		// For a glyph with a box, whose pixels are placed when it is drawn.
+		void Pend(GameGlyph* glyph, GlyphAtlas* atlas, RasterGlyph raster, int boxLeft, int inkTop, std::optional<GameTextureSource> source);
 
 		// Writes its pixels, or leaves them to be read if they come from the game.
 		void Place(GameGlyph* glyph, const GlyphAtlas::Allocation& a);
 
 		void PixelsRead(GameGlyph* glyph, RasterGlyph raster);
 
-		// Its plane was reused, so it is placed again when next drawn.
-		void MarkStale();
+		// Its plane was reused, so it is placed again when next drawn, and until then draws none of what the plane holds now.
+		void MarkStale(GameGlyph* glyph);
 
 		void Drop(GameGlyph* glyph);
 
@@ -87,6 +86,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] bool Touch(const GameGlyph* glyph, uint64_t frame) const;
 
 	private:
+		// The glyph draws nothing in its box, at the same advance. Only for a cell with pixels, which has an atlas.
+		void PointAtBlank(GameGlyph* glyph) const;
+
 		void Write(const GameGlyph* glyph) const;
 	};
 
@@ -129,7 +131,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Reuses a freed slot if there is one. The glyph is held once by the caller.
 		GameGlyph* Allocate();
 
-		GameGlyph* Keep(GameGlyph* glyph);
+		void Keep(GameGlyph* glyph);
 
 		void Release(GameGlyph* glyph);
 

@@ -6,11 +6,16 @@
 #include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
 #include "MainApp/FontReplacement/PluginInterface/SubpixelSource.h"
 
+namespace XivAlexander {
+	class Config;
+}
+
 namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontLoader;
 	class FontReplacer;
 	class LineBreaker;
 	class NamePlateText;
+	class PresetController;
 
 	// Calls the parts in order at the point of a frame the replacement owns, and passes on what each reports.
 	// OnUpdate and then OnPresent run before the game presents a frame. OnUpdate does settings, fonts and resets, then what keeps laid out text.
@@ -32,6 +37,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FrameState m_state;
 		SubpixelShaders m_subpixel{m_state};
 		SubpixelSource m_subpixelSource;
+
+		// What subpixel rendering was last applied with, such as the system's ClearType settings.
+		SubpixelShaders::SettingsRecord m_appliedSubpixel;
 		EdgeShader m_edge;
 		std::unique_ptr<FontReplacer> m_replacer;
 
@@ -41,20 +49,18 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unique_ptr<LineBreaker> m_lineBreaker;
 
 		std::unique_ptr<FontLoader> m_loader;
+		std::unique_ptr<PresetController> m_presets;
 
 	public:
 		// Game thread. Throws if fonts can't be replaced in this game version.
-		FrameCoordinator(const Settings& settings, HWND window);
+		FrameCoordinator(std::shared_ptr<Config> config, const Settings& settings, HWND window);
 		FrameCoordinator(const FrameCoordinator&) = delete;
 		FrameCoordinator& operator=(const FrameCoordinator&) = delete;
 
 		// Game thread, between frames.
 		~FrameCoordinator();
 
-		[[nodiscard]] FontLoader& Loader() const { return *m_loader; }
-
-		// A part that failed stays off until font replacement is set up again.
-		[[nodiscard]] bool Failed(Part part) const { return m_state.Failed(part); }
+		[[nodiscard]] PresetController& Presets() const { return *m_presets; }
 
 		// Applies the settings, each part skipping what didn't change.
 		void OnUpdate(const Settings& settings, HWND window);

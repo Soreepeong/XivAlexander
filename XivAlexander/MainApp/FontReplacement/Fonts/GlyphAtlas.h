@@ -13,6 +13,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static constexpr int PlanesPerPage = 4;
 		static constexpr int SubpixelPlane = 3;
 
+		// The most pages an atlas has, which leaves every copy a texture slot for BlankSlot.
+		[[nodiscard]] static int MaxTextureSlots();
+
 		[[nodiscard]] static uint8_t Get4444(uint16_t texel, int plane);
 		[[nodiscard]] static int BgraOffset(int plane);
 
@@ -97,11 +100,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		~GlyphAtlas();
 
 		[[nodiscard]] int Width() const { return m_width; }
-		[[nodiscard]] int Height() const { return m_height; }
 		[[nodiscard]] const std::string& Name() const { return m_name; }
 		[[nodiscard]] bool Subpixel() const { return m_subpixel; }
 		[[nodiscard]] int MaxPlanes() const { return m_maxPages * PlanesPerPage; }
 		[[nodiscard]] int PageCount() const { return static_cast<int>(m_pages.size()); }
+
+		// The first texture slot none of the atlas's pages takes, which holds the blank texture in every copy drawing from it. A glyph with a
+		// box but no pixels in the atlas samples it. Kept low, as a texture index past a font's texture count has no vertex buffer.
+		[[nodiscard]] int BlankSlot() const { return m_maxPages; }
 
 		// page < PageCount().
 		[[nodiscard]] uintptr_t GetKernelTexture(int page) const { return m_pages[page]->Texture.Kernel(); }

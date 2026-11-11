@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Game/KernelTextureWrapper.h"
 
-#include "Game/SignatureDefinitions.h"
 #include "MainApp/FontReplacement/GameCode.h"
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;

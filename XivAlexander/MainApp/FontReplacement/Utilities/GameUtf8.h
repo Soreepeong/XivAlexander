@@ -5,6 +5,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement::GameUtf8 {
 	constexpr uint8_t Stx = 0x02;
 	constexpr uint8_t Etx = 0x03;
 
+	// What LayOutCharacter lays out a character a font has no glyph of as, in order of preference, packed.
+	constexpr uint32_t MissingGlyphSubstitutes[]{0xE38093, 0x2D, 0xE39080};
+
 	// Invalid codepoints pack as U+FFFD.
 	[[nodiscard]] uint32_t Pack(char32_t codepoint);
 

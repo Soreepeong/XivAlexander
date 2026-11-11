@@ -3,6 +3,7 @@
 
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
+#include "MainApp/FontReplacement/Fonts/Glyphs/GlyphBox.h"
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphFactory.h"
 #include "MainApp/FontReplacement/Utilities/GameUtf8.h"
 
@@ -34,19 +35,19 @@ const FontReplacement::RasterKey& FontReplacement::CellCache::KeyOf(const SizedF
 }
 
 bool FontReplacement::CellCache::NeedsRaster(const SizedFont& sized, Cluster& c) {
-	return !c.Raster && (c.Source->DrawsBitmaps() || !m_rasters.Find(KeyOf(sized, c)));
+	if (c.Raster)
+		return false;
+	if (c.Source->DrawsBitmaps())
+		return true;
+	const auto found = m_rasters.Find(KeyOf(sized, c));
+	if (!found)
+		return true;
+	c.Raster = *found;
+	return false;
 }
 
 const FontReplacement::RasterGlyph& FontReplacement::CellCache::GetRaster(const SizedFont& sized, Cluster& c) {
-	if (c.Raster)
-		return *c.Raster;
-	if (!c.Source->DrawsBitmaps()) {
-		if (const auto found = m_rasters.Find(KeyOf(sized, c))) {
-			c.Raster = *found;
-			return *c.Raster;
-		}
-	}
-	return AddRaster(sized, c, c.Rasterize());
+	return NeedsRaster(sized, c) ? AddRaster(sized, c, c.Rasterize()) : *c.Raster;
 }
 
 const FontReplacement::RasterGlyph& FontReplacement::CellCache::AddRaster(const SizedFont& sized, Cluster& c, std::optional<RasterGlyph> raw) {
@@ -72,8 +73,8 @@ FontReplacement::GameGlyph* FontReplacement::CellCache::GetCell(const SizedFont&
 	placed.Left += pad;
 
 	// A cell that couldn't move left is drawn right of where shaping put its margin, so what follows moves along to keep its distance to the ink.
-	if (placed.Width != 0 && placed.Left < 0)
-		placed.Advance += (std::min)(-placed.Left, m_factory.GetEdgeMargin(sized));
+	if (const auto overhang = GlyphBox::InkLeftOfPen(placed); overhang > 0)
+		placed.Advance += (std::min)(overhang, m_factory.GetEdgeMargin(sized));
 	const auto utf8 = b < 0 ? 0u : GameUtf8::Pack(bytes + b);
 	const auto cell = m_factory.FromRaster(sized, std::move(placed), utf8);
 	if (c.RealItalic)

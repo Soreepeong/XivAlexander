@@ -4,20 +4,18 @@
 #include "MainApp/FontReplacement/Fonts/Glyphs/GlyphStore.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
+	class FrameState;
 	class SizedFont;
 
 	// Makes glyphs, whose pixels are placed only once they are drawn. Every glyph returned is held once by the caller, unless it is nullptr.
 	class GlyphFactory {
 		GlyphStore& m_store;
-		FontReplacementEdgeConfig m_edge;
+		const FrameState& m_state;
 
 	public:
-		explicit GlyphFactory(GlyphStore& store)
-			: m_store(store) {}
-
-		// The edge, which glyphs get margins for.
-		[[nodiscard]] const FontReplacementEdgeConfig& Edge() const { return m_edge; }
-		void SetEdge(const FontReplacementEdgeConfig& value) { m_edge = value; }
+		GlyphFactory(GlyphStore& store, const FrameState& state)
+			: m_store(store)
+			, m_state(state) {}
 
 		[[nodiscard]] static int GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px);
 

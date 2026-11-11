@@ -22,7 +22,6 @@ FontReplacement::FontServices::FontServices() {
 FontReplacement::FontServices::~FontServices() = default;
 
 void FontReplacement::FontServices::SetSubpixelOrder(SubpixelOrder value) {
-	m_subpixelOrder = value;
 	m_directWrite->SetSubpixelOrder(value);
 	m_freeType->SetSubpixelOrder(value);
 }

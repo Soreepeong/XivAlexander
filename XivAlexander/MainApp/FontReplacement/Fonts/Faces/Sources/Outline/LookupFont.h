@@ -6,8 +6,6 @@
 
 #include "MainApp/FontReplacement/Fonts/Rasterization/DirectWriteGlyphRasterizer.h"
 
-_COM_SMARTPTR_TYPEDEF(IDWriteFont3, __uuidof(IDWriteFont3));
-_COM_SMARTPTR_TYPEDEF(IDWriteFontFace5, __uuidof(IDWriteFontFace5));
 _COM_SMARTPTR_TYPEDEF(IDWriteFontResource, __uuidof(IDWriteFontResource));
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {

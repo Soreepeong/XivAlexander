@@ -2,7 +2,7 @@
 
 #include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/Fonts/Enums/SubpixelOrder.h"
-#include "MainApp/FontReplacement/Fonts/ResetScope.h"
+#include "MainApp/FontReplacement/Fonts/Enums/ResetScope.h"
 #include "MainApp/FontReplacement/Game/KernelTextureWrapper.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
@@ -13,11 +13,11 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class FontLifecycleHooks;
 	class FontServices;
 	class FontSet;
-	class FontSetFlags;
 	class FrameState;
 	class GameTextLayout;
 	class GlyphFactory;
 	class GlyphStore;
+	class LayoutContext;
 	class SizedFontRegistry;
 	class SystemFallbackFonts;
 
@@ -31,7 +31,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		FrameState& m_state;
 		std::unique_ptr<FontServices> m_services;
 		std::unique_ptr<SystemFallbackFonts> m_fallbackFonts;
-		std::unique_ptr<FontSetFlags> m_flags;
+		std::unique_ptr<LayoutContext> m_context;
 		std::unique_ptr<GlyphStore> m_store;
 
 		// What copy texture slots without a page hold, so that a game glyph slipping through draws nothing. Cleared at the first Present, as the
@@ -85,8 +85,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		ResetScope SetAtlas(const FontReplacementAtlasConfig& value);
 
-		// order is of the glyphs, None unless active, which is whether the subpixel shaders are on, which atlases are made for.
-		ResetScope SetSubpixel(SubpixelOrder order, bool active);
+		// order is of the glyphs, None unless the subpixel shaders are on, which atlases are made for.
+		ResetScope SetSubpixel(SubpixelOrder order);
 
 		ResetScope SetVerticalSubpixel(FontReplacementVerticalSubpixelRenderer value);
 

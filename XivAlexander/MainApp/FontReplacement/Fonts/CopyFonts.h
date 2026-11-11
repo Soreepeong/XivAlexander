@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/FontStructs.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
@@ -96,8 +95,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GameFont* m_lastCopy = nullptr;
 		CopyInfo* m_lastInfo = nullptr;
 
-		FontReplacementEdgeConfig m_edge;
-
 	public:
 		CopyFonts(SizedFontRegistry& sized, KernelTextureWrapper& blankTexture, const FrameState& state)
 			: m_sized(sized)
@@ -109,9 +106,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Once no font set has one picked.
 		~CopyFonts();
-
-		// The edge, which copies claim their texture width by.
-		void SetEdge(const FontReplacementEdgeConfig& value) { m_edge = value; }
 
 		[[nodiscard]] static int HalfPxOf(float px);
 
@@ -153,6 +147,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		void Sync(GameFont* copy, const CopyInfo& info);
 
 		// The blank texture fills the slots after the pages, so that the renderer has a vertex buffer and a texture for every texture index.
+		// The atlas's BlankSlot never gets a page.
 		void ApplyPages(GameFont* copy, const GlyphAtlas& atlas) const;
 	};
 }

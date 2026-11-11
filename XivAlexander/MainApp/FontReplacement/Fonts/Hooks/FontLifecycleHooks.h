@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MainApp/FontReplacement/Fonts/ResetScope.h"
+#include "MainApp/FontReplacement/Fonts/Enums/ResetScope.h"
 #include "MainApp/FontReplacement/Host.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {

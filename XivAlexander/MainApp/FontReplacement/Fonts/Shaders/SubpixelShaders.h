@@ -64,8 +64,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 			PixelShaderSwap Swap;
 		};
 
-		int m_pixelShaderFiles = 0;
-		int m_pixelShaders = 0;
 		int m_textureWidth = 0;
 		int m_renderingToTexture = 0;
 
@@ -89,10 +87,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// The settings, with the shader swaps made for them.
 		SettingsRecord m_settings;
-		std::optional<SettingsRecord> m_asked;
 
 		// From the last BindShaders.
-		uintptr_t m_server = 0;
 		bool m_alternate = false;
 		bool m_passActive = false;
 
@@ -107,8 +103,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] bool Active() const { return Enabled(); }
 
-		// Turned off if value can't be applied, which isn't tried again until another value is asked for. Returns whether it is on.
-		bool TryApply(const SettingsRecord& value);
+		// Turned off if value can't be applied.
+		void TryApply(const SettingsRecord& value);
+
+		// Once a frame, as the game takes the shaders out when it loads its shaders again, and has none before it first loads them.
+		// If the shaders can't be made, it is off until font replacement is set up again, as after a failure in the hooks.
+		void Ensure();
 
 		// At Present, as the texture of the game's last draw state may be gone by the next frame.
 		void ForgetDrawState() { m_last.Has = false; }
@@ -128,12 +128,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] uint32_t Decide(uintptr_t server, const DrawState& state, bool subpixelTexture);
 
-		// The game's shader may be back after a UI shader reload.
-		bool EnsureShaderSwap(uintptr_t server, PassShader& p);
-
-		[[nodiscard]] uintptr_t GetShaderObjectOrNull(uintptr_t server, ShaderPass pass, const char* file) const;
-
-		[[nodiscard]] ID3D11PixelShaderPtr CreateShader(ID3D11PixelShader* game, const PassShader& p) const;
+		// Off at once, and the failure keeps it off until font replacement is set up again.
+		void Fail(const std::exception& e);
 
 		void RestoreAndReleaseAll();
 	};

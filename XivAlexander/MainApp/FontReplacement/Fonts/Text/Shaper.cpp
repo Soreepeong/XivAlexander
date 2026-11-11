@@ -6,7 +6,9 @@
 #include "MainApp/FontReplacement/Fonts/Faces/IFaceSource.h"
 #include "MainApp/FontReplacement/Fonts/Faces/MaterializedFontElement.h"
 #include "MainApp/FontReplacement/Fonts/Text/CellCache.h"
+#include "MainApp/FontReplacement/Fonts/Glyphs/GlyphBox.h"
 #include "MainApp/FontReplacement/Fonts/Text/DirectWriteTextAnalyzer.h"
+#include "MainApp/FontReplacement/Fonts/Text/HangulComposer.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/Utilities/GameUtf8.h"
 
@@ -107,7 +109,7 @@ void FontReplacement::Shaper::ClusterRun(SizedFont& sized, int count, ItalicMode
 	auto& ctx = m_ctx;
 	ctx.Sized = &sized;
 	ctx.Absorbed.clear();
-	count = ComposeHangul(count);
+	count = HangulComposer::Compose(ctx.Text, ctx.TextToByte, count, ctx.Absorbed);
 	AssignSources(count);
 
 	if (italic != ItalicMode::Images) {
@@ -122,37 +124,6 @@ void FontReplacement::Shaper::ClusterRun(SizedFont& sized, int count, ItalicMode
 		std::fill_n(ctx.TextItalic.begin(), count, static_cast<uint8_t>(0));
 		Collect(count, true);
 	}
-}
-
-int FontReplacement::Shaper::ComposeHangul(int count) {
-	constexpr int SyllableBase = 0xAC00, LeadBase = 0x1100, VowelBase = 0x1161, TrailBase = 0x11A7;
-	constexpr int LeadCount = 19, VowelCount = 21, TrailCount = 28, SCount = LeadCount * VowelCount * TrailCount;
-
-	auto& ctx = m_ctx;
-	auto& text = ctx.Text;
-	auto w = 0;
-	for (auto i = 0; i < count;) {
-		int c = text[i];
-		auto n = 1;
-		if (c - LeadBase >= 0 && c - LeadBase < LeadCount && i + 1 < count && text[i + 1] - VowelBase >= 0 && text[i + 1] - VowelBase < VowelCount) {
-			c = SyllableBase + ((c - LeadBase) * VowelCount + (text[i + 1] - VowelBase)) * TrailCount;
-			n = 2;
-		}
-
-		if ((n == 2 || (c - SyllableBase >= 0 && c - SyllableBase < SCount && (c - SyllableBase) % TrailCount == 0)) &&
-			i + n < count && text[i + n] - TrailBase > 0 && text[i + n] - TrailBase < TrailCount) {
-			c += text[i + n] - TrailBase;
-			n++;
-		}
-
-		for (auto j = 1; j < n; j++)
-			ctx.Absorbed.emplace_back(ctx.TextToByte[i + j], ctx.TextToByte[i]);
-		text[w] = static_cast<wchar_t>(c);
-		ctx.TextToByte[w] = ctx.TextToByte[i];
-		w++;
-		i += n;
-	}
-	return w;
 }
 
 void FontReplacement::Shaper::AssignSources(int count) {
@@ -219,6 +190,13 @@ void FontReplacement::Shaper::Collect(int count, bool italicImages) {
 		auto end = start + 1;
 		while (end < count && ctx.TextSource[end] == source && (ctx.TextItalic[end] != 0) == inItalic)
 			end++;
+
+		// Text left to the game needs no scripts.
+		if (!source || !source->Element || !source->Element->Source()) {
+			AddMissing(start, end, pen);
+			start = end;
+			continue;
+		}
 
 		m_analyzer.Itemize(std::span<const wchar_t>(ctx.Text.data() + start, end - start), ctx.TextRuns);
 		for (const auto& run : ctx.TextRuns)
@@ -379,8 +357,8 @@ void FontReplacement::Shaper::PlaceClusters(const uint8_t* bytes, std::span<Game
 
 		// A cluster after one left to the per-character path can't move into it.
 		const auto& raster = m_cells.GetRaster(sized, c);
-		if (i > 0 && !clusters[i - 1].Missing() && raster.Width > 0 && raster.Left < 0)
-			starts[i] = (std::max)(c.X0 + raster.Left, starts[i - 1]);
+		if (const auto overhang = GlyphBox::InkLeftOfPen(raster); i > 0 && !clusters[i - 1].Missing() && overhang > 0)
+			starts[i] = (std::max)(c.X0 - overhang, starts[i - 1]);
 	}
 
 	for (size_t i = 0; i < count; i++) {

@@ -10,7 +10,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		CopyFonts& m_copies;
 		GlyphStore& m_store;
 		FrameState& m_state;
-		const FontSetFlags& m_flags;
+		LayoutContext& m_context;
 
 		uintptr_t m_rendererVtbl = 0;
 		uintptr_t m_renderCountVtbl = 0;
@@ -35,7 +35,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// Throws if this game version can't be worked with.
 		FontHooks(
 			CopyFonts& copies, SizedFontRegistry& sized, GameTextLayout& layout, GlyphFactory& factory, CellPlacer& placer, GlyphStore& store, FrameState& state,
-			const FontSetFlags& flags);
+			LayoutContext& context);
 		FontHooks(const FontHooks&) = delete;
 		FontHooks& operator=(const FontHooks&) = delete;
 

@@ -14,7 +14,7 @@ FontReplacement::GameGlyph* FontReplacement::CellPlacer::WithPixels(GameGlyph* g
 	if (cell.IsPlaced()) {
 		if (cell.Touch(glyph, frame))
 			return glyph;
-		cell.MarkStale();
+		cell.MarkStale(glyph);
 	}
 
 	if (cell.Stage != CellStage::Pending)
@@ -41,12 +41,12 @@ FontReplacement::GameGlyph* FontReplacement::CellPlacer::WithPixels(GameGlyph* g
 		}
 	} catch (const std::exception& e) {
 		Host::Error("Placing a glyph in the atlas failed: {}", e.what());
-		m_store.CellOf(glyph).Drop(glyph);
+		cell.Drop(glyph);
 		return glyph;
 	}
 
 	m_full.insert(atlas);
-	return GetBlank(glyph);
+	return glyph;
 }
 
 void FontReplacement::CellPlacer::ReadGameGlyphs() {
@@ -102,14 +102,4 @@ FontReplacement::RasterGlyph FontReplacement::CellPlacer::WithSourcePixels(const
 	res.Alpha.assign(static_cast<size_t>(box.Width) * box.Height, 0);
 	RasterGlyph::BlitMax(res.Alpha, box.Width, box.Height, scaled, scaled.Left - box.Left, scaled.Top - box.Top);
 	return res;
-}
-
-FontReplacement::GameGlyph* FontReplacement::CellPlacer::GetBlank(GameGlyph* glyph) {
-	if (const auto blank = m_store.CellOf(glyph).Blank)
-		return blank;
-	const auto b = m_store.Allocate();
-	*b = *glyph;
-	m_store.CellOf(b).Drop(b);
-	m_store.CellOf(glyph).Blank = b;
-	return b;
 }

@@ -6,7 +6,6 @@
 #include "Config.h"
 #include "Game/SignatureDefinitions.h"
 #include "MainApp/App.h"
-#include "MainApp/FontReplacement/Fonts/FontLoader.h"
 #include "MainApp/FontReplacement/Host.h"
 #include "MainApp/FontReplacement/PluginInterface/FrameCoordinator.h"
 #include "MainApp/FontReplacement/PluginInterface/PresetController.h"
@@ -26,13 +25,12 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 
 	// Changes since the last frame, applied on the game's thread between frames.
 	std::mutex PendingMutex;
-	std::optional<std::pair<Presets::Fonts, bool>> PendingPreset;
+	bool PendingFonts = false;
 	bool PendingSettings = true;
 
 	// Only one is set: the hook of the game's call of Present, or DXGI's Present where that isn't found.
 	std::optional<Host::PresentCallHook> PresentCall;
 	std::optional<Host::PresentHook> Present;
-	std::unique_ptr<PresetController> Controller;  // With PendingMutex.
 	xivres::util::on_dtor::multi Cleanup;
 
 	// Reading the game's executable and finding signatures takes a while, and the game's thread may not have its window yet.
@@ -67,7 +65,7 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		App.RunOnGameLoop([&] {
 			try {
 				ReadSettings();
-				Coordinator = std::make_unique<FrameCoordinator>(Settings, window);
+				Coordinator = std::make_unique<FrameCoordinator>(Config, Settings, window);
 			} catch (const std::exception& e) {
 				error = e.what();
 				TearDown();
@@ -91,13 +89,14 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		}
 
 		try {
-			// Subscribed before the controller loads the settings, so that a change in between isn't lost.
+			// Marked once subscribed, so that a change made since the coordinator read the fonts isn't lost.
 			auto& settings = Config->Runtime.FontReplacement;
-			Cleanup += settings.Fonts.OnChange([this] {
+			const auto markFontsPending = [this] {
 				const auto lock = std::scoped_lock(PendingMutex);
-				if (Controller)
-					Controller->Reload();
-			});
+				PendingFonts = true;
+			};
+			Cleanup += settings.Fonts.OnChange(markFontsPending);
+			markFontsPending();
 			const auto markPending = [this] {
 				const auto lock = std::scoped_lock(PendingMutex);
 				PendingSettings = true;
@@ -108,13 +107,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 			Cleanup += settings.VerticalSubpixel.OnChange(markPending);
 			Cleanup += settings.NamePlates.OnChange(markPending);
 			Cleanup += settings.Atlas.OnChange(markPending);
-
-			auto controller = std::make_unique<PresetController>(Config, [this](Presets::Fonts fonts, bool systemFallback) {
-				const auto lock = std::scoped_lock(PendingMutex);
-				PendingPreset.emplace(std::move(fonts), systemFallback);
-			});
-			const auto lock = std::scoped_lock(PendingMutex);
-			Controller = std::move(controller);
 		} catch (...) {
 			Unhook();
 			App.RunOnGameLoop([this] { TearDown(); });
@@ -134,7 +126,6 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 	// Comes before TearDown, so that nothing reaches the coordinator while it's torn down.
 	void Unhook() {
 		Cleanup.clear();
-		Controller.reset();
 		PresentCall.reset();
 		Present.reset();
 	}
@@ -164,23 +155,18 @@ struct XivAlexander::Apps::MainApp::Features::FontReplacement::Implementation {
 		if (!Coordinator)
 			return;
 
-		std::optional<std::pair<Presets::Fonts, bool>> preset;
+		auto fonts = false;
 		auto settings = false;
 		{
 			const auto lock = std::scoped_lock(PendingMutex);
-			preset = std::exchange(PendingPreset, std::nullopt);
+			fonts = std::exchange(PendingFonts, false);
 			settings = std::exchange(PendingSettings, false);
 		}
 
 		if (settings)
 			ReadSettings();
-		if (preset) {
-			try {
-				Coordinator->Loader().Request({std::move(preset->first), preset->second});
-			} catch (const std::exception& e) {
-				Host::Error("Applying the preset failed: {}", e.what());
-			}
-		}
+		if (fonts)
+			Coordinator->Presets().SettingsChanged();
 
 		try {
 			Coordinator->OnUpdate(Settings, App.GetGameWindowHandle());
