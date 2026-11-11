@@ -57,5 +57,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Whether Rasterize may run on several threads at once, while nothing else uses the source.
 		[[nodiscard]] virtual bool RasterizesConcurrently() const { return false; }
+
+		// Whether its glyphs are bitmaps already, which drawing only scales.
+		[[nodiscard]] virtual bool DrawsBitmaps() const { return false; }
 	};
 }

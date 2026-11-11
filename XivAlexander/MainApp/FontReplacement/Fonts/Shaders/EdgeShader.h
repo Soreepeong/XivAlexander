@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Config/FontReplacementConfigs.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/PixelShaderSwap.h"
 #include "MainApp/FontReplacement/Host.h"
 
@@ -16,6 +17,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<Host::Hook<uint8_t, uintptr_t>> m_loadShadersHook;
 		float m_softness = 0;
 		bool m_used = false;
+		std::optional<FontReplacementEdgeConfig> m_applied;
 
 	public:
 		EdgeShader() = default;
@@ -23,10 +25,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		EdgeShader& operator=(const EdgeShader&) = delete;
 		~EdgeShader();
 
-		// Game thread; nullopt restores the game's shader, and it throws if the shader can't be made.
-		void SetSoftness(std::optional<float> value);
+		// Game thread. The edge shader draws a round edge of any width unless edges are the game's own 1 px. The game's shader, widened only by
+		// claiming a narrower texture (blocky past about 1.5 px), is the fallback. A value applied already, even if it failed, isn't applied again.
+		void Apply(const FontReplacementEdgeConfig& value);
 
 	private:
+		// nullopt restores the game's shader. Throws if the shader can't be made.
+		void SetSoftness(std::optional<float> value);
+
 		[[nodiscard]] uintptr_t GetEdgeShaderObjectOrNull(bool checkFontEdgePs) const;
 
 		bool CreateFromGame();

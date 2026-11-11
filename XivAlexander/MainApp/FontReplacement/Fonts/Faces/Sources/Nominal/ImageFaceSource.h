@@ -20,6 +20,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static std::unique_ptr<ImageFaceSource> Create(const FontChanger::Structs::FontElement& element);
 
 		const std::set<char32_t>& Codepoints() override { return m_codepoints; }
+
+		bool DrawsBitmaps() const override { return true; }
 		uint32_t GetGlyphId(char32_t codepoint) override { return m_codepoints.contains(codepoint) ? static_cast<uint32_t>(codepoint) : 0u; }
 		LineMetrics GetLineMetrics(float px) override;
 

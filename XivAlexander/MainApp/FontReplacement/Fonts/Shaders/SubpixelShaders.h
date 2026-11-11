@@ -10,6 +10,8 @@ namespace XivAlexander {
 }
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
+	class FrameState;
+
 	// Per-channel coverage needs the SRC1_COLOR / INV_SRC_COLOR blend, so the text, highlight and shadow passes get shaders that output it.
 	class SubpixelShaders {
 	public:
@@ -70,42 +72,53 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<Host::Hook<void, uintptr_t, int, uint8_t>> m_bindShadersHook;
 		std::optional<Host::Hook<void, uintptr_t, DrawState*, uint8_t>> m_setDrawStateHook;
 
-		// Apply runs on the game's thread, the hooks where draw commands are processed.
-		std::mutex m_mutex;
+		// The game's last SetDrawState, valid until the frame ends.
+		struct DrawStateMemo {
+			bool Has = false;
+			uintptr_t Server = 0;
+			DrawState State{};
+			uint8_t Divisor = 1;
+			bool SubpixelTexture = false;
+
+			// The blend state given to the game for it.
+			uint32_t Staged = 0;
+		};
+
+		FrameState& m_state;
 		std::array<PassShader, 3> m_passes;
-		std::atomic<bool> m_enabled = false;
+
+		// The settings, with the shader swaps made for them.
 		SettingsRecord m_settings;
+		std::optional<SettingsRecord> m_asked;
 
 		// From the last BindShaders.
 		uintptr_t m_server = 0;
 		bool m_alternate = false;
 		bool m_passActive = false;
 
-		// The game's last state, forgotten at EndFrame as its texture may be gone by then.
-		uintptr_t m_lastServer = 0;
-		DrawState m_lastState{};
-		uint8_t m_lastDivisor = 1;
-		bool m_lastSubpixelTexture = false;
-		bool m_hasState = false;
+		DrawStateMemo m_last;
 		bool m_warnedBlend = false;
-		uint32_t m_stagedBlend = 0;
 
 	public:
-		SubpixelShaders();
+		explicit SubpixelShaders(FrameState& state);
 		SubpixelShaders(const SubpixelShaders&) = delete;
 		SubpixelShaders& operator=(const SubpixelShaders&) = delete;
 		~SubpixelShaders();
 
-		// Game thread.
-		[[nodiscard]] bool Active() const { return m_enabled; }
+		[[nodiscard]] bool Active() const { return Enabled(); }
 
-		// Game thread; the hooks are made the first time it is on, which throws if a signature isn't found.
-		void Apply(const SettingsRecord& value);
+		// Turned off if value can't be applied, which isn't tried again until another value is asked for. Returns whether it is on.
+		bool TryApply(const SettingsRecord& value);
 
-		// Between frames, after the UI's draw commands are processed.
-		void EndFrame();
+		// At Present, as the texture of the game's last draw state may be gone by the next frame.
+		void ForgetDrawState() { m_last.Has = false; }
 
 	private:
+		[[nodiscard]] bool Enabled() const { return m_settings.Order != SubpixelOrder::None; }
+
+		// The hooks are made the first time it is on, which throws if a signature isn't found.
+		void Apply(const SettingsRecord& value);
+
 		void Resolve();
 
 		[[nodiscard]] PassShader* FindPass(int pass);
@@ -122,6 +135,6 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		[[nodiscard]] ID3D11PixelShaderPtr CreateShader(ID3D11PixelShader* game, const PassShader& p) const;
 
-		void RestoreAndReleaseAllInLock();
+		void RestoreAndReleaseAll();
 	};
 }

@@ -6,6 +6,20 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
+FontReplacement::SizedFont::SizedFont(
+	MaterializedFont* font, float px, int ascent, int lineHeight, GameFont* game, GlyphAtlas* atlas,
+	std::vector<std::pair<MaterializedFont*, GameFont*>> fonts, bool bold, const FrameState& state)
+	: Font(font)
+	, Atlas(atlas)
+	, Game(game)
+	, Px(px)
+	, Ascent(ascent)
+	, LineHeight(lineHeight)
+	, Bold(bold)
+	, Fonts(std::move(fonts))
+	, Glyphs(state, (std::numeric_limits<size_t>::max)()) {
+}
+
 FontReplacement::GlyphSource FontReplacement::SizedFont::Pick(std::span<const char32_t> grapheme) {
 	if (grapheme.size() == 1) {
 		if (const auto it = Picks.find(grapheme[0]); it != Picks.end())

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
 
+#include "MainApp/FontReplacement/Fonts/FrameState.h"
 #include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
 #include "resource.h"
@@ -78,8 +79,9 @@ namespace {
 	}
 }
 
-FontReplacement::SubpixelShaders::SubpixelShaders()
-	: m_passes{{
+FontReplacement::SubpixelShaders::SubpixelShaders(FrameState& state)
+	: m_state(state)
+	, m_passes{{
 		{ShaderPass::Font, "FontPS.shcd", IDR_FONTSUBPIXELPS, "FontSubpixelPS.cso"},
 		{ShaderPass::FontHighlight, "FontHighlightPS.shcd", IDR_FONTSUBPIXELHIGHLIGHTPS, "FontSubpixelHighlightPS.cso"},
 		{ShaderPass::FontEmboss, "FontEmbossPS.shcd", IDR_FONTSUBPIXELPS, "FontSubpixelPS.cso"},
@@ -88,8 +90,20 @@ FontReplacement::SubpixelShaders::SubpixelShaders()
 FontReplacement::SubpixelShaders::~SubpixelShaders() {
 	m_bindShadersHook.reset();
 	m_setDrawStateHook.reset();
-	const auto lock = std::scoped_lock(m_mutex);
-	RestoreAndReleaseAllInLock();
+	RestoreAndReleaseAll();
+}
+
+bool FontReplacement::SubpixelShaders::TryApply(const SettingsRecord& value) {
+	if (m_asked == value)
+		return Enabled();
+	m_asked = value;
+	try {
+		Apply(value);
+	} catch (const std::exception& e) {
+		Host::Error("Subpixel text is off: {}", e.what());
+		Apply({});
+	}
+	return Enabled();
 }
 
 void FontReplacement::SubpixelShaders::Apply(const SettingsRecord& value) {
@@ -99,21 +113,14 @@ void FontReplacement::SubpixelShaders::Apply(const SettingsRecord& value) {
 	if (value.Order != SubpixelOrder::None && !m_bindShadersHook)
 		Resolve();
 
-	const auto lock = std::scoped_lock(m_mutex);
 	auto ordered = value;
 	ordered.Order = m_settings.Order;
 	const auto shaderChanged = ordered != m_settings;
 	m_settings = value;
-	m_enabled = value.Order != SubpixelOrder::None;
 
 	// The next BindShaders makes the shaders with the new settings.
-	if (!m_enabled || shaderChanged)
-		RestoreAndReleaseAllInLock();
-}
-
-void FontReplacement::SubpixelShaders::EndFrame() {
-	const auto lock = std::scoped_lock(m_mutex);
-	m_hasState = false;
+	if (!Enabled() || shaderChanged)
+		RestoreAndReleaseAll();
 }
 
 void FontReplacement::SubpixelShaders::Resolve() {
@@ -142,46 +149,49 @@ FontReplacement::SubpixelShaders::PassShader* FontReplacement::SubpixelShaders::
 
 void FontReplacement::SubpixelShaders::BindShadersDetour(uintptr_t server, int pass, uint8_t alternate) {
 	m_bindShadersHook->Original(server, pass, alternate);
-	const auto lock = std::scoped_lock(m_mutex);
+	if (!Enabled())
+		return;
 	try {
 		m_server = server;
 		m_alternate = alternate != 0;
 		m_passActive = false;
-		if (m_enabled && !m_alternate) {
+		if (!m_alternate) {
 			if (const auto p = FindPass(pass))
 				m_passActive = EnsureShaderSwap(server, *p);
 		}
 
 		// SetDrawState isn't called when only the pass changes.
-		if (m_hasState && m_lastServer == server) {
-			if (const auto blend = Decide(server, m_lastState, m_lastSubpixelTexture); blend != m_stagedBlend) {
-				auto state = m_lastState;
+		if (auto& last = m_last; last.Has && last.Server == server) {
+			if (const auto blend = Decide(server, last.State, last.SubpixelTexture); blend != last.Staged) {
+				auto state = last.State;
 				state.Blend = blend;
-				m_setDrawStateHook->Original(server, &state, m_lastDivisor);
-				m_stagedBlend = blend;
+				m_setDrawStateHook->Original(server, &state, last.Divisor);
+				last.Staged = blend;
 			}
 		}
 	} catch (const std::exception& e) {
-		// The shaders go back too, as the blend no longer changes.
-		Host::Error("Subpixel text failed; turning it off: {}", e.what());
-		m_enabled = false;
-		RestoreAndReleaseAllInLock();
+		// The settings go too, so that applying them again turns it back on.
+		m_settings = {};
+		m_asked.reset();
+		RestoreAndReleaseAll();
+		m_state.Fail(Part::Subpixel, "Subpixel text failed", e);
 	}
 }
 
 void FontReplacement::SubpixelShaders::SetDrawStateDetour(uintptr_t server, DrawState* state, uint8_t divisor) {
-	uint32_t blend;
-	{
-		const auto lock = std::scoped_lock(m_mutex);
-		m_lastServer = server;
-		m_lastState = *state;
-		m_lastDivisor = divisor;
-		m_lastSubpixelTexture = state->Texture && (*reinterpret_cast<const uint32_t*>(state->Texture + m_textureWidth) & 1) != 0;
-		m_hasState = true;
-		blend = Decide(server, *state, m_lastSubpixelTexture);
-		m_stagedBlend = blend;
+	if (!Enabled()) {
+		m_setDrawStateHook->Original(server, state, divisor);
+		return;
 	}
 
+	auto& last = m_last;
+	last.Server = server;
+	last.State = *state;
+	last.Divisor = divisor;
+	last.SubpixelTexture = state->Texture && (*reinterpret_cast<const uint32_t*>(state->Texture + m_textureWidth) & 1) != 0;
+	last.Has = true;
+	const auto blend = Decide(server, *state, last.SubpixelTexture);
+	last.Staged = blend;
 	if (blend == state->Blend) {
 		m_setDrawStateHook->Original(server, state, divisor);
 		return;
@@ -195,7 +205,7 @@ void FontReplacement::SubpixelShaders::SetDrawStateDetour(uintptr_t server, Draw
 }
 
 uint32_t FontReplacement::SubpixelShaders::Decide(uintptr_t server, const DrawState& state, bool subpixelTexture) {
-	if (!m_enabled || !m_passActive || m_alternate || !subpixelTexture)
+	if (!Enabled() || !m_passActive || m_alternate || !subpixelTexture)
 		return state.Blend;
 
 	if (GetFactor(state.Blend, SrcBlendShift) != D3D11_BLEND_SRC_ALPHA) {
@@ -257,7 +267,7 @@ ID3D11PixelShaderPtr FontReplacement::SubpixelShaders::CreateShader(ID3D11PixelS
 	return PixelShaderSwap::CreateShader(game, code);
 }
 
-void FontReplacement::SubpixelShaders::RestoreAndReleaseAllInLock() {
+void FontReplacement::SubpixelShaders::RestoreAndReleaseAll() {
 	for (auto& p : m_passes) {
 		if (p.Swap.Target())
 			p.Swap.Restore(GetShaderObjectOrNull(m_server, p.Pass, nullptr));

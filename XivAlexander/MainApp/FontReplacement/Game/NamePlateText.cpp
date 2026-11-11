@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MainApp/FontReplacement/Game/NamePlateText.h"
 
+#include "MainApp/FontReplacement/FontStructs.h"
 #include "MainApp/FontReplacement/Fonts/FontReplacer.h"
 #include "MainApp/FontReplacement/GameCode.h"
 #include "MainApp/FontReplacement/GameUi.h"
@@ -50,7 +51,7 @@ FontReplacement::NamePlateText::NamePlateText(FontReplacer& replacer)
 	m_allocateBakeHook.emplace("NamePlateAllocateBake", reinterpret_cast<uintptr_t>(functions.AllocateBake), [this](uintptr_t renderer, uintptr_t obj) { return AllocateBakeDetour(renderer, obj); });
 	m_prepareHook.emplace("NamePlateBakePrepare", reinterpret_cast<uintptr_t>(functions.BakePrepare), [this](uintptr_t renderer, float* rect, GameFontSet* set, uintptr_t node) { PrepareDetour(renderer, rect, set, node); });
 	m_drawBakedHook.emplace("NamePlateDrawBaked", reinterpret_cast<uintptr_t>(functions.DrawBaked), [this](uintptr_t renderer, uintptr_t node, uintptr_t bake) { DrawBakedDetour(renderer, node, bake); });
-	ForceRebake();
+	Rebake();
 }
 
 FontReplacement::NamePlateText::~NamePlateText() {
@@ -59,7 +60,7 @@ FontReplacement::NamePlateText::~NamePlateText() {
 
 	// Plates are marked for rebaking (and drawn live until then) before the hooks that know their bake scale go.
 	try {
-		ForceRebake();
+		Rebake();
 	} catch (const std::exception& e) {
 		Host::Error("Marking nameplates for baking failed: {}", e.what());
 	}
@@ -72,17 +73,17 @@ void FontReplacement::NamePlateText::SetMode(FontReplacementNamePlateMode mode) 
 	if (m_mode == mode)
 		return;
 	m_mode = mode;
-	ForceRebake();
+	Rebake();
 }
 
 XivAlexander::FontReplacementNamePlateMode FontReplacement::NamePlateText::GetEffectiveMode() const {
 	using Mode = XivAlexander::FontReplacementNamePlateMode;
-	if (!m_replacer.Enabled())
+	if (!m_replacer.IsEnabled())
 		return Mode::Game;
 	return m_mode == Mode::Live && !m_bakePlateDrawHook ? Mode::BakedAtFullSize : m_mode;
 }
 
-void FontReplacement::NamePlateText::ForceRebake() {
+void FontReplacement::NamePlateText::Rebake() {
 	const auto addon = m_lastRenderer - m_addonBakePlate;
 	if (const auto units = m_lastRenderer ? GameUi::GetLoadedUnits() : std::vector<uintptr_t>(); std::ranges::find(units, addon) == units.end()) {
 		m_rebakePending = true;
@@ -115,7 +116,7 @@ bool FontReplacement::NamePlateText::IsPlateText(uintptr_t node) const {
 void FontReplacement::NamePlateText::SeeRenderer(uintptr_t renderer) {
 	m_lastRenderer = renderer;
 	if (m_rebakePending)
-		ForceRebake();
+		Rebake();
 }
 
 bool FontReplacement::NamePlateText::NeedsToBeBaked(uintptr_t obj) const {

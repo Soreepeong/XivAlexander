@@ -22,6 +22,19 @@ FontReplacement::EdgeShader::~EdgeShader() {
 	Restore();
 }
 
+void FontReplacement::EdgeShader::Apply(const FontReplacementEdgeConfig& value) {
+	const auto edge = value.Drawn();
+	if (m_applied == edge)
+		return;
+	m_applied = edge;
+	try {
+		SetSoftness(edge.Enabled && edge != FontReplacementEdgeConfig{.Enabled = true} ? std::optional(edge.Softness) : std::nullopt);
+	} catch (const std::exception& e) {
+		Host::Error("Using the edge shader failed; edges are widened with the game's: {}", e.what());
+		SetSoftness(std::nullopt);
+	}
+}
+
 void FontReplacement::EdgeShader::SetSoftness(std::optional<float> value) {
 	m_used = value.has_value();
 	if (!value) {

@@ -62,15 +62,12 @@ FontReplacement::GlyphAtlas::GlyphAtlas(int width, int height, int maxPages, std
 	, m_format4444(format == AtlasTextureFormat::Bgra4444)
 	, m_bytesPerPixel(m_format4444 ? 2 : 4)
 	, m_maxPages(std::clamp(maxPages, 1, (std::max)(1, GameFont::MaxTextures)))
-	, m_pages(std::make_unique<std::unique_ptr<Page>[]>(m_maxPages))
 	, m_current(FirstPlane())
 	, m_frontier(FirstPlane() + PlaneStep()) {
 }
 
 FontReplacement::GlyphAtlas::~GlyphAtlas() {
-	const auto lock = std::scoped_lock(m_mutex);
-	for (auto i = m_pageCount.exchange(0); i-- > 0;)
-		m_pages[i].reset();
+	m_pages.clear();
 	m_context = nullptr;
 }
 
@@ -105,27 +102,22 @@ bool FontReplacement::GlyphAtlas::CanHold(int width, int height) const {
 }
 
 void FontReplacement::GlyphAtlas::Clear() {
-	const auto lock = std::scoped_lock(m_mutex);
-	for (auto i = 0, count = PageCount(); i < count; i++) {
-		auto& p = *m_pages[i];
-		std::ranges::fill(p.Shadow, 0);
+	for (const auto& page : m_pages) {
+		auto& p = *page;
 		std::ranges::fill(p.CursorsPerPlane, RowCursor{});
 		for (auto& generation : p.Generations)
 			generation++;
-		std::ranges::fill(p.Recycled, false);
+		std::ranges::fill(p.Recycled, true);
 		std::ranges::fill(p.Drawn, 0);
-		p.MarkDirty(0, 0, m_width, m_height);
 	}
 	m_current = FirstPlane();
 	m_frontier = FirstPlane() + PlaneStep();
 }
 
 int FontReplacement::GlyphAtlas::RecycleLeastRecentlyDrawn() {
-	const auto lock = std::scoped_lock(m_mutex);
-	const auto drawn = [this](int i) { return m_pages[i / PlanesPerPage]->Drawn[i % PlanesPerPage]; };
 	auto victim = FirstPlane();
 	for (auto i = victim + PlaneStep(); i < m_frontier && i / PlanesPerPage < PageCount(); i += PlaneStep()) {
-		if (drawn(i) < drawn(victim))
+		if (DrawnOf(i) < DrawnOf(victim))
 			victim = i;
 	}
 
@@ -138,28 +130,24 @@ int FontReplacement::GlyphAtlas::RecycleLeastRecentlyDrawn() {
 	return victim;
 }
 
-bool FontReplacement::GlyphAtlas::Touch(int page, int plane, uint32_t generation, uint64_t tick) {
-	const auto lock = std::scoped_lock(m_mutex);
+bool FontReplacement::GlyphAtlas::Touch(int page, int plane, uint32_t generation, uint64_t frame) {
 	auto& p = *m_pages[page];
 	if (p.Generations[plane] != generation)
 		return false;
-	p.Drawn[plane] = tick;
+	p.Drawn[plane] = frame;
 	return true;
 }
 
-bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, uint64_t tick, Allocation& res) {
+FontReplacement::GlyphAtlas::AllocationResult FontReplacement::GlyphAtlas::TryAllocate(int width, int height, uint64_t frame, Allocation& res) {
 	res = {};
 	auto& page = res.Page;
 	auto& plane = res.Plane;
 	const auto w = width + 2 * Padding;
 	const auto h = height + 2 * Padding;
-	if (!CanHold(width, height))
-		return false;
+	const auto pages = PageCount();
+	if (!CanHold(width, height) || !TryEnsurePages(1))
+		return AllocationResult::Full;
 
-	if (!TryEnsurePages(1))
-		return false;
-
-	auto lock = std::unique_lock(m_mutex);
 	while (true) {
 		page = m_current / PlanesPerPage;
 		plane = m_current % PlanesPerPage;
@@ -173,23 +161,14 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, uint64_t ti
 			res.Generation = p.Generations[plane];
 			if (p.Recycled[plane])
 				ZeroRect(p, plane, s.X, s.Y, w, h);
-			p.Drawn[plane] = tick;
+			p.Drawn[plane] = frame;
 			s.X += w;
 			s.Height = (std::max)(s.Height, h);
-			return true;
+			return PageCount() != pages ? AllocationResult::PlacedOnNewPage : AllocationResult::Placed;
 		}
 
-		if (m_frontier >= MaxPlanes())
-			return false;
-
-		// A new page is made without the lock (it raises PageAdded); Clear may have run meanwhile, so the cursors are looked at again.
-		if (const auto needed = m_frontier / PlanesPerPage + 1; needed > PageCount()) {
-			lock.unlock();
-			if (!TryEnsurePages(needed))
-				return false;
-			lock.lock();
-			continue;
-		}
+		if (m_frontier >= MaxPlanes() || !TryEnsurePages(m_frontier / PlanesPerPage + 1))
+			return AllocationResult::Full;
 		m_current = m_frontier;
 		m_frontier += PlaneStep();
 	}
@@ -197,7 +176,6 @@ bool FontReplacement::GlyphAtlas::TryAllocate(int width, int height, uint64_t ti
 
 void FontReplacement::GlyphAtlas::Write(int page, int plane, int x, int y, int width, int height, std::span<const uint8_t> alpha, int alphaStride, int alphaX, std::span<const uint8_t> lcd) {
 	const auto columns = (std::min)(alphaStride, width - alphaX);
-	const auto lock = std::scoped_lock(m_mutex);
 	auto& p = *m_pages[page];
 	const auto dst = p.Shadow.data() + static_cast<size_t>(y) * Pitch() + static_cast<size_t>(x) * m_bytesPerPixel;
 	if (m_subpixel) {
@@ -224,11 +202,9 @@ void FontReplacement::GlyphAtlas::Write(int page, int plane, int x, int y, int w
 }
 
 void FontReplacement::GlyphAtlas::Upload() {
-	const auto lock = std::scoped_lock(m_mutex);
 	if (!m_context)
 		return;
-	for (auto i = 0, count = PageCount(); i < count; i++) {
-		const auto& p = m_pages[i];
+	for (const auto& p : m_pages) {
 		if (p->DirtyRight <= p->DirtyLeft)
 			continue;
 		const D3D11_BOX box{
@@ -255,26 +231,11 @@ bool FontReplacement::GlyphAtlas::TryEnsurePages(int count) {
 		return false;
 
 	while (PageCount() < count) {
-		auto page = std::make_unique<Page>(m_width, m_height, m_format4444);
-		auto context = GetImmediateContext(page->Texture.Resource());
-
-		int added;
-		{
-			const auto lock = std::scoped_lock(m_mutex);
-
-			// Another thread may have added it meanwhile; the page made here is then dropped.
-			added = PageCount();
-			if (added >= count)
-				break;
-			if (!m_context)
-				m_context = std::move(context);
-			m_pages[added] = std::move(page);
-			m_pageCount.store(added + 1, std::memory_order_release);
-		}
-
+		const auto added = PageCount();
+		m_pages.push_back(std::make_unique<Page>(m_width, m_height, m_format4444));
+		if (!m_context)
+			m_context = GetImmediateContext(m_pages[0]->Texture.Resource());
 		Host::Information("Added {} atlas page {} of {} ({} x {})", m_name, added + 1, m_maxPages, m_width, m_height);
-		if (PageAdded)
-			PageAdded();
 	}
 	return true;
 }

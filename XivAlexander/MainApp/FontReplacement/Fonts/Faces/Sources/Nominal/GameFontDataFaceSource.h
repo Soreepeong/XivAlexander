@@ -31,6 +31,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		static std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font> OpenMetrics(const std::string& fontName);
 
 		const std::set<char32_t>& Codepoints() override { return m_codepoints; }
+
+		bool DrawsBitmaps() const override { return true; }
 		uint32_t GetGlyphId(char32_t codepoint) override;
 		float GetAdvance(float px, uint32_t glyphId) override;
 		LineMetrics GetLineMetrics(float px) override;

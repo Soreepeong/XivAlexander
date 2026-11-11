@@ -55,8 +55,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		NamePlateText& operator=(const NamePlateText&) = delete;
 		~NamePlateText();
 
-		// The plates are reachable only through the renderer a hook last saw, which is embedded in the NamePlate addon.
-		void ForceRebake();
+		// Between frames. The plates are baked again when next drawn. They are reachable only through the renderer a hook last saw, which is
+		// embedded in the NamePlate addon.
+		void Rebake();
 
 		// Game thread.
 		void SetMode(FontReplacementNamePlateMode mode);

@@ -42,6 +42,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::optional<std::shared_ptr<FontChanger::FixedSizeFont::fixed_size_font>> m_gameProbe;
 
 		std::map<std::pair<GameFont*, char32_t>, MaterializedFontElement*> m_elementCache;
+		std::map<std::pair<float, GameFont*>, FontAlignment> m_alignments;
 		std::optional<size_t> m_ownCodepointCount;
 
 	public:
@@ -55,6 +56,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// Does the slow parts of the first lookups ahead, on the thread the font is made on.
 		void Prepare();
+
+		// A game font was rebuilt, possibly from another file, so which of its glyphs exist is looked up again.
+		void ForgetGameFonts();
 
 		// Excludes codepoints drawn with the game's glyphs.
 		[[nodiscard]] size_t OwnCodepointCount() {

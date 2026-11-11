@@ -9,5 +9,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		float RomanBaselineY = 0;
 		float IdeographicCenterY = 0;
 		FontChanger::FixedSizeFont::vertical_alignment Mode = FontChanger::FixedSizeFont::vertical_alignment::Baseline;
+
+		auto operator<=>(const FontAlignment&) const = default;
 	};
 }

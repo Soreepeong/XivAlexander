@@ -1,481 +1,104 @@
 #pragma once
 
 #include "Config/FontReplacementConfigs.h"
-#include "MainApp/FontReplacement/FontStructs.h"
-#include "MainApp/FontReplacement/Fonts/Enums/ItalicMode.h"
-#include "MainApp/FontReplacement/Fonts/FontServices.h"
-#include "MainApp/FontReplacement/Fonts/GlyphAtlas.h"
-#include "MainApp/FontReplacement/Fonts/Records/RasterGlyph.h"
-#include "MainApp/FontReplacement/Fonts/Shaders/EdgeShader.h"
-#include "MainApp/FontReplacement/Fonts/Shaders/SubpixelShaders.h"
-#include "MainApp/FontReplacement/Fonts/SizedFont.h"
+#include "MainApp/FontReplacement/Fonts/Enums/SubpixelOrder.h"
+#include "MainApp/FontReplacement/Fonts/ResetScope.h"
 #include "MainApp/FontReplacement/Game/KernelTextureWrapper.h"
-#include "MainApp/FontReplacement/Game/TextureReader.h"
-#include "MainApp/FontReplacement/Host.h"
-#include "MainApp/FontReplacement/Presets.h"
 
 namespace XivAlexander::Apps::MainApp::FontReplacement {
+	class AtlasSet;
+	class CellPlacer;
+	class CopyFonts;
+	class FontHooks;
+	class FontLifecycleHooks;
+	class FontServices;
+	class FontSet;
+	class FontSetFlags;
+	class FrameState;
 	class GameTextLayout;
+	class GlyphFactory;
+	class GlyphStore;
+	class SizedFontRegistry;
 	class SystemFallbackFonts;
 
-	// Copies borrow their game font's glyph map, but every texture slot is an atlas page or blank, so no game glyph may reach a copy's draw.
+	// Replaces the game's fonts. It makes the parts, holds their settings, and does their work at Present.
+	// Its setters skip what didn't change, and return how much must be made again, which the caller passes to Reset.
+	// Reset is the one way to make glyphs, sized fonts, atlases or fonts again, called between frames or in a hook outside any layout. Nameplates
+	// already baked keep their pixels until baked again.
 	class FontReplacer {
-	public:
-		// A rect of a game font texture's plane, whose top left is at (0, Top) from the pen in the game font's pixels.
-		struct GameTextureSource {
-			uintptr_t Texture;
-			int X;
-			int Y;
-			int Width;
-			int Height;
-			int Plane;
-			int Top;
-			float Scale;
-		};
-
-		// Game fonts the preset has no font of keep the game's glyphs, and characters a font lacks come from the game's glyphs unless SystemFallback.
-		struct FontSettings {
-			Presets::Fonts Preset;
-			bool SystemFallback = true;
-		};
-
-	private:
-		std::unique_ptr<FontServices> m_services;
-		std::unique_ptr<SystemFallbackFonts> m_fallbackFonts;
-
-		// FontReplacer.Hooks.cpp
-
-		// Sizes in half pixels; below 4 px nothing is legible.
-		static constexpr int MinHalfPx = 8;
-		static constexpr int MaxHalfPx = 2 * 255;
-
-		// A glyph's box is a line high and at most 255 pixels; text whose lines are taller is drawn from a smaller copy, scaled up by the
-		// renderer.
-		static constexpr int MaxDrawnLineHeight = 255;
-
-		// What LayOutCharacter lays out a character a font has no glyph of as, in order of preference (packed UTF-8): U+3013, '-', U+3400.
-		static constexpr uint32_t MissingGlyphSubstitutes[]{0xE38093, 0x2D, 0xE39080};
-
-		// For GetGlyph, which isn't told which character of the text LayOutCharacter is laying out.
-		struct LayoutContext {
-			const uint8_t* Character = nullptr;
-
-			// Laid out by an analyzer that only measures, so its glyph needs no pixels yet.
-			bool MeasuringOnly = false;
-
-			uintptr_t State = 0;
-
-			// The italic bit was cleared for a real italic glyph, to be set again once the character is laid out.
-			bool ItalicCleared = false;
-		};
-
-		static thread_local LayoutContext s_current;
-
-		std::optional<Host::Hook<GameFont*, GameFontSet*, uint8_t>> m_pickFontHook;
-		std::optional<Host::Hook<GameGlyph*, GameFontSet*, uint32_t, GameFont*>> m_getGlyphHook;
-		std::optional<Host::Hook<void, uintptr_t>> m_buildFontCacheHook;
-		std::optional<Host::Hook<uintptr_t, uintptr_t, const uint8_t**, uintptr_t>> m_layOutCharacterHook;
-		std::optional<Host::Hook<int, uintptr_t, uint16_t>> m_buildFontHook;
-		std::optional<Host::Hook<uintptr_t, uintptr_t>> m_unloadFontsHook;
-		std::optional<Host::Hook<GameFontSet*, uintptr_t, uint8_t>> m_measureSetUpHook;
-		std::optional<Host::Hook<int, uintptr_t, uintptr_t>> m_textWrapLayoutHook;
-
-		// The UI scales (High Resolution UI) text wrapped unscaled may be drawn at, the largest last.
-		static constexpr float WrapScales[]{1.f, 1.5f, 2.f, 3.f};
-
-		// While the text wrapper lays text out.
-		static thread_local bool s_wrapping;
-
-		uintptr_t m_rendererVtbl = 0;
-		uintptr_t m_renderCountVtbl = 0;
-		void(*m_freeFontCache)(uintptr_t) = nullptr;
-
-		// AtkTextNode offsets of its font manager cache entry (0 for none) and cache flags byte, whose m_useFontCacheFlag asks for a cache.
-		int m_fontCacheSlotOffset = 0;
-		int m_fontCacheFlagsOffset = 0;
-		uint8_t m_useFontCacheFlag = 0;
-
-		// Of the layout state's flags and of GameFontSet::DrawFlags; an offset of -1 is unknown, leaving italics sheared.
-		uint32_t m_stateItalicFlag = 0;
-		uint32_t m_setItalicFlag = 0;
-		int m_stateFlagsOffset = -1;
-		int m_setFlagsOffset = -1;
-
-		// Set by a text node's bold (when drawing) and the bold macro; the game reads it nowhere.
-		uint32_t m_boldFlag = 0;
-
-		int m_nodeTextFlagsOffset = 0;
-		uint8_t m_nodeBoldFlag = 0;
-		int m_nodeTransformOffset = 0;
-		int m_setUnscaledSizeYOffset = 0;
-		int m_setPickScaleOffset = 0;
-
-		std::unique_ptr<GameTextLayout> m_layout;
-
-		// FontReplacer.Cells.cpp
-
-		// When an atlas is full, its least recently drawn plane is reused, at most this often.
-		static constexpr uint64_t EvictIntervalMs = 1000;
-
-		enum class CellState : uint8_t {
-			// An empty glyph, a blank, or one whose pixels couldn't be placed.
-			None,
-			Pending,
-			Placed,
-		};
-
-		struct Cell {
-			CellState State = CellState::None;
-			GlyphAtlas* Atlas = nullptr;
-
-			// Kept once placed, so that it can be placed again after its plane is reused. A game glyph's is blank until its pixels are read.
-			RasterGlyph Raster;
-
-			// The box's left relative to the pen, as Raster's Left is.
-			int BoxLeft = 0;
-
-			// The ink's top row in the box.
-			int InkTop = 0;
-
-			// Until its pixels are read.
-			std::optional<GameTextureSource> Source;
-
-			// Of its plane when placed.
-			uint32_t Generation = 0;
-
-			// Drawn instead while its pixels find no room. Held with Keep.
-			GameGlyph* Blank = nullptr;
-
-			// A real italic glyph, which the game must not shear.
-			bool RealItalic = false;
-		};
-
-		// Glyph pointers handed to the game point at these, so they must not move.
-		struct GlyphSlot {
-			GameGlyph Glyph;
-			FontReplacer::Cell Cell;
-
-			// Caches, shaped runs and the glyph whose blank it is holding it.
-			uint32_t Refs = 0;
-
-			// The frame it was last handed to the game in.
-			uint64_t Handed = 0;
-
-			// In m_unreferenced.
-			bool Unreferenced = false;
-		};
-
-		// The game may keep a glyph pointer (font caches, vertex data) for a few frames after it was last handed out.
-		static constexpr uint64_t GraceFrames = 8;
-
-		// A glyph of no width, for the characters of a shaped cluster after its first.
-		std::unique_ptr<GlyphSlot> m_emptyGlyph;
-
-		// A deque, as glyphs must not move. Freed slots are reused.
-		std::deque<GlyphSlot> m_slots;
-		std::vector<GlyphSlot*> m_free;
-
-		// Glyphs nothing of ours holds anymore, freed once GraceFrames have passed since they were last handed out.
-		std::vector<GameGlyph*> m_unreferenced;
-
-		uint64_t m_frame = 0;
-		uint64_t m_frameTick = 0;
-
-		std::set<GlyphAtlas*> m_fullAtlases;
-		std::map<GlyphAtlas*, uint64_t> m_lastEviction;
-
-		// A full atlas hands out blanks, which baked text keeps until it is baked again once a plane is reused.
-		std::atomic<bool> m_planeReused = false;
-
-		// Placed glyphs made from game glyphs, whose pixels are read from the game's textures at the next upload.
-		std::vector<GameGlyph*> m_gameReads;
-		TextureReader m_gameTextures;
-
-		// FontReplacer.Copies.cpp
-
-		struct CopyInfo {
-			GameFont* Original;
-			int HalfPx;
-			SizedFont* Sized;
-			SizedFont* BoldSized = nullptr;
-		};
-
-		// One atlas per game font family so one family's text can't push another's out; AXIS (most UI text) has its own page size and count.
-		std::map<std::string, std::unique_ptr<GlyphAtlas>, LessIgnoringCase> m_atlases;
-
-		// Copy texture slots change only on the thread the game lays text out on; pages added elsewhere wait for it.
-		DWORD m_mainThreadId = 0;
-		std::mutex m_pendingPagesMutex;
-		std::set<GlyphAtlas*> m_pendingPageAtlases;
-
-		std::map<std::pair<GameFont*, int>, GameFont*> m_copiesByKey;
-		std::map<GameFont*, CopyInfo> m_copies;
-		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::unique_ptr<SizedFont>> m_sizedFonts;
-
-		// GetSized's results by its arguments, as finding the family's fonts for a request is slow and wrapping asks per character.
-		std::map<std::tuple<GameFont*, int, bool>, SizedFont*> m_sizedByRequest;
-
-		// FontReplacer.cpp
-
 		static constexpr int BlankTextureSize = 4;
 
-		FontReplacementAtlasConfig m_atlas;
-		std::optional<bool> m_supports4444;
+		FrameState& m_state;
+		std::unique_ptr<FontServices> m_services;
+		std::unique_ptr<SystemFallbackFonts> m_fallbackFonts;
+		std::unique_ptr<FontSetFlags> m_flags;
+		std::unique_ptr<GlyphStore> m_store;
 
-		// Fills copy texture slots without a page, so that a game glyph slipping through draws nothing.
+		// What copy texture slots without a page hold, so that a game glyph slipping through draws nothing. Cleared at the first Present, as the
+		// immediate context is free only then.
 		std::optional<KernelTextureWrapper> m_blankTexture;
 		bool m_blankCleared = false;
 
-		std::unique_ptr<MaterializedFont> m_gameFont;
-		std::map<std::string, std::unique_ptr<MaterializedFont>, LessIgnoringCase> m_presetFonts;
-		bool m_enabled = true;
+		std::unique_ptr<AtlasSet> m_atlases;
+		std::unique_ptr<SizedFontRegistry> m_sized;
+		std::unique_ptr<CopyFonts> m_copies;
+		std::unique_ptr<CellPlacer> m_placer;
+		std::unique_ptr<GlyphFactory> m_factory;
+		std::unique_ptr<GameTextLayout> m_layout;
 
-		// Made together, sharing their face sources.
-		struct LoadedFonts {
-			std::unique_ptr<MaterializedFont> Game;
-			std::map<std::string, std::unique_ptr<MaterializedFont>, LessIgnoringCase> Preset;
-		};
+		// Removed first, by Unhook.
+		std::unique_ptr<FontHooks> m_fontHooks;
+		std::unique_ptr<FontLifecycleHooks> m_lifecycleHooks;
 
-		// Fonts are made on the loader thread and swapped in at EndFrame. A request supersedes those before it, and their fonts are dropped.
-		std::mutex m_loadMutex;
-		std::condition_variable m_loadWake;
-		std::optional<FontSettings> m_loadRequest;
-		std::unique_ptr<LoadedFonts> m_loaded;
-		std::atomic<uint64_t> m_loadSerial = 0;
-		std::atomic<bool> m_loadStop = false;
-		std::thread m_loadThread;
+		std::optional<bool> m_supports4444;
 
-		FontReplacementEdgeConfig m_edge;
-		EdgeShader m_edgeShader;
-
-		SubpixelShaders::SettingsRecord m_subpixel;
-		SubpixelShaders m_subpixelShaders;
+		// As last asked for, which an error may have turned off since.
+		std::optional<bool> m_enabled;
 
 	public:
-		// Game thread; throws if this game version can't be worked with.
-		FontReplacer();
+		// Game thread. Throws if this game version can't be worked with.
+		explicit FontReplacer(FrameState& state);
 		FontReplacer(const FontReplacer&) = delete;
 		FontReplacer& operator=(const FontReplacer&) = delete;
 
-		// Game thread; a step that fails is logged, and the others still run.
+		// Game thread, once the game holds none of the glyphs and copies.
 		~FontReplacer();
 
-		// Game thread, when earlier drawn text no longer matches, for what keeps drawn text around (nameplate bakes).
-		std::function<void()> TextInvalidated;
+		[[nodiscard]] FontServices& Services() const { return *m_services; }
 
-		// Game thread; such text nodes are measured at their unscaled size, as they are baked at a scale of their own.
-		std::function<bool(uintptr_t node)> IsNamePlateText;
+		[[nodiscard]] SystemFallbackFonts& FallbackFonts() const { return *m_fallbackFonts; }
 
-		// Game thread; the fonts are made on another thread, and the earlier ones stay until EndFrame swaps them in. Every glyph is made again then,
-		// even for the same value.
-		void SetFonts(const FontSettings& value);
+		// Whether fonts are replaced, which an error turns off at once.
+		[[nodiscard]] bool IsEnabled() const;
 
 		// DXGI 1.2 devices can sample and update B4G4R4A4, but the game also runs on Direct3D 11 devices without it.
 		[[nodiscard]] bool Supports4444();
 
-		// Clamped; game thread, between frames.
-		void SetAtlas(const FontReplacementAtlasConfig& value);
+		// Such text nodes are measured at their unscaled size, as they are baked at a scale of their own.
+		void SetNamePlateTest(std::function<bool(uintptr_t node)> value);
 
-		// Game thread.
-		void SetEdge(const FontReplacementEdgeConfig& value);
+		// Applied when it differs from what was last asked for, even if an error turned it off already, so that the font caches follow.
+		ResetScope SetEnabled(bool value);
 
-		// Game thread, between frames, as copy texture slots change only on the game thread.
-		void EndFrame();
+		// Glyphs made now show only from the next frame, so they are made again, blanking text for a frame, only if a margin changes.
+		ResetScope SetEdge(const FontReplacementEdgeConfig& value);
 
-		// Game thread, between frames.
-		void SetSubpixel(const SubpixelShaders::SettingsRecord& value);
+		ResetScope SetAtlas(const FontReplacementAtlasConfig& value);
 
-		// Game thread.
-		void SetVerticalSubpixel(FontReplacementVerticalSubpixelRenderer value);
+		// order is of the glyphs, None unless active, which is whether the subpixel shaders are on, which atlases are made for.
+		ResetScope SetSubpixel(SubpixelOrder order, bool active);
 
-		// Game thread, between frames; baked nameplates keep their pixels until the game bakes them again.
-		void RebuildGlyphs();
+		ResetScope SetVerticalSubpixel(FontReplacementVerticalSubpixelRenderer value);
 
-		// Game thread.
-		[[nodiscard]] bool Enabled() const { return m_enabled; }
-		void SetEnabled(bool value);
+		// Makes what scope names again, each step once and in order. fonts, if given, replaces the fonts, and the old ones are freed.
+		void Reset(ResetScope scope, std::unique_ptr<FontSet> fonts = nullptr);
 
-		// Present thread, once a frame.
-		void Upload();
+		// At Present, after this frame's text was laid out: reads game glyphs' pixels, makes room in full atlases (every glyph is made again if it
+		// can't be), uploads the atlases, and sweeps the caches. Caches are swept after the game's reads, which hold glyphs without a reference.
+		// Runs go first, then the cells they let go of.
+		void Present();
 
-		[[nodiscard]] int GetEdgeMargin(const SizedFont& sized) const { return GetEdgeMargin(m_edge, sized.Px); }
-
-		// Adds empty margins for a wide edge, as the edge is only drawn within a glyph's box and the pixel around it.
-		[[nodiscard]] RasterGlyph FinishGlyph(const SizedFont& sized, RasterGlyph r) const;
-
-		// With source, r is blank and its pixels are read from the game's texture once placed.
-		GameGlyph* PlaceCell(const SizedFont& sized, RasterGlyph r, uint32_t utf8Value, std::optional<GameTextureSource> source = std::nullopt);
-
-		void MarkRealItalic(GameGlyph* cell) { CellOf(cell).RealItalic = true; }
-
-		// Counted by Upload.
-		[[nodiscard]] uint64_t Frame() const { return m_frame; }
-
-		// Holds a glyph made by PlaceCell, so that it isn't freed, and returns it. nullptr and the empty glyph are ignored, here and by the others.
-		GameGlyph* Keep(GameGlyph* glyph);
-
-		void Release(GameGlyph* glyph);
-
-		[[nodiscard]] uint32_t RefCount(GameGlyph* glyph) const;
-
-	private:
-		[[nodiscard]] static int GetEdgeMargin(const FontReplacementEdgeConfig& edge, float px);
-
-		void DisposeFonts();
-		void RemakeAtlases();
-
-		void ReleaseGlyphs(SizedFont& sized);
-
-		// Lets go of their glyphs first.
-		void ClearSizedFonts();
-
-		void LoaderThreadBody();
-		void StopLoader();
-
-		// Loader thread, using nothing of the replacer but the services. A font that can't be made is left out with a warning. nullptr once stale.
-		static std::unique_ptr<LoadedFonts> LoadFonts(FontServices& services, SystemFallbackFonts& fallbackFonts, const FontSettings& value, const std::function<bool()>& stale);
-
-		void ApplyLoadedFonts();
-
-		// FontReplacer.Copies.cpp
-
-		// false if there were no copies (of only, if given).
-		bool ResyncCopies(GameFont* only = nullptr);
-
-		// At the size of one of the family's fonts, that font's glyphs with its game font's metrics; at another, each glyph from the largest font
-		// that draws it itself, with the metrics of the font that draws the most glyphs itself.
-		SizedFont* GetSized(GameFont* original, int halfPx, bool bold);
-		SizedFont* GetBoldSized(CopyInfo& info);
-
-		MaterializedFont* FontOf(const std::string& fontName);
-		GlyphAtlas* GetAtlas(const std::string& family);
-
-		// BuildFont frees the glyph map and glyphs a copy borrows from its game font, so they are borrowed again after it.
-		void Sync(GameFont* copy, const CopyInfo& info);
-
-		GameFont* GetOrCreateCopy(GameFont* original, int halfPx);
-		void FreeCopies();
-
-		// Main thread; the blank texture fills the slots after the pages, so that the renderer has a vertex buffer and a texture for every index.
-		void ApplyPages(GameFont* copy, const GlyphAtlas& atlas);
-
-		void OnPageAdded(GlyphAtlas* atlas);
-		void ApplyPendingPages();
-
-		// FontReplacer.Hooks.cpp
-
-		// Not through SetEnabled, which rebuilds the font caches.
-		void DisableAfterError();
-
-		static void ForgetPickedFonts();
-
-		// A font cache keeps the glyph pointers laid out at the node's unscaled size, which fit only that size's copy and must not outlive the
-		// replacement, so while enabled, nodes get no cache and are laid out at each draw.
-		void BuildFontCacheDetour(uintptr_t node);
-
-		void UpdateFontCaches();
-		void UpdateFontCaches(uintptr_t uld, int depth);
-
-		// The game rebuilds a font in place (a reload, a switch between the lobby's fonts and the game's), freeing the glyph map and glyphs its
-		// copies borrow.
-		int BuildFontDetour(uintptr_t manager, uint16_t index);
-		void OnFontBuilt(GameFont* font);
-
-		// Their pixels came from the font's old textures, and converted ones are keyed by its old glyph pointers.
-		bool ForgetGameGlyphsOf(GameFont* font);
-
-		// The game unloads every font (a switch between the lobby's fonts and the game's, a UI shader reload, shutdown), releasing their textures'
-		// resource handles.
-		uintptr_t UnloadFontsDetour(uintptr_t manager);
-
-		GameFont* PickFontDetour(GameFontSet* set, uint8_t useCache);
-
-		// Its callers lay the text out with the font set it returns, and restore the set afterwards.
-		GameFontSet* MeasureSetUpDetour(uintptr_t node, uint8_t considerScale);
-
-		// The text may come from a script or an addon, so there is no node to tell the scale it is drawn at; as glyphs of different sizes don't
-		// scale evenly, it is wrapped to fit at every UI scale (GetWrapGlyph).
-		int TextWrapLayoutDetour(uintptr_t wrapper, uintptr_t text);
-
-		[[nodiscard]] float& PickScaleOf(GameFontSet* set) const { return *reinterpret_cast<float*>(reinterpret_cast<uintptr_t>(set) + m_setPickScaleOffset); }
-
-		uintptr_t LayOutCharacterDetour(uintptr_t analyzer, const uint8_t** text, uintptr_t state);
-
-		// An italic macro sets the state's bit, which measuring sees too; a text node's italics are only in the font set's own flags, which only
-		// drawing sees.
-		ItalicMode GetItalicMode(GameFontSet* set) const;
-
-		GameGlyph* GetGlyphDetour(GameFontSet* set, uint32_t utf8Value, GameFont* font);
-
-		// nullptr if neither the copy nor its game font has a glyph of the character.
-		GameGlyph* GetCopyGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, SizedFont& sized);
-
-		[[nodiscard]] bool DrawsBold() const;
-		SizedFont& GetDrawnSized(CopyInfo& info);
-
-		// The sized fonts of the UI scales (WrapScales) for the text being wrapped, the copy's own (the largest) last.
-		std::array<SizedFont*, std::size(WrapScales)> GetWrapSizes(GameFontSet* set, CopyInfo& info);
-
-		// While wrapping, the character LayOutCharacter is at gets its cell of its run laid out at every UI scale (GameTextLayout::TryGetWrapGlyph);
-		// nullptr if it is looked up by itself.
-		GameGlyph* GetWrapRunGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
-
-		// While wrapping, for a character looked up by itself, in the copy of the largest UI scale: a glyph of no pixels as wide as glyph is at the
-		// widest of the UI scales.
-		GameGlyph* GetWrapGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info, GameGlyph* glyph);
-
-		// LayOutCharacter would take its substitutes from the font's glyph map directly, getting game glyphs of texture indices the copy has no
-		// textures of, so the copy's own glyphs of them (else one of no width) are given instead.
-		GameGlyph* GetMissingGlyph(GameFontSet* set, uint32_t utf8Value, CopyInfo& info);
-
-		// FontReplacer.Cells.cpp
-
-		// nullptr leaves the glyph to the game.
-		GameGlyph* CreateGlyph(SizedFont& sized, uint32_t utf8Value);
-
-		// From the largest of the sized font's game fonts that has it, copied into the atlas because the edge steps by texels of the width all of a
-		// font's textures share, which is the atlas's.
-		GameGlyph* GetGameGlyph(SizedFont& sized, uint32_t utf8Value);
-
-		GameGlyph* ConvertGameGlyph(SizedFont& sized, GameFont* font, const GameGlyph* game, uint32_t utf8Value);
-		GameGlyph* PlaceGameGlyph(const SizedFont& sized, GameFont* font, const GameGlyph* game, uint32_t utf8Value);
-
-		// 1 within the half-pixel rounding of copy sizes.
-		[[nodiscard]] static float GetGameScale(const SizedFont& sized, GameFont* font);
-
-		[[nodiscard]] static RasterGlyph WithSourcePixels(const RasterGlyph& box, const GameTextureSource& s, std::vector<uint8_t> sourceAlpha);
-
-		// A glyph that finds no room draws nothing this time, at the same advance, and room is made at the next upload. A glyph whose plane was
-		// reused is placed again here.
-		GameGlyph* WithPixels(GameGlyph* glyph);
-
-		bool WritePixels(GameGlyph* glyph, Cell& cell);
-		GameGlyph* GetBlank(GameGlyph* glyph);
-
-		// Present thread, before the uploads.
-		void ReadGameGlyphs();
-
-		// Present thread, after this frame's layout. The plane's glyphs are placed again as they are drawn.
-		void EvictPlane(GlyphAtlas* atlas);
-
-		static void WriteCell(const GameGlyph* glyph, const Cell& cell);
-		static void ReleasePixels(Cell& cell);
-		static void DropCell(GameGlyph* glyph, Cell& cell);
-		static void DropPixels(GameGlyph* glyph);
-		void DropGameReads(const std::set<uintptr_t>& textures);
-
-		// Reuses a freed slot if there is one.
-		GameGlyph* AllocateGlyph();
-
-		// Present thread, once a frame, after the uploads.
-		void SweepCaches();
-		void FreeUnreferenced();
-
-		// Marks it handed to the game in this frame.
-		void Hand(GameGlyph* glyph);
-
-		[[nodiscard]] bool IsOwn(const GameGlyph* glyph) const { return glyph && glyph != &m_emptyGlyph->Glyph; }
-		[[nodiscard]] static GlyphSlot& SlotOf(GameGlyph* glyph) { return *CONTAINING_RECORD(glyph, GlyphSlot, Glyph); }
-		[[nodiscard]] static Cell& CellOf(GameGlyph* glyph) { return SlotOf(glyph).Cell; }
+		// Removes the hooks and has every font set pick its own font again. The destructor frees the rest once the game holds none of it.
+		void Unhook();
 	};
 }

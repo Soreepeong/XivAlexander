@@ -67,7 +67,7 @@ uint32_t FontReplacement::LineBreaker::SplitWordDetour(uintptr_t wrapper, int wi
 	const auto first = *reinterpret_cast<const int*>(wrapper + m_consumedUnitsOffset) == 0;
 	try {
 		if (first)
-			m_splittingOwnWord = m_replacer.Enabled() && NeedsClusters(word);
+			m_splittingOwnWord = m_replacer.IsEnabled() && NeedsClusters(word);
 		if (m_splittingOwnWord)
 			return Split(wrapper, width, word, measuredWord, lineStart != 0);
 	} catch (const std::exception& e) {

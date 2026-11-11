@@ -111,15 +111,24 @@ FontReplacement::LineMetrics FontReplacement::MaterializedFont::GetLineMetrics(f
 }
 
 FontReplacement::FontAlignment FontReplacement::MaterializedFont::GetAlignment(float px, GameFont* game) {
+	const auto key = std::make_pair(px, game);
+	if (const auto it = m_alignments.find(key); it != m_alignments.end())
+		return it->second;
+
 	const auto [ascent, lineHeight] = GetLineMetrics(px, game);
 	const auto first = m_elements.empty() ? nullptr : m_elements[0].get();
-	return {
+	return m_alignments.emplace(key, FontAlignment{
 		.Ascent = ascent,
 		.LineHeight = lineHeight,
 		.RomanBaselineY = first ? first->GetRomanBaselineY(px, ascent) : static_cast<float>(ascent),
 		.IdeographicCenterY = first ? first->GetIdeographicCenterY(px, ascent, lineHeight) : static_cast<float>(lineHeight) / 2,
 		.Mode = m_def->VerticalAlignment,
-	};
+	}).first->second;
+}
+
+void FontReplacement::MaterializedFont::ForgetGameFonts() {
+	m_elementCache.clear();
+	m_alignments.clear();
 }
 
 std::optional<FontReplacement::RasterGlyph> FontReplacement::MaterializedFont::TryRasterize(char32_t codepoint, float px, GameFont* game, bool bold) {
