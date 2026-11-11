@@ -8,18 +8,22 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-void FontReplacement::CopyInfo::Resize(SizedFont* value) {
-	m_sized = value;
-	m_bold = nullptr;
+void FontReplacement::CopyInfo::Resize(std::shared_ptr<SizedFont> value) {
+	m_sized = std::move(value);
 	m_boldFailed = false;
+	ForgetBorrowed();
+}
+
+void FontReplacement::CopyInfo::ForgetBorrowed() {
+	m_bold = nullptr;
 	m_wrapSizes.clear();
 }
 
 FontReplacement::SizedFont* FontReplacement::CopyInfo::GetBold(SizedFontRegistry& registry) {
 	if (m_boldFailed)
-		return m_sized;
+		return m_sized.get();
 	if (!m_bold)
-		m_bold = registry.Get(Original, HalfPx, true);
+		m_bold = registry.Get(Original, HalfPx, true).get();
 	return m_bold;
 }
 
@@ -30,7 +34,7 @@ std::span<FontReplacement::SizedFont* const> FontReplacement::CopyInfo::GetWrapS
 
 	std::vector<SizedFont*> sizes(scales.size());
 	for (size_t i = 0; i + 1 < sizes.size(); i++)
-		sizes[i] = registry.Get(Original, CopyFonts::HalfPxOf(sizeY * scales[i]), bold);
+		sizes[i] = registry.Get(Original, CopyFonts::HalfPxOf(sizeY * scales[i]), bold).get();
 	sizes.back() = drawn;
 	m_wrapSizes = std::move(sizes);
 	m_wrapSizeY = sizeY;
@@ -132,8 +136,10 @@ void FontReplacement::CopyFonts::MarkStale() {
 	m_generation++;
 	m_picks.clear();
 	m_unsettled.clear();
-	for (const auto& [copy, info] : m_copies)
+	for (auto& [copy, info] : m_copies) {
+		info.ForgetBorrowed();
 		Sync(copy, info);
+	}
 }
 
 void FontReplacement::CopyFonts::SyncAll() {

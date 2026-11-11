@@ -10,7 +10,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	class SizedFontRegistry;
 
 	class CopyInfo {
-		SizedFont* m_sized;
+		// Owned, as MarkStale reads it after the registry let go of it.
+		std::shared_ptr<SizedFont> m_sized;
 		SizedFont* m_bold = nullptr;
 		bool m_boldFailed = false;
 
@@ -26,14 +27,17 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// The CopyFonts generation it is up to date with.
 		int Generation = 0;
 
-		CopyInfo(GameFont* original, int halfPx, SizedFont* sized)
-			: m_sized(sized)
+		CopyInfo(GameFont* original, int halfPx, std::shared_ptr<SizedFont> sized)
+			: m_sized(std::move(sized))
 			, Original(original)
 			, HalfPx(halfPx) {}
 
-		[[nodiscard]] SizedFont* Sized() const { return m_sized; }
+		[[nodiscard]] SizedFont* Sized() const { return m_sized.get(); }
 
-		void Resize(SizedFont* value);
+		void Resize(std::shared_ptr<SizedFont> value);
+
+		// Lets go of the sized fonts it doesn't own, which are about to go.
+		void ForgetBorrowed();
 
 		// Its bold is drawn upright from now on.
 		void BoldFailed() { m_boldFailed = true; }

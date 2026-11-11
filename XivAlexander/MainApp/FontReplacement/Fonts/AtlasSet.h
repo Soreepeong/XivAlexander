@@ -9,7 +9,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// UI's text, has its own page size and count.
 	class AtlasSet {
 		std::function<bool()> m_supports4444;
-		std::map<std::string, std::unique_ptr<GlyphAtlas>, LessIgnoringCase> m_atlases;
+		std::map<std::string, std::shared_ptr<GlyphAtlas>, LessIgnoringCase> m_atlases;
 		FontReplacementAtlasConfig m_settings = FontReplacementAtlasConfig{}.Clamped();
 		bool m_subpixel = false;
 
@@ -30,14 +30,14 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		[[nodiscard]] auto All() const { return m_atlases | std::views::values | std::views::transform([](const auto& a) { return a.get(); }); }
 
 		// Made on its first use.
-		GlyphAtlas* Get(const std::string& family);
+		std::shared_ptr<GlyphAtlas> Get(const std::string& family);
 
 		void Upload();
 
 		// Keeps the pages, which copies refer to.
 		void ClearAll();
 
-		// The next Get makes new ones.
-		void Dispose() { m_atlases.clear(); }
+		// The next Get makes new ones. Copies still referring to the old ones find them without pages.
+		void Dispose();
 	};
 }

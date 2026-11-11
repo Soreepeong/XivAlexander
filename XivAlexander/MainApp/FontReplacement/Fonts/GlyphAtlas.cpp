@@ -71,6 +71,10 @@ FontReplacement::GlyphAtlas::GlyphAtlas(int width, int height, int maxPages, std
 }
 
 FontReplacement::GlyphAtlas::~GlyphAtlas() {
+	Dispose();
+}
+
+void FontReplacement::GlyphAtlas::Dispose() {
 	m_pages.clear();
 	m_context = nullptr;
 }

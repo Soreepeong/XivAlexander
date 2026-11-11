@@ -17,7 +17,7 @@ FontReplacement::SizedFontRegistry::SizedFontRegistry(std::unique_ptr<FontSet> f
 	, m_state(state) {
 }
 
-FontReplacement::SizedFont* FontReplacement::SizedFontRegistry::Get(GameFont* original, int halfPx, bool bold) {
+const std::shared_ptr<FontReplacement::SizedFont>& FontReplacement::SizedFontRegistry::Get(GameFont* original, int halfPx, bool bold) {
 	const auto request = std::make_tuple(original, halfPx, bold);
 	if (const auto it = m_byRequest.find(request); it != m_byRequest.end())
 		return it->second;
@@ -65,9 +65,9 @@ FontReplacement::SizedFont* FontReplacement::SizedFontRegistry::Get(GameFont* or
 		std::vector<std::pair<MaterializedFont*, GameFont*>> pairs;
 		for (const auto& f : fonts)
 			pairs.emplace_back(f.Font, f.Game);
-		it = m_sizedFonts.emplace(key, std::make_unique<SizedFont>(font, px, ascent, lineHeight, game, m_atlases.Get(Presets::FamilyOf(fontName)), std::move(pairs), bold, m_state)).first;
+		it = m_sizedFonts.emplace(key, std::make_shared<SizedFont>(font, px, ascent, lineHeight, game, m_atlases.Get(Presets::FamilyOf(fontName)), std::move(pairs), bold, m_state)).first;
 	}
-	return m_byRequest[request] = it->second.get();
+	return m_byRequest[request] = it->second;
 }
 
 void FontReplacement::SizedFontRegistry::Sweep() {

@@ -7,10 +7,11 @@
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
 FontReplacement::SizedFont::SizedFont(
-	MaterializedFont* font, float px, int ascent, int lineHeight, GameFont* game, GlyphAtlas* atlas,
+	MaterializedFont* font, float px, int ascent, int lineHeight, GameFont* game, std::shared_ptr<GlyphAtlas> atlas,
 	std::vector<std::pair<MaterializedFont*, GameFont*>> fonts, bool bold, const FrameState& state)
-	: Font(font)
-	, Atlas(atlas)
+	: m_atlas(std::move(atlas))
+	, Font(font)
+	, Atlas(m_atlas.get())
 	, Game(game)
 	, Px(px)
 	, Ascent(ascent)

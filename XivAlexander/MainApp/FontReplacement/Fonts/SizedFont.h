@@ -11,6 +11,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	// Shared by the copies of a family's fonts of one size, such as a font and its lobby version.
 	// A bold one keeps the upright one's line metrics, so that lines partly in bold line up.
 	class SizedFont {
+		// A copy reads its sized font and atlas after a reset, until its next use.
+		const std::shared_ptr<GlyphAtlas> m_atlas;
+
 	public:
 		MaterializedFont* const Font;
 		GlyphAtlas* const Atlas;
@@ -30,7 +33,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::unordered_map<char32_t, GlyphSource> Picks;
 
 		SizedFont(
-			MaterializedFont* font, float px, int ascent, int lineHeight, GameFont* game, GlyphAtlas* atlas,
+			MaterializedFont* font, float px, int ascent, int lineHeight, GameFont* game, std::shared_ptr<GlyphAtlas> atlas,
 			std::vector<std::pair<MaterializedFont*, GameFont*>> fonts, bool bold, const FrameState& state);
 		SizedFont(const SizedFont&) = delete;
 		SizedFont& operator=(const SizedFont&) = delete;

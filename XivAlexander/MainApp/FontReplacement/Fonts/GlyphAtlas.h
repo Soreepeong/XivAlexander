@@ -99,6 +99,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		GlyphAtlas& operator=(const GlyphAtlas&) = delete;
 		~GlyphAtlas();
 
+		// Frees the pages. Only what reads the page count may use it afterwards.
+		void Dispose();
+
 		[[nodiscard]] int Width() const { return m_width; }
 		[[nodiscard]] const std::string& Name() const { return m_name; }
 		[[nodiscard]] bool Subpixel() const { return m_subpixel; }

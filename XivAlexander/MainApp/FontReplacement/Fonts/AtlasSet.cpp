@@ -5,9 +5,9 @@
 
 namespace FontReplacement = XivAlexander::Apps::MainApp::FontReplacement;
 
-FontReplacement::GlyphAtlas* FontReplacement::AtlasSet::Get(const std::string& family) {
+std::shared_ptr<FontReplacement::GlyphAtlas> FontReplacement::AtlasSet::Get(const std::string& family) {
 	if (const auto it = m_atlases.find(family); it != m_atlases.end())
-		return it->second.get();
+		return it->second;
 
 	// FontSubpixelPS tells subpixel pages from the game's textures by their odd width. Grayscale pages get an even one.
 	const auto& s = m_settings;
@@ -18,7 +18,7 @@ FontReplacement::GlyphAtlas* FontReplacement::AtlasSet::Get(const std::string& f
 	if (m_subpixel == (width % 2 == 0))
 		width--;
 	const auto format = s.Format == AtlasTextureFormat::Bgra4444 && m_supports4444() ? AtlasTextureFormat::Bgra4444 : AtlasTextureFormat::Bgra8888;
-	const auto atlas = m_atlases.emplace(family, std::make_unique<GlyphAtlas>(width, height, maxPages, family, m_subpixel, format)).first->second.get();
+	const auto atlas = m_atlases.emplace(family, std::make_shared<GlyphAtlas>(width, height, maxPages, family, m_subpixel, format)).first->second;
 	if (!atlas->TryEnsurePages(1))
 		throw std::runtime_error("Could not add an atlas page.");
 	return atlas;
@@ -32,4 +32,10 @@ void FontReplacement::AtlasSet::Upload() {
 void FontReplacement::AtlasSet::ClearAll() {
 	for (const auto& atlas : m_atlases | std::views::values)
 		atlas->Clear();
+}
+
+void FontReplacement::AtlasSet::Dispose() {
+	for (const auto& atlas : m_atlases | std::views::values)
+		atlas->Dispose();
+	m_atlases.clear();
 }

@@ -16,12 +16,12 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		AtlasSet& m_atlases;
 		GlyphStore& m_store;
 		const FrameState& m_state;
-		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::unique_ptr<SizedFont>> m_sizedFonts;
+		std::map<std::tuple<MaterializedFont*, int, std::string, bool>, std::shared_ptr<SizedFont>> m_sizedFonts;
 		size_t m_sweepAt = GlyphCapacity;
 
 		// Get's results by its arguments, as finding the family's fonts for a request is slow and wrapping asks per character. Which of the
 		// family's fonts were ready is in them.
-		std::map<std::tuple<GameFont*, int, bool>, SizedFont*> m_byRequest;
+		std::map<std::tuple<GameFont*, int, bool>, std::shared_ptr<SizedFont>> m_byRequest;
 
 	public:
 		SizedFontRegistry(std::unique_ptr<FontSet> fonts, AtlasSet& atlases, GlyphStore& store, const FrameState& state);
@@ -34,7 +34,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// At the size of one of the family's fonts, that font's glyphs with its game font's metrics. At another, each glyph from the largest
 		// font that draws it itself, with the metrics of the font that draws the most glyphs itself.
-		SizedFont* Get(GameFont* original, int halfPx, bool bold);
+		const std::shared_ptr<SizedFont>& Get(GameFont* original, int halfPx, bool bold);
 
 		// The glyphs used least recently of all sized fonts go, if they hold more than their shared capacity.
 		void Sweep();
