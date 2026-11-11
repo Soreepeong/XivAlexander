@@ -29,6 +29,7 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		std::map<float, IDWriteFontFace5Ptr> m_sizedFaces;
 		DWRITE_FONT_AXIS_RANGE m_opticalSizeRange{};
 		bool m_autoOpticalSize = false;
+		bool m_hasPairKerning = false;
 
 		// Keyed by DWRITE_FONT_AXIS_TAG, without the optical size when it follows the text size.
 		std::map<uint32_t, float> m_axisValues;
@@ -53,6 +54,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 		// In ems (negative values thin glyphs); glyphs advance that much further.
 		[[nodiscard]] float Embolden() const { return m_embolden; }
 
+		// Whether the font kerns by its kern table only, which shaping doesn't apply.
+		[[nodiscard]] bool HasPairKerning() const { return m_hasPairKerning; }
+
 		// Owned by this object.
 		[[nodiscard]] IDWriteFontFace5* GetFace(float px);
 
@@ -62,6 +66,9 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 	private:
 		// DirectWrite has variable fonts from Windows 10 21H1.
 		[[nodiscard]] bool IsVariable() const { return !!m_resource; }
+
+		// Whether the font's GPOS table has a kern feature.
+		[[nodiscard]] static bool HasGposKerning(IDWriteFontFace5* face);
 
 		static IDWriteFontFace5Ptr WithSimulations(IDWriteFontFace5* face, DWRITE_FONT_SIMULATIONS simulations);
 

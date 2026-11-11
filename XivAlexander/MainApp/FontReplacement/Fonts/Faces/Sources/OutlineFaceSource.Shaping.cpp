@@ -11,7 +11,7 @@ int FontReplacement::OutlineFaceSource::Shape(float px, std::wstring_view text, 
 	if (length == 0)
 		return 0;
 
-	const auto face = static_cast<IDWriteFontFace*>(m_font->GetFace(px));
+	const auto face = m_font->GetFace(px);
 	DWRITE_SCRIPT_ANALYSIS analysis{script.Script, static_cast<DWRITE_SCRIPT_SHAPES>(script.Shapes)};
 	std::vector<uint16_t> clusterMap(length);
 	std::vector<DWRITE_SHAPING_TEXT_PROPERTIES> textProps(length);
@@ -52,7 +52,8 @@ int FontReplacement::OutlineFaceSource::Shape(float px, std::wstring_view text, 
 	std::vector<DWRITE_GLYPH_OFFSET> offsets(count);
 
 	// GDI measuring modes give hinted, whole-pixel advances, which the glyphs are drawn to match.
-	if (m_measureMode == DWRITE_MEASURING_MODE_GDI_CLASSIC || m_measureMode == DWRITE_MEASURING_MODE_GDI_NATURAL) {
+	const auto gdi = m_measureMode == DWRITE_MEASURING_MODE_GDI_CLASSIC || m_measureMode == DWRITE_MEASURING_MODE_GDI_NATURAL;
+	if (gdi) {
 		ThrowOnError(analyzer.GetGdiCompatibleGlyphPlacements(
 			text.data(), clusterMap.data(), textProps.data(), length, glyphs.data(), glyphProps.data(), count, face, px, 1, nullptr,
 			m_measureMode == DWRITE_MEASURING_MODE_GDI_NATURAL, FALSE, FALSE, &analysis, locale.c_str(), featureSets, featureLengths, featureRanges,
@@ -61,6 +62,18 @@ int FontReplacement::OutlineFaceSource::Shape(float px, std::wstring_view text, 
 		ThrowOnError(analyzer.GetGlyphPlacements(
 			text.data(), clusterMap.data(), textProps.data(), length, glyphs.data(), glyphProps.data(), count, face, px, FALSE, FALSE, &analysis,
 			locale.c_str(), featureSets, featureLengths, featureRanges, advances.data(), offsets.data()), "GetGlyphPlacements");
+	}
+
+	// Placing glyphs applies the kerning of GPOS only. A font with just a kern table gets its pairs here.
+	if (count > 1 && m_font->HasPairKerning() && IsKerningOn()) {
+		std::vector<INT32> adjustments(count);
+		if (SUCCEEDED(face->GetKerningPairAdjustments(count, glyphs.data(), adjustments.data()))) {
+			const auto scale = px / static_cast<float>(m_font->Metrics().designUnitsPerEm);
+			for (UINT32 i = 0; i < count; i++) {
+				const auto adjustment = static_cast<float>(adjustments[i]) * scale;
+				advances[i] += gdi ? std::round(adjustment) : adjustment;
+			}
+		}
 	}
 
 	// Code units mapping to the same first glyph are a cluster, which ends where the next one's glyphs start.
@@ -88,6 +101,12 @@ int FontReplacement::OutlineFaceSource::Shape(float px, std::wstring_view text, 
 	}
 
 	return static_cast<int>(length);
+}
+
+bool FontReplacement::OutlineFaceSource::IsKerningOn() const {
+	const auto& features = m_def.Lookup.Features;
+	const auto it = features.find(DWRITE_FONT_FEATURE_TAG_KERNING);
+	return it == features.end() || it->second != 0;
 }
 
 const std::vector<DWRITE_FONT_FEATURE>* FontReplacement::OutlineFaceSource::GetFeatures() {

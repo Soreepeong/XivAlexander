@@ -110,5 +110,8 @@ namespace XivAlexander::Apps::MainApp::FontReplacement {
 
 		// nullptr keeps DirectWrite's defaults; a feature set would turn them off, so they are added unless the lookup sets them.
 		const std::vector<DWRITE_FONT_FEATURE>* GetFeatures();
+
+		// Unless the lookup turns the kern feature off.
+		[[nodiscard]] bool IsKerningOn() const;
 	};
 }

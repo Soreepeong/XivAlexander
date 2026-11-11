@@ -14,6 +14,7 @@ FontReplacement::ResolvedSystemFont::ResolvedSystemFont(IDWriteFont3Ptr font, co
 	ThrowOnError(m_font->CreateFontFace(&face3), "CreateFontFace");
 	ThrowOnError(face3.QueryInterface(__uuidof(IDWriteFontFace5), &m_face), "QueryInterface(IDWriteFontFace5)");
 	m_face->GetMetrics(&m_metrics);
+	m_hasPairKerning = m_face->HasKerningPairs() && !HasGposKerning(m_face);
 
 	// A variable font starts from its instance (DirectWrite lists the named ones as fonts), less the optical size.
 	std::vector<DWRITE_FONT_AXIS_RANGE> ranges;
@@ -99,6 +100,29 @@ std::map<uint32_t, float> FontReplacement::ResolvedSystemFont::GetAxisValues(flo
 	auto res = m_axisValues;
 	res[static_cast<uint32_t>(DWRITE_FONT_AXIS_TAG_OPTICAL_SIZE)] = px;
 	return res;
+}
+
+bool FontReplacement::ResolvedSystemFont::HasGposKerning(IDWriteFontFace5* face) {
+	const void* data;
+	UINT32 size;
+	void* context;
+	BOOL exists;
+	if (FAILED(face->TryGetFontTable(DWRITE_MAKE_OPENTYPE_TAG('G', 'P', 'O', 'S'), &data, &size, &context, &exists)) || !exists)
+		return false;
+
+	const auto bytes = std::span(static_cast<const uint8_t*>(data), size);
+	const auto u16 = [&](size_t at) { return at + 2 <= bytes.size() ? static_cast<size_t>(bytes[at] << 8 | bytes[at + 1]) : 0; };
+
+	// The feature list is a count, then records of a tag and an offset.
+	auto found = false;
+	const auto list = u16(6);
+	for (size_t i = 0, count = list ? u16(list) : 0; i < count && !found; i++) {
+		const auto record = list + 2 + i * 6;
+		found = record + 4 <= bytes.size() && memcmp(&bytes[record], "kern", 4) == 0;
+	}
+
+	face->ReleaseFontTable(context);
+	return found;
 }
 
 IDWriteFontFace5Ptr FontReplacement::ResolvedSystemFont::WithSimulations(IDWriteFontFace5* face, DWRITE_FONT_SIMULATIONS simulations) {
